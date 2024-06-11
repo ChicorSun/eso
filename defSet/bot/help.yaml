@@ -1,0 +1,49 @@
+- pic: 帮助
+  cmd: 帮助
+  des: 常用指令及功能查询
+- group: ESO常用指令
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\eso
+      title: "#服务器状态"
+      desc: "查询当前服务器状态"
+      item_class: item_split2
+    - icon: ..\icon\dungeon
+      title: "#闯世 #无畏 #无畏者日常"
+      desc: "提供闯世者日常信息"
+      item_class: item_split2
+    - icon: ..\icon\dungeon
+      title: "#今日闯世 #今日无畏"
+      desc: "提供今日闯世者日常详细信息"
+      item_class: item_split2
+    - icon: ..\icon\dungeon
+      title: "#明日闯世 #明日无畏"
+      desc: "提供明日闯世者日常详细信息"
+      item_class: item_split2
+    - icon: ..\icon\alchemy
+      title: "#大力丸配方 #三回药配方"
+      desc: "提供大力丸或三回药的配方"
+      item_class: item_split2
+    - icon: u34_mythic_oakensoul_ring
+      title: "#装备名 #图鉴"
+      desc: "查询套装的图鉴(#不可省略)"
+      item_class: item_split2
+- group: 其他指令及功能
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\clock
+      title: "几点了"
+      desc: "查询当前UTC时间"
+      item_class: item_split2
+    - icon: ..\icon\champion
+      title: "全体成员 xxx"
+      desc: "以此四字开头的消息会被通知全体"
+      item_class: item_split2
+    - icon: ..\icon\crowns
+      title: "群昵称格式"
+      desc: "查看群昵称格式"
+      item_class: item_split2
+    - icon: ..\turnplate\base
+      title: "禁言转盘"
+      desc: "给你提供随机时长的禁言套餐"
+      item_class: item_split2

@@ -1,0 +1,97 @@
+- date: 2023-01-01
+  pic: 闯世
+  cmd: 闯世
+  des: 查询闯世者日常副本
+- group: 今日闯世[北京时间美服18点后、欧服11点后]
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 I"
+      desc: "<Wayrest Sewers I>"
+      item_class: item_split15
+    - icon: gear_undauntedcrocodile_head_a
+      title: "黏液之胃"
+      desc: "<Slimecraw>"
+      item_class: item_split3 set_info_small
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      item_class: item_split3 set_info_small
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      item_class: item_split3 set_info_small
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      item_class: item_split3 set_info_small
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 I"
+      desc: "<Wayrest Sewers I>"
+      item_class: item_split15
+    - icon: gear_undauntedcrocodile_head_a
+      title: "黏液之胃"
+      desc: "<Slimecraw>"
+      item_class: item_split3 set_info_small
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      item_class: item_split3 set_info_small
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      item_class: item_split3 set_info_small
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      item_class: item_split3 set_info_small
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 I"
+      desc: "<Wayrest Sewers I>"
+      item_class: item_split15
+    - icon: gear_undauntedcrocodile_head_a
+      title: "黏液之胃"
+      desc: "<Slimecraw>"
+      item_class: item_split3 set_info_small
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      item_class: item_split3 set_info_small
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      item_class: item_split3 set_info_small
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      item_class: item_split3 set_info_small
+- group: 今日闯世[美服18点前、欧服11点前]
+  group_class: data_box_split2
+  list:
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 I"
+      desc: "<Wayrest Sewers I>"
+      item_class: item_split2
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 IⅡ"
+      desc: "<Wayrest Sewers Ⅱ>"
+      item_class: item_split2
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 Ⅲ"
+      desc: "<Wayrest Sewers Ⅲ>"
+      item_class: item_split2
+- group: 明日闯世
+  group_class: data_box_split2
+  list:
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 I"
+      desc: "<Wayrest Sewers I>"
+      item_class: item_split2
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 IⅡ"
+      desc: "<Wayrest Sewers Ⅱ>"
+      item_class: item_split2
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 Ⅲ"
+      desc: "<Wayrest Sewers Ⅲ>"
+      item_class: item_split2

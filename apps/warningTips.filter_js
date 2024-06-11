@@ -1,0 +1,310 @@
+import plugin from '../../../lib/plugins/plugin.js'
+import moment from 'moment'
+
+let logs = {
+  date: '2023-01-01',
+}
+
+let newlogs = {
+  date: '2023-01-01',
+}
+
+export class warningTips extends plugin {
+  constructor (e) {
+    super({
+      name: 'ESO:违规检查',
+      dsc: '对群昵称和消息内容检查是否违规并警告',
+      event: 'message',
+      priority: 58887,
+      rule: [
+        {
+          reg: '^#*(群昵称格式)$',
+          fnc: 'sendNickRule'
+        },
+        {
+          reg: '',
+          fnc: 'sendWarning'
+        }
+      ]
+    })
+  }
+
+  async sendWarning (e) {
+    let checkName = await this.nameWarningTime(e)
+    if(checkName)
+    {
+      let message = [{ type: 'at', qq: e.user_id},{ type: 'text', text: '\n请按规范修改群昵称'},
+                     { type: 'image', file: './plugins/eso/resources/img/tips/nameTips.jpg', asface: false}]
+      await this.reply(message, false, { recallMsg: -1 })
+    }
+
+    /*
+    let checkKeyword = await this.keywordCheck(e)
+    if(checkKeyword == 1)
+    {
+      e.group.recallMsg(e.message_id)
+    }
+    */
+  }
+
+  async sendNickRule (e) {
+    let imgPath = `./plugins/eso/resources/img/tips/nameTips.jpg`
+
+    /** 最后回复消息 */
+    await this.e.reply(segment.image(`file://${imgPath}`))
+  }
+
+  //计算剩余需要提醒修改群昵称的次数
+  async nameWarningTime (e) {
+    let time = 0
+    let id = `qq${e.user_id}`
+
+    //判断是否需要清空记录
+    let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD')
+    if(now != logs.date)
+    {
+      logs = newlogs
+      logs.date = now
+      logger.info("清空群昵称提醒次数记录")
+    }
+
+    //读取提醒次数
+    if(typeof(logs[id])!= "undefined")
+    {
+      if(logs[id] == 0)
+      {
+        return 0
+      }
+      else if (logs[id] == 1)
+      {
+        time = 1
+      }
+      else
+      {
+        time = 2
+      }
+    }
+    else
+    {
+      time = 2
+      logs[id] = 2
+    }
+
+    //读取群昵称并判断是否合规
+    let userinfo = await Bot.pickMember(e.group_id, e.user_id).getSimpleInfo()
+    userinfo.group_info = await Bot.pickMember(e.group_id, e.user_id).info
+    userinfo.is_owner = await Bot.pickMember(e.group_id, e.user_id).is_owner
+    userinfo.is_admin = await Bot.pickMember(e.group_id, e.user_id).is_admin
+
+    if(typeof(userinfo.group_info) != "undefined")
+    {
+      userinfo.is_correct_groupname = await this.myIn('@', userinfo.group_info.card)
+      //logger.info('----------[违规]------------')
+      //logger.info(userinfo)//用户群内资料
+      //logger.info(userinfo.group_info.card)//用户群内资料
+      //logger.info(userinfo.is_correct_groupname)//用户群内资料
+      if(userinfo.is_correct_groupname)
+      {
+        time = 0
+        logs[id] = 0
+      }
+      else
+      {
+        logs[id] = time-1
+      }
+    }
+    else
+    {
+      logger.error("取群成员资料失败！")
+      time = 0
+    }
+
+    return time
+  }
+
+  //判断是否有敏感词
+  async keywordCheck (e) {
+    let ret = 0
+    for (let eachArry of e.message) {
+      if((typeof(eachArry.type) != "undefined") && (eachArry.type == 'text'))
+      {
+        if(typeof(eachArry.text) != "undefined")
+        {
+          /*
+          if((await this.myIn('金鱼', eachArry.text)) || 
+             (await this.myIn('金树脂', eachArry.text)) || 
+             (await this.myIn('金镀片', eachArry.text)) || 
+             (await this.myIn('升金', eachArry.text)) || 
+             (await this.myIn('金粉', eachArry.text)) ||  
+             (await this.myIn('回收', eachArry.text)) || 
+             (await this.myIn('黄金商人', eachArry.text)) || 
+             (await this.myIn('制造业', eachArry.text)) || 
+             (await this.myIn('送', eachArry.text)) || 
+             (await this.myIn('奖任务', eachArry.text)) || 
+             (await this.myIn('会员', eachArry.text)) || 
+             (await this.myIn('金色', eachArry.text)) || 
+             (await this.myIn('炼金', eachArry.text)) || 
+             (await this.myIn('姓金', eachArry.text)) || 
+             (await this.myIn('金先生', eachArry.text)) || 
+             (await this.myIn('金小姐', eachArry.text)) || 
+             (await this.myIn('金老师', eachArry.text)) || 
+             (await this.myIn('金师傅', eachArry.text)) || 
+             (await this.myIn('金师父', eachArry.text)) || 
+             (await this.myIn('金线索', eachArry.text)) || 
+             (await this.myIn('金色线索', eachArry.text)) || 
+             (await this.myIn('氪金', eachArry.text)) || 
+             (await this.myIn('赏金', eachArry.text)) || 
+             (await this.myIn('牌', eachArry.text)) || 
+             (await this.myIn('金刚', eachArry.text)) || 
+             (await this.myIn('三回', eachArry.text)) || 
+             (await this.myIn('皇冠商城', eachArry.text)) || 
+             (await this.myIn('启动金', eachArry.text)) || 
+             (await this.myIn('黄金版', eachArry.text)) || 
+             (await this.myIn('首饰', eachArry.text)) || 
+             (await this.myIn('戒指', eachArry.text)) || 
+             (await this.myIn('项链', eachArry.text)) || 
+             (await this.myIn('装备', eachArry.text)) || 
+             (await this.myIn('蜡', eachArry.text)) || 
+             (await this.myIn('片', eachArry.text)) || 
+             (await this.myIn('物价', eachArry.text)) || 
+             (await this.myIn('涨价', eachArry.text)) || 
+             (await this.myIn('买坐骑', eachArry.text)) || 
+             (await this.myIn('买房', eachArry.text)) || 
+             (await this.myIn('金拉丝', eachArry.text)) || 
+             (await this.myIn('金拉斯', eachArry.text)) || 
+             (await this.myIn('沃金', eachArry.text)) || 
+             (await this.myIn('白金塔', eachArry.text)) || 
+             (await this.myIn('黄金海岸', eachArry.text)) || 
+             (await this.myIn('商人', eachArry.text)) || 
+             (await this.myIn('npc', eachArry.text)) || 
+             (await this.myIn('NPC', eachArry.text)) || 
+             (await this.myIn('材料', eachArry.text)) || 
+             (await this.myIn('精炼', eachArry.text)) || 
+             (await this.myIn('任务', eachArry.text)) || 
+             (await this.myIn('日常', eachArry.text)) || 
+             (await this.myIn('金龙鱼', eachArry.text)) || 
+             (await this.myIn('改名', eachArry.text)) || 
+             (await this.myIn('dlc', eachArry.text)) || 
+             (await this.myIn('DLC', eachArry.text)) || 
+             (await this.myIn('种族', eachArry.text)) || 
+             (await this.myIn('职业', eachArry.text)) || 
+             (await this.myIn('死灵', eachArry.text)) || 
+             (await this.myIn('窝登', eachArry.text)) || 
+             (await this.myIn('守望', eachArry.text)) || 
+             (await this.myIn('腌黄瓜', eachArry.text)) || 
+             (await this.myIn('镀', eachArry.text)) || 
+             (await this.myIn('金辣', eachArry.text)) || 
+             (await this.myIn('1650', eachArry.text)) || 
+             (await this.myIn('一次性', eachArry.text)) || 
+             (await this.myIn('会员', eachArry.text)) || 
+             (await this.myIn('活动', eachArry.text)) || 
+             (await this.myIn('打折', eachArry.text)) || 
+             (await this.myIn('降价', eachArry.text)) || 
+             (await this.myIn('房', eachArry.text)) || 
+             (await this.myIn('坐骑', eachArry.text)) || 
+             (await this.myIn('外观', eachArry.text)) || 
+             (await this.myIn('随身', eachArry.text))
+            )
+          {
+            ret = 0
+            break
+          }
+
+          if((await this.myIn('买金', eachArry.text)) || 
+             (await this.myIn('买G', eachArry.text)) || 
+             (await this.myIn('卖G', eachArry.text)) || 
+             (await this.myIn('买J', eachArry.text)) || 
+             (await this.myIn('卖J', eachArry.text)) ||  
+             (await this.myIn('出G', eachArry.text)) || 
+             (await this.myIn('出金', eachArry.text)) || 
+             (await this.myIn('收金', eachArry.text)) || 
+             (await this.myIn('金价', eachArry.text)) || 
+             (await this.myIn('买金', eachArry.text)) || 
+             (await this.myIn('：1', eachArry.text)) || 
+             (await this.myIn(':1', eachArry.text)) || 
+             (await this.myIn('比1', eachArry.text)) || 
+             (await this.myIn('TB', eachArry.text)) || 
+             (await this.myIn('某宝', eachArry.text)) || 
+             (await this.myIn('淘宝', eachArry.text))
+            )
+          {
+            ret = 1
+            break
+          }
+
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('凰', eachArry.text)) && (await this.myIn('冠', eachArry.text))){ret = 1;break}
+          if((await this.myIn('黄', eachArry.text)) && (await this.myIn('冠', eachArry.text))){ret = 1;break}
+          if((await this.myIn('黄', eachArry.text)) && (await this.myIn('瓜', eachArry.text))){ret = 1;break}
+          if((await this.myIn('买', eachArry.text)) && (await this.myIn('车', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('车', eachArry.text))){ret = 1;break}
+          if((await this.myIn('卖', eachArry.text)) && (await this.myIn('金', eachArry.text))){ret = 1;break}
+          if((await this.myIn('买', eachArry.text)) && (await this.myIn('金', eachArry.text))){ret = 1;break}
+          if((await this.myIn('买', eachArry.text)) && (await this.myIn('皇冠', eachArry.text))){ret = 1;break}
+          if((await this.myIn('买', eachArry.text)) && (await this.myIn('王冠', eachArry.text))){ret = 1;break}
+          if((await this.myIn('卖', eachArry.text)) && (await this.myIn('皇冠', eachArry.text))){ret = 1;break}
+          if((await this.myIn('卖', eachArry.text)) && (await this.myIn('王冠', eachArry.text))){ret = 1;break}
+          if((await this.myIn('出', eachArry.text)) && (await this.myIn('皇冠', eachArry.text))){ret = 1;break}
+          if((await this.myIn('出', eachArry.text)) && (await this.myIn('王冠', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          if((await this.myIn('金', eachArry.text)) && (await this.myIn('价', eachArry.text))){ret = 1;break}
+          */
+        }
+      }
+    }
+    //logger.info(e.message)
+    //logger.info(e.message.length)
+
+    return ret
+  }
+
+  //判断字符串是否在字符串中
+  async myIn (keyword, myStr) {
+    let ret = false
+    let keyLen = keyword.length
+    let strLen = myStr.length
+    let keyIndex = -1;
+    let strIndex = -1;
+
+    for (let eachChar of myStr) {
+      keyIndex += 1;
+      if(keyIndex+keyLen > strLen)
+      {
+        break;
+      }
+
+      if(eachChar == keyword[0])
+      {
+        ret = true
+        strIndex = keyIndex-1
+        for (let eachKey of keyword) {
+          strIndex += 1
+          if(eachKey != myStr[strIndex])
+          {
+            ret = false
+            break;
+          }
+        }
+        if(ret == true)
+        {
+          break;
+        }
+      }
+    }
+
+    return ret
+  }
+}
