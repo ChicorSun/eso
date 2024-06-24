@@ -118,7 +118,7 @@ export class goldenVendor extends plugin {
         name = name.split('</a>')[0]
         name = name.split('>')[1]
         name = name.slice(1, -1)
-        name = name.replace("&#039;s", "'s")
+        name = name.replace("&#039;", "'")
 
         let setID = ""
         for (let setKey of keysSet) {
