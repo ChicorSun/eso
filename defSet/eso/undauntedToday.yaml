@@ -1,0 +1,133 @@
+- date: 2023-01-01
+  pic: 闯世
+  cmd: 今日闯世
+  des: 查询闯世者今日副本
+- group: 玛吉・奥-拉伽斯<Maj al-Ragath>
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 I"
+      desc: "_"
+      msg:
+            - "<Wayrest Sewers I>"
+      item_class: item_split1 item_row
+    - icon: gear_undauntedcrocodile_head_a
+      title: "黏液之胃"
+      desc: "<Slimecraw>"
+      msg:
+            - "(1): 增加 771 暴击率"
+            - "(2): 始终获得次级狂怒，自身所致伤害提高5%"
+      item_class: item_split2 set_info_big
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      msg:
+            - "(2): 增加 1206 最大生命"
+            - "(3): 增加 129 生命恢复"
+            - "(4): 增加 129 物理和法术伤害"
+            - "(5): 当你使用重攻击造成伤害时，获得一层持续5 秒的中士的专注，每层堆叠提高645重攻击造成的伤害。该效果每秒生效一次，最多能累计4层。"
+      item_class: item_split2 set_info_big
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      msg:
+            - "(2): 增加 1206 最大生命"
+            - "(3): 增加 129 生命恢复"
+            - "(4): 增加 129 物理和法术伤害"
+            - "(5): 当你使用重攻击造成伤害时，获得一层持续5 秒的中士的专注，每层堆叠提高645重攻击造成的伤害。该效果每秒生效一次，最多能累计4层。"
+      item_class: item_split2 set_info_big
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      msg:
+            - "(2): 增加 1206 最大生命"
+            - "(3): 增加 129 生命恢复"
+            - "(4): 增加 129 物理和法术伤害"
+            - "(5): 当你使用重攻击造成伤害时，获得一层持续5 秒的中士的专注，每层堆叠提高645重攻击造成的伤害。该效果每秒生效一次，最多能累计4层。"
+      item_class: item_split2 set_info_big
+- group: 红胡子格里容<Gilirion the Redbeard>
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 I"
+      desc: "_"
+      msg:
+            - "<Wayrest Sewers I>"
+      item_class: item_split1 item_row
+    - icon: gear_undauntedcrocodile_head_a
+      title: "黏液之胃"
+      desc: "<Slimecraw>"
+      msg:
+            - "(1): 增加 771 暴击率"
+            - "(2): 始终获得次级狂怒，自身所致伤害提高5%"
+      item_class: item_split2 set_info_big
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      msg:
+            - "(2): 增加 1206 最大生命"
+            - "(3): 增加 129 生命恢复"
+            - "(4): 增加 129 物理和法术伤害"
+            - "(5): 当你使用重攻击造成伤害时，获得一层持续5 秒的中士的专注，每层堆叠提高645重攻击造成的伤害。该效果每秒生效一次，最多能累计4层。"
+      item_class: item_split2 set_info_big
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      msg:
+            - "(2): 增加 1206 最大生命"
+            - "(3): 增加 129 生命恢复"
+            - "(4): 增加 129 物理和法术伤害"
+            - "(5): 当你使用重攻击造成伤害时，获得一层持续5 秒的中士的专注，每层堆叠提高645重攻击造成的伤害。该效果每秒生效一次，最多能累计4层。"
+      item_class: item_split2 set_info_big
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      msg:
+            - "(2): 增加 1206 最大生命"
+            - "(3): 增加 129 生命恢复"
+            - "(4): 增加 129 物理和法术伤害"
+            - "(5): 当你使用重攻击造成伤害时，获得一层持续5 秒的中士的专注，每层堆叠提高645重攻击造成的伤害。该效果每秒生效一次，最多能累计4层。"
+      item_class: item_split2 set_info_big
+- group: 首领灾星乌尔伽拉格<UrgalargChiefbane>
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\dungeon
+      title: "途歇城下水道 I"
+      desc: "_"
+      msg:
+            - "<Wayrest Sewers I>"
+      item_class: item_split1 item_row
+    - icon: gear_undauntedcrocodile_head_a
+      title: "黏液之胃"
+      desc: "<Slimecraw>"
+      msg:
+            - "(1): 增加 771 暴击率"
+            - "(2): 始终获得次级狂怒，自身所致伤害提高5%"
+      item_class: item_split2 set_info_big
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      msg:
+            - "(2): 增加 1206 最大生命"
+            - "(3): 增加 129 生命恢复"
+            - "(4): 增加 129 物理和法术伤害"
+            - "(5): 当你使用重攻击造成伤害时，获得一层持续5 秒的中士的专注，每层堆叠提高645重攻击造成的伤害。该效果每秒生效一次，最多能累计4层。"
+      item_class: item_split2 set_info_big
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      msg:
+            - "(2): 增加 1206 最大生命"
+            - "(3): 增加 129 生命恢复"
+            - "(4): 增加 129 物理和法术伤害"
+            - "(5): 当你使用重攻击造成伤害时，获得一层持续5 秒的中士的专注，每层堆叠提高645重攻击造成的伤害。该效果每秒生效一次，最多能累计4层。"
+      item_class: item_split2 set_info_big
+    - icon: gear_dunmer_heavy_head_d
+      title: "中士的锁甲"
+      desc: "<Sergeant's Mail>"
+      msg:
+            - "(2): 增加 1206 最大生命"
+            - "(3): 增加 129 生命恢复"
+            - "(4): 增加 129 物理和法术伤害"
+            - "(5): 当你使用重攻击造成伤害时，获得一层持续5 秒的中士的专注，每层堆叠提高645重攻击造成的伤害。该效果每秒生效一次，最多能累计4层。"
+      item_class: item_split2 set_info_big

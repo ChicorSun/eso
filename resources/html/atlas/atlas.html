@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/atlas/atlas.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+
+    {{each atlasData val index}}
+    {{if index==0}}
+    <style> .container { background: url("{{pluResPath}}img/background/{{val.pic}}.png") #fff; background-repeat: no-repeat; background-size: 100% 100%; }</style>
+    {{else}}
+    <div class="item {{val.item_class}}">
+      <div class="box">
+        <div class="top">
+          <div class="type">
+            <div class="cnType">{{val.type}}</div>
+            <div class="weight">{{val.weight}}</div>
+          </div>
+          <div class="place">
+            <div class="cnPlace">{{val.place}}</div>
+            <div class="enPlace">{{val.place_en}}</div>
+          </div>
+        </div>
+        <img class="icon" src="{{pluResPath}}img/sets/{{val.icon}}.png" />
+        <div class="text">{{val.name}}</div>
+        <div class="dec">{{val.name_en}}</div>
+        <img class="line" src="{{pluResPath}}img/icon/line.png" />
+        {{each val.msg item}}
+        <div class="msg">{{item}}</div>
+        {{/each}}
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+    <div class="logo">Created By ESO-Bot</div>
+  </div>
+</body>
+
+</html>
