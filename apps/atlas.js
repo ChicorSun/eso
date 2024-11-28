@@ -98,6 +98,7 @@ export class atlas extends plugin {
 
     let enFindByPlace = true
     let enFindByMsg = true
+    let enFindByType = false
     let onlyNormal = false
     let notAbbrSet = true
     let objSets = [-1]
@@ -106,6 +107,7 @@ export class atlas extends plugin {
     var keysSet = Object.keys(setsData)
     var numSets = keysSet.length
     let name = this.e.message[0].text
+    let keyType = 0
 
     if(name.includes("/"))
     {
@@ -124,6 +126,11 @@ export class atlas extends plugin {
     if(name.includes("普通"))
     {
       onlyNormal = true
+    }
+    if((name == "#神器") || (name == "#神器图鉴"))
+    {
+      enFindByType = true
+      keyType = 12
     }
     name = name.replace("图鉴", "").replace("#", "").replace("套装", "").replace("套", "").replace("完美", "").replace("普通", "")
     name = name.toLowerCase()
@@ -160,6 +167,13 @@ export class atlas extends plugin {
           isThisOne = true
         }
         if(notAbbrSet && (setsData[setKey].place.split(',')[0]).toLowerCase().includes(name))
+        {
+          isThisOne = true
+        }
+      }
+      if(enFindByType)
+      {
+        if(setsData[setKey].type == keyType)
         {
           isThisOne = true
         }
@@ -272,7 +286,7 @@ export class atlas extends plugin {
 
       return 1
     }
-    if(setNum > 1 && setNum < 22)
+    if((setNum > 1 && setNum < 22) || enFindByType)
     {
       let msgList = '我猜您想问的是以下装备之一？'
       for (let setKey of objSets) {
@@ -280,7 +294,7 @@ export class atlas extends plugin {
       }
       await this.reply(msgList)
     }
-    if(setNum >= 22)
+    if(setNum >= 22 && enFindByType==0)
     {
       return await this.reply(`对不起，请描述的再详细一点`)
     }
