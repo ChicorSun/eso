@@ -786,6 +786,8 @@
   abbr:
       - "ndr"
       - "vdr"
+      - "ndsr"
+      - "vdsr"
 - name: "卢晶堡垒"
   abbr:
       - "nlc"
