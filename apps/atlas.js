@@ -62,16 +62,13 @@ export class atlas extends plugin {
                       +`*技能名+图鉴 的格式，如: \n`
                       +`*法师之光图鉴(正常查询)\n`
                       +`*法师之光(可省略"图鉴")\n`
-                      +`*法光(常用简称)\n`
-                      +`*法师(模糊匹配)\n`
-                      +`*法会一(树状索引)\n`
-                      +`*法会大(树状索引)`)
+                      +`*法师(模糊匹配)`)
   }
 
 
   async showAtlas (e) {
     let name = this.e.message[0].text
-    logger.info(name)
+    //logger.info(name)
 
     if(name.includes("/"))
     {
@@ -168,8 +165,75 @@ export class atlas extends plugin {
     }
   }
 
+  async showSkillsInfo (objSets) {
+    for (let skillKey of objSets) {
+      //更新技能图鉴变量
+      skillData = await database.updateData(skillKey, 2)
+      let img = await this.cache(skillData, skillImg)
+      await this.reply(img)
+    }
+  }
+
   async showSkills (e) {
-    return await this.reply(`该功能暂不可用，作者@Chicor正在施工中...`)
+    //return await this.reply(`该功能暂不可用，作者@Chicor正在施工中...`)
+
+    let name = this.e.message[0].text
+    let noMaxLimit = false
+    let objSkills = await database.name2index(name,2)
+    let skillNum = objSkills.length
+
+
+    //logger.info('skillNum:' + skillNum)
+    //logger.info('objSkills:' + objSkills)
+
+    if((objSkills[0] < 0) || (skillNum <= 0))
+    {
+      return await this.reply(`抱歉,无法理解您指的是什么`)
+    }
+
+
+    if((skillNum >= 5 && skillNum <= 20) || noMaxLimit)
+    {
+      let msgList = '我猜您想问的是以下技能之一？'
+      for (let skillKey of objSkills) {
+        skillData = await database.updateData(skillKey, 2)
+        msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'
+      }
+      msgList += `\n`+'图片太多，不再一一列出'
+      await this.reply(msgList)
+      for (let skillKey of objSkills) {
+        skillData = await database.updateData(skillKey, 2)
+        if(skillData.atlasData[1].new_cn_name == name)
+        {
+          await this.showSkillsInfo([skillKey])
+          break
+        }
+      }
+
+      return 1
+    }
+
+    if(skillNum > 1 && skillNum < 5)
+    {
+      let msgList = '我猜您想问的是以下技能之一？'
+      for (let skillKey of objSkills) {
+        skillData = await database.updateData(skillKey, 2)
+        msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'
+      }
+      await this.reply(msgList)
+    }
+
+    if(skillNum >= 21 && noMaxLimit==0)
+    {
+      return await this.reply(`对不起，请描述的再详细一点`)
+    }
+
+    if(skillNum <= 0 || skillNum > 5)
+    {
+      return 1
+    }
+
+    await this.showSkillsInfo(objSkills)
   }
 
   async cache (data, cachedata) {

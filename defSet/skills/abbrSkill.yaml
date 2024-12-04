@@ -1,0 +1,9 @@
+- version: 1000_2024_11_03
+  des: 技能别称对照表
+  init: done
+- name: "法师公会"
+  abbr:
+    - "法会"
+- name: "法师之光"
+  abbr:
+    - "法光"

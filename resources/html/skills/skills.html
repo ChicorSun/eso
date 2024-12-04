@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/skills/skills.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+
+    {{each atlasData val index}}
+    {{if index==0}}
+    <style> .container { background: url("{{pluResPath}}img/background/{{val.pic}}.png") #fff; background-repeat: no-repeat; background-size: 100% 100%; }</style>
+    {{else}}
+    <div class="item">
+      <div class="box">
+        <div class="top">
+          <div class="type">
+            <div class="cnType">{{val.type_cn}}</div>
+            <div class="enType">{{val.type_en}}</div>
+          </div>
+          <div class="place">
+            <div class="cnPlace">{{val.place_cn}}</div>
+            <div class="enPlace">{{val.place_en}}</div>
+          </div>
+        </div>
+        <div class="pic_div">
+          <div class="{{val.src_Skills_class}}">
+            <img class="src_icon" src="{{pluResPath}}img/skills/{{val.src_icon}}.png" />
+            <div class="src_nameCN">{{val.src_cn_name}}</div>
+            <div class="src_nameEN">{{val.src_en_name}}</div>
+          </div>
+          <div class="{{val.arrow_class}}">➨</div>
+          <div class="{{val.new_Skills_class}}">
+            <img class="new_icon" src="{{pluResPath}}img/skills/{{val.new_icon}}.png" />
+            <div class="new_nameCN">{{val.new_cn_name}}</div>
+            <div class="new_nameEN">{{val.new_en_name}}</div>
+          </div>
+        </div>
+
+        <img class="line" src="{{pluResPath}}img/icon/line.png" />
+
+        <div class="{{val.parameter_class}}">
+          <div class="parameters_names">
+            {{each val.p_name item}}
+            <div class="onePara">{{item}}</div>
+            {{/each}}
+          </div>
+          <div class="parameters_values">
+            {{each val.p_value item}}
+            <div class="onePara">{{item}}</div>
+            {{/each}}
+          </div>
+          <img class="line" src="{{pluResPath}}img/icon/line.png" />
+        </div>
+        <div class="msg">{{val.msg}}</div>
+        <div class="new_msg">{{val.new_msg}}</div>
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+    <div class="logo">Created By ESO-Bot</div>
+  </div>
+</body>
+
+</html>

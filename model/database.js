@@ -1,11 +1,14 @@
 import { createRequire } from 'module'
 import Atlas from './atlas.js'
+import Skills from './skills.js'
 import fs from 'node:fs'
 
 const require = createRequire(import.meta.url);
 
 let dataExtractorItemsENPath = './plugins/eso/resources/data/DataExtractor-Items-en.lua'
 let dataExtractorItemsCNPath = './plugins/eso/resources/data/DataExtractor-Items-cn.lua'
+let dataExtractorSkillsENPath = './plugins/eso/resources/data/DataExtractor-Skills-en.lua'
+let dataExtractorSkillsCNPath = './plugins/eso/resources/data/DataExtractor-Skills-cn.lua'
 
 //数据库
 let setsData = [{
@@ -41,6 +44,11 @@ let addrSkill = [{
 //匹配到的项目序号的集合数组
 let objSets = [-1]
 let objSkills = [-1]
+
+//技能ID转中文序号对照表
+let skillID2IndexCN = {
+  init: '-1',
+}
 
 //装备图鉴结构体变量
 let setData = {
@@ -244,6 +252,11 @@ class database {
   }
 
   async enhance_database () {
+    await this.enhance_setsData()
+    await this.enhance_skillsData()
+  }
+
+  async enhance_setsData () {
     var keysSet = Object.keys(setsData)
     var numSets = keysSet.length
 
@@ -272,6 +285,66 @@ class database {
         delete setsData[setKey]
       }
     }
+  }
+
+
+  async enhance_skillsData () {
+    if('done' == skillID2IndexCN.init)
+    {
+      //logger.info("skillID2IndexCN table is ready, no need to update.")
+      return
+    }
+
+    //logger.info("Update skillID2IndexCN table.")
+    let allSkillData = skillsDataCN
+    var keysLine = Object.keys(allSkillData)
+    var numLines = keysLine.length
+
+    for (let lineKey of keysLine) {
+      if(lineKey == 9)
+      {
+        continue
+      }
+      //logger.info('---' + allSkillData[lineKey].name)
+      var keysClass = Object.keys(allSkillData[lineKey])
+      var numClass = keysClass.length
+      for (let classKey of keysClass) {
+        if(classKey == "name")
+        {
+          continue
+        }
+        //logger.info('       |---' + allSkillData[lineKey][classKey].name)
+        var keysSkill = Object.keys(allSkillData[lineKey][classKey].skills)
+        var numSkill = keysSkill.length
+        for (let skillKey of keysSkill) {
+          if(skillKey == "name" || skillKey == "id" || allSkillData[lineKey][classKey].skills[skillKey].id == 0)
+          {
+            continue
+          }
+          var oneSkill = allSkillData[lineKey][classKey].skills[skillKey]
+          skillID2IndexCN[oneSkill.id] = []
+          skillID2IndexCN[oneSkill.id][0] = lineKey
+          skillID2IndexCN[oneSkill.id][1] = classKey
+          skillID2IndexCN[oneSkill.id][2] = skillKey
+          skillID2IndexCN[oneSkill.id][3] = '0'
+          if(oneSkill.passive == false)
+          {
+            skillID2IndexCN[oneSkill[1].id] = []
+            skillID2IndexCN[oneSkill[1].id][0] = lineKey
+            skillID2IndexCN[oneSkill[1].id][1] = classKey
+            skillID2IndexCN[oneSkill[1].id][2] = skillKey
+            skillID2IndexCN[oneSkill[1].id][3] = '1'
+
+            skillID2IndexCN[oneSkill[2].id] = []
+            skillID2IndexCN[oneSkill[2].id][0] = lineKey
+            skillID2IndexCN[oneSkill[2].id][1] = classKey
+            skillID2IndexCN[oneSkill[2].id][2] = skillKey
+            skillID2IndexCN[oneSkill[2].id][3] = '2'
+          }
+        }
+      }
+    }
+    skillID2IndexCN.init = 'done'
   }
 
   async init_databaseDG () {
@@ -339,68 +412,131 @@ class database {
   }
 
   async init_databaseEN () {
+    //Update english sets database
     var keysSet = Object.keys(setsData)
     var numSets = keysSet.length
-
     if (numSets > 10)
     {
       //logger.info("DataBaseEN is ready, no need to update.")
-      return
+    }
+    else
+    {    
+      //logger.info("Init ESOdataBaseEN")
+      var luaToJson = require('lua-to-json')
+      var luaSrc = fs.readFileSync(dataExtractorItemsENPath, 'utf8')
+      var lua_code = luaToJson(luaSrc)
+      var allAccounts = lua_code.DataExtractorSavedVariables.Default
+      var accounts = Object.keys(allAccounts)
+      var account_index = 0
+
+      for (let account of accounts) {
+        account_index = account_index+1
+        if (account_index > 1)
+          break
+
+        //logger.info(account)
+        var aData = allAccounts[account]['$AccountWide']
+        var itemsData = aData.dataItems
+        setsData = itemsData['Sets']
+        recipesData = itemsData['Recipes']
+        furnituresData = itemsData['Furniture']
+        collfurnituresData = itemsData['CollectibleFurniture']
+      }
     }
 
-    //logger.info("Init ESOdataBaseEN")
-    var luaToJson = require('lua-to-json')
-    var luaSrc = fs.readFileSync(dataExtractorItemsENPath, 'utf8')
-    var lua_code = luaToJson(luaSrc)
-    var allAccounts = lua_code.DataExtractorSavedVariables.Default
-    var accounts = Object.keys(allAccounts)
-    var account_index = 0
+    //Update english skills database
+    var keysSkill = Object.keys(skillsData)
+    var numSkills = keysSkill.length
+    //logger.info(numSkills)
+    if (numSkills > 3)
+    {
+      //logger.info("SkillsDataEN is ready, no need to update.")
+    }
+    else
+    {
+      //logger.info("Init ESOskillsDataEN")
+      var luaToJson = require('lua-to-json')
+      var luaSrc = fs.readFileSync(dataExtractorSkillsENPath, 'utf8')
+      var lua_code = luaToJson(luaSrc)
+      var allAccounts = lua_code.DataExtractorSavedVariables.Default
+      var accounts = Object.keys(allAccounts)
+      var account_index = 0
 
-    for (let account of accounts) {
-      account_index = account_index+1
-      if (account_index > 1)
-        break
+      for (let account of accounts) {
+        account_index = account_index+1
+        if (account_index > 1)
+          break
 
-      //logger.info(account)
-      var aData = allAccounts[account]['$AccountWide']
-      var itemsData = aData.dataItems
-      setsData = itemsData['Sets']
-      recipesData = itemsData['Recipes']
-      furnituresData = itemsData['Furniture']
-      collfurnituresData = itemsData['CollectibleFurniture']
+        //logger.info(account)
+        var aData = allAccounts[account]['$AccountWide']
+        skillsData = aData['dataSkills']
+        //logger.info(skillsData)
+      }
     }
   }
 
   async init_databaseCN () {
+    //Update chinses sets database
     var keysSet = Object.keys(setsDataCN)
     var numSets = keysSet.length
 
     if (numSets > 10)
     {
       //logger.info("DataBaseCN is ready, no need to update.")
-      return
+    }
+    else
+    {
+      //logger.info("Init ESOdataBaseCN")
+      var luaToJson = require('lua-to-json')
+      var luaSrc = fs.readFileSync(dataExtractorItemsCNPath, 'utf8')
+      var lua_code = luaToJson(luaSrc)
+      var allAccounts = lua_code.DataExtractorSavedVariables.Default
+      var accounts = Object.keys(allAccounts)
+      var account_index = 0
+
+      for (let account of accounts) {
+        account_index = account_index+1
+        if (account_index > 1)
+          break
+
+        //logger.info(account)
+        var aData = allAccounts[account]['$AccountWide']
+        var itemsData = aData.dataItems
+        setsDataCN = itemsData['Sets']
+        recipesDataCN = itemsData['Recipes']
+        furnituresDataCN = itemsData['Furniture']
+        collfurnituresDataCN = itemsData['CollectibleFurniture']
+      }
     }
 
-    //logger.info("Init ESOdataBaseCN")
-    var luaToJson = require('lua-to-json')
-    var luaSrc = fs.readFileSync(dataExtractorItemsCNPath, 'utf8')
-    var lua_code = luaToJson(luaSrc)
-    var allAccounts = lua_code.DataExtractorSavedVariables.Default
-    var accounts = Object.keys(allAccounts)
-    var account_index = 0
+    //Update chinses skills database
+    var keysSkill = Object.keys(skillsDataCN)
+    var numSkills = keysSkill.length
+    //logger.info(numSkills)
+    if (numSkills > 3)
+    {
+      //logger.info("SkillsDataCN is ready, no need to update.")
+    }
+    else
+    {
+      //logger.info("Init ESOskillsDataCN")
+      var luaToJson = require('lua-to-json')
+      var luaSrc = fs.readFileSync(dataExtractorSkillsCNPath, 'utf8')
+      var lua_code = luaToJson(luaSrc)
+      var allAccounts = lua_code.DataExtractorSavedVariables.Default
+      var accounts = Object.keys(allAccounts)
+      var account_index = 0
 
-    for (let account of accounts) {
-      account_index = account_index+1
-      if (account_index > 1)
-        break
+      for (let account of accounts) {
+        account_index = account_index+1
+        if (account_index > 1)
+          break
 
-      //logger.info(account)
-      var aData = allAccounts[account]['$AccountWide']
-      var itemsData = aData.dataItems
-      setsDataCN = itemsData['Sets']
-      recipesDataCN = itemsData['Recipes']
-      furnituresDataCN = itemsData['Furniture']
-      collfurnituresDataCN = itemsData['CollectibleFurniture']
+        //logger.info(account)
+        var aData = allAccounts[account]['$AccountWide']
+        skillsDataCN = aData['dataSkills']
+        //logger.info(skillsDataCN)
+      }
     }
   }
 
@@ -452,7 +588,7 @@ class database {
     {
       let data = await Atlas.get(this.e, 'atlas', 'abbrSet', 'abbrSet')
       addrSet = data.atlasData
-      //logger.info('[ESO:图鉴] 初始化别名对照表')
+      //logger.info('[ESO:图鉴] 初始化装备别名对照表')
     }
 
     for (let setKey of keysSet) {
@@ -564,13 +700,168 @@ class database {
           }
         }
       }
-
     }
   }
 
-  async skillsName2Index (name) {
+  async skillsName2Index (keyword, mode) {
     objSkills = [-1]
-    logger.info("run skillsName2Index.")
+    let name = keyword
+    let cnName = ''
+    let cnWayOneName = ''
+    let cnWayTwoName = ''
+    /*
+    let enFindByPlace = true
+    let enFindByMsg = true
+    let enFindByType = false
+    */
+    let notAbbrSkill = true
+    let index = 0
+    let isThisOne = false    
+    let allSkillData = []
+
+    if(mode == 0)
+    {
+      //logger.info(name)
+      name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("技能线", "").replace("技能", "")
+      name = name.toLowerCase()
+      if(name.length<4 && /^[A-Za-z]+$/.test(name))
+      {
+        notAbbrSkill = false
+      }
+      if('done' != addrSkill[0].init)
+      {
+        let data = await Skills.get(this.e, 'skills', 'abbrSkill', 'abbrSkill')
+        addrSkill = data.atlasData
+        //logger.info('[ESO:图鉴] 初始化技能别名对照表')
+      }
+    }
+
+
+    if(mode == 1)//根据ID寻找中文索引
+    {
+      allSkillData = skillsDataCN
+
+    }else
+    {
+      allSkillData = skillsData
+    }
+    var keysLine = Object.keys(allSkillData)
+    var numLines = keysLine.length
+
+    isThisOne = false
+    for (let lineKey of keysLine) {
+      if(lineKey == 9)
+      {
+        continue
+      }
+      //logger.info('---' + allSkillData[lineKey].name)
+      var keysClass = Object.keys(allSkillData[lineKey])
+      var numClass = keysClass.length
+      for (let classKey of keysClass) {
+        if(classKey == "name")
+        {
+          continue
+        }
+        //logger.info('       |---' + allSkillData[lineKey][classKey].name)
+        var keysSkill = Object.keys(allSkillData[lineKey][classKey].skills)
+        var numSkill = keysSkill.length
+        for (let skillKey of keysSkill) {
+          if(skillKey == "name" || skillKey == "id" || allSkillData[lineKey][classKey].skills[skillKey].id == 0)
+          {
+            continue
+          }
+          var oneSkill = allSkillData[lineKey][classKey].skills[skillKey]
+          if(mode == 1) //根据ID匹配
+          {
+            if(oneSkill.id == name)
+            {
+              isThisOne = true
+              objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
+              index++
+              //logger.info('              |---[' + lineKey + '_' + classKey + '_' + skillKey + '_0|' + oneSkill.id + ']' + oneSkill.name)
+            }
+            if(oneSkill.passive == false)
+            {
+              if(oneSkill[1].id == name)
+              {
+                isThisOne = true
+                objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_1'
+                index++
+                //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_1|' + oneSkill[1].id + ']' + oneSkill[1].name)
+              }
+              if(oneSkill[2].id == name)
+              {
+                isThisOne = true
+                objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_2'
+                index++
+                //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_2|' + oneSkill[2].id + ']' + oneSkill[2].name)
+              }
+            }
+          }
+          else if(mode == 0) //根据名称匹配
+          {
+            let cnID = skillID2IndexCN[oneSkill.id]
+            let cnWayOneID = 0
+            let cnWayTwoID = 0
+            if(cnID[3] == '0')
+            {
+              cnName = skillsDataCN[cnID[0]][cnID[1]].skills[cnID[2]].name
+            }
+            else
+            {
+              cnName = skillsDataCN[cnID[0]][cnID[1]].skills[cnID[2]][cnID[3]].name
+            }
+            if(oneSkill.passive == false)
+            {
+              cnWayOneID = skillID2IndexCN[oneSkill[1].id]
+              if(cnWayOneID[3] == '0')
+              {
+                cnWayOneName = skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].skills[cnWayOneID[2]].name
+              }
+              else
+              {
+                cnWayOneName = skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].skills[cnWayOneID[2]][cnWayOneID[3]].name
+              }
+              //--------------------------------------------------
+              cnWayTwoID = skillID2IndexCN[oneSkill[2].id]
+              if(cnWayTwoID[3] == '0')
+              {
+                cnWayTwoName = skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].skills[cnWayTwoID[2]].name
+              }
+              else
+              {
+                cnWayTwoName = skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].skills[cnWayTwoID[2]][cnWayTwoID[3]].name
+              }
+            }
+
+            if(oneSkill.name.toLowerCase().includes(name) || cnName.includes(name))
+            {
+              isThisOne = true
+              objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
+              index++
+              //logger.info('              |---[' + lineKey + '_' + classKey + '_' + skillKey + '_0|' + oneSkill.id + ']' + oneSkill.name + '|' + cnName)
+            }
+            if(oneSkill.passive == false)
+            {
+              if(oneSkill[1].name.toLowerCase().includes(name) || cnWayOneName.includes(name))
+              {
+                isThisOne = true
+                objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_1'
+                index++
+                //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_1|' + oneSkill[1].id + ']' + oneSkill[1].name + '|' + cnWayOneName)
+              }
+              if(oneSkill[2].name.toLowerCase().includes(name) || cnWayTwoName.includes(name))
+              {
+                isThisOne = true
+                objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_2'
+                index++
+                //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_2|' + oneSkill[2].id + ']' + oneSkill[2].name + '|' + cnWayTwoName)
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   async name2index (name, type) {
@@ -583,7 +874,7 @@ class database {
     }
     if(type == 2) //this is name for skills
     {
-      await this.skillsName2Index(name)
+      await this.skillsName2Index(name, 0)
       return objSkills
     }
 
@@ -600,7 +891,7 @@ class database {
         return
       }
       setData = data
-      logger.info('[ESO:图鉴] 初始化结构体变量')
+      //logger.info('[ESO:图鉴] 初始化结构体变量')
     }
 
     setData.atlasData[1].name = setsDataCN[setsData[setKey].id].name
@@ -799,7 +1090,166 @@ class database {
     //logger.info("["+setData.atlasData[1].item_class+" " + setData.atlasData[1].type +  "]<" + setData.atlasData[1].weight + ">" + setData.atlasData[1].name+setData.atlasData[1].name_en+" | " + setData.atlasData[1].place + "<"+setData.atlasData[1].place_en+"> | " + setData.atlasData[1].icon)
   }
 
-  async updateSkillData (setKey) {
+  async updateSkillData (objects) {
+    let enID = []
+    let cnID = []
+    let newENSkillData = []
+    let newCNSkillData = []
+    let srcENSkillData = []
+    let srcCNSkillData = []
+
+    //logger.info(objects)
+
+    if('done' != skillData.init)
+    {
+      let data = await Skills.get(this.e, 'skills', 'skill', 'skills')
+      if (!data)
+      {
+        logger.error('[ESO:图鉴] 初始化技能结构体失败')
+        return
+      }
+      skillData = data
+      logger.info('[ESO:图鉴] 初始化技能结构体变量')
+    }
+
+    enID = objects.split('_')
+
+    if(enID[3] == '0')
+    {
+      newENSkillData = skillsData[enID[0]][enID[1]].skills[enID[2]]
+      cnID = skillID2IndexCN[newENSkillData.id]
+      newCNSkillData = skillsDataCN[cnID[0]][cnID[1]].skills[cnID[2]]
+    }
+    else
+    {
+      newENSkillData = skillsData[enID[0]][enID[1]].skills[enID[2]][enID[3]]
+      cnID = skillID2IndexCN[newENSkillData.id]
+      newCNSkillData = skillsDataCN[cnID[0]][cnID[1]].skills[cnID[2]][cnID[3]]
+    }
+    srcENSkillData = skillsData[enID[0]][enID[1]].skills[enID[2]]
+    srcCNSkillData = skillsDataCN[cnID[0]][cnID[1]].skills[cnID[2]]
+
+    /*
+    logger.info(srcENSkillData.name)
+    logger.info(srcCNSkillData.name)
+    logger.info(newENSkillData.name)
+    logger.info(newCNSkillData.name)
+    */
+    
+    skillData.atlasData[1].src_icon = srcENSkillData.icon.split('.')[0].split('icons/')[1]
+    skillData.atlasData[1].new_icon = newENSkillData.icon.split('.')[0].split('icons/')[1]
+    let isExist = "不存在"
+    let imgPath = `./plugins/eso/resources/img/skills/${skillData.atlasData[1].src_icon}.png`
+    if (fs.existsSync(imgPath)) {
+      isExist = "存在"
+    }
+    else
+    {
+      let url = `https://eso-hub.com/storage/icons/${skillData.atlasData[1].src_icon}.png`
+      let dstpath = `./plugins/eso/resources/img/skills/${skillData.atlasData[1].src_icon}.png`
+      let ret = await Bot.download(url, dstpath)
+    }
+
+    skillData.atlasData[1].src_cn_name = srcCNSkillData.name
+    skillData.atlasData[1].src_en_name = '<' + srcENSkillData.name + '>'
+
+    skillData.atlasData[1].new_cn_name = newCNSkillData.name
+    skillData.atlasData[1].new_en_name = '<' + newENSkillData.name + '>'
+
+
+    skillData.atlasData[1].type_cn = skillsDataCN[cnID[0]].name
+    skillData.atlasData[1].type_en = skillsData[enID[0]].name
+
+    skillData.atlasData[1].place_cn = skillsDataCN[cnID[0]][cnID[1]].name
+    skillData.atlasData[1].place_en = skillsData[enID[0]][enID[1]].name
+
+    if(enID[3] == '0')
+    {
+      skillData.atlasData[1].src_Skills_class = 'src_Skills_middle_class'
+      skillData.atlasData[1].arrow_class = 'arrow_class_hide'
+      skillData.atlasData[1].new_Skills_class = 'new_Skills_class_hide'
+    }
+    else
+    {
+      skillData.atlasData[1].src_Skills_class = 'src_Skills_left_class'
+      skillData.atlasData[1].arrow_class = 'arrow_class_show'
+      skillData.atlasData[1].new_Skills_class = 'new_Skills_class_show'
+    }
+
+    if(newENSkillData.passive == false)
+    {
+      skillData.atlasData[1].parameter_class = 'parameter_class_show'
+    }
+    else
+    {
+      skillData.atlasData[1].parameter_class = 'parameter_class_hide'
+    }
+
+    //logger.info(newCNSkillData)
+    if(enID[3] != '0' && (newENSkillData.passive == false))
+    {
+      skillData.atlasData[1].new_msg = await this.transColor(newCNSkillData.newEffect)
+    }
+    else
+    {
+      skillData.atlasData[1].new_msg = ''
+    }
+    
+    skillData.atlasData[1].msg = await this.transColor(newCNSkillData.description)
+    
+    skillData.atlasData[1].p_name = []
+    skillData.atlasData[1].p_value = []
+
+    let index = 0
+    /*---------------------------------------------------------------*/
+    skillData.atlasData[1].p_name[index] = '消耗'
+    if(newCNSkillData.ultimate)
+    {
+      skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 终极点'
+    }
+    else
+    {
+      skillData.atlasData[1].p_value[index] = newCNSkillData.cost
+    }
+    index++
+    /*---------------------------------------------------------------*/
+    skillData.atlasData[1].p_name[index] = '施法时间'
+    if(newCNSkillData.castTime > 0)
+    {
+      skillData.atlasData[1].p_value[index] = newCNSkillData.castTime/1000 + '秒'
+    }
+    else
+    {
+      skillData.atlasData[1].p_value[index] = '瞬发'
+    }
+    
+    index++
+    /*---------------------------------------------------------------*/
+    skillData.atlasData[1].p_name[index] = '目标'
+    skillData.atlasData[1].p_value[index] = newCNSkillData.target
+    index++
+    /*---------------------------------------------------------------*/
+    if(newCNSkillData.duration > 0)
+    {
+      skillData.atlasData[1].p_name[index] = '持续时间'
+      skillData.atlasData[1].p_value[index] = newCNSkillData.duration/1000 + '秒'
+      index++
+    }
+    /*---------------------------------------------------------------*/
+    if(newCNSkillData.radius > 0)
+    {
+      skillData.atlasData[1].p_name[index] = '技能范围'
+      skillData.atlasData[1].p_value[index] = newCNSkillData.radius/100 + '米'
+      index++
+    }
+    /*---------------------------------------------------------------*/
+    if(newCNSkillData.maxRange > 0)
+    {
+      skillData.atlasData[1].p_name[index] = '施法距离'
+      skillData.atlasData[1].p_value[index] = newCNSkillData.maxRange/100 + '米'
+      index++
+    }
+    /*---------------------------------------------------------------*/
   }
 
   async updateData (setKey, type) {
