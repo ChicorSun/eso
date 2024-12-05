@@ -718,12 +718,17 @@ class database {
     let index = 0
     let isThisOne = false    
     let allSkillData = []
+    let allList = ""
+    let baseIndex = 1
 
     if(mode == 0)
     {
       //logger.info(name)
       name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("技能线", "").replace("技能", "")
       name = name.toLowerCase()
+      name = name.replace("一", "1").replace("二", "2").replace("三", "3").replace("四", "4").replace("五", "5").replace("六", "6")
+      name = name.replace("工会", "公会").replace("法会", "法师公会").replace("战会", "战士公会")
+      name = name.replace("奶杖", "恢复法杖").replace("治疗杖", "恢复法杖")
       if(name.length<4 && /^[A-Za-z]+$/.test(name))
       {
         notAbbrSkill = false
@@ -749,11 +754,13 @@ class database {
     var numLines = keysLine.length
 
     isThisOne = false
+    allList = ''
     for (let lineKey of keysLine) {
       if(lineKey == 9)
       {
         continue
       }
+
       //logger.info('---' + allSkillData[lineKey].name)
       var keysClass = Object.keys(allSkillData[lineKey])
       var numClass = keysClass.length
@@ -834,12 +841,108 @@ class database {
               }
             }
 
+            /*
+            if(oneSkill.passive == false)
+            {
+              baseIndex = 1
+              if(skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].skills['1'].ultimate)
+              {
+                if(skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].skills['2'].id)
+                {
+                  baseIndex = 1
+                }
+                else if(skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].skills['3'].id)
+                {
+                  baseIndex = 2
+                }
+                else if(skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].skills['4'].id)
+                {
+                  baseIndex = 3
+                }
+                else if(skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].skills['5'].id)
+                {
+                  baseIndex = 4
+                }
+              }
+              //--------------------------------------------------------
+              allList += '- name: "' + oneSkill.name + '"\n'
+              allList += '  cnName: "' + cnName + '"\n'
+              allList += '  abbr:\n'
+              if(oneSkill.ultimate)
+              {
+                allList += '    - "' + skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name + '大招"\n'
+              }
+              else
+              {
+                let thisIndex = cnWayOneID[2] - baseIndex
+                allList += '    - "' + skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name + thisIndex + '"\n'
+              }
+              //--------------------------------------------------------
+              allList += '- name: "' + oneSkill[1].name + '"\n'
+              allList += '  cnName: "' + cnWayOneName + '"\n'
+              allList += '  abbr:\n'
+              if(oneSkill.ultimate)
+              {
+                allList += '    - "' + skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name + '大招"\n'
+              }
+              else
+              {
+                let thisIndex = cnWayOneID[2] - baseIndex
+                allList += '    - "' + skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name + thisIndex + '"\n'
+              }
+              //--------------------------------------------------------
+              allList += '- name: "' + oneSkill[2].name + '"\n'
+              allList += '  cnName: "' + cnWayTwoName + '"\n'
+              allList += '  abbr:\n'
+              if(oneSkill.ultimate)
+              {
+                allList += '    - "' + skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name + '大招"\n'
+              }
+              else
+              {
+                let thisIndex = cnWayOneID[2] - baseIndex
+                allList += '    - "' + skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name + thisIndex + '"\n'
+              }
+              //--------------------------------------------------------
+            }
+            */
+            
             if(oneSkill.name.toLowerCase().includes(name) || cnName.includes(name))
             {
               isThisOne = true
               objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
               index++
               //logger.info('              |---[' + lineKey + '_' + classKey + '_' + skillKey + '_0|' + oneSkill.id + ']' + oneSkill.name + '|' + cnName)
+            }
+            else
+            {
+              isThisOne = false
+              let srcName = name
+              let abbrIndex = -1
+              for (let eachAbbr of addrSkill) {
+                if(isThisOne)
+                {
+                  break;
+                }
+                abbrIndex += 1
+                if(abbrIndex > 0)
+                {
+                  //logger.info(eachAbbr.name)
+                  for (let eachAbbrName of eachAbbr.abbr) {
+                    //logger.info('---'+eachAbbrName)
+                    if(eachAbbrName.toLowerCase().includes(name))
+                    {
+                      if(oneSkill.name.toLowerCase() == eachAbbr.name.toLowerCase())
+                      {
+                        isThisOne = true
+                        objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
+                        index++
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
             }
             if(oneSkill.passive == false)
             {
@@ -850,6 +953,37 @@ class database {
                 index++
                 //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_1|' + oneSkill[1].id + ']' + oneSkill[1].name + '|' + cnWayOneName)
               }
+              else
+              {
+                isThisOne = false
+                let srcName = name
+                let abbrIndex = -1
+                for (let eachAbbr of addrSkill) {
+                  if(isThisOne)
+                  {
+                    break;
+                  }
+                  abbrIndex += 1
+                  if(abbrIndex > 0)
+                  {
+                    //logger.info(eachAbbr.name)
+                    for (let eachAbbrName of eachAbbr.abbr) {
+                      //logger.info('---'+eachAbbrName)
+                      if(eachAbbrName.toLowerCase().includes(name))
+                      {
+                        if(oneSkill[1].name.toLowerCase() == eachAbbr.name.toLowerCase())
+                        {
+                          isThisOne = true
+                          objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_1'
+                          index++
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
               if(oneSkill[2].name.toLowerCase().includes(name) || cnWayTwoName.includes(name))
               {
                 isThisOne = true
@@ -857,11 +991,42 @@ class database {
                 index++
                 //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_2|' + oneSkill[2].id + ']' + oneSkill[2].name + '|' + cnWayTwoName)
               }
+              else
+              {
+                isThisOne = false
+                let srcName = name
+                let abbrIndex = -1
+                for (let eachAbbr of addrSkill) {
+                  if(isThisOne)
+                  {
+                    break;
+                  }
+                  abbrIndex += 1
+                  if(abbrIndex > 0)
+                  {
+                    //logger.info(eachAbbr.name)
+                    for (let eachAbbrName of eachAbbr.abbr) {
+                      //logger.info('---'+eachAbbrName)
+                      if(eachAbbrName.toLowerCase().includes(name))
+                      {
+                        if(oneSkill[2].name.toLowerCase() == eachAbbr.name.toLowerCase())
+                        {
+                          isThisOne = true
+                          objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_2'
+                          index++
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
       }
     }
+    //logger.info(allList)
   }
 
   async name2index (name, type) {
