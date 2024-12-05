@@ -727,7 +727,7 @@ class database {
       name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("技能线", "").replace("技能", "")
       name = name.toLowerCase()
       name = name.replace("一", "1").replace("二", "2").replace("三", "3").replace("四", "4").replace("五", "5").replace("六", "6")
-      name = name.replace("工会", "公会").replace("法会", "法师公会").replace("战会", "战士公会")
+      name = name.replace("工会", "公会").replace("法会", "法师公会").replace("战会", "斗士公会").replace("战士公会", "斗士公会")
       name = name.replace("奶杖", "恢复法杖").replace("治疗杖", "恢复法杖")
       if(name.length<4 && /^[A-Za-z]+$/.test(name))
       {
