@@ -1,9 +1,3109 @@
-- version: 1000_2024_11_03
+- version: 1000_2024_12_05
   des: 技能别称对照表
   init: done
-- name: "法师公会"
+- name: "Radial Sweep"
+  cnName: "中心横扫"
   abbr:
-    - "法会"
-- name: "法师之光"
+    - "神族之矛大招"
+    - "挥矛"
+    - "矛大"
+- name: "Everlasting Sweep"
+  cnName: "赋能横扫"
   abbr:
-    - "法光"
+    - "神族之矛大招"
+    - "挥矛"
+    - "矛大"
+- name: "Crescent Sweep"
+  cnName: "弦月横扫"
+  abbr:
+    - "神族之矛大招"
+    - "挥矛"
+    - "矛大"
+    - "半月斩"
+- name: "Puncturing Strikes"
+  cnName: "穿刺打击"
+  abbr:
+    - "神族之矛1"
+    - "戳戳戳"
+- name: "Biting Jabs"
+  cnName: "刺骨猛击"
+  abbr:
+    - "神族之矛1"
+    - "戳戳戳"
+- name: "Puncturing Sweep"
+  cnName: "穿刺横扫"
+  abbr:
+    - "神族之矛1"
+    - "戳戳戳"
+- name: "Piercing Javelin"
+  cnName: "穿刺之矛"
+  abbr:
+    - "神族之矛2"
+    - "标枪"
+- name: "Aurora Javelin"
+  cnName: "极光之矛"
+  abbr:
+    - "神族之矛2"
+    - "标枪"
+- name: "Binding Javelin"
+  cnName: "契约之矛"
+  abbr:
+    - "神族之矛2"
+    - "标枪"
+- name: "Focused Charge"
+  cnName: "专注冲锋"
+  abbr:
+    - "神族之矛3"
+- name: "Explosive Charge"
+  cnName: "爆发冲锋"
+  abbr:
+    - "神族之矛3"
+- name: "Toppling Charge"
+  cnName: "击倒冲锋"
+  abbr:
+    - "神族之矛3"
+- name: "Spear Shards"
+  cnName: "神怒长矛"
+  abbr:
+    - "神族之矛4"
+    - "投矛"
+- name: "Luminous Shards"
+  cnName: "发光碎片"
+  abbr:
+    - "神族之矛4"
+    - "投矛"
+- name: "Blazing Spear"
+  cnName: "烈焰之矛"
+  abbr:
+    - "神族之矛4"
+    - "投矛"
+- name: "Sun Shield"
+  cnName: "日光盾"
+  abbr:
+    - "神族之矛5"
+    - "太阳盾"
+- name: "Radiant Ward"
+  cnName: "辉光护盾"
+  abbr:
+    - "神族之矛5"
+    - "太阳盾"
+- name: "Blazing Shield"
+  cnName: "烈焰之盾"
+  abbr:
+    - "神族之矛5"
+    - "太阳盾"
+- name: "Nova"
+  cnName: "新星"
+  abbr:
+    - "黎明之怒大招"
+    - "新星"
+    - "蛋黄"
+- name: "Solar Prison"
+  cnName: "太阳笼牢"
+  abbr:
+    - "黎明之怒大招"
+    - "新星"
+    - "蛋黄"
+- name: "Solar Disturbance"
+  cnName: "太阳扰动"
+  abbr:
+    - "黎明之怒大招"
+    - "新星"
+    - "蛋黄"
+- name: "Sun Fire"
+  cnName: "太阳之火"
+  abbr:
+    - "黎明之怒1"
+    - "太阳火"
+- name: "Vampire's Bane"
+  cnName: "吸血鬼之祸"
+  abbr:
+    - "黎明之怒1"
+    - "太阳火"
+- name: "Reflective Light"
+  cnName: "折射之光"
+  abbr:
+    - "黎明之怒1"
+    - "太阳火"
+    - "折射"
+- name: "Solar Flare"
+  cnName: "日晖"
+  abbr:
+    - "黎明之怒2"
+    - "日耀"
+- name: "Dark Flare"
+  cnName: "黑炎"
+  abbr:
+    - "黎明之怒2"
+    - "日耀"
+- name: "Solar Barrage"
+  cnName: "日光弹幕"
+  abbr:
+    - "黎明之怒2"
+    - "日幕"
+- name: "Backlash"
+  cnName: "反击"
+  abbr:
+    - "黎明之怒3"
+    - "清算"
+- name: "Purifying Light"
+  cnName: "净化之光"
+  abbr:
+    - "黎明之怒3"
+    - "清算"
+    - "黄帽子"
+- name: "Power of the Light"
+  cnName: "光之力"
+  abbr:
+    - "黎明之怒3"
+    - "清算"
+    - "绿帽子"
+- name: "Eclipse"
+  cnName: "日蚀"
+  abbr:
+    - "黎明之怒4"
+    - "日食"
+    - "黑罩"
+- name: "Living Dark"
+  cnName: "黑暗化身"
+  abbr:
+    - "黎明之怒4"
+    - "日食"
+    - "黑罩"
+- name: "Unstable Core"
+  cnName: "不稳定核心"
+  abbr:
+    - "黎明之怒4"
+- name: "Radiant Destruction"
+  cnName: "辐光毁灭"
+  abbr:
+    - "黎明之怒5"
+    - "大激光"
+    - "激光"
+- name: "Radiant Glory"
+  cnName: "辐光荣耀"
+  abbr:
+    - "黎明之怒5"
+    - "吸血激光"
+    - "大激光"
+    - "激光"
+- name: "Radiant Oppression"
+  cnName: "辐光压制"
+  abbr:
+    - "黎明之怒5"
+    - "大激光"
+    - "激光"
+    - "耶稣光线"
+- name: "Rite of Passage"
+  cnName: "通道仪式"
+  abbr:
+    - "恢复之光大招"
+    - "念经"
+- name: "Remembrance"
+  cnName: "纪念"
+  abbr:
+    - "恢复之光大招"
+    - "念经"
+- name: "Practiced Incantation"
+  cnName: "绵延颂歌"
+  abbr:
+    - "恢复之光大招"
+    - "念经"
+- name: "Rushed Ceremony"
+  cnName: "仓促仪式"
+  abbr:
+    - "恢复之光1"
+    - "挥手"
+- name: "Honor The Dead"
+  cnName: "致敬亡灵"
+  abbr:
+    - "恢复之光1"
+    - "挥手"
+- name: "Breath of Life"
+  cnName: "生命之息"
+  abbr:
+    - "恢复之光1"
+    - "挥手"
+- name: "Healing Ritual"
+  cnName: "治疗仪式"
+  abbr:
+    - "恢复之光2"
+    - "拍手"
+- name: "Ritual of Rebirth"
+  cnName: "重生仪式"
+  abbr:
+    - "恢复之光2"
+    - "拍手"
+- name: "Hasty Prayer"
+  cnName: "仓促祷告"
+  abbr:
+    - "恢复之光2"
+    - "拍手"
+- name: "Restoring Aura"
+  cnName: "回复光环"
+  abbr:
+    - "恢复之光3"
+- name: "Radiant Aura"
+  cnName: "灿烂光环"
+  abbr:
+    - "恢复之光3"
+- name: "Repentance"
+  cnName: "悔罪"
+  abbr:
+    - "恢复之光3"
+    - "吸尸体"
+- name: "Cleansing Ritual"
+  cnName: "净化仪式"
+  abbr:
+    - "恢复之光4"
+    - "地毯"
+    - "大圈"
+    - "净化圈"
+- name: "Ritual of Retribution"
+  cnName: "惩罚仪式"
+  abbr:
+    - "恢复之光4"
+    - "地毯"
+    - "大圈"
+    - "净化圈"
+- name: "Extended Ritual"
+  cnName: "扩展仪式"
+  abbr:
+    - "恢复之光4"
+    - "地毯"
+    - "大圈"
+    - "净化圈"
+- name: "Rune Focus"
+  cnName: "符文专注"
+  abbr:
+    - "恢复之光5"
+- name: "Channeled Focus"
+  cnName: "引导专注"
+  abbr:
+    - "恢复之光5"
+    - "回蓝圈"
+- name: "Restoring Focus"
+  cnName: "恢复专注"
+  abbr:
+    - "恢复之光5"
+    - "回耐圈"
+- name: "Dragonknight Standard"
+  cnName: "龙骑士战旗"
+  abbr:
+    - "烈焰之刃大招"
+    - "军旗"
+- name: "Shifting Standard"
+  cnName: "飘动军旗"
+  abbr:
+    - "烈焰之刃大招"
+    - "军旗"
+    - "移动军旗"
+- name: "Standard of Might"
+  cnName: "至高战旗"
+  abbr:
+    - "烈焰之刃大招"
+    - "军旗"
+- name: "Lava Whip"
+  cnName: "熔岩鞭"
+  abbr:
+    - "烈焰之刃1"
+    - "鞭子"
+- name: "Molten Whip"
+  cnName: "熔火烈鞭"
+  abbr:
+    - "烈焰之刃1"
+    - "熔火鞭"
+- name: "Flame Lash"
+  cnName: "烈焰鞭笞"
+  abbr:
+    - "烈焰之刃1"
+    - "回血鞭"
+    - "失衡鞭"
+    - "反手鞭"
+- name: "Searing Strike"
+  cnName: "灼热打击"
+  abbr:
+    - "烈焰之刃2"
+- name: "Venomous Claw"
+  cnName: "剧毒之爪"
+  abbr:
+    - "烈焰之刃2"
+    - "毒爪"
+- name: "Burning Embers"
+  cnName: "烈焰余烬"
+  abbr:
+    - "烈焰之刃2"
+    - "火爪"
+    - "回血爪"
+- name: "Fiery Breath"
+  cnName: "烈焰吐息"
+  abbr:
+    - "烈焰之刃3"
+    - "喷火"
+- name: "Noxious Breath"
+  cnName: "毒性吐息"
+  abbr:
+    - "烈焰之刃3"
+    - "喷毒"
+- name: "Engulfing Flames"
+  cnName: "烈焰吞噬"
+  abbr:
+    - "烈焰之刃3"
+    - "喷火"
+- name: "Fiery Grip"
+  cnName: "烈焰之握"
+  abbr:
+    - "烈焰之刃4"
+    - "链子"
+- name: "Chains of Devastation"
+  cnName: "毁灭锁链"
+  abbr:
+    - "烈焰之刃4"
+    - "链子"
+- name: "Unrelenting Grip"
+  cnName: "不屈之握"
+  abbr:
+    - "烈焰之刃4"
+    - "链子"
+- name: "Inferno"
+  cnName: "炼狱"
+  abbr:
+    - "烈焰之刃5"
+    - "小火球"
+- name: "Flames of Oblivion"
+  cnName: "湮灭之焰"
+  abbr:
+    - "烈焰之刃5"
+    - "小火球"
+- name: "Cauterize"
+  cnName: "烧灼"
+  abbr:
+    - "烈焰之刃5"
+    - "奶火球"
+- name: "Dragon Leap"
+  cnName: "龙之腾跃"
+  abbr:
+    - "巨龙之力大招"
+    - "龙跃"
+- name: "Take Flight"
+  cnName: "飞行"
+  abbr:
+    - "巨龙之力大招"
+    - "龙跃"
+- name: "Ferocious Leap"
+  cnName: "凶猛一跃"
+  abbr:
+    - "巨龙之力大招"
+    - "龙跃"
+- name: "Spiked Armor"
+  cnName: "尖刺铠甲"
+  abbr:
+    - "巨龙之力1"
+    - "龙甲"
+- name: "Hardened Armor"
+  cnName: "硬化 护甲"
+  abbr:
+    - "巨龙之力1"
+    - "龙甲"
+- name: "Volatile Armor"
+  cnName: "暴烈铠甲"
+  abbr:
+    - "巨龙之力1"
+    - "龙甲"
+    - "伤害龙甲"
+- name: "Dark Talons"
+  cnName: "黑暗利爪"
+  abbr:
+    - "巨龙之力2"
+    - "地爪"
+- name: "Burning Talons"
+  cnName: "燃烧之爪"
+  abbr:
+    - "巨龙之力2"
+    - "地爪"
+- name: "Choking Talons"
+  cnName: "窒息利爪"
+  abbr:
+    - "巨龙之力2"
+    - "地爪"
+- name: "Dragon Blood"
+  cnName: "龙血"
+  abbr:
+    - "巨龙之力3"
+    - "龙血"
+- name: "Green Dragon Blood"
+  cnName: "绿色龙血"
+  abbr:
+    - "巨龙之力3"
+    - "绿龙血"
+- name: "Coagulating Blood"
+  cnName: "凝结之血"
+  abbr:
+    - "巨龙之力3"
+    - "红龙血"
+- name: "Protective Scale"
+  cnName: "防护鳞片"
+  abbr:
+    - "巨龙之力4"
+    - "龙鳞"
+    - "反射龙鳞"
+    - "扇翅膀"
+- name: "Protective Plate"
+  cnName: "防御环障"
+  abbr:
+    - "巨龙之力4"
+    - "龙鳞"
+    - "扇翅膀"
+- name: "Dragon Fire Scale"
+  cnName: "龙之火护"
+  abbr:
+    - "巨龙之力4"
+    - "龙鳞"
+    - "反射龙鳞"
+    - "扇翅膀"
+- name: "Inhale"
+  cnName: "吸入"
+  abbr:
+    - "巨龙之力5"
+    - "吸爆"
+- name: "Deep Breath"
+  cnName: "深呼吸"
+  abbr:
+    - "巨龙之力5"
+    - "吸爆"
+    - "龙骑打断"
+- name: "Draw Essence"
+  cnName: "吸取精华"
+  abbr:
+    - "巨龙之力5"
+    - "吸爆"
+- name: "Magma Armor"
+  cnName: "熔岩护甲"
+  abbr:
+    - "大地之心大招"
+    - "无敌"
+- name: "Magma Shell"
+  cnName: "熔岩甲壳"
+  abbr:
+    - "大地之心大招"
+    - "无敌"
+- name: "Corrosive Armor"
+  cnName: "侵蚀铠甲"
+  abbr:
+    - "大地之心大招"
+    - "绿无敌"
+- name: "Stonefist"
+  cnName: "岩石之拳"
+  abbr:
+    - "大地之心1"
+    - "石拳"
+- name: "Obsidian Shard"
+  cnName: "黑曜石碎片"
+  abbr:
+    - "大地之心1"
+    - "奶拳"
+- name: "Stone Giant"
+  cnName: "岩石巨人"
+  abbr:
+    - "大地之心1"
+    - "石拳"
+- name: "Molten Weapons"
+  cnName: "熔火武器"
+  abbr:
+    - "大地之心2"
+    - "熔火"
+- name: "Igneous Weapons"
+  cnName: "火岩武器"
+  abbr:
+    - "大地之心2"
+    - "熔火"
+- name: "Molten Armaments"
+  cnName: "熔火武器"
+  abbr:
+    - "大地之心2"
+    - "熔火"
+- name: "Obsidian Shield"
+  cnName: "黑曜石盾"
+  abbr:
+    - "大地之心3"
+    - "踩盾"
+- name: "Igneous Shield"
+  cnName: "火岩之盾"
+  abbr:
+    - "大地之心3"
+    - "踩盾"
+- name: "Fragmented Shield"
+  cnName: "破碎之盾"
+  abbr:
+    - "大地之心3"
+    - "踩盾"
+    - "碎盾"
+- name: "Petrify"
+  cnName: "石化"
+  abbr:
+    - "大地之心4"
+- name: "Fossilize"
+  cnName: "化石"
+  abbr:
+    - "大地之心4"
+- name: "Shattering Rocks"
+  cnName: "碎石闪击"
+  abbr:
+    - "大地之心4"
+- name: "Ash Cloud"
+  cnName: "灰烬之云"
+  abbr:
+    - "大地之心5"
+    - "火山灰"
+    - "跺脚"
+- name: "Cinder Storm"
+  cnName: "灰烬风暴"
+  abbr:
+    - "大地之心5"
+    - "奶火山灰"
+    - "跺脚"
+- name: "Eruption"
+  cnName: "喷发"
+  abbr:
+    - "大地之心5"
+    - "火山灰"
+    - "跺脚"
+- name: "Death Stroke"
+  cnName: "死亡击打"
+  abbr:
+    - "刺杀大招"
+    - "刺杀大"
+- name: "Incapacitating Strike"
+  cnName: "失能打击"
+  abbr:
+    - "刺杀大招"
+    - "刺杀大"
+- name: "Soul Harvest"
+  cnName: "灵魂收割"
+  abbr:
+    - "刺杀大招"
+    - "刺杀大"
+- name: "Veiled Strike"
+  cnName: "潜匿打击"
+  abbr:
+    - "刺杀1"
+    - "遮蔽"
+    - "遮蔽一击"
+- name: "Surprise Attack"
+  cnName: "奇袭"
+  abbr:
+    - "刺杀1"
+    - "遮蔽"
+    - "遮蔽一击"
+- name: "Concealed Weapon"
+  cnName: "藏匿武器"
+  abbr:
+    - "刺杀1"
+    - "遮蔽"
+    - "遮蔽一击"
+- name: "Teleport Strike"
+  cnName: "传送打击"
+  abbr:
+    - "刺杀2"
+    - "跳斩"
+- name: "Lotus Fan"
+  cnName: "莲花扇"
+  abbr:
+    - "刺杀2"
+    - "跳斩"
+- name: "Ambush"
+  cnName: "埋伏"
+  abbr:
+    - "刺杀2"
+    - "跳斩"
+- name: "Assassin's Blade"
+  cnName: "刺客之刃"
+  abbr:
+    - "刺杀3"
+- name: "Killer's Blade"
+  cnName: "杀手之刃"
+  abbr:
+    - "刺杀3"
+- name: "Impale"
+  cnName: "穿刺"
+  abbr:
+    - "刺杀3"
+- name: "Mark Target"
+  cnName: "标记目标"
+  abbr:
+    - "刺杀4"
+    - "标记"
+- name: "Piercing Mark"
+  cnName: "穿刺标记"
+  abbr:
+    - "刺杀4"
+    - "破隐"
+    - "标记"
+- name: "Reaper's Mark"
+  cnName: "收割者的标记"
+  abbr:
+    - "刺杀4"
+    - "标记"
+- name: "Grim Focus"
+  cnName: "百折不挠"
+  abbr:
+    - "刺杀5"
+    - "射箭"
+- name: "Relentless Focus"
+  cnName: "无情专注"
+  abbr:
+    - "刺杀5"
+    - "射箭"
+    - "耐系射箭"
+- name: "Merciless Resolve"
+  cnName: "无情信念"
+  abbr:
+    - "刺杀5"
+    - "射箭"
+    - "法系射箭"
+- name: "Consuming Darkness"
+  cnName: "吞噬黑暗"
+  abbr:
+    - "暗影大招"
+- name: "Bolstering Darkness"
+  cnName: "护身黑暗"
+  abbr:
+    - "暗影大招"
+- name: "Veil of Blades"
+  cnName: "黑暗利刃"
+  abbr:
+    - "暗影大招"
+- name: "Blur"
+  cnName: "迷离术"
+  abbr:
+    - "暗影1"
+    - "模糊"
+- name: "Mirage"
+  cnName: "幻影"
+  abbr:
+    - "暗影1"
+    - "模糊"
+- name: "Phantasmal Escape"
+  cnName: "幻影遁形"
+  abbr:
+    - "暗影1"
+    - "模糊"
+- name: "Shadow Cloak"
+  cnName: "阴影斗篷"
+  abbr:
+    - "暗影2"
+    - "隐身"
+- name: "Shadowy Disguise"
+  cnName: "暗影伪装"
+  abbr:
+    - "暗影2"
+    - "隐身"
+- name: "Dark Cloak"
+  cnName: "黑暗斗篷"
+  abbr:
+    - "暗影2"
+    - "回血斗篷"
+- name: "Path of Darkness"
+  cnName: "黑暗之路"
+  abbr:
+    - "暗影3"
+    - "暗影路"
+- name: "Twisting Path"
+  cnName: "扭曲之路"
+  abbr:
+    - "暗影3"
+    - "暗影路"
+- name: "Refreshing Path"
+  cnName: "振奋之路"
+  abbr:
+    - "暗影3"
+    - "回血路"
+    - "求生之路"
+- name: "Aspect of Terror"
+  cnName: "恐惧之相"
+  abbr:
+    - "暗影4"
+    - "恐惧"
+- name: "Mass Hysteria"
+  cnName: "群体癔症"
+  abbr:
+    - "暗影4"
+    - "恐惧"
+- name: "Manifestation of Terror"
+  cnName: "恐惧显形"
+  abbr:
+    - "暗影4"
+    - "恐惧陷阱"
+- name: "Summon Shade"
+  cnName: "暗影召唤"
+  abbr:
+    - "暗影5"
+    - "影子"
+- name: "Dark Shade"
+  cnName: "暗黑阴影"
+  abbr:
+    - "暗影5"
+    - "影子"
+- name: "Shadow Image"
+  cnName: "暗影之像"
+  abbr:
+    - "暗影5"
+    - "影子"
+    - "传送影子"
+- name: "Soul Shred"
+  cnName: "灵魂粉碎"
+  abbr:
+    - "虹吸大招"
+    - "榨取大"
+- name: "Soul Siphon"
+  cnName: "灵魂虹吸"
+  abbr:
+    - "虹吸大招"
+    - "榨取大"
+- name: "Soul Tether"
+  cnName: "灵魂束链"
+  abbr:
+    - "虹吸大招"
+    - "榨取大"
+- name: "Strife"
+  cnName: "冲突"
+  abbr:
+    - "虹吸1"
+- name: "Funnel Health"
+  cnName: "生命传输"
+  abbr:
+    - "虹吸1"
+- name: "Swallow Soul"
+  cnName: "吞咽灵魂"
+  abbr:
+    - "虹吸1"
+- name: "Malevolent Offering"
+  cnName: "恶毒供奉"
+  abbr:
+    - "虹吸2"
+    - "自残奶"
+- name: "Shrewd Offering"
+  cnName: "狡诈供奉"
+  abbr:
+    - "虹吸2"
+    - "自残奶"
+- name: "Healthy Offering"
+  cnName: "生命供奉"
+  abbr:
+    - "虹吸2"
+    - "自残奶"
+- name: "Cripple"
+  cnName: "致残"
+  abbr:
+    - "虹吸3"
+- name: "Debilitate"
+  cnName: "削弱"
+  abbr:
+    - "虹吸3"
+- name: "Crippling Grasp"
+  cnName: "致残抓握"
+  abbr:
+    - "虹吸3"
+- name: "Siphoning Strikes"
+  cnName: "虹吸打击"
+  abbr:
+    - "虹吸4"
+- name: "Leeching Strikes"
+  cnName: "吸血打击"
+  abbr:
+    - "虹吸4"
+- name: "Siphoning Attacks"
+  cnName: "虹吸攻击"
+  abbr:
+    - "虹吸4"
+- name: "Drain Power"
+  cnName: "力量汲取"
+  abbr:
+    - "虹吸5"
+- name: "Power Extraction"
+  cnName: "力量提取"
+  abbr:
+    - "虹吸5"
+- name: "Sap Essence"
+  cnName: "吸取精华"
+  abbr:
+    - "虹吸5"
+- name: "Negate Magic"
+  cnName: "魔法无效"
+  abbr:
+    - "黑暗魔法大招"
+    - "沉默罩"
+    - "沉默"
+- name: "Suppression Field"
+  cnName: "抑制领域"
+  abbr:
+    - "黑暗魔法大招"
+    - "沉默罩"
+    - "沉默"
+- name: "Absorption Field"
+  cnName: "吸收领域"
+  abbr:
+    - "黑暗魔法大招"
+    - "沉默罩"
+    - "沉默"
+- name: "Crystal Shard"
+  cnName: "水晶碎片"
+  abbr:
+    - "黑暗魔法1"
+    - "搓水晶"
+- name: "Crystal Weapon"
+  cnName: "水晶武器"
+  abbr:
+    - "黑暗魔法1"
+- name: "Crystal Fragments"
+  cnName: "碎裂水晶"
+  abbr:
+    - "黑暗魔法1"
+    - "搓水晶"
+    - "红水晶"
+- name: "Encase"
+  cnName: "困缚"
+  abbr:
+    - "黑暗魔法2"
+    - "水晶墙"
+- name: "Shattering Spines"
+  cnName: "粉碎棘刺"
+  abbr:
+    - "黑暗魔法2"
+    - "水晶墙"
+- name: "Vibrant Shroud"
+  cnName: "活力护罩"
+  abbr:
+    - "黑暗魔法2"
+    - "奶水晶墙"
+- name: "Rune Prison"
+  cnName: "符文之牢"
+  abbr:
+    - "黑暗魔法3"
+- name: "Rune Cage"
+  cnName: "符文牢笼"
+  abbr:
+    - "黑暗魔法3"
+- name: "Defensive Rune"
+  cnName: "防御符文"
+  abbr:
+    - "黑暗魔法3"
+- name: "Dark Exchange"
+  cnName: "黑暗交换"
+  abbr:
+    - "黑暗魔法4"
+    - "交易"
+- name: "Dark Deal"
+  cnName: "黑暗交易"
+  abbr:
+    - "黑暗魔法4"
+    - "交易"
+- name: "Dark Conversion"
+  cnName: "黑暗转化"
+  abbr:
+    - "黑暗魔法4"
+    - "交易"
+- name: "Daedric Mines"
+  cnName: "魔族地雷"
+  abbr:
+    - "黑暗魔法5"
+    - "地雷"
+- name: "Daedric Tomb"
+  cnName: "魔族墓穴"
+  abbr:
+    - "黑暗魔法5"
+    - "地雷"
+    - "瞬发地雷"
+- name: "Daedric Refuge"
+  cnName: "魔族庇护"
+  abbr:
+    - "黑暗魔法5"
+    - "地雷盾"
+- name: "Summon Storm Atronach"
+  cnName: "召唤风暴侍灵"
+  abbr:
+    - "魔族召唤大招"
+    - "石头人"
+- name: "Greater Storm Atronach"
+  cnName: "强化风暴侍灵"
+  abbr:
+    - "魔族召唤大招"
+    - "单体石头人"
+    - "大石头人"
+    - "石头人"
+- name: "Summon Charged Atronach"
+  cnName: "召唤充能侍灵"
+  abbr:
+    - "魔族召唤大招"
+    - "AOE石头人"
+    - "石头人"
+- name: "Summon Unstable Familiar"
+  cnName: "召唤异动魔宠"
+  abbr:
+    - "魔族召唤1"
+    - "猴子"
+- name: "Summon Unstable Clannfear"
+  cnName: "召唤异动惊惧兽"
+  abbr:
+    - "魔族召唤1"
+    - "小恐龙"
+- name: "Summon Volatile Familiar"
+  cnName: "召唤暴烈魔宠"
+  abbr:
+    - "魔族召唤1"
+    - "猴子"
+- name: "Daedric Curse"
+  cnName: "魔族诅咒"
+  abbr:
+    - "魔族召唤2"
+    - "诅咒"
+- name: "Daedric Prey"
+  cnName: "魔族猎物"
+  abbr:
+    - "魔族召唤2"
+    - "宠物诅咒"
+- name: "Haunting Curse"
+  cnName: "萦绕诅咒"
+  abbr:
+    - "魔族召唤2"
+    - "双爆诅咒"
+- name: "Summon Winged Twilight"
+  cnName: "召唤影暮翼人"
+  abbr:
+    - "魔族召唤3"
+    - "鸟"
+- name: "Summon Twilight Tormentor"
+  cnName: "召唤影暮苔魔"
+  abbr:
+    - "魔族召唤3"
+    - "伤害鸟"
+- name: "Summon Twilight Matriarch"
+  cnName: "召唤影暮女王"
+  abbr:
+    - "魔族召唤3"
+    - "奶鸟"
+- name: "Conjured Ward"
+  cnName: "召唤结界"
+  abbr:
+    - "魔族召唤4"
+    - "巫师盾"
+- name: "Hardened Ward"
+  cnName: "硬化守卫"
+  abbr:
+    - "魔族召唤4"
+    - "巫师盾"
+- name: "Regenerative Ward"
+  cnName: "再生结界"
+  abbr:
+    - "魔族召唤4"
+    - "巫师盾"
+- name: "Bound Armor"
+  cnName: "契约铠甲"
+  abbr:
+    - "魔族召唤5"
+- name: "Bound Armaments"
+  cnName: "契约武器"
+  abbr:
+    - "魔族召唤5"
+    - "飞刀"
+- name: "Bound Aegis"
+  cnName: "契约护盾"
+  abbr:
+    - "魔族召唤5"
+    - "魔甲"
+- name: "Overload"
+  cnName: "过载"
+  abbr:
+    - "风暴呼唤大招"
+    - "打拳"
+    - "闪电拳"
+- name: "Power Overload"
+  cnName: "威力过载"
+  abbr:
+    - "风暴呼唤大招"
+    - "打拳"
+    - "闪电拳"
+- name: "Energy Overload"
+  cnName: "能量过载"
+  abbr:
+    - "风暴呼唤大招"
+    - "打拳"
+    - "闪电拳"
+- name: "Mages' Fury"
+  cnName: "法师之怒"
+  abbr:
+    - "风暴呼唤1"
+    - "巫师斩杀"
+- name: "Mages' Wrath"
+  cnName: "法师盛怒"
+  abbr:
+    - "风暴呼唤1"
+    - "巫师斩杀"
+- name: "Endless Fury"
+  cnName: "无尽之怒"
+  abbr:
+    - "风暴呼唤1"
+    - "巫师斩杀"
+- name: "Lightning Form"
+  cnName: "闪电形态"
+  abbr:
+    - "风暴呼唤2"
+    - "电甲"
+- name: "Hurricane"
+  cnName: "飓风"
+  abbr:
+    - "风暴呼唤2"
+    - "风甲"
+- name: "Boundless Storm"
+  cnName: "无限风暴"
+  abbr:
+    - "风暴呼唤2"
+    - "电甲"
+- name: "Lightning Splash"
+  cnName: "电光飞溅"
+  abbr:
+    - "风暴呼唤3"
+    - "电池"
+- name: "Liquid Lightning"
+  cnName: "液态闪电"
+  abbr:
+    - "风暴呼唤3"
+    - "电池"
+- name: "Lightning Flood"
+  cnName: "闪电洪流"
+  abbr:
+    - "风暴呼唤3"
+    - "电池"
+    - "大电池"
+- name: "Surge"
+  cnName: "涌动"
+  abbr:
+    - "风暴呼唤4"
+    - "激增"
+- name: "Power Surge"
+  cnName: "能量涌动"
+  abbr:
+    - "风暴呼唤4"
+    - "激增"
+    - "回血激增"
+- name: "Critical Surge"
+  cnName: "暴击涌动"
+  abbr:
+    - "风暴呼唤4"
+    - "激增"
+- name: "Bolt Escape"
+  cnName: "闪电脱逃"
+  abbr:
+    - "风暴呼唤5"
+    - "闪现"
+- name: "Streak"
+  cnName: "电光疾驰"
+  abbr:
+    - "风暴呼唤5"
+    - "闪现"
+- name: "Ball of Lightning"
+  cnName: "闪电球"
+  abbr:
+    - "风暴呼唤5"
+    - "闪现"
+- name: "Feral Guardian"
+  cnName: "野蛮守护者"
+  abbr:
+    - "动物伙伴大招"
+    - "熊大"
+    - "熊"
+- name: "Eternal Guardian"
+  cnName: "永恒守护者"
+  abbr:
+    - "动物伙伴大招"
+    - "熊大"
+    - "熊"
+    - "复活熊"
+- name: "Wild Guardian"
+  cnName: "荒野守护者"
+  abbr:
+    - "动物伙伴大招"
+    - "熊大"
+    - "熊"
+    - "流血熊"
+- name: "Dive"
+  cnName: "俯冲"
+  abbr:
+    - "动物伙伴1"
+    - "扔鸟"
+- name: "Cutting Dive"
+  cnName: "利爪俯冲"
+  abbr:
+    - "动物伙伴1"
+    - "扔鸟"
+    - "流血鸟"
+- name: "Screaming Cliff Racer"
+  cnName: "呼啸的悬崖之翼"
+  abbr:
+    - "动物伙伴1"
+    - "扔鸟"
+    - "法鸟"
+- name: "Scorch"
+  cnName: "灼烧"
+  abbr:
+    - "动物伙伴2"
+    - "虫爆"
+- name: "Subterranean Assault"
+  cnName: "隐秘一击"
+  abbr:
+    - "动物伙伴2"
+    - "虫爆"
+    - "耐虫爆"
+- name: "Deep Fissure"
+  cnName: "深海撕裂"
+  abbr:
+    - "动物伙伴2"
+    - "虫爆"
+    - "法虫爆"
+- name: "Swarm"
+  cnName: "虫群"
+  abbr:
+    - "动物伙伴3"
+    - "苍蝇"
+- name: "Fetcher Infection"
+  cnName: "受体感染"
+  abbr:
+    - "动物伙伴3"
+    - "苍蝇"
+- name: "Growing Swarm"
+  cnName: "增殖虫群"
+  abbr:
+    - "动物伙伴3"
+    - "苍蝇"
+- name: "Betty Netch"
+  cnName: "雌性气母"
+  abbr:
+    - "动物伙伴4"
+    - "水母"
+- name: "Blue Betty"
+  cnName: "蓝色气母"
+  abbr:
+    - "动物伙伴4"
+    - "水母"
+    - "蓝水母"
+- name: "Bull Netch"
+  cnName: "雄性气母"
+  abbr:
+    - "动物伙伴4"
+    - "水母"
+    - "绿水母"
+- name: "Falcon's Swiftness"
+  cnName: "猎鹰迅捷"
+  abbr:
+    - "动物伙伴5"
+    - "扇翅膀"
+- name: "Deceptive Predator"
+  cnName: "欺骗性猎食者"
+  abbr:
+    - "动物伙伴5"
+    - "扇翅膀"
+- name: "Bird of Prey"
+  cnName: "猛禽"
+  abbr:
+    - "动物伙伴5"
+    - "扇翅膀"
+- name: "Secluded Grove"
+  cnName: "僻静之林"
+  abbr:
+    - "绿色平衡大招"
+    - "种树"
+- name: "Enchanted Forest"
+  cnName: "魔幻森林"
+  abbr:
+    - "绿色平衡大招"
+    - "种树"
+- name: "Healing Thicket"
+  cnName: "治疗丛林"
+  abbr:
+    - "绿色平衡大招"
+    - "种树"
+- name: "Fungal Growth"
+  cnName: "真菌增长"
+  abbr:
+    - "绿色平衡1"
+    - "种蘑菇"
+- name: "Enchanted Growth"
+  cnName: "神奇生长"
+  abbr:
+    - "绿色平衡1"
+    - "种蘑菇"
+- name: "Soothing Spores"
+  cnName: "舒缓孢子"
+  abbr:
+    - "绿色平衡1"
+    - "种蘑菇"
+- name: "Healing Seed"
+  cnName: "治疗之种"
+  abbr:
+    - "绿色平衡2"
+    - "种花"
+- name: "Budding Seeds"
+  cnName: "萌发之种"
+  abbr:
+    - "绿色平衡2"
+    - "种花"
+- name: "Corrupting Pollen"
+  cnName: "腐败性花粉"
+  abbr:
+    - "绿色平衡2"
+    - "种花"
+- name: "Living Vines"
+  cnName: "藤蔓生物"
+  abbr:
+    - "绿色平衡3"
+    - "捆绑"
+- name: "Leeching Vines"
+  cnName: "吸血藤蔓"
+  abbr:
+    - "绿色平衡3"
+    - "捆绑"
+- name: "Living Trellis"
+  cnName: "花棚生物"
+  abbr:
+    - "绿色平衡3"
+    - "捆绑"
+- name: "Lotus Flower"
+  cnName: "莲花"
+  abbr:
+    - "绿色平衡4"
+- name: "Green Lotus"
+  cnName: "青莲"
+  abbr:
+    - "绿色平衡4"
+- name: "Lotus Blossom"
+  cnName: "莲花绽放"
+  abbr:
+    - "绿色平衡4"
+- name: "Nature's Grasp"
+  cnName: "自然之握"
+  abbr:
+    - "绿色平衡5"
+- name: "Bursting Vines"
+  cnName: "爆裂藤蔓"
+  abbr:
+    - "绿色平衡5"
+- name: "Nature's Embrace"
+  cnName: "自然的拥抱"
+  abbr:
+    - "绿色平衡5"
+- name: "Sleet Storm"
+  cnName: "冰雨风暴"
+  abbr:
+    - "凛冬之拥大招"
+    - "冰大"
+- name: "Northern Storm"
+  cnName: "北境风暴"
+  abbr:
+    - "凛冬之拥大招"
+    - "冰大"
+- name: "Permafrost"
+  cnName: "永霜"
+  abbr:
+    - "凛冬之拥大招"
+    - "冰大"
+- name: "Frost Cloak"
+  cnName: "寒霜斗篷"
+  abbr:
+    - "凛冬之拥1"
+    - "冰甲"
+- name: "Expansive Frost Cloak"
+  cnName: "大寒霜斗篷"
+  abbr:
+    - "凛冬之拥1"
+    - "冰甲"
+- name: "Ice Fortress"
+  cnName: "寒冰堡垒"
+  abbr:
+    - "凛冬之拥1"
+    - "冰甲"
+- name: "Impaling Shards"
+  cnName: "穿刺碎片"
+  abbr:
+    - "凛冬之拥2"
+    - "冰刺"
+- name: "Gripping Shards"
+  cnName: "抓握碎片"
+  abbr:
+    - "凛冬之拥2"
+    - "冰刺"
+- name: "Winter's Revenge"
+  cnName: "凛冬复仇"
+  abbr:
+    - "凛冬之拥2"
+    - "冰刺"
+- name: "Arctic Wind"
+  cnName: "极地之风"
+  abbr:
+    - "凛冬之拥3"
+    - "冰风"
+- name: "Polar Wind"
+  cnName: "强劲极风"
+  abbr:
+    - "凛冬之拥3"
+    - "冰风"
+    - "绿冰风"
+- name: "Arctic Blast"
+  cnName: "极寒爆轰"
+  abbr:
+    - "凛冬之拥3"
+    - "冰风"
+    - "白冰风"
+- name: "Crystallized Shield"
+  cnName: "结晶护盾"
+  abbr:
+    - "凛冬之拥4"
+    - "冰盾"
+- name: "Crystallized Slab"
+  cnName: "结晶之板"
+  abbr:
+    - "凛冬之拥4"
+    - "冰盾"
+- name: "Shimmering Shield"
+  cnName: "闪耀之盾"
+  abbr:
+    - "凛冬之拥4"
+    - "冰盾"
+- name: "Frozen Gate"
+  cnName: "冰冻门"
+  abbr:
+    - "凛冬之拥5"
+    - "传送门"
+- name: "Frozen Device"
+  cnName: "冰封装置"
+  abbr:
+    - "凛冬之拥5"
+    - "传送门"
+- name: "Frozen Retreat"
+  cnName: "冰冻退路"
+  abbr:
+    - "凛冬之拥5"
+    - "传送门"
+- name: "Frozen Colossus"
+  cnName: "冰冻巨像"
+  abbr:
+    - "墓穴领主大招"
+    - "胖子"
+    - "砸地板"
+- name: "Pestilent Colossus"
+  cnName: "疫病巨像"
+  abbr:
+    - "墓穴领主大招"
+    - "胖子"
+    - "砸地板"
+- name: "Glacial Colossus"
+  cnName: "冰川巨像"
+  abbr:
+    - "墓穴领主大招"
+    - "胖子"
+    - "砸地板"
+- name: "Flame Skull"
+  cnName: "火焰颅骨"
+  abbr:
+    - "墓穴领主1"
+    - "头骨"
+- name: "Venom Skull"
+  cnName: "猛毒头骨"
+  abbr:
+    - "墓穴领主1"
+    - "头骨"
+- name: "Ricochet Skull"
+  cnName: "弹射头骨"
+  abbr:
+    - "墓穴领主1"
+    - "头骨"
+- name: "Sacrificial Bones"
+  cnName: "献祭枯骨"
+  abbr:
+    - "墓穴领主2"
+    - "骷髅"
+- name: "Blighted Blastbones"
+  cnName: "染疫枯骨"
+  abbr:
+    - "墓穴领主2"
+    - "骷髅"
+    - "耐骷髅"
+- name: "Grave Lord's Sacrifice"
+  cnName: "墓穴领主的献祭"
+  abbr:
+    - "墓穴领主2"
+    - "骷髅"
+    - "法骷髅"
+- name: "Boneyard"
+  cnName: "埋骨地"
+  abbr:
+    - "墓穴领主3"
+    - "墓碑"
+- name: "Unnerving Boneyard"
+  cnName: "丧志埋骨地"
+  abbr:
+    - "墓穴领主3"
+    - "墓碑"
+- name: "Avid Boneyard"
+  cnName: "热忱埋骨地"
+  abbr:
+    - "墓穴领主3"
+    - "墓碑"
+    - "自私墓碑"
+- name: "Skeletal Mage"
+  cnName: "骷髅法师"
+  abbr:
+    - "墓穴领主4"
+- name: "Skeletal Archer"
+  cnName: "骷髅弓箭手"
+  abbr:
+    - "墓穴领主4"
+- name: "Skeletal Arcanist"
+  cnName: "骷髅奥术师"
+  abbr:
+    - "墓穴领主4"
+    - "骷髅法师"
+- name: "Shocking Siphon"
+  cnName: "闪电虹吸"
+  abbr:
+    - "墓穴领主5"
+    - "拉线"
+- name: "Detonating Siphon"
+  cnName: "爆裂虹吸"
+  abbr:
+    - "墓穴领主5"
+    - "拉线"
+    - "耐拉线"
+- name: "Mystic Siphon"
+  cnName: "秘法虹吸"
+  abbr:
+    - "墓穴领主5"
+    - "拉线"
+    - "电拉线"
+- name: "Bone Goliath Transformation"
+  cnName: "骷髅巨人变身"
+  abbr:
+    - "白骨暴君大招"
+    - "骷髅变身"
+- name: "Pummeling Goliath"
+  cnName: "狂击巨人"
+  abbr:
+    - "白骨暴君大招"
+    - "骷髅变身"
+- name: "Ravenous Goliath"
+  cnName: "暴食巨人"
+  abbr:
+    - "白骨暴君大招"
+    - "骷髅变身"
+- name: "Death Scythe"
+  cnName: "死神镰刀"
+  abbr:
+    - "白骨暴君1"
+- name: "Ruinous Scythe"
+  cnName: "毁灭之镰"
+  abbr:
+    - "白骨暴君1"
+    - "失衡镰刀"
+- name: "Hungry Scythe"
+  cnName: "饥饿之镰"
+  abbr:
+    - "白骨暴君1"
+    - "吸血镰刀"
+- name: "Bone Armor"
+  cnName: "骨甲"
+  abbr:
+    - "白骨暴君2"
+- name: "Beckoning Armor"
+  cnName: "诱敌之铠"
+  abbr:
+    - "白骨暴君2"
+    - "拉人甲"
+- name: "Summoner's Armor"
+  cnName: "召唤师之铠"
+  abbr:
+    - "白骨暴君2"
+- name: "Bitter Harvest"
+  cnName: "痛楚收割"
+  abbr:
+    - "白骨暴君3"
+    - "吸尸体"
+- name: "Deaden Pain"
+  cnName: "吸取生息"
+  abbr:
+    - "白骨暴君3"
+    - "吸尸体"
+- name: "Necrotic Potency"
+  cnName: "死灵能量"
+  abbr:
+    - "白骨暴君3"
+    - "吸尸体"
+- name: "Bone Totem"
+  cnName: "白骨图腾"
+  abbr:
+    - "白骨暴君4"
+- name: "Remote Totem"
+  cnName: "遥远图腾"
+  abbr:
+    - "白骨暴君4"
+- name: "Agony Totem"
+  cnName: "痛苦图腾"
+  abbr:
+    - "白骨暴君4"
+- name: "Grave Grasp"
+  cnName: "亡灵之握"
+  abbr:
+    - "白骨暴君5"
+    - "骨爪"
+- name: "Ghostly Embrace"
+  cnName: "鬼影之拥"
+  abbr:
+    - "白骨暴君5"
+    - "骨爪"
+- name: "Empowering Grasp"
+  cnName: "赋能鬼爪"
+  abbr:
+    - "白骨暴君5"
+    - "骨爪"
+- name: "Reanimate"
+  cnName: "复生"
+  abbr:
+    - "存世亡者大招"
+    - "复活"
+- name: "Renewing Animation"
+  cnName: "再生活性"
+  abbr:
+    - "存世亡者大招"
+    - "复活"
+- name: "Animate Blastbones"
+  cnName: "活化枯骨"
+  abbr:
+    - "存世亡者大招"
+    - "复活"
+- name: "Render Flesh"
+  cnName: "血肉赐予"
+  abbr:
+    - "存世亡者1"
+    - "挥手"
+- name: "Resistant Flesh"
+  cnName: "抵抗之躯"
+  abbr:
+    - "存世亡者1"
+    - "挥手"
+- name: "Blood Sacrifice"
+  cnName: "血祭"
+  abbr:
+    - "存世亡者1"
+    - "挥手"
+- name: "Expunge"
+  cnName: "抹弑"
+  abbr:
+    - "存世亡者2"
+    - "驱散"
+- name: "Expunge and Modify"
+  cnName: "抹弑与改造"
+  abbr:
+    - "存世亡者2"
+    - "驱散"
+- name: "Hexproof"
+  cnName: "辟邪"
+  abbr:
+    - "存世亡者2"
+    - "驱散"
+- name: "Life amid Death"
+  cnName: "死中求生"
+  abbr:
+    - "存世亡者3"
+    - "画圈奶"
+- name: "Renewing Undeath"
+  cnName: "不死修补"
+  abbr:
+    - "存世亡者3"
+    - "画圈奶"
+- name: "Enduring Undeath"
+  cnName: "不老不死"
+  abbr:
+    - "存世亡者3"
+    - "画圈奶"
+- name: "Spirit Mender"
+  cnName: "精魂医师"
+  abbr:
+    - "存世亡者4"
+    - "奶鬼"
+    - "小幽灵"
+- name: "Spirit Guardian"
+  cnName: "灵魂守护者"
+  abbr:
+    - "存世亡者4"
+    - "奶鬼"
+    - "小幽灵"
+- name: "Intensive Mender"
+  cnName: "强效医师"
+  abbr:
+    - "存世亡者4"
+    - "奶鬼"
+    - "小幽灵"
+- name: "Restoring Tether"
+  cnName: "回复束链"
+  abbr:
+    - "存世亡者5"
+    - "奶线"
+    - "奶拉线"
+- name: "Braided Tether"
+  cnName: "编织束链"
+  abbr:
+    - "存世亡者5"
+    - "奶线"
+    - "奶拉线"
+- name: "Mortal Coil"
+  cnName: "致命盘绕"
+  abbr:
+    - "存世亡者5"
+    - "奶线"
+    - "奶拉线"
+- name: "The Unblinking Eye"
+  cnName: "凝视之眼"
+  abbr:
+    - "古籍使者大招"
+    - "眼球"
+    - "锁定眼球"
+- name: "The Tide King's Gaze"
+  cnName: "潮汐之王的凝视"
+  abbr:
+    - "古籍使者大招"
+    - "眼球"
+- name: "The Languid Eye"
+  cnName: "慵懒之眼"
+  abbr:
+    - "古籍使者大招"
+    - "眼球"
+- name: "Runeblades"
+  cnName: "符文剑刃"
+  abbr:
+    - "古籍使者1"
+    - "飞牌"
+    - "发牌"
+- name: "Writhing Runeblades"
+  cnName: "撕裂符文剑刃"
+  abbr:
+    - "古籍使者1"
+    - "飞牌"
+    - "发牌"
+- name: "Escalating Runeblades"
+  cnName: "升华符文剑刃"
+  abbr:
+    - "古籍使者1"
+    - "飞牌"
+    - "发牌"
+- name: "Fatecarver"
+  cnName: "命运雕刻者"
+  abbr:
+    - "古籍使者2"
+    - "激光"
+- name: "Exhausting Fatecarver"
+  cnName: "耗能命运雕刻者"
+  abbr:
+    - "古籍使者2"
+    - "激光"
+    - "长激光"
+- name: "Pragmatic Fatecarver"
+  cnName: "实用命运雕刻者"
+  abbr:
+    - "古籍使者2"
+    - "激光"
+    - "盾激光"
+- name: "Abyssal Impact"
+  cnName: "深渊冲击"
+  abbr:
+    - "古籍使者3"
+    - "触手"
+- name: "Cephaliarch's Flail"
+  cnName: "异主链枷"
+  abbr:
+    - "古籍使者3"
+    - "触手"
+    - "耐触手"
+    - "吸血触手"
+- name: "Tentacular Dread"
+  cnName: "触手恐惧"
+  abbr:
+    - "古籍使者3"
+    - "触手"
+    - "法触手"
+- name: "Tome-Bearer's Inspiration"
+  cnName: "负籍者的灵感"
+  abbr:
+    - "古籍使者4"
+- name: "Inspired Scholarship"
+  cnName: "神启学识"
+  abbr:
+    - "古籍使者4"
+- name: "Recuperative Treatise"
+  cnName: "医护典籍"
+  abbr:
+    - "古籍使者4"
+- name: "The Imperfect Ring"
+  cnName: "瑕疵之环"
+  abbr:
+    - "古籍使者5"
+- name: "Rune of Displacement"
+  cnName: "位移符文"
+  abbr:
+    - "古籍使者5"
+- name: "Fulminating Rune"
+  cnName: "爆闪符文"
+  abbr:
+    - "古籍使者5"
+- name: "Gibbering Shield"
+  cnName: "呓语护盾"
+  abbr:
+    - "异典士兵大招"
+- name: "Sanctum of the Abyssal Sea"
+  cnName: "深渊之海圣所"
+  abbr:
+    - "异典士兵大招"
+- name: "Gibbering Shelter"
+  cnName: "呓语庇护所"
+  abbr:
+    - "异典士兵大招"
+- name: "Runic Jolt"
+  cnName: "符文震击"
+  abbr:
+    - "异典士兵1"
+- name: "Runic Sunder"
+  cnName: "符文割裂"
+  abbr:
+    - "异典士兵1"
+- name: "Runic Embrace"
+  cnName: "符文之拥"
+  abbr:
+    - "异典士兵1"
+- name: "Runespite Ward"
+  cnName: "符文守卫"
+  abbr:
+    - "异典士兵2"
+    - "符文盾"
+- name: "Spiteward of the Lucid Mind"
+  cnName: "明晰思维符文守卫"
+  abbr:
+    - "异典士兵2"
+    - "符文盾"
+- name: "Impervious Runeward"
+  cnName: "至坚符文守卫"
+  abbr:
+    - "异典士兵2"
+    - "符文盾"
+- name: "Fatewoven Armor"
+  cnName: "织命护甲"
+  abbr:
+    - "异典士兵3"
+    - "符文甲"
+- name: "Cruxweaver Armor"
+  cnName: "魔核编织者护甲"
+  abbr:
+    - "异典士兵3"
+    - "符文甲"
+    - "豆豆甲"
+- name: "Unbreakable Fate"
+  cnName: "坚不可摧的命运"
+  abbr:
+    - "异典士兵3"
+    - "符文甲"
+- name: "Runic Defense"
+  cnName: "符文防御"
+  abbr:
+    - "异典士兵4"
+- name: "Runeguard of Still Waters"
+  cnName: "静水符文护卫"
+  abbr:
+    - "异典士兵4"
+- name: "Runeguard of Freedom"
+  cnName: "自由符文护卫"
+  abbr:
+    - "异典士兵4"
+- name: "Rune of Eldritch Horror"
+  cnName: "魔能恐惧符文"
+  abbr:
+    - "异典士兵5"
+- name: "Rune of Uncanny Adoration"
+  cnName: "神秘膜拜符文"
+  abbr:
+    - "异典士兵5"
+- name: "Rune of the Colorless Pool"
+  cnName: "无色之池符文"
+  abbr:
+    - "异典士兵5"
+- name: "Vitalizing Glyphic"
+  cnName: "焕生雕文"
+  abbr:
+    - "药剂符师大招"
+    - "魔方"
+- name: "Glyphic of the Tides"
+  cnName: "潮汐雕文"
+  abbr:
+    - "药剂符师大招"
+    - "魔方"
+- name: "Resonating Glyphic"
+  cnName: "共鸣雕文"
+  abbr:
+    - "药剂符师大招"
+    - "魔方"
+- name: "Runemend"
+  cnName: "符文修护"
+  abbr:
+    - "药剂符师1"
+    - "豆豆奶"
+- name: "Evolving Runemend"
+  cnName: "进化符文修护"
+  abbr:
+    - "药剂符师1"
+    - "豆豆奶"
+- name: "Audacious Runemend"
+  cnName: "激进符文修护"
+  abbr:
+    - "药剂符师1"
+    - "豆豆奶"
+- name: "Remedy Cascade"
+  cnName: "疗愈涌流"
+  abbr:
+    - "药剂符师2"
+    - "奶激光"
+- name: "Cascading Fortune"
+  cnName: "连锁幸运"
+  abbr:
+    - "药剂符师2"
+    - "奶激光"
+- name: "Curative Surge"
+  cnName: "药剂涌动"
+  abbr:
+    - "药剂符师2"
+    - "奶激光"
+- name: "Chakram Shields"
+  cnName: "脉轮护盾"
+  abbr:
+    - "药剂符师3"
+    - "飞盘"
+    - "套圈"
+- name: "Chakram of Destiny"
+  cnName: "命运脉轮"
+  abbr:
+    - "药剂符师3"
+    - "飞盘"
+    - "套圈"
+- name: "Tidal Chakram"
+  cnName: "潮汐脉轮"
+  abbr:
+    - "药剂符师3"
+    - "飞盘"
+    - "套圈"
+- name: "Arcanist's Domain"
+  cnName: "奥术师之域"
+  abbr:
+    - "药剂符师4"
+    - "尤纳圈"
+    - "奥圈"
+- name: "Zenas' Empowering Disc"
+  cnName: "泽纳斯的赋能圆盘"
+  abbr:
+    - "药剂符师4"
+    - "尤纳圈"
+    - "奥圈"
+- name: "Reconstructive Domain"
+  cnName: "重构界域"
+  abbr:
+    - "药剂符师4"
+    - "尤纳圈"
+    - "奥圈"
+- name: "Apocryphal Gate"
+  cnName: "异典之门"
+  abbr:
+    - "药剂符师5"
+    - "传送"
+    - "传送门"
+- name: "Fleet-Footed Gate"
+  cnName: "疾走之门"
+  abbr:
+    - "药剂符师5"
+    - "传送"
+    - "传送门"
+- name: "Passage Between Worlds"
+  cnName: "多界通道"
+  abbr:
+    - "药剂符师5"
+    - "传送"
+    - "传送门"
+- name: "Berserker Strike"
+  cnName: "狂战士打击"
+  abbr:
+    - "双手大招"
+- name: "Onslaught"
+  cnName: "猛攻"
+  abbr:
+    - "双手大招"
+- name: "Berserker Rage"
+  cnName: "狂战士之怒"
+  abbr:
+    - "双手大招"
+- name: "Uppercut"
+  cnName: "升天击"
+  abbr:
+    - "双手1"
+    - "上挑"
+- name: "Dizzying Swing"
+  cnName: "眩晕挥击"
+  abbr:
+    - "双手1"
+    - "上挑"
+    - "失衡上挑"
+- name: "Wrecking Blow"
+  cnName: "毁灭之击"
+  abbr:
+    - "双手1"
+    - "上挑"
+- name: "Critical Charge"
+  cnName: "暴击冲锋"
+  abbr:
+    - "双手2"
+    - "冲锋"
+- name: "Stampede"
+  cnName: "致命重击"
+  abbr:
+    - "双手2"
+    - "冲锋"
+- name: "Critical Rush"
+  cnName: "暴击猛冲"
+  abbr:
+    - "双手2"
+    - "冲锋"
+- name: "Cleave"
+  cnName: "横劈"
+  abbr:
+    - "双手3"
+- name: "Carve"
+  cnName: "劈裂斩"
+  abbr:
+    - "双手3"
+- name: "Brawler"
+  cnName: "斗士"
+  abbr:
+    - "双手3"
+- name: "Reverse Slash"
+  cnName: "逆转斩击"
+  abbr:
+    - "双手4"
+    - "反手斩"
+- name: "Reverse Slice"
+  cnName: "逆转切斩"
+  abbr:
+    - "双手4"
+    - "反手斩"
+- name: "Executioner"
+  cnName: "行刑者"
+  abbr:
+    - "双手4"
+    - "反手斩"
+- name: "Momentum"
+  cnName: "振奋"
+  abbr:
+    - "双手5"
+    - "举剑"
+- name: "Forward Momentum"
+  cnName: "向前冲势"
+  abbr:
+    - "双手5"
+    - "举剑"
+- name: "Rally"
+  cnName: "集结"
+  abbr:
+    - "双手5"
+    - "举剑"
+    - "源动力"
+- name: "Shield Wall"
+  cnName: "护盾之墙"
+  abbr:
+    - "单手武器与盾牌大招"
+- name: "Spell Wall"
+  cnName: "法术之壁"
+  abbr:
+    - "单手武器与盾牌大招"
+- name: "Shield Discipline"
+  cnName: "盾牌约束"
+  abbr:
+    - "单手武器与盾牌大招"
+- name: "Puncture"
+  cnName: "穿刺"
+  abbr:
+    - "单手武器与盾牌1"
+    - "剑盾嘲讽"
+    - "剑盾戳"
+- name: "Ransack"
+  cnName: "掠夺"
+  abbr:
+    - "单手武器与盾牌1"
+    - "剑盾嘲讽"
+    - "剑盾戳"
+- name: "Pierce Armor"
+  cnName: "穿透护甲"
+  abbr:
+    - "单手武器与盾牌1"
+    - "剑盾嘲讽"
+    - "剑盾戳"
+- name: "Low Slash"
+  cnName: "下劈斩"
+  abbr:
+    - "单手武器与盾牌2"
+    - "低砍"
+- name: "Deep Slash"
+  cnName: "深重斩击"
+  abbr:
+    - "单手武器与盾牌2"
+    - "低砍"
+- name: "Heroic Slash"
+  cnName: "英勇斩击"
+  abbr:
+    - "单手武器与盾牌2"
+    - "低砍"
+- name: "Defensive Posture"
+  cnName: "防御姿态"
+  abbr:
+    - "单手武器与盾牌3"
+- name: "Defensive Stance"
+  cnName: "防御姿态"
+  abbr:
+    - "单手武器与盾牌3"
+    - "盾牌反射"
+- name: "Absorb Missile"
+  cnName: "吸收飞弹"
+  abbr:
+    - "单手武器与盾牌3"
+- name: "Shield Charge"
+  cnName: "盾牌冲锋"
+  abbr:
+    - "单手武器与盾牌4"
+    - "盾冲"
+- name: "Shielded Assault"
+  cnName: "持盾突袭"
+  abbr:
+    - "单手武器与盾牌4"
+    - "盾冲"
+- name: "Invasion"
+  cnName: "入侵"
+  abbr:
+    - "单手武器与盾牌4"
+    - "盾冲"
+- name: "Power Bash"
+  cnName: "威力猛击"
+  abbr:
+    - "单手武器与盾牌5"
+    - "盾击"
+- name: "Reverberating Bash"
+  cnName: "反射猛击"
+  abbr:
+    - "单手武器与盾牌5"
+    - "盾击"
+- name: "Power Slam"
+  cnName: "威力强袭"
+  abbr:
+    - "单手武器与盾牌5"
+    - "盾击"
+- name: "Lacerate"
+  cnName: "撕裂"
+  abbr:
+    - "双持大招"
+- name: "Rend"
+  cnName: "劈裂"
+  abbr:
+    - "双持大招"
+- name: "Thrive in Chaos"
+  cnName: "混沌奋起"
+  abbr:
+    - "双持大招"
+- name: "Flurry"
+  cnName: "乱舞"
+  abbr:
+    - "双持1"
+    - "双持戳"
+    - "王八拳"
+- name: "Rapid Strikes"
+  cnName: "急速打击"
+  abbr:
+    - "双持1"
+    - "双持戳"
+    - "王八拳"
+- name: "Bloodthirst"
+  cnName: "嗜血"
+  abbr:
+    - "双持1"
+    - "双持戳"
+    - "王八拳"
+- name: "Twin Slashes"
+  cnName: "双斩"
+  abbr:
+    - "双持2"
+- name: "Rending Slashes"
+  cnName: "劈裂斩击"
+  abbr:
+    - "双持2"
+- name: "Blood Craze"
+  cnName: "血之狂热"
+  abbr:
+    - "双持2"
+- name: "Whirlwind"
+  cnName: "旋风斩"
+  abbr:
+    - "双持3"
+    - "风车"
+    - "大风车"
+- name: "Whirling Blades"
+  cnName: "回旋之刃"
+  abbr:
+    - "双持3"
+    - "风车"
+    - "大风车"
+- name: "Steel Tornado"
+  cnName: "钢铁龙卷风"
+  abbr:
+    - "双持3"
+    - "风车"
+    - "大风车"
+- name: "Blade Cloak"
+  cnName: "刀刃斗篷"
+  abbr:
+    - "双持4"
+- name: "Quick Cloak"
+  cnName: "迅捷斗篷"
+  abbr:
+    - "双持4"
+- name: "Deadly Cloak"
+  cnName: "致命斗篷"
+  abbr:
+    - "双持4"
+- name: "Hidden Blade"
+  cnName: "隐秘之刃"
+  abbr:
+    - "双持5"
+    - "飞刀"
+- name: "Shrouded Daggers"
+  cnName: "遮蔽匕首"
+  abbr:
+    - "双持5"
+    - "飞刀"
+    - "弹射飞刀"
+- name: "Flying Blade"
+  cnName: "飞刃"
+  abbr:
+    - "双持5"
+    - "飞刀"
+- name: "Rapid Fire"
+  cnName: "速射"
+  abbr:
+    - "弓大招"
+- name: "Toxic Barrage"
+  cnName: "剧毒扫射"
+  abbr:
+    - "弓大招"
+- name: "Ballista"
+  cnName: "弩车"
+  abbr:
+    - "弓大招"
+- name: "Snipe"
+  cnName: "狙击"
+  abbr:
+    - "弓1"
+- name: "Lethal Arrow"
+  cnName: "致命箭矢"
+  abbr:
+    - "弓1"
+    - "毒狙击"
+- name: "Focused Aim"
+  cnName: "专注瞄准"
+  abbr:
+    - "弓1"
+- name: "Volley"
+  cnName: "齐射"
+  abbr:
+    - "弓2"
+    - "箭雨"
+- name: "Endless Hail"
+  cnName: "无尽箭雨"
+  abbr:
+    - "弓2"
+    - "箭雨"
+- name: "Arrow Barrage"
+  cnName: "箭矢弹幕"
+  abbr:
+    - "弓2"
+    - "箭雨"
+    - "大箭雨"
+- name: "Scatter Shot"
+  cnName: "散射"
+  abbr:
+    - "弓3"
+    - "击退箭"
+- name: "Magnum Shot"
+  cnName: "强力射击"
+  abbr:
+    - "弓3"
+    - "击退箭"
+- name: "Draining Shot"
+  cnName: "汲取之箭"
+  abbr:
+    - "弓3"
+    - "击退箭"
+- name: "Arrow Spray"
+  cnName: "箭矢倾泻"
+  abbr:
+    - "弓4"
+    - "喷箭"
+- name: "Bombard"
+  cnName: "轰炸"
+  abbr:
+    - "弓4"
+    - "喷箭"
+    - "定身箭"
+- name: "Acid Spray"
+  cnName: "酸液喷射"
+  abbr:
+    - "弓4"
+    - "喷箭"
+    - "毒喷箭"
+- name: "Poison Arrow"
+  cnName: "剧毒箭矢"
+  abbr:
+    - "弓5"
+    - "毒箭"
+- name: "Venom Arrow"
+  cnName: "猛毒箭"
+  abbr:
+    - "弓5"
+    - "毒箭"
+    - "打断箭"
+- name: "Poison Injection"
+  cnName: "毒素注射"
+  abbr:
+    - "弓5"
+    - "毒箭"
+- name: "Elemental Storm"
+  cnName: "元素风暴"
+  abbr:
+    - "毁灭法杖大招"
+- name: "Elemental Rage"
+  cnName: "元素之怒"
+  abbr:
+    - "毁灭法杖大招"
+- name: "Eye of the Storm"
+  cnName: "风暴之眼"
+  abbr:
+    - "毁灭法杖大招"
+- name: "Force Shock"
+  cnName: "力量冲击"
+  abbr:
+    - "毁灭法杖1"
+- name: "Crushing Shock"
+  cnName: "破碎电击"
+  abbr:
+    - "毁灭法杖1"
+- name: "Force Pulse"
+  cnName: "力量脉动"
+  abbr:
+    - "毁灭法杖1"
+- name: "Wall of Elements"
+  cnName: "元素之墙"
+  abbr:
+    - "毁灭法杖2"
+- name: "Unstable Wall of Elements"
+  cnName: "不稳定元素之墙"
+  abbr:
+    - "毁灭法杖2"
+- name: "Elemental Blockade"
+  cnName: "元素封锁"
+  abbr:
+    - "毁灭法杖2"
+- name: "Destructive Touch"
+  cnName: "毁灭之触"
+  abbr:
+    - "毁灭法杖3"
+- name: "Destructive Clench"
+  cnName: "毁灭紧握"
+  abbr:
+    - "毁灭法杖3"
+- name: "Destructive Reach"
+  cnName: "毁灭领域"
+  abbr:
+    - "毁灭法杖3"
+- name: "Weakness to Elements"
+  cnName: "元素虚弱"
+  abbr:
+    - "毁灭法杖4"
+    - "ED"
+- name: "Elemental Susceptibility"
+  cnName: "元素易伤"
+  abbr:
+    - "毁灭法杖4"
+    - "ES"
+    - "红ED"
+- name: "Elemental Drain"
+  cnName: "元素汲取"
+  abbr:
+    - "毁灭法杖4"
+    - "ED"
+- name: "Impulse"
+  cnName: "脉冲"
+  abbr:
+    - "毁灭法杖5"
+- name: "Elemental Ring"
+  cnName: "元素之环"
+  abbr:
+    - "毁灭法杖5"
+- name: "Pulsar"
+  cnName: "脉冲星"
+  abbr:
+    - "毁灭法杖5"
+- name: "Panacea"
+  cnName: "灵丹妙药"
+  abbr:
+    - "恢复法杖大招"
+- name: "Life Giver"
+  cnName: "生命赠予者"
+  abbr:
+    - "恢复法杖大招"
+- name: "Light's Champion"
+  cnName: "光之勇士"
+  abbr:
+    - "恢复法杖大招"
+- name: "Grand Healing"
+  cnName: "大治疗术"
+  abbr:
+    - "恢复法杖1"
+    - "圈奶"
+- name: "Illustrious Healing"
+  cnName: "杰出的治疗"
+  abbr:
+    - "恢复法杖1"
+    - "圈奶"
+    - "绿圈奶"
+- name: "Healing Springs"
+  cnName: "治疗之泉"
+  abbr:
+    - "恢复法杖1"
+    - "圈奶"
+    - "蓝圈奶"
+- name: "Regeneration"
+  cnName: "再生"
+  abbr:
+    - "恢复法杖2"
+    - "奶线"
+    - "奶拉线"
+- name: "Rapid Regeneration"
+  cnName: "快速再生"
+  abbr:
+    - "恢复法杖2"
+    - "奶线"
+    - "奶拉线"
+- name: "Radiating Regeneration"
+  cnName: "辐射再生"
+  abbr:
+    - "恢复法杖2"
+    - "奶线"
+    - "奶拉线"
+- name: "Blessing of Protection"
+  cnName: "守护祝福"
+  abbr:
+    - "恢复法杖3"
+    - "拍地板"
+- name: "Blessing Of Restoration"
+  cnName: "恢复祝福"
+  abbr:
+    - "恢复法杖3"
+    - "拍地板"
+- name: "Combat Prayer"
+  cnName: "战斗祈祷"
+  abbr:
+    - "恢复法杖3"
+    - "拍地板"
+    - "CP"
+- name: "Steadfast Ward"
+  cnName: "坚固结界"
+  abbr:
+    - "恢复法杖4"
+    - "奶盾"
+- name: "Ward Ally"
+  cnName: "保护盟友"
+  abbr:
+    - "恢复法杖4"
+    - "奶盾"
+- name: "Healing Ward"
+  cnName: "治疗结界"
+  abbr:
+    - "恢复法杖4"
+    - "奶盾"
+- name: "Force Siphon"
+  cnName: "力量虹吸"
+  abbr:
+    - "恢复法杖5"
+- name: "Siphon Spirit"
+  cnName: "虹吸之灵"
+  abbr:
+    - "恢复法杖5"
+- name: "Quick Siphon"
+  cnName: "快速虹吸"
+  abbr:
+    - "恢复法杖5"
+- name: "Annulment"
+  cnName: "废止"
+  abbr:
+    - "轻甲1"
+    - "轻甲盾"
+- name: "Dampen Magic"
+  cnName: "魔法抑制"
+  abbr:
+    - "轻甲1"
+    - "轻甲盾"
+- name: "Harness Magicka"
+  cnName: "魔力驾驭"
+  abbr:
+    - "轻甲1"
+    - "轻甲盾"
+- name: "Evasion"
+  cnName: "闪避"
+  abbr:
+    - "中甲1"
+- name: "Shuffle"
+  cnName: "打乱"
+  abbr:
+    - "中甲1"
+- name: "Elude"
+  cnName: "躲避"
+  abbr:
+    - "中甲1"
+- name: "Unstoppable"
+  cnName: "势不可挡"
+  abbr:
+    - "重甲1"
+- name: "Unstoppable Brute"
+  cnName: "残暴不息"
+  abbr:
+    - "重甲1"
+- name: "Immovable"
+  cnName: "无法动弹"
+  abbr:
+    - "重甲1"
+    - "不动如山"
+- name: "Soul Strike"
+  cnName: "灵魂打击"
+  abbr:
+    - "灵魂魔法大招"
+- name: "Soul Assault"
+  cnName: "灵魂突袭"
+  abbr:
+    - "灵魂魔法大招"
+- name: "Shatter Soul"
+  cnName: "灵魂凐灭"
+  abbr:
+    - "灵魂魔法大招"
+- name: "Soul Trap"
+  cnName: "灵魂陷阱"
+  abbr:
+    - "灵魂魔法1"
+- name: "Soul Splitting Trap"
+  cnName: "灵魂分离陷阱"
+  abbr:
+    - "灵魂魔法1"
+- name: "Consuming Trap"
+  cnName: "支配陷阱"
+  abbr:
+    - "灵魂魔法1"
+- name: "Blood Scion"
+  cnName: "鲜血子嗣"
+  abbr:
+    - "吸血鬼大招"
+    - "大君"
+- name: "Swarming Scion"
+  cnName: "蝠群子嗣"
+  abbr:
+    - "吸血鬼大招"
+    - "大君"
+- name: "Perfect Scion"
+  cnName: "完美子嗣"
+  abbr:
+    - "吸血鬼大招"
+    - "大君"
+- name: "Eviscerate"
+  cnName: "开膛"
+  abbr:
+    - "吸血鬼1"
+    - "血爪"
+- name: "Blood for Blood"
+  cnName: "血债血偿"
+  abbr:
+    - "吸血鬼1"
+    - "血爪"
+- name: "Arterial Burst"
+  cnName: "动脉震爆"
+  abbr:
+    - "吸血鬼1"
+    - "血爪"
+- name: "Blood Frenzy"
+  cnName: "鲜血狂怒"
+  abbr:
+    - "吸血鬼2"
+    - "血怒"
+- name: "Simmering Frenzy"
+  cnName: "狂暴沸腾"
+  abbr:
+    - "吸血鬼2"
+    - "血怒"
+- name: "Sated Fury"
+  cnName: "无尽狂怒"
+  abbr:
+    - "吸血鬼2"
+    - "血怒"
+- name: "Vampiric Drain"
+  cnName: "吸血鬼"
+  abbr:
+    - "吸血鬼3"
+- name: "Drain Vigor"
+  cnName: "元气汲取"
+  abbr:
+    - "吸血鬼3"
+- name: "Exhilarating Drain"
+  cnName: "精力汲取"
+  abbr:
+    - "吸血鬼3"
+- name: "Mesmerize"
+  cnName: "迷惑"
+  abbr:
+    - "吸血鬼4"
+- name: "Hypnosis"
+  cnName: "催眠"
+  abbr:
+    - "吸血鬼4"
+- name: "Stupefy"
+  cnName: "迟钝"
+  abbr:
+    - "吸血鬼4"
+- name: "Mist Form"
+  cnName: "迷雾形态"
+  abbr:
+    - "吸血鬼5"
+- name: "Elusive Mist"
+  cnName: "飘忽迷雾"
+  abbr:
+    - "吸血鬼5"
+- name: "Blood Mist"
+  cnName: "鲜血迷雾"
+  abbr:
+    - "吸血鬼5"
+- name: "Werewolf Transformation"
+  cnName: "狼人转化"
+  abbr:
+    - "狼人大招"
+- name: "Pack Leader"
+  cnName: "群狼之首"
+  abbr:
+    - "狼人大招"
+- name: "Werewolf Berserker"
+  cnName: "狼人狂战士"
+  abbr:
+    - "狼人大招"
+- name: "Pounce"
+  cnName: "突袭"
+  abbr:
+    - "狼人1"
+- name: "Brutal Pounce"
+  cnName: "野蛮突袭"
+  abbr:
+    - "狼人1"
+- name: "Feral Pounce"
+  cnName: "凶兽突袭"
+  abbr:
+    - "狼人1"
+- name: "Hircine's Bounty"
+  cnName: "海尔辛的赐福"
+  abbr:
+    - "狼人2"
+- name: "Hircine's Rage"
+  cnName: "海尔辛之怒"
+  abbr:
+    - "狼人2"
+- name: "Hircine's Fortitude"
+  cnName: "海尔辛的坚决"
+  abbr:
+    - "狼人2"
+- name: "Roar"
+  cnName: "咆哮"
+  abbr:
+    - "狼人3"
+- name: "Ferocious Roar"
+  cnName: "残暴怒吼"
+  abbr:
+    - "狼人3"
+- name: "Deafening Roar"
+  cnName: "振聩咆哮"
+  abbr:
+    - "狼人3"
+- name: "Piercing Howl"
+  cnName: "刺耳嚎叫"
+  abbr:
+    - "狼人4"
+- name: "Howl of Despair"
+  cnName: "绝望嚎叫"
+  abbr:
+    - "狼人4"
+- name: "Howl of Agony"
+  cnName: "痛苦嚎叫"
+  abbr:
+    - "狼人4"
+- name: "Infectious Claws"
+  cnName: "感染之爪"
+  abbr:
+    - "狼人5"
+- name: "Claws of Anguish"
+  cnName: "痛苦之爪"
+  abbr:
+    - "狼人5"
+- name: "Claws of Life"
+  cnName: "生命之爪"
+  abbr:
+    - "狼人5"
+- name: "Dawnbreaker"
+  cnName: "晨破"
+  abbr:
+    - "斗士公会大招"
+    - "db"
+- name: "Flawless Dawnbreaker"
+  cnName: "无瑕晨破"
+  abbr:
+    - "斗士公会大招"
+    - "db"
+- name: "Dawnbreaker of Smiting"
+  cnName: "破晓一击"
+  abbr:
+    - "斗士公会大招"
+    - "db"
+- name: "Silver Bolts"
+  cnName: "白银弩箭"
+  abbr:
+    - "斗士公会1"
+- name: "Silver Shards"
+  cnName: "白银碎片"
+  abbr:
+    - "斗士公会1"
+- name: "Silver Leash"
+  cnName: "银链飞杀"
+  abbr:
+    - "斗士公会1"
+- name: "Circle of Protection"
+  cnName: "守护之环"
+  abbr:
+    - "斗士公会2"
+- name: "Turn Evil"
+  cnName: "驱邪避恶"
+  abbr:
+    - "斗士公会2"
+- name: "Ring of Preservation"
+  cnName: "守护之环"
+  abbr:
+    - "斗士公会2"
+- name: "Expert Hunter"
+  cnName: "专家猎手"
+  abbr:
+    - "斗士公会3"
+    - "战士之光"
+- name: "Evil Hunter"
+  cnName: "邪恶猎手"
+  abbr:
+    - "斗士公会3"
+    - "战士之光"
+- name: "Camouflaged Hunter"
+  cnName: "乔装猎手"
+  abbr:
+    - "斗士公会3"
+    - "战士之光"
+- name: "Trap Beast"
+  cnName: "捕兽陷阱"
+  abbr:
+    - "斗士公会4"
+    - "夹子"
+- name: "Barbed Trap"
+  cnName: "倒刺陷阱"
+  abbr:
+    - "斗士公会4"
+    - "夹子"
+- name: "Lightweight Beast Trap"
+  cnName: "轻型捕兽陷阱"
+  abbr:
+    - "斗士公会4"
+    - "远程夹子"
+- name: "Meteor"
+  cnName: "流星"
+  abbr:
+    - "法师公会大招"
+- name: "Ice Comet"
+  cnName: "寒冰彗星"
+  abbr:
+    - "法师公会大招"
+- name: "Shooting Star"
+  cnName: "流星"
+  abbr:
+    - "法师公会大招"
+- name: "Magelight"
+  cnName: "法师之光"
+  abbr:
+    - "法师公会1"
+- name: "Inner Light"
+  cnName: "内心之光"
+  abbr:
+    - "法师公会1"
+- name: "Radiant Magelight"
+  cnName: "璀璨法师之光"
+  abbr:
+    - "法师公会1"
+- name: "Entropy"
+  cnName: "混乱魔力"
+  abbr:
+    - "法师公会2"
+    - "熵"
+- name: "Degeneration"
+  cnName: "衰退"
+  abbr:
+    - "法师公会2"
+    - "熵"
+- name: "Structured Entropy"
+  cnName: "规整熵能"
+  abbr:
+    - "法师公会2"
+    - "熵"
+- name: "Fire Rune"
+  cnName: "火焰符文"
+  abbr:
+    - "法师公会3"
+- name: "Volcanic Rune"
+  cnName: "火山符文"
+  abbr:
+    - "法师公会3"
+- name: "Scalding Rune"
+  cnName: "滚烫符文"
+  abbr:
+    - "法师公会3"
+- name: "Equilibrium"
+  cnName: "均衡"
+  abbr:
+    - "法师公会4"
+    - "换血"
+    - "法会交易"
+- name: "Spell Symmetry"
+  cnName: "法术对称"
+  abbr:
+    - "法师公会4"
+    - "换血"
+    - "法会交易"
+- name: "Balance"
+  cnName: "平衡"
+  abbr:
+    - "法师公会4"
+    - "换血"
+    - "法会交易"
+- name: "Undo"
+  cnName: "取消"
+  abbr:
+    - "塞伊克教团大招"
+    - "回溯"
+- name: "Precognition"
+  cnName: "未卜先知"
+  abbr:
+    - "塞伊克教团大招"
+    - "回溯"
+- name: "Temporal Guard"
+  cnName: "时之守护"
+  abbr:
+    - "塞伊克教团大招"
+    - "回溯"
+- name: "Time Stop"
+  cnName: "时间静止"
+  abbr:
+    - "塞伊克教团1"
+    - "时停"
+- name: "Borrowed Time"
+  cnName: "时间借用"
+  abbr:
+    - "塞伊克教团1"
+    - "时停"
+- name: "Time Freeze"
+  cnName: "时间冻结"
+  abbr:
+    - "塞伊克教团1"
+    - "时停"
+- name: "Imbue Weapon"
+  cnName: "附魔武器"
+  abbr:
+    - "塞伊克教团2"
+    - "拉面"
+- name: "Elemental Weapon"
+  cnName: "元素武器"
+  abbr:
+    - "塞伊克教团2"
+    - "拉面"
+- name: "Crushing Weapon"
+  cnName: "武器碾压"
+  abbr:
+    - "塞伊克教团2"
+    - "拉面"
+- name: "Accelerate"
+  cnName: "加速"
+  abbr:
+    - "塞伊克教团3"
+- name: "Channeled Acceleration"
+  cnName: "加速咏唱"
+  abbr:
+    - "塞伊克教团3"
+- name: "Race Against Time"
+  cnName: "争分夺秒"
+  abbr:
+    - "塞伊克教团3"
+- name: "Mend Wounds"
+  cnName: "愈合伤口"
+  abbr:
+    - "塞伊克教团4"
+- name: "Mend Spirit"
+  cnName: "修补灵魂"
+  abbr:
+    - "塞伊克教团4"
+- name: "Symbiosis"
+  cnName: "共生"
+  abbr:
+    - "塞伊克教团4"
+- name: "Meditate"
+  cnName: "冥想"
+  abbr:
+    - "塞伊克教团5"
+- name: "Deep Thoughts"
+  cnName: "沉浸深思"
+  abbr:
+    - "塞伊克教团5"
+- name: "Introspection"
+  cnName: "自我检视"
+  abbr:
+    - "塞伊克教团5"
+- name: "Blood Altar"
+  cnName: "鲜血祭坛"
+  abbr:
+    - "无畏者1"
+    - "血盆"
+- name: "Sanguine Altar"
+  cnName: "桑吉恩祭坛"
+  abbr:
+    - "无畏者1"
+    - "血盆"
+- name: "Overflowing Altar"
+  cnName: "满溢祭坛"
+  abbr:
+    - "无畏者1"
+    - "血盆"
+- name: "Trapping Webs"
+  cnName: "囚困之网"
+  abbr:
+    - "无畏者2"
+    - "蜘蛛网"
+- name: "Shadow Silk"
+  cnName: "暗影蛛丝"
+  abbr:
+    - "无畏者2"
+    - "蜘蛛网"
+- name: "Tangling Webs"
+  cnName: "纠缠之网"
+  abbr:
+    - "无畏者2"
+    - "蜘蛛网"
+- name: "Inner Fire"
+  cnName: "内心之火"
+  abbr:
+    - "无畏者3"
+    - "心火"
+- name: "Inner Rage"
+  cnName: "怒火中烧"
+  abbr:
+    - "无畏者3"
+    - "心火"
+- name: "Inner Beast"
+  cnName: "心魔"
+  abbr:
+    - "无畏者3"
+    - "心火"
+- name: "Bone Shield"
+  cnName: "白骨盾牌"
+  abbr:
+    - "无畏者4"
+    - "骨盾"
+- name: "Spiked Bone Shield"
+  cnName: "尖刺骨盾"
+  abbr:
+    - "无畏者4"
+    - "骨盾"
+- name: "Bone Surge"
+  cnName: "骨浪"
+  abbr:
+    - "无畏者4"
+    - "骨盾"
+- name: "Necrotic Orb"
+  cnName: "死灵法球"
+  abbr:
+    - "无畏者5"
+    - "推球"
+- name: "Mystic Orb"
+  cnName: "神秘法球"
+  abbr:
+    - "无畏者5"
+    - "推球"
+    - "伤害球"
+    - "蓝球"
+- name: "Energy Orb"
+  cnName: "能量法球"
+  abbr:
+    - "无畏者5"
+    - "推球"
+    - "奶球"
+    - "黄球"
+- name: "War Horn"
+  cnName: "战争号角"
+  abbr:
+    - "突袭大招"
+- name: "Aggressive Horn"
+  cnName: "进攻号角"
+  abbr:
+    - "突袭大招"
+- name: "Sturdy Horn"
+  cnName: "坚固号角"
+  abbr:
+    - "突袭大招"
+- name: "Vigor"
+  cnName: "活力"
+  abbr:
+    - "突袭1"
+    - "伟哥"
+- name: "Echoing Vigor"
+  cnName: "回响活力"
+  abbr:
+    - "突袭1"
+    - "伟哥"
+    - "黄伟哥"
+- name: "Resolving Vigor"
+  cnName: "决心活力"
+  abbr:
+    - "突袭1"
+    - "伟哥"
+    - "绿伟哥"
+- name: "Rapid Maneuver"
+  cnName: "快速机动"
+  abbr:
+    - "突袭2"
+    - "战场加速"
+- name: "Retreating Maneuver"
+  cnName: "后撤行动"
+  abbr:
+    - "突袭2"
+    - "战场加速"
+- name: "Charging Maneuver"
+  cnName: "冲锋行动"
+  abbr:
+    - "突袭2"
+    - "战场加速"
+- name: "Caltrops"
+  cnName: "铁蒺藜"
+  abbr:
+    - "突袭3"
+    - "钉子"
+    - "棱钉"
+- name: "Anti-Cavalry Caltrops"
+  cnName: "反骑兵铁蒺藜"
+  abbr:
+    - "突袭3"
+    - "钉子"
+    - "棱钉"
+- name: "Razor Caltrops"
+  cnName: "剃刀铁蒺藜"
+  abbr:
+    - "突袭3"
+    - "钉子"
+    - "棱钉"
+    - "破甲钉"
+- name: "Magicka Detonation"
+  cnName: "魔力引爆"
+  abbr:
+    - "突袭4"
+    - "炸弹"
+- name: "Inevitable Detonation"
+  cnName: "必然引爆"
+  abbr:
+    - "突袭4"
+    - "炸弹"
+- name: "Proximity Detonation"
+  cnName: "靠近引爆"
+  abbr:
+    - "突袭4"
+    - "炸弹"
+    - "自爆炸弹"
+- name: "Barrier"
+  cnName: "屏障"
+  abbr:
+    - "支援大招"
+    - "壁垒"
+- name: "Reviving Barrier"
+  cnName: "复活屏障"
+  abbr:
+    - "支援大招"
+    - "壁垒"
+- name: "Replenishing Barrier"
+  cnName: "滋养屏障"
+  abbr:
+    - "支援大招"
+    - "壁垒"
+- name: "Siege Shield"
+  cnName: "攻城护盾"
+  abbr:
+    - "支援1"
+- name: "Siege Weapon Shield"
+  cnName: "攻城武器护盾"
+  abbr:
+    - "支援1"
+- name: "Propelling Shield"
+  cnName: "推进之盾"
+  abbr:
+    - "支援1"
+- name: "Purge"
+  cnName: "净化"
+  abbr:
+    - "支援2"
+- name: "Efficient Purge"
+  cnName: "高效净化"
+  abbr:
+    - "支援2"
+- name: "Cleanse"
+  cnName: "清洗"
+  abbr:
+    - "支援2"
+- name: "Guard"
+  cnName: "守卫"
+  abbr:
+    - "支援3"
+- name: "Mystic Guard"
+  cnName: "神秘守卫"
+  abbr:
+    - "支援3"
+- name: "Stalwart Guard"
+  cnName: "健壮守卫"
+  abbr:
+    - "支援3"
+- name: "Revealing Flare"
+  cnName: "显形闪光"
+  abbr:
+    - "支援4"
+    - "照明弹"
+- name: "Lingering Flare"
+  cnName: "绵长闪光术"
+  abbr:
+    - "支援4"
+    - "照明弹"
+- name: "Blinding Flare"
+  cnName: "炫目闪光术"
+  abbr:
+    - "支援4"
+    - "照明弹"
