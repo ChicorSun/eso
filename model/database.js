@@ -726,9 +726,17 @@ class database {
       //logger.info(name)
       name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("技能线", "").replace("技能", "")
       name = name.toLowerCase()
-      name = name.replace("一", "1").replace("二", "2").replace("三", "3").replace("四", "4").replace("五", "5").replace("六", "6")
       name = name.replace("工会", "公会").replace("法会", "法师公会").replace("战会", "斗士公会").replace("战士公会", "斗士公会")
       name = name.replace("奶杖", "恢复法杖").replace("治疗杖", "恢复法杖")
+      name = name.replace("1", "一").replace("2", "二").replace("3", "三").replace("4", "四").replace("5", "五").replace("6", "六")
+      if(name.includes('杖') || name.includes('大') || name.includes('一') || name.includes('二') || name.includes('三') || name.includes('四') || name.includes('五') || name.includes('六'))
+      {
+        name = name.replace("毁灭杖", "毁灭法杖")
+        if(!name.includes('杖'))
+        {
+          name = name.replace("毁灭", "毁灭法杖")
+        }
+      }
       if(name.length<4 && /^[A-Za-z]+$/.test(name))
       {
         notAbbrSkill = false
@@ -907,7 +915,7 @@ class database {
             }
             */
             
-            if(oneSkill.name.toLowerCase().includes(name) || cnName.includes(name))
+            if(notAbbrSkill && (oneSkill.name.toLowerCase().includes(name) || cnName.includes(name)))
             {
               isThisOne = true
               objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
@@ -946,7 +954,7 @@ class database {
             }
             if(oneSkill.passive == false)
             {
-              if(oneSkill[1].name.toLowerCase().includes(name) || cnWayOneName.includes(name))
+              if(notAbbrSkill && (oneSkill[1].name.toLowerCase().includes(name) || cnWayOneName.includes(name)))
               {
                 isThisOne = true
                 objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_1'
@@ -984,7 +992,7 @@ class database {
                 }
               }
 
-              if(oneSkill[2].name.toLowerCase().includes(name) || cnWayTwoName.includes(name))
+              if(notAbbrSkill && (oneSkill[2].name.toLowerCase().includes(name) || cnWayTwoName.includes(name)))
               {
                 isThisOne = true
                 objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_2'
