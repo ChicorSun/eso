@@ -729,7 +729,7 @@ class database {
       name = name.replace("工会", "公会").replace("法会", "法师公会").replace("战会", "斗士公会").replace("战士公会", "斗士公会")
       name = name.replace("奶杖", "恢复法杖").replace("奶棒", "恢复法杖").replace("治疗杖", "恢复法杖")
       name = name.replace("1", "一").replace("2", "二").replace("3", "三").replace("4", "四").replace("5", "五").replace("6", "六")
-      name = name.replace("猫猫", "虎人").replace("猫人", "虎人").replace("帝国", "帝都").replace("帝国", "帝都")
+      name = name.replace("猫猫", "虎人").replace("猫人", "虎人").replace("帝国", "帝都").replace("帝国", "帝都").replace("帝国人", "帝都").replace("帝都人", "帝都")
       if(name.includes('杖') || name.includes('大') || name.includes('一') || name.includes('二') || name.includes('三') || name.includes('四') || name.includes('五') || name.includes('六'))
       {
         name = name.replace("毁灭杖", "毁灭法杖")
