@@ -727,8 +727,9 @@ class database {
       name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("技能线", "").replace("技能", "")
       name = name.toLowerCase()
       name = name.replace("工会", "公会").replace("法会", "法师公会").replace("战会", "斗士公会").replace("战士公会", "斗士公会")
-      name = name.replace("奶杖", "恢复法杖").replace("治疗杖", "恢复法杖")
+      name = name.replace("奶杖", "恢复法杖").replace("奶棒", "恢复法杖").replace("治疗杖", "恢复法杖")
       name = name.replace("1", "一").replace("2", "二").replace("3", "三").replace("4", "四").replace("5", "五").replace("6", "六")
+      name = name.replace("猫猫", "虎人").replace("猫人", "虎人").replace("帝国", "帝都").replace("帝国", "帝都")
       if(name.includes('杖') || name.includes('大') || name.includes('一') || name.includes('二') || name.includes('三') || name.includes('四') || name.includes('五') || name.includes('六'))
       {
         name = name.replace("毁灭杖", "毁灭法杖")
@@ -915,7 +916,7 @@ class database {
             }
             */
             
-            if(notAbbrSkill && (oneSkill.name.toLowerCase().includes(name) || cnName.includes(name)))
+            if(notAbbrSkill && (oneSkill.name.toLowerCase().includes(name) || cnName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnID[0]][cnID[1]].name.toLowerCase().includes(name)))
             {
               isThisOne = true
               objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
@@ -954,7 +955,7 @@ class database {
             }
             if(oneSkill.passive == false)
             {
-              if(notAbbrSkill && (oneSkill[1].name.toLowerCase().includes(name) || cnWayOneName.includes(name)))
+              if(notAbbrSkill && (oneSkill[1].name.toLowerCase().includes(name) || cnWayOneName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name.toLowerCase().includes(name)))
               {
                 isThisOne = true
                 objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_1'
@@ -992,7 +993,7 @@ class database {
                 }
               }
 
-              if(notAbbrSkill && (oneSkill[2].name.toLowerCase().includes(name) || cnWayTwoName.includes(name)))
+              if(notAbbrSkill && (oneSkill[2].name.toLowerCase().includes(name) || cnWayTwoName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].name.toLowerCase().includes(name)))
               {
                 isThisOne = true
                 objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_2'
