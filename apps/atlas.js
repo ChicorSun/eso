@@ -182,7 +182,6 @@ export class atlas extends plugin {
     let objSkills = await database.name2index(name,2)
     let skillNum = objSkills.length
 
-
     //logger.info('skillNum:' + skillNum)
     //logger.info('objSkills:' + objSkills)
 
@@ -192,7 +191,7 @@ export class atlas extends plugin {
     }
 
 
-    if((skillNum >= 5 && skillNum <= 20) || noMaxLimit)
+    if((skillNum >= 4 && skillNum <= 25) || noMaxLimit)
     {
       let msgList = '我猜您想问的是以下技能之一？'
       for (let skillKey of objSkills) {
@@ -213,7 +212,7 @@ export class atlas extends plugin {
       return 1
     }
 
-    if(skillNum > 1 && skillNum < 5)
+    if(skillNum > 1 && skillNum < 4)
     {
       let msgList = '我猜您想问的是以下技能之一？'
       for (let skillKey of objSkills) {
@@ -223,12 +222,12 @@ export class atlas extends plugin {
       await this.reply(msgList)
     }
 
-    if(skillNum >= 21 && noMaxLimit==0)
+    if(skillNum >= 26 && noMaxLimit==0)
     {
       return await this.reply(`对不起，请描述的再详细一点`)
     }
 
-    if(skillNum <= 0 || skillNum > 5)
+    if(skillNum <= 0 || skillNum > 4)
     {
       return 1
     }
