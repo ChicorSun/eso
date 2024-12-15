@@ -29,12 +29,19 @@
         <div class="pic_div">
           <div class="{{val.src_Skills_class}}">
             <img class="src_icon" src="{{pluResPath}}img/skills/{{val.src_icon}}.png" />
-            <div class="src_nameCN">{{val.src_cn_name}}</div>
-            <div class="src_nameEN">{{val.src_en_name}}</div>
           </div>
           <div class="{{val.arrow_class}}">➨</div>
           <div class="{{val.new_Skills_class}}">
             <img class="new_icon" src="{{pluResPath}}img/skills/{{val.new_icon}}.png" />
+          </div>
+        </div>
+        <div class="pic_div">
+          <div class="{{val.src_Skills_class}}">
+            <div class="src_nameCN">{{val.src_cn_name}}</div>
+            <div class="src_nameEN">{{val.src_en_name}}</div>
+          </div>
+          <div class="{{val.arrow_class}}"> </div>
+          <div class="{{val.new_Skills_class}}">
             <div class="new_nameCN">{{val.new_cn_name}}</div>
             <div class="new_nameEN">{{val.new_en_name}}</div>
           </div>
@@ -55,7 +62,9 @@
           </div>
           <img class="line" src="{{pluResPath}}img/icon/line.png" />
         </div>
-        <div class="msg">{{val.msg}}</div>
+        {{each val.msg item}}
+        <div class="msg">{{item}}</div>
+        {{/each}}
         <div class="new_msg">{{val.new_msg}}</div>
       </div>
     </div>

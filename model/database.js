@@ -205,6 +205,29 @@ let dgSetsTable = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[
                   [0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],
                   [0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
 
+let skillMsgIndex = [
+  "一阶",
+  "二阶",
+  "三阶",
+  "四阶",
+  "五阶",
+  "六阶",
+  "七阶",
+  "八阶",
+  "九阶",
+  "十阶",
+  "十一阶",
+  "十二阶",
+  "十三阶",
+  "十四阶",
+  "十五阶",
+  "十六阶",
+  "十七阶",
+  "十八阶",
+  "十九阶",
+  "二十阶"
+]
+
 class database {
   async isInList (keyword, objectList) {
     var index = 0
@@ -299,6 +322,8 @@ class database {
     let allSkillData = skillsDataCN
     var keysLine = Object.keys(allSkillData)
     var numLines = keysLine.length
+    let baseIndex = 1
+    let indexStr = ''
 
     for (let lineKey of keysLine) {
       if(lineKey == 9)
@@ -322,11 +347,179 @@ class database {
             continue
           }
           var oneSkill = allSkillData[lineKey][classKey].skills[skillKey]
+          if(oneSkill.passive == false)
+          {
+            baseIndex = 1
+            if(allSkillData[lineKey][classKey].skills['1'].ultimate)
+            {
+              if(allSkillData[lineKey][classKey].skills['2'].id)
+              {
+                baseIndex = 1
+              }
+              else if(allSkillData[lineKey][classKey].skills['3'].id)
+              {
+                baseIndex = 2
+              }
+              else if(allSkillData[lineKey][classKey].skills['4'].id)
+              {
+                baseIndex = 3
+              }
+              else if(allSkillData[lineKey][classKey].skills['5'].id)
+              {
+                baseIndex = 4
+              }
+            }
+            else
+            {
+              if(allSkillData[lineKey][classKey].skills['1'].id)
+              {
+                baseIndex = 0
+              }
+              else if(allSkillData[lineKey][classKey].skills['2'].id)
+              {
+                baseIndex = 1
+              }
+              else if(allSkillData[lineKey][classKey].skills['3'].id)
+              {
+                baseIndex = 2
+              }
+              else if(allSkillData[lineKey][classKey].skills['4'].id)
+              {
+                baseIndex = 3
+              }
+              else if(allSkillData[lineKey][classKey].skills['5'].id)
+              {
+                baseIndex = 4
+              }
+            }
+          }
+          else
+          {
+            if(allSkillData[lineKey][classKey].skills['1'] && allSkillData[lineKey][classKey].skills['1'].passive == true)
+            {
+              baseIndex = 0
+            }
+            else if(allSkillData[lineKey][classKey].skills['2'] && allSkillData[lineKey][classKey].skills['2'].passive == true)
+            {
+              baseIndex = 1
+            }
+            else if(allSkillData[lineKey][classKey].skills['3'] && allSkillData[lineKey][classKey].skills['3'].passive == true)
+            {
+              baseIndex = 2
+            }
+            else if(allSkillData[lineKey][classKey].skills['4'] && allSkillData[lineKey][classKey].skills['4'].passive == true)
+            {
+              baseIndex = 3
+            }
+            else if(allSkillData[lineKey][classKey].skills['5'] && allSkillData[lineKey][classKey].skills['5'].passive == true)
+            {
+              baseIndex = 4
+            }
+            else if(allSkillData[lineKey][classKey].skills['6'] && allSkillData[lineKey][classKey].skills['6'].passive == true)
+            {
+              baseIndex = 5
+            }
+            else if(allSkillData[lineKey][classKey].skills['7'] && allSkillData[lineKey][classKey].skills['7'].passive == true)
+            {
+              baseIndex = 6
+            }
+            else if(allSkillData[lineKey][classKey].skills['8'] && allSkillData[lineKey][classKey].skills['8'].passive == true)
+            {
+              baseIndex = 7
+            }
+            else if(allSkillData[lineKey][classKey].skills['9'] && allSkillData[lineKey][classKey].skills['9'].passive == true)
+            {
+              baseIndex = 8
+            }
+            else if(allSkillData[lineKey][classKey].skills['10'] && allSkillData[lineKey][classKey].skills['10'].passive == true)
+            {
+              baseIndex = 9
+            }
+          }
           skillID2IndexCN[oneSkill.id] = []
           skillID2IndexCN[oneSkill.id][0] = lineKey
           skillID2IndexCN[oneSkill.id][1] = classKey
           skillID2IndexCN[oneSkill.id][2] = skillKey
           skillID2IndexCN[oneSkill.id][3] = '0'
+          if(oneSkill.ultimate)
+          {
+            indexStr = '大招'
+          }
+          else
+          {
+            if(oneSkill.passive == false)
+            {
+              let thisIndex = skillKey - baseIndex
+              if(thisIndex == 0 || thisIndex == 1)
+              {
+                indexStr = '一'
+              }
+              else if(thisIndex == 2)
+              {
+                indexStr = '二'
+              }
+              else if(thisIndex == 3)
+              {
+                indexStr = '三'
+              }
+              else if(thisIndex == 4)
+              {
+                indexStr = '四'
+              }
+              else if(thisIndex == 5)
+              {
+                indexStr = '五'
+              }
+              else if(thisIndex == 6)
+              {
+                indexStr = '六'
+              }
+            }
+            else
+            {
+              let thisIndex = skillKey - baseIndex
+              if(thisIndex == 0 || thisIndex == 1)
+              {
+                indexStr = '被动一'
+              }
+              else if(thisIndex == 2)
+              {
+                indexStr = '被动二'
+              }
+              else if(thisIndex == 3)
+              {
+                indexStr = '被动三'
+              }
+              else if(thisIndex == 4)
+              {
+                indexStr = '被动四'
+              }
+              else if(thisIndex == 5)
+              {
+                indexStr = '被动五'
+              }
+              else if(thisIndex == 6)
+              {
+                indexStr = '被动六'
+              }
+              else if(thisIndex == 7)
+              {
+                indexStr = '被动七'
+              }
+              else if(thisIndex == 8)
+              {
+                indexStr = '被动八'
+              }
+              else if(thisIndex == 9)
+              {
+                indexStr = '被动九'
+              }
+            }
+          }
+
+          skillID2IndexCN[oneSkill.id]["address"] = allSkillData[lineKey][classKey].name + indexStr
+          //logger.info(skillID2IndexCN[oneSkill.id]["address"])
+
           if(oneSkill.passive == false)
           {
             skillID2IndexCN[oneSkill[1].id] = []
@@ -334,12 +527,16 @@ class database {
             skillID2IndexCN[oneSkill[1].id][1] = classKey
             skillID2IndexCN[oneSkill[1].id][2] = skillKey
             skillID2IndexCN[oneSkill[1].id][3] = '1'
+            skillID2IndexCN[oneSkill[1].id]["address"] = allSkillData[lineKey][classKey].name + indexStr
+            //logger.info(skillID2IndexCN[oneSkill[1].id]["address"])
 
             skillID2IndexCN[oneSkill[2].id] = []
             skillID2IndexCN[oneSkill[2].id][0] = lineKey
             skillID2IndexCN[oneSkill[2].id][1] = classKey
             skillID2IndexCN[oneSkill[2].id][2] = skillKey
             skillID2IndexCN[oneSkill[2].id][3] = '2'
+            skillID2IndexCN[oneSkill[2].id]["address"] = allSkillData[lineKey][classKey].name + indexStr
+            //logger.info(skillID2IndexCN[oneSkill[2].id]["address"])
           }
         }
       }
@@ -728,7 +925,7 @@ class database {
       name = name.toLowerCase()
       name = name.replace("工会", "公会").replace("法会", "法师公会").replace("战会", "斗士公会").replace("战士公会", "斗士公会")
       name = name.replace("奶杖", "恢复法杖").replace("奶棒", "恢复法杖").replace("治疗杖", "恢复法杖").replace("剑盾", "单手武器与盾牌").replace("单手配盾", "单手武器与盾牌")
-      name = name.replace("1", "一").replace("2", "二").replace("3", "三").replace("4", "四").replace("5", "五").replace("6", "六")
+      name = name.replace("10", "十").replace("1", "一").replace("2", "二").replace("3", "三").replace("4", "四").replace("5", "五").replace("6", "六").replace("7", "七").replace("8", "八").replace("9", "九")
       name = name.replace("猫猫", "虎人").replace("猫人", "虎人").replace("帝国", "帝都").replace("帝国", "帝都").replace("帝国人", "帝都").replace("帝都人", "帝都")
       if(name.includes('杖') || name.includes('大') || name.includes('一') || name.includes('二') || name.includes('三') || name.includes('四') || name.includes('五') || name.includes('六'))
       {
@@ -916,7 +1113,7 @@ class database {
             }
             */
             
-            if(notAbbrSkill && (oneSkill.name.toLowerCase().includes(name) || cnName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnID[0]][cnID[1]].name.toLowerCase().includes(name)))
+            if(notAbbrSkill && (oneSkill.name.toLowerCase().includes(name) || cnName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnID[0]][cnID[1]].name.toLowerCase().includes(name) || cnID["address"].includes(name)))
             {
               isThisOne = true
               objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
@@ -955,7 +1152,7 @@ class database {
             }
             if(oneSkill.passive == false)
             {
-              if(notAbbrSkill && (oneSkill[1].name.toLowerCase().includes(name) || cnWayOneName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name.toLowerCase().includes(name)))
+              if(notAbbrSkill && (oneSkill[1].name.toLowerCase().includes(name) || cnWayOneName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name.toLowerCase().includes(name) || cnWayOneID["address"].includes(name)))
               {
                 isThisOne = true
                 objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_1'
@@ -993,7 +1190,7 @@ class database {
                 }
               }
 
-              if(notAbbrSkill && (oneSkill[2].name.toLowerCase().includes(name) || cnWayTwoName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].name.toLowerCase().includes(name)))
+              if(notAbbrSkill && (oneSkill[2].name.toLowerCase().includes(name) || cnWayTwoName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].name.toLowerCase().includes(name) || cnWayTwoID["address"].includes(name)))
               {
                 isThisOne = true
                 objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_2'
@@ -1324,6 +1521,17 @@ class database {
       let ret = await Bot.download(url, dstpath)
     }
 
+    imgPath = `./plugins/eso/resources/img/skills/${skillData.atlasData[1].new_icon}.png`
+    if (fs.existsSync(imgPath)) {
+      isExist = "存在"
+    }
+    else
+    {
+      let url = `https://eso-hub.com/storage/icons/${skillData.atlasData[1].new_icon}.png`
+      let dstpath = `./plugins/eso/resources/img/skills/${skillData.atlasData[1].new_icon}.png`
+      let ret = await Bot.download(url, dstpath)
+    }
+
     skillData.atlasData[1].src_cn_name = srcCNSkillData.name
     skillData.atlasData[1].src_en_name = '<' + srcENSkillData.name + '>'
 
@@ -1334,7 +1542,7 @@ class database {
     skillData.atlasData[1].type_cn = skillsDataCN[cnID[0]].name
     skillData.atlasData[1].type_en = skillsData[enID[0]].name
 
-    skillData.atlasData[1].place_cn = skillsDataCN[cnID[0]][cnID[1]].name
+    skillData.atlasData[1].place_cn = cnID['address']
     skillData.atlasData[1].place_en = skillsData[enID[0]][enID[1]].name
 
     if(enID[3] == '0')
@@ -1369,7 +1577,41 @@ class database {
       skillData.atlasData[1].new_msg = ''
     }
     
-    skillData.atlasData[1].msg = await this.transColor(newCNSkillData.description)
+    let is_repeat = true
+    skillData.atlasData[1].msg = []
+    if(newENSkillData.passive == false || newCNSkillData['2'] == undefined)
+    {
+      skillData.atlasData[1].msg[0] = await this.transColor(newCNSkillData.description)
+    }
+    else
+    {
+      var baseMsg = await this.transColor(newCNSkillData.description)
+      let mIndex = 0
+      let mIn = 0
+      is_repeat = false
+      for (mIndex = 2; mIndex < 20; mIndex++) {
+        if(newCNSkillData[mIndex]!= undefined)
+        {
+          if(baseMsg == newCNSkillData[mIndex].description)
+          {
+            is_repeat = true
+          }
+        }
+      }
+      mIn = 0
+      if(!is_repeat)
+      {
+        skillData.atlasData[1].msg[mIn] = skillMsgIndex[mIn] + ': ' + await this.transColor(newCNSkillData.description)
+        mIn++
+      }
+      for (mIndex = 2; mIndex < 20; mIndex++) {
+        if(newCNSkillData[mIndex]!= undefined)
+        {
+          skillData.atlasData[1].msg[mIn] = skillMsgIndex[mIn] + ': ' + await this.transColor(newCNSkillData[mIndex].description)
+          mIn++
+        }
+      }
+    }
     
     skillData.atlasData[1].p_name = []
     skillData.atlasData[1].p_value = []
