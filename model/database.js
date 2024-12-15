@@ -935,6 +935,13 @@ class database {
           name = name.replace("毁灭", "毁灭法杖")
         }
       }
+      if(name.includes('炼金'))
+      {
+        if(!name.includes('术'))
+        {
+          name = name.replace("炼金", "炼金术")
+        }
+      }
       if(name.length<4 && /^[A-Za-z]+$/.test(name))
       {
         notAbbrSkill = false
