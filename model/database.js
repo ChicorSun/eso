@@ -917,6 +917,7 @@ class database {
     let allSkillData = []
     let allList = ""
     let baseIndex = 1
+    let upgradeNUM = 0
 
     if(mode == 0)
     {
@@ -940,6 +941,14 @@ class database {
         if(!name.includes('术'))
         {
           name = name.replace("炼金", "炼金术")
+        }
+      }
+      name = name.replace("赛伊克", "塞伊克").replace("赛一克", "塞伊克").replace("赛一刻", "塞伊克").replace("塞一刻", "塞伊克").replace("塞一克", "塞伊克").replace("伊拉克", "塞伊克")
+      if(name.includes('塞伊克'))
+      {
+        if(!name.includes('教团'))
+        {
+          name = name.replace("塞伊克", "塞伊克教团")
         }
       }
       if(name.length<4 && /^[A-Za-z]+$/.test(name))
@@ -1020,6 +1029,7 @@ class database {
           }
           else if(mode == 0) //根据名称匹配
           {
+            upgradeNUM = 0
             let cnID = skillID2IndexCN[oneSkill.id]
             let cnWayOneID = 0
             let cnWayTwoID = 0
@@ -1119,7 +1129,7 @@ class database {
               //--------------------------------------------------------
             }
             */
-            
+            /*
             if(notAbbrSkill && (oneSkill.name.toLowerCase().includes(name) || cnName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnID[0]][cnID[1]].name.toLowerCase().includes(name) || cnID["address"].includes(name)))
             {
               isThisOne = true
@@ -1157,12 +1167,14 @@ class database {
                 }
               }
             }
+            */
             if(oneSkill.passive == false)
             {
               if(notAbbrSkill && (oneSkill[1].name.toLowerCase().includes(name) || cnWayOneName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name.toLowerCase().includes(name) || cnWayOneID["address"].includes(name)))
               {
                 isThisOne = true
                 objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_1'
+                upgradeNUM++
                 index++
                 //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_1|' + oneSkill[1].id + ']' + oneSkill[1].name + '|' + cnWayOneName)
               }
@@ -1188,6 +1200,7 @@ class database {
                         {
                           isThisOne = true
                           objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_1'
+                          upgradeNUM++
                           index++
                           break;
                         }
@@ -1201,6 +1214,7 @@ class database {
               {
                 isThisOne = true
                 objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_2'
+                upgradeNUM++
                 index++
                 //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_2|' + oneSkill[2].id + ']' + oneSkill[2].name + '|' + cnWayTwoName)
               }
@@ -1226,6 +1240,47 @@ class database {
                         {
                           isThisOne = true
                           objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_2'
+                          upgradeNUM++
+                          index++
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            if(upgradeNUM != 2)
+            {
+              if(notAbbrSkill && (oneSkill.name.toLowerCase().includes(name) || cnName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnID[0]][cnID[1]].name.toLowerCase().includes(name) || cnID["address"].includes(name)))
+              {
+                isThisOne = true
+                objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
+                index++
+                //logger.info('              |---[' + lineKey + '_' + classKey + '_' + skillKey + '_0|' + oneSkill.id + ']' + oneSkill.name + '|' + cnName)
+              }
+              else
+              {
+                isThisOne = false
+                let srcName = name
+                let abbrIndex = -1
+                for (let eachAbbr of addrSkill) {
+                  if(isThisOne)
+                  {
+                    break;
+                  }
+                  abbrIndex += 1
+                  if(abbrIndex > 0)
+                  {
+                    //logger.info(eachAbbr.name)
+                    for (let eachAbbrName of eachAbbr.abbr) {
+                      //logger.info('---'+eachAbbrName)
+                      if(eachAbbrName.toLowerCase().includes(name))
+                      {
+                        if(oneSkill.name.toLowerCase() == eachAbbr.name.toLowerCase())
+                        {
+                          isThisOne = true
+                          objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
                           index++
                           break;
                         }
