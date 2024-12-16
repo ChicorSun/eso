@@ -137,7 +137,14 @@ body {
   display: inline-block;
   position: relative;
   top: -20px;
-  left: -12px;
+  left: -10px;
+}
+
+.pic_div .arrow_class_show .arrow{
+  width: 36px;
+  hight: 36px;
+  display: inline-block;
+  position: relative;
 }
 
 .pic_div .arrow_class_hide {
