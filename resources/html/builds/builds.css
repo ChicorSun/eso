@@ -46,7 +46,7 @@ body {
 
   #Class{height:100%;width:23%;float:left;}
     #class_pic{height:150px;width:150px;transform:translateY(-35px)}
-  #Race{height:100%;width:47%;float:left;font-size:32px;}
+  #Race{height:100%;width:67%;float:left;font-size:32px;}
     #build_title_div{height:50%;}
       #build_title{  font-size: 30px;}
     #race_div{height:50%;}
@@ -61,7 +61,7 @@ body {
     #sp_div{height:33%;text-align:right;}
       #sp_pic{height:15px;width:70%;border-radius:5px;background-color:#2FD50E;float:left;}
       #sp{font-size:25px;line-height:10px;}
-    #Stone{height:100%;width:30%;float:left;}
+  #Stone{display:none;height:100%;width:30%;float:left;}
       #stone_pic_div{height:50%;}
         #stone_pic{height:50px;width:50px;}
       #stone_div{height:50%;}
@@ -138,7 +138,7 @@ body {
 }
 
 .gear .intervory .intv {
-  width: 799px;
+  width: 900px;
   display: inline-block;
   text-align:left;
   font-size:32px;
@@ -179,7 +179,7 @@ body {
 .gear .intervory .intv_en {
   display: inline-block;
   text-align:left;
-  font-size:24px;
+  font-size:22px;
   position: relative;
   top: 0px;
   left: -25px;
@@ -220,7 +220,7 @@ body {
   width: 519px;
   display: inline-block;
   text-align:left;
-  font-size:24px;
+  font-size:22px;
   position: relative;
   top: 0px;
   left: 0px;
