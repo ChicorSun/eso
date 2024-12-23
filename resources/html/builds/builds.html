@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/builds/builds.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    {{each buildsData val index}}
+    {{if index==0}}
+    {{else}}
+    <div  class="Up_Border"  id="Up_Border"></div>
+    <div class="Title" id="Title">{{val.head_title}}</div>
+    <div class="Header" id="Header">
+      <div id="Class">
+        <img id="class_pic" src="{{pluResPath}}img/classes/{{val.class}}.png" />
+      </div>
+
+      <div id="Race">
+        <div id="build_title_div">
+          <span id="build_title">{{val.title}}</span>
+        </div>
+        <div id="race_div">
+          <span id="race_string">{{val.race}}</span>
+        </div>
+      </div>
+
+      <div id="Point" >
+        <div id="mp_div">
+          <span id="mp_pic"></span>
+          <span id="mp">{{val.mp}}</span>
+        </div>
+        <div id="hp_div">
+          <span id="hp_pic"></span>
+          <span id="hp">{{val.hp}}</span>
+        </div>
+        <div id="sp_div">
+          <span id="sp_pic"></span>
+          <span id="sp">{{val.sp}}</span>
+        </div>
+      </div>
+
+      <div id="Stone">
+        <div id="stone_pic_div">
+          <img id="stone_pic" src="{{pluResPath}}img/stones/{{val.stone}}.png" />
+        </div>
+        <div id="stone_div">
+          <span id="stone_string">{{val.stone_string}}</span>
+        </div>
+      </div>
+    </div>
+    <div class="gears">
+      {{each val.gear item}}
+      <div class="gear">
+        <div class="Left_Border"></div>
+        <div class="slot" style="color: {{item.type_color}};">{{item.slot}}</div>
+        <div class="level">
+          <img class="level_icon" style="display: {{item.level_class}};" src="{{pluResPath}}img/icon/champion.png" />
+          <div class="level_value" style="display: {{item.level_class}};">{{item.level}}</div>
+        </div>
+        <div class="intervory">
+          <div class="intv" style="color: {{item.color}};">
+            <img class="intv_pic" src="{{pluResPath}}img/sets/{{item.icon}}.png">
+            <div class="intv_cn">{{item.name_cn}}</div>
+            <div class="intv_ep">&nbsp;</div>
+            <div class="intv_en">{{item.name_en}}</div>
+          </div>
+          <div class="trans">
+            <div class="tran">{{item.trait}}</div>
+            <div class="enchant" style="color: {{item.enchantColor}};">{{item.enchant}}</div>
+          </div>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    <div class="spell">
+      <table class="spell_table">
+        {{each val.spell spell index}}
+        <tr class="spell_bar">
+          {{if index === 0}}
+          <td class="weapon_cell">1&nbsp;&nbsp;</td>
+          {{/if}}
+          {{if index === 1}}
+          <td class="weapon_cell">2&nbsp;&nbsp;</td>
+          {{/if}}
+          {{each spell.bar bar index}}
+          <td class="spell_cell">
+            <img class="spell_pic" src="{{pluResPath}}img/skills/{{bar.icon}}.png">
+          </td>
+          {{if index === 4}}
+          <td class="spell_cell">&nbsp;&nbsp;</td>
+          {{/if}}
+          {{/each}}
+        </tr>
+        <tr class="spell_bar">
+          {{if index === 0}}
+          <td class="weapon_cell_f">1&nbsp;&nbsp;</td>
+          {{/if}}
+          {{if index === 1}}
+          <td class="weapon_cell_f">2&nbsp;&nbsp;</td>
+          {{/if}}
+          {{each spell.bar bar index}}
+          <td class="spell_cell_f">
+            <div class="spell_name" style="color: {{bar.color}};">{{bar.name}}</div>
+          </td>
+          {{if index === 4}}
+          <td class="spell_cell">&nbsp;&nbsp;</td>
+          {{/if}}
+          {{/each}}
+        </tr>
+        <tr class="spell_bar">
+          {{if index === 0}}
+          <td class="weapon_cell_f">1&nbsp;&nbsp;</td>
+          {{/if}}
+          {{if index === 1}}
+          <td class="weapon_cell_f">2&nbsp;&nbsp;</td>
+          {{/if}}
+          {{each spell.bar bar index}}
+          <td class="spell_cell_f">
+            <div class="spell_address" style="color: {{bar.color}};">{{bar.address}}</div>
+          </td>
+          {{if index === 4}}
+          <td class="spell_cell">&nbsp;&nbsp;</td>
+          {{/if}}
+          {{/each}}
+        </tr>
+        {{/each}}
+      </table>
+    </div>
+    {{/if}}
+    {{/each}}
+    <div class="logo">Created By ESO-Bot</div>
+  </div>
+</body>
+
+</html>
