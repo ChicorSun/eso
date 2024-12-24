@@ -15,21 +15,6 @@ let goldenData = {
 //黄金商人
 let goldenSets = []
 
-//数据库
-let setsData = [{
-}]
-
-let setsDataCN = [{
-}]
-
-let numDungeons = 0
-
-let dgList = [
-]
-
-let dgSetsTable = [
-]
-
 export class goldenVendor extends plugin {
   constructor () {
     super({
@@ -56,7 +41,6 @@ export class goldenVendor extends plugin {
    * @提供黄金商人商品查询
    */
   async goldenSets (e) {
-    return this.reply('暂时不支持该功能...')
     let data = await this.updateGoldenSets()
     //logger.info(data.generalData[1].list)
 
@@ -69,18 +53,16 @@ export class goldenVendor extends plugin {
    * @更新黄金商人
    */
   async updateGoldenSets (e) {
-    await this.init_database()
-
-    var keysSet = Object.keys(setsData)
-    var numSets = keysSet.length
-
     let data = await General.get(this.e, 'eso', 'goldenVendor', 'goldenVendor')
     if (!data) return
 
-  	/** 黄金商人接口地址 */
+    let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD').replace(/是0/g, "是").replace(/点0/g, "点")
+    data.generalData[0].date = now
+
+    /** 黄金商人接口地址 */
     let url = 'http://esolog.uesp.net/goldenVendor.php'
     /** 调用接口获取数据 */
-    await this.reply('正在为您查询，请稍后...')
+    await this.reply('正在为您查询黄金商人，请等待(10s)...')
 
     let res = await fetch(url)
 
@@ -94,18 +76,21 @@ export class goldenVendor extends plugin {
     /** 解析接口结果 */
     
     let goldenData = await res.text()
-    logger.info(goldenData)
-    /*
-    let tempData = goldenData.split('col-md-9')[0]
-    tempData = tempData.split('card mb-3')[1]
-    let tempDate = tempData.split('small>')[1]
-    tempDate = tempDate.split('<')[0]
-    let goldenMsgs = tempData.split('<tr>')
+    //logger.info(goldenData)
+
+    goldenData = goldenData.split('uespesoGoldenItems')[1]
+    goldenData = goldenData.split('uespesoGoldenItems')[0]
+    //logger.info(goldenData)
+
+    let tempDate = goldenData.split('<h4>')[1]
+    tempDate = tempDate.split('<')[0].replace("Vendor Items for ", "").replace("December", "12").replace("November", "11").replace("October", "10").replace("September", "9").replace("August", "8").replace("July", "7").replace("June", "6").replace("May", "5").replace("April", "4").replace("December ", "12").replace("March", "3").replace("January", "1")
+    let dataStr = tempDate.split(' ')
+    data.generalData[1].group = dataStr[2] + '年' + dataStr[1] + '月' + dataStr[0] + '日'
+    //logger.info(data.generalData[1].group)
+
+    let goldenMsgs = goldenData.split('<li>')
     var msgIndex = 0
     let isFind = false
-
-    data.generalData[1].group = tempDate
-    //logger.info(data.generalData[1].group)
 
     let setsMsg = [];
 
@@ -113,109 +98,127 @@ export class goldenVendor extends plugin {
       isFind = false
       if (msgIndex != 0)
       {
-        let img = oneMsg.split('image/png')[1]
-        img = img.split('">')[0]
-        img = img.split('icons/')[1]
-        img = img.split('.png')[0]
+        //logger.info(oneMsg)
 
-        let name = oneMsg.split('<a href="')[1]
-        name = name.split('</a>')[0]
-        name = name.split('>')[1]
-        name = name.slice(1, -1)
-        name = name.replace("&#039;", "'")
+        let link = oneMsg.split("a href='")[1]
+        link = link.split("' class=")[0]
+        //logger.info(link)
 
-        let setID = ""
-        for (let setKey of keysSet) {
-          if(setsData[setKey].name == name)
-          {
-            setID = setsData[setKey].id
-            isFind = true
-            break
-          }
+        let price = oneMsg.split("-- ")[1]
+        price = price.split("<")[0].replace("gp", "G").replace("(Bind on Equip)", "").replace("/", "|")
+        //logger.info(price)
+
+        let gearInfo = await this.getGearInfo(link)
+        //logger.info(gearInfo)
+
+        let setMsg = []
+        let setMsgIndex = 0
+
+        setMsg[setMsgIndex] = price
+        setMsgIndex++
+
+        for (let tip of gearInfo.msg) {
+          setMsg[setMsgIndex] = tip
+          setMsgIndex++
         }
 
-        let type = oneMsg.split('<span class="quality-')[1]
-        if(!type)
-        {
-          type = oneMsg.split(' quality-')[1]
-        }
-        type = type.split('</')[0]
-        type = type.split('>')[1]
-        if(type.includes('Pauldrons')){type = '肩铠'}
-        else if(type.includes('Epaulets')){type = '披肩'}
-        else if(type.includes('Arm Cops')){type = '护肩'}
-        else if(type.includes('Necklace')){type = '项链'}
-        else if(type.includes('Ring')){type = '戒指'}
-        else if(type.includes('Helm')){type = '头铠'}
-        else if(type.includes('Hat')){type = '头盔'}
-        else if(type.includes('Helmet')){type = '帽子'}
-        else{type = '护甲'}
-
-        let goldPrice = oneMsg.split('gold.png')[1]
-        
-        if(goldPrice.split('<br>')[1])
-        {
-          goldPrice = goldPrice.split('<br>')[0]
-          goldPrice = goldPrice.split('> ')[1]
-        }
-        else
-        {
-          goldPrice = goldPrice.split('</')[0]
-          goldPrice = goldPrice.split('>&nbsp;')[1]
-        }
-        
-
-        let apPrice = oneMsg.split('alliance_points.png')[1]
-        apPrice = apPrice.split('</td>')[0]
-        //logger.info(apPrice)
-        if(!apPrice.split('> ')[1])
-        {
-          apPrice = apPrice.split('>&nbsp;')[1]
-          apPrice = apPrice.split('<')[0]
-        }
-        else
-        {
-          apPrice = apPrice.split('> ')[1]
-        }
-        apPrice = apPrice.slice(0, -1)
-
-        if(isFind)
-        {
-          let imgPath = `./plugins/eso/resources/img/sets/${img}.png`
-          if (!fs.existsSync(imgPath)) {
-            let url = `https://eso-hub.com/storage/icons/${img}.png`
-            //logger.info(url)
-            let ret = await Bot.download(url, imgPath)
-          }
-          //logger.info(data.generalData[1].list[0])
-          setsMsg.push({
-            icon: img,
-            title: "[" + type + "]" + setsDataCN[setID].name,
-            desc: name + "    " + goldPrice + "G|" + apPrice + "AP",
-            item_class: 'item_split2',
-          });
-
-          //data.generalData[1].list[msgIndex-1].icon = img
-          //data.generalData[1].list[msgIndex-1].title = setsDataCN[setID].name
-          //data.generalData[1].list[msgIndex-1].desc = name
-          //data.generalData[1].list[msgIndex-1].item_class = 'item_split2'
-          //logger.info("[" + type + "]Name:" + setsDataCN[setID].name + "<" + name + "> | " + img + "|" + goldPrice + "|" + apPrice)
-        }
+        setsMsg.push({
+          icon: gearInfo.icon,
+          title: gearInfo.title,
+          desc: gearInfo.desc,
+          msg: setMsg,
+          item_class: gearInfo.item_class
+        });
       }
-      msgIndex++      
+      msgIndex++
     }
     data.generalData[1].list = setsMsg
 
     return data
-    */
   }
 
-  async init_database () {
-    setsData   = await database.getSetsEN()
-    setsDataCN = await database.getSetsCN()
-    numDungeons   = await database.getDgNum()
-    dgList   = await database.getdgList()
-    dgSetsTable   = await database.getdgSets()
+  async getGearInfo (link) {
+    /** 黄金商人物品详情地址 */
+    let url = link
+    /** 调用接口获取数据 */
+    let setInfo = []
+
+    let res = await fetch(url)
+
+    /** 判断接口是否请求成功 */
+    if (!res) {
+      return -1
+    }
+
+    /** 解析接口结果 */
+    let gearData = await res.text()
+    //logger.info(gearData)
+    gearData = gearData.split('<h2 id="esoil_rawdatalist">Raw Item Data</h2>')[1]
+    gearData = gearData.split('</table>')[0]
+    //logger.info(gearData)
+
+    let setName = gearData.split("<td id='esoil_rawdata_setName'>")[1]
+    setName = setName.split('<')[0]
+    //logger.info(setName)
+
+    let icon = gearData.split("icons/")[1]
+    icon = icon.split('.png')[0]
+    //logger.info(icon)
+    let isExist = "不存在"
+    let imgPath = `./plugins/eso/resources/img/sets/${icon}.png`
+    if (fs.existsSync(imgPath)) {
+      isExist = "存在"
+      //logger.info("["+setData.atlasData[1].item_class+" " + setData.atlasData[1].type +  "]<" + setData.atlasData[1].weight + ">" + setData.atlasData[1].name+setData.atlasData[1].name_en+" | " + setData.atlasData[1].icon + " | " + isExist)
+    }
+    else
+    {
+      let url = `https://eso-hub.com/storage/icons/${icon}.png`
+      let dstpath = `./plugins/eso/resources/img/sets/${icon}.png`
+      let ret = await Bot.download(url, dstpath)
+      //logger.info("["+setData.atlasData[1].item_class+" " + setData.atlasData[1].type +  "]<" + setData.atlasData[1].weight + ">" + setData.atlasData[1].name+setData.atlasData[1].name_en+" | " + setData.atlasData[1].icon + " | " + isExist)
+    }
+
+    let title = ''
+    let desc = ''
+    let msg = []
+    let objSets = await database.name2index(setName,1)
+    let setNum = objSets.length
+    if((objSets[0] < 0) || (setNum <= 0))
+    {
+      return -1
+    }
+    let has_find = false
+    for (let setKey of objSets) {
+      let setData = await database.updateData(setKey, 1)
+      name_en: "<Sergeant's Mail>"
+      let gearNameEN = '<'+ setName + '>'
+      desc = gearNameEN
+      if(setData.atlasData[1].name_en.toLowerCase() == gearNameEN.toLowerCase())
+      {
+        title = setData.atlasData[1].name
+        msg = setData.atlasData[1].msg
+        //logger.info(setData.atlasData[1].name)
+        has_find = true
+        break
+      }
+    }
+    if(!has_find)
+    {
+      title = ''
+      desc = '<'+ setName + '>'
+    }
+
+    let item_class = 'item_split2 set_info_big'
+
+    let gearInfo = {
+      icon,
+      title,
+      desc,
+      msg,
+      item_class
+      };
+
+    return gearInfo
   }
 
   async cache (data) {
