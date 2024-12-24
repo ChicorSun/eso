@@ -2229,7 +2229,7 @@ class database {
               buildData.buildsData[1].spell[i].bar[talentIndex].icon = skillData.atlasData[1].new_icon
               buildData.buildsData[1].spell[i].bar[talentIndex].color = oneTalent['color']
               buildData.buildsData[1].spell[i].bar[talentIndex].name = skillData.atlasData[1].new_cn_name
-              buildData.buildsData[1].spell[i].bar[talentIndex].address = skillData.atlasData[1].place_cn
+              buildData.buildsData[1].spell[i].bar[talentIndex].address = skillData.atlasData[1].place_cn.replace("大招", "大")
               error_skill = 0;
               break;
             }
