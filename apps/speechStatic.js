@@ -75,7 +75,7 @@ export class speechStatic extends plugin {
             speechData.speechData[1].type = '(This Month)'
         }
         
-        logger.info(data)
+        //logger.info(data)
         speechData.speechData[1].person = []
 
         let msg = [`本群发言榜${user_msg[1] || `日榜`}如下:\n--------`]
@@ -137,9 +137,9 @@ export class speechStatic extends plugin {
             paiming++
             msg.push(`\n第${paiming}名：${item.nickname}·${item.number}次`)
         }
-        await e.reply(msg)
+        //await e.reply(msg)
 
-        logger.info(speechData.speechData[1])
+        //logger.info(speechData.speechData[1])
         let img = await this.cache(speechData, speechImg)
         await this.reply(img)
         return true

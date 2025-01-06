@@ -99,16 +99,16 @@ body {
 }
 
 .bar-index {
-  font-size: 20px;
+  font-size: 14px;
   color: #CCCCCC;
-  padding: 0px 0px 0px 10px;
+  padding: 0px 0px 0px 2px;
   margin: 0px 0px 0px 0px;
 }
 
 .bar-name {
-  font-size: 20px;
+  font-size: 14px;
   color: #dedede;
-  padding: 0px 0px 0px 3px;
+  padding: 0px 0px 0px 0px;
   margin: 0px 0px 0px 0px;
 }
 
