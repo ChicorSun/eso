@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/speech/speech.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+
+    {{each speechData val index}}
+    {{if index==0}}
+    <style> .container { background: url("{{pluResPath}}img/background/{{val.pic}}.png") #fff; background-repeat: no-repeat; background-size: 100% 100%; }</style>
+    {{else}}
+    <div class="item ">
+      <div class="box">
+
+
+        
+        <div class="chart-container">
+          <div class="top">
+            <div class="title">{{val.title}}</div>
+            <div class="valueType">{{val.type}}</div>
+          </div>
+          {{each val.person item}}
+          <div class="bar">
+            <img src="{{pluResPath}}img/avatar/{{item.id}}.png">
+            <div class="bar-cell"><div class="bar-color" style="width:{{item.width}}px; background-color:{{item.bar_color}};"></div></div>
+            <div class="bar-string">
+              <span class="bar-index">{{item.index}}</span>
+              <span class="bar-name">{{item.name}}</span>
+            </div>           
+            <div class="bar-value">{{item.value}}</div>
+          </div>
+          {{/each}}
+        </div>
+        
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+    <div class="logo">Created By ESO-Bot</div>
+  </div>
+</body>

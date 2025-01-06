@@ -1,0 +1,12 @@
+- date: 2023-01-01
+  pic: bg2
+  des: 群聊统计
+- title: "Discussion Done"
+  type: "(This Month)"
+  person:
+    - id: "12345678"
+      value: "200"
+      width: "390"
+      bar_color: "rgb(58, 146, 254)"
+      index: "01."
+      name: "@PersonName"

@@ -1,0 +1,130 @@
+@font-face {
+  font-family: "tttgbnumber";
+  src: url("../../../../../resources/font/tttgbnumber.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+body {
+  font-family: sans-serif;
+  font-size: 16px;
+  width: 450px;
+  color: #1e1f20;
+  transform: scale(1);
+  transform-origin: 0 0;
+}
+
+.container {
+  width: 450px;
+  padding: 3px 3px 3px 3px;
+  text-align: center;
+  background-color: #f5f6fb;
+}
+
+.box{
+  margin: 0px 0px 0px 0px;
+}
+
+.item {
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.chart-container {
+  align-items: center;
+  background-color: rgba(13, 10, 14, 0.68);
+  color: #CCCCCC;
+  border-radius: 2px;
+  margin: 0 auto;
+}
+
+.top {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 5px 5px 5px 5px;
+  margin: 0px 0px 0px 0px;
+}
+
+.top .title{
+  font-size: 20px;
+  color: #c3e0c3;
+  align-items: left;
+}
+
+.top .valueType{
+  font-size: 20px;
+  color: #f2f2f2;
+  align-items: left;
+  padding: 0px 0px 0px 5px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  padding: 0px 5px 5px 5px;
+  margin: 0px 0px 0px 0px;
+}
+  
+.bar img {
+  width: 45px;
+  height: 45px;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.bar-cell {
+  height: 45px;
+  width: 1px;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.bar-color {
+  height: 45px;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.bar-string {
+  width: 326px;
+  text-align: left;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.bar-index {
+  font-size: 20px;
+  color: #CCCCCC;
+  padding: 0px 0px 0px 10px;
+  margin: 0px 0px 0px 0px;
+}
+
+.bar-name {
+  font-size: 20px;
+  color: #dedede;
+  padding: 0px 0px 0px 3px;
+  margin: 0px 0px 0px 0px;
+}
+
+.bar-value {
+  width: 60px;
+  font-size: 20px;
+  color: #c3e0c3;
+  text-align: right;
+  /*text-shadow: 1px 1px 0px black, -1px -1px 0px black, -1px 1px 0px black, 1px -1px 0px black;*/
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.logo {
+  font-size: 14px;
+  font-family: "tttgbnumber";
+  text-align: center;
+  color: #7994a7;
+}
