@@ -98,6 +98,12 @@ body {
   margin: 0px 0px 0px 0px;
 }
 
+.bar-no-limit {
+  width: 1000px;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
 .bar-index {
   font-size: 19px;
   color: #CCCCCC;
@@ -106,7 +112,7 @@ body {
 }
 
 .bar-name {
-  font-size: 19px;
+  font-size: 20px;
   color: #dedede;
   padding: 0px 0px 0px 0px;
   margin: 0px 0px 0px 0px;
@@ -117,7 +123,7 @@ body {
   font-size: 20px;
   color: #c3e0c3;
   text-align: right;
-  /*text-shadow: 1px 1px 0px black, -1px -1px 0px black, -1px 1px 0px black, 1px -1px 0px black;*/
+  text-shadow: 1px 1px 0px black, -1px -1px 0px black, -1px 1px 0px black, 1px -1px 0px black;
   padding: 0px 0px 0px 0px;
   margin: 0px 0px 0px 0px;
 }

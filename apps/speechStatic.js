@@ -5,7 +5,7 @@ import Speech from '../model/speech.js'
 import md5 from 'md5'
 
 //发言榜榜单上限人数
-let lul = 12
+let lul = 20
 
 //speech结构体变量
 let speechData = {
