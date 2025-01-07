@@ -106,7 +106,7 @@ body {
 
 .bar-index {
   font-size: 19px;
-  font-family: "Courier New";
+  font-family: 'Courier New', Courier, monospace;
   color: #CCCCCC;
   padding: 0px 0px 0px 2px;
   margin: 0px 0px 0px 0px;
@@ -121,7 +121,8 @@ body {
 
 .bar-value {
   width: 60px;
-  font-size: 20px;
+  font-size: 21px;
+  font-family: 'Courier New', Courier, monospace;
   color: #c3e0c3;
   text-align: right;
   text-shadow: 1px 1px 0px black, -1px -1px 0px black, -1px 1px 0px black, 1px -1px 0px black;

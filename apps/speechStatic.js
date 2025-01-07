@@ -104,12 +104,12 @@ export class speechStatic extends plugin {
 
             if(paiming == 0)
             {
-                onePerson.width = 390
+                onePerson.width = 391
                 maxValue = item.number
             }
             else
             {
-                onePerson.width = 390*item.number/maxValue
+                onePerson.width = 391*item.number/maxValue
             }
 
             onePerson.value = item.number
