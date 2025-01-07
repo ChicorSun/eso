@@ -114,7 +114,7 @@ export class speechStatic extends plugin {
 
             onePerson.value = item.number
             
-            if(paiming<10)
+            if(paiming<9)
             {
                 onePerson.index = `0${paiming+1}.`
             }
@@ -131,6 +131,10 @@ export class speechStatic extends plugin {
             else
             {
                 onePerson.name = `qq${item.user_id}`
+            }
+
+            if (onePerson.name.length > 18) {
+                onePerson.name = onePerson.name.substring(0, 18) + '...';
             }
             
             speechData.speechData[1].person.push(onePerson);
