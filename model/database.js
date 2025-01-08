@@ -2023,6 +2023,13 @@ class database {
       let setNum = objSets.length
       if(setNum == 0 || objSets[0] == -1)
       {
+        let setID = GI.name['link'].match(/\d+/);
+        //logger.info(setID)
+        //objSets = await this.name2index('ESOLOG'+GI.set,1)
+      }
+      //setNum = objSets.length
+      if(setNum == 0 || objSets[0] == -1)
+      {
         error_set = 1;
       }
       else
@@ -2075,7 +2082,7 @@ class database {
       }
       if(error_set)
       {
-        buildData.buildsData[1].gear[index].icon = GI.name[image].split('/eso/abilities/')[1].split('.')[0]
+        buildData.buildsData[1].gear[index].icon = GI.name['image'].split('/eso/abilities/')[1].split('.')[0]
         buildData.buildsData[1].gear[index].type = GI.type
         if(GI.type == 'Light')
         {
@@ -2134,12 +2141,22 @@ class database {
           oneTalent = TI.offSkill
         }
 
+        if((oneTalent['icon'].length == 0) && (oneTalent['text'].length == 0))
+        {
+          buildData.buildsData[1].spell[i].bar[talentIndex].icon = 'empty'
+          buildData.buildsData[1].spell[i].bar[talentIndex].color = 'rgb(170, 170, 170)'
+          buildData.buildsData[1].spell[i].bar[talentIndex].name = 'N/A'
+          buildData.buildsData[1].spell[i].bar[talentIndex].address = ' '
+          continue;
+        }
+
         await this.skillsName2Index(oneTalent['text'],2)
         //logger.info('=======' + oneTalent['text'])
         let skillNum = objSkills.length
         let error_skill = 1;
         if(skillNum == 0 || objSkills[0] == -1)
         {
+          //logger.info('=======' + oneTalent)
           let icon_name = oneTalent['icon'].split('/eso/abilities/')[1].split('.')[0]
           let icon_trans_name = 'none'
           await this.skillsName2Index(icon_name,3)

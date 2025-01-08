@@ -149,6 +149,7 @@ export class esologPuzzle extends plugin {
             slot: cells[2].textContent.trim(), // 插槽
             name: {
               text: nameAnchor ? nameAnchor.textContent.trim() : '', // 名称文本
+              link: nameAnchor ? nameAnchor.href : '', // 对应链接
               color: nameAnchor ? window.getComputedStyle(nameAnchor).getPropertyValue('color') : '', // 名称颜色
               image: nameAnchor ? nameAnchor.querySelector('img') ? nameAnchor.querySelector('img').src : '' : '' // 名称图片地址
             },
