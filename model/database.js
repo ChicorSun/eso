@@ -2,6 +2,7 @@ import { createRequire } from 'module'
 import Atlas from './atlas.js'
 import Skills from './skills.js'
 import Builds from './builds.js'
+import fetch from 'node-fetch'
 import fs from 'node:fs'
 
 const require = createRequire(import.meta.url);
@@ -2021,13 +2022,27 @@ class database {
 
       let objSets = await this.name2index('ESOLOG'+GI.set,1)
       let setNum = objSets.length
+      let setName = -1
       if(setNum == 0 || objSets[0] == -1)
       {
-        let setID = GI.name['link'].match(/\d+/);
-        //logger.info(setID)
-        //objSets = await this.name2index('ESOLOG'+GI.set,1)
+        if(GI.name['link'].includes('?pcs='))
+        {
+          //logger.info(GI.name['link'])
+          let setID = GI.name['link'].match(/\d+/);
+          //logger.info(setID)
+          setName = await this.itemID2Name(setID[0])
+          //logger.info(setName)
+          if(setName != -1)
+          {
+            objSets = await this.name2index('ESOLOG'+setName,1)
+            //logger.info(objSets)
+            setNum = objSets.length
+          }
+        }
       }
-      //setNum = objSets.length
+      
+      //logger.info(objSets)
+      //logger.info(setNum)
       if(setNum == 0 || objSets[0] == -1)
       {
         error_set = 1;
@@ -2037,7 +2052,7 @@ class database {
         error_set = 1;
         for (let setKey of objSets) {
           setData = await this.updateData(setKey, 1)
-          if(setData.atlasData[1].name_en == ('<'+GI.set+'>') || setData.atlasData[1].name == GI.set)
+          if(setData.atlasData[1].name_en == ('<'+GI.set+'>') || setData.atlasData[1].name == GI.set || setData.atlasData[1].name_en == ('<'+setName+'>'))
           {
             buildData.buildsData[1].gear[index].icon = GI.name['image'].split('/eso/abilities/')[1].split('.')[0]
             buildData.buildsData[1].gear[index].type = GI.type
@@ -2458,6 +2473,32 @@ class database {
     }
 
     return typeName
+  }
+
+  async itemID2Name (id) {
+    let url = 'https://esolog.uesp.net/itemLink.php?itemid=' + id
+    /** 调用接口获取数据 */
+    let setInfo = []
+
+    let res = await fetch(url)
+
+    /** 判断接口是否请求成功 */
+    if (!res) {
+      return -1
+    }
+
+    /** 解析接口结果 */
+    let gearData = await res.text()
+    //logger.info(gearData)
+    gearData = gearData.split('<h2 id="esoil_rawdatalist">Raw Item Data</h2>')[1]
+    gearData = gearData.split('</table>')[0]
+    //logger.info(gearData)
+
+    let setName = gearData.split("<td id='esoil_rawdata_setName'>")[1]
+    setName = setName.split('<')[0]
+    //logger.info(setName)
+
+    return setName
   }
 }
 
