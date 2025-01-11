@@ -886,6 +886,7 @@ class database {
     objSets = [-1]
     let name = keyword
     let enEsologMode = false
+    let enitemIDMode = false
     let enFindByPlace = true
     let enFindByMsg = true
     let enFindByType = false
@@ -897,6 +898,11 @@ class database {
     var numSets = keysSet.length
     let keyType = 0
 
+    if(name.includes("ITEMID"))
+    {
+      enitemIDMode = true
+      notAbbrSet = true
+    }
     if(name.includes("ESOLOG"))
     {
       enEsologMode = true
@@ -921,7 +927,7 @@ class database {
       enFindByType = true
       keyType = 12
     }
-    name = name.replace("图鉴", "").replace("#", "").replace("套装", "").replace("套", "").replace("完美", "").replace("普通", "").replace("ESOLOG", "")
+    name = name.replace("图鉴", "").replace("#", "").replace("套装", "").replace("套", "").replace("完美", "").replace("普通", "").replace("ESOLOG", "").replace("ITEMID", "")
     name = name.toLowerCase()
     if(name.length<4 && /^[A-Za-z]+$/.test(name))
     {
@@ -941,7 +947,15 @@ class database {
 
     for (let setKey of keysSet) {
       isThisOne = false
-      if(enEsologMode)
+      if(enitemIDMode)
+      {
+        //logger.info(setsData[setKey].itemIDs)
+        if(setsData[setKey].itemIDs[name])
+        {
+          isThisOne = true
+        }
+      }
+      else if(enEsologMode)
       {
         if((setsData[setKey].name).toLowerCase() == name)
         {
@@ -2022,22 +2036,18 @@ class database {
 
       let objSets = await this.name2index('ESOLOG'+GI.set,1)
       let setNum = objSets.length
-      let setName = -1
+      let itemIDMode = false
       if(setNum == 0 || objSets[0] == -1)
       {
         if(GI.name['link'].includes('?pcs='))
         {
           //logger.info(GI.name['link'])
           let setID = GI.name['link'].match(/\d+/);
-          //logger.info(setID)
-          setName = await this.itemID2Name(setID[0])
-          //logger.info(setName)
-          if(setName != -1)
-          {
-            objSets = await this.name2index('ESOLOG'+setName,1)
-            //logger.info(objSets)
-            setNum = objSets.length
-          }
+          //logger.info(setID[0])
+          itemIDMode = true
+          objSets =await this.name2index('ITEMID'+setID[0],1)
+          setNum = objSets.length
+          //logger.info(objSets)
         }
       }
       
@@ -2052,7 +2062,7 @@ class database {
         error_set = 1;
         for (let setKey of objSets) {
           setData = await this.updateData(setKey, 1)
-          if(setData.atlasData[1].name_en == ('<'+GI.set+'>') || setData.atlasData[1].name == GI.set || setData.atlasData[1].name_en == ('<'+setName+'>'))
+          if(setData.atlasData[1].name_en == ('<'+GI.set+'>') || setData.atlasData[1].name == GI.set || itemIDMode)
           {
             buildData.buildsData[1].gear[index].icon = GI.name['image'].split('/eso/abilities/')[1].split('.')[0]
             buildData.buildsData[1].gear[index].type = GI.type
@@ -2473,32 +2483,6 @@ class database {
     }
 
     return typeName
-  }
-
-  async itemID2Name (id) {
-    let url = 'https://esolog.uesp.net/itemLink.php?itemid=' + id
-    /** 调用接口获取数据 */
-    let setInfo = []
-
-    let res = await fetch(url)
-
-    /** 判断接口是否请求成功 */
-    if (!res) {
-      return -1
-    }
-
-    /** 解析接口结果 */
-    let gearData = await res.text()
-    //logger.info(gearData)
-    gearData = gearData.split('<h2 id="esoil_rawdatalist">Raw Item Data</h2>')[1]
-    gearData = gearData.split('</table>')[0]
-    //logger.info(gearData)
-
-    let setName = gearData.split("<td id='esoil_rawdata_setName'>")[1]
-    setName = setName.split('<')[0]
-    //logger.info(setName)
-
-    return setName
   }
 }
 
