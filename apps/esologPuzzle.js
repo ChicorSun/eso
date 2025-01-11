@@ -83,18 +83,17 @@ export class esologPuzzle extends plugin {
         let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
         let fakeMsg = [];
         for (let oneMan of urls.links) {
-          index++
           //logger.info(oneMan)
-          let text = '目前解析进度：' + index + '人/' + maxNum + '人'
-          await this.reply(text, true)
+          let myMss = '已解析' + index + '人/' + maxNum + '人'
+          index++
+          let message = [
+          { type: 'at', qq: this.e.user_id},
+          { type: 'text', text: myMss }
+          ]
+          await this.reply(message, false, { recallMsg: 1 })
           let msg = await this.getOneManLog(oneMan)
-          fakeMsg.push({
-            user_id: thisMsgSenderQQ,
-            message: msg,
-            nickname: thisMsgSenderNickname,
-          });
+          fakeMsg.push(msg)
         }
-        //e.reply(e.group.makeForwardMsg(fakeMsg));
         await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true))
       }      
     }
@@ -160,7 +159,8 @@ export class esologPuzzle extends plugin {
 
       //更新Build变量
       buildData = await database.updateData(BD, 3)
-      let img = await this.cache(buildData, buildImg)
+      //let img = await this.cache(buildData, buildImg)
+      let img = await puppeteer.screenshot('eso', buildData)
       return img
     }
   }
