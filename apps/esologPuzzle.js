@@ -52,7 +52,6 @@ export class esologPuzzle extends plugin {
     let url = 'https://www.esologs.com' + urlTemp[1]
 
     //开始查询并返回Build结构体
-    await this.reply('正在为您查询，请稍后...')
       
       //------------------------------------    
       //buildData = await database.updateData("", 3)
@@ -62,11 +61,13 @@ export class esologPuzzle extends plugin {
 
     if(url.includes("source"))
     {
+      await this.reply('正在为您查询，请稍后...(大概需要10s)', true)
       let msg = await this.getOneManLog(url)
       await this.reply(msg)
     }
     else
     {
+      await this.reply('正在为您查询，请稍后...(可能需要120s)', true)
       let urls = await this.getAllLinks(url)
       //logger.info(urls)
 
@@ -90,7 +91,11 @@ export class esologPuzzle extends plugin {
           { type: 'at', qq: this.e.user_id},
           { type: 'text', text: myMss }
           ]
-          await this.reply(message, false, { recallMsg: 1 })
+          if(index==0 || index==5 || index==11)
+          {
+            await this.reply(message, false, { recallMsg: -1 })
+          }
+
           let msg = await this.getOneManLog(oneMan)
           fakeMsg.push(msg)
         }
