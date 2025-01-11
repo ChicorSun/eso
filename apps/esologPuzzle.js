@@ -1,4 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js'
+import common from "../../../lib/common/common.js"
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
 import md5 from 'md5'
@@ -47,6 +48,7 @@ export class esologPuzzle extends plugin {
       return await this.reply(`抱歉，不支持解析该目标\n`
                       +`请发送esologs相关的地址`)
     }
+
     let url = 'https://www.esologs.com' + urlTemp[1]
 
     //开始查询并返回Build结构体
@@ -58,12 +60,95 @@ export class esologPuzzle extends plugin {
       //return await this.reply(img)
       //------------------------------------  
 
-    let BD = await this.getOneManLog(url)
+    if(url.includes("source"))
+    {
+      let msg = await this.getOneManLog(url)
+      await this.reply(msg)
+    }
+    else
+    {
+      let urls = await this.getAllLinks(url)
+      //logger.info(urls)
+
+      if(urls.virtual || urls.links.length == 0)
+      {
+        let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
+        await this.reply(text)
+      }
+      else
+      {
+        let index = 0
+        let maxNum = urls.links.length
+        let thisMsgSenderQQ = 1456181660;
+        let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
+        let fakeMsg = [];
+        for (let oneMan of urls.links) {
+          index++
+          //logger.info(oneMan)
+          let text = '目前解析进度：' + index + '人/' + maxNum + '人'
+          await this.reply(text, true)
+          let msg = await this.getOneManLog(oneMan)
+          fakeMsg.push({
+            user_id: thisMsgSenderQQ,
+            message: msg,
+            nickname: thisMsgSenderNickname,
+          });
+        }
+        //e.reply(e.group.makeForwardMsg(fakeMsg));
+        await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true))
+      }      
+    }
+  }
+
+  async getAllLinks (url) {
+    let summaryURL = url
+    let urlType = ''
+    let urlTemp = url.split('type=')
+
+    if(urlTemp[1])
+    {
+      let urlKeyText = urlTemp[1].split('&')
+      if(urlKeyText[0])
+      {
+        urlType = urlKeyText[0]
+        //logger.info(urlType)
+        summaryURL = url.replace(urlType, "summary")
+      }
+    }
+    //logger.info('url:' + url)
+    //logger.info('summaryURL:' + summaryURL)
+
+    let allLinks = await this.getLinks(summaryURL)
+    return allLinks
+  }
+
+  async getOneManLog (url) {
+    let summaryURL = url
+    let buffsURL = url
+    let urlType = ''
+    let urlTemp = url.split('type=')
+
+    if(urlTemp[1])
+    {
+      let urlKeyText = urlTemp[1].split('&')
+      if(urlKeyText[0])
+      {
+        urlType = urlKeyText[0]
+        //logger.info(urlType)
+        summaryURL = url.replace(urlType, "summary")
+        buffsURL = url.replace(urlType, "auras")
+      }
+    }
+    //logger.info('url:' + url)
+    //logger.info('summaryURL:' + summaryURL)
+    //logger.info('buffsURL:' + buffsURL)
+
+    let BD = await this.getSummaryLog(summaryURL)
 
     if(BD.virtual)
     {
-      return await this.reply(`抱歉，不支持解析该目标\n`
-                      +`请发送包含装备以及技能信息的esologs地址`)
+      let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
+      return text
     }
     else
     {
@@ -76,11 +161,11 @@ export class esologPuzzle extends plugin {
       //更新Build变量
       buildData = await database.updateData(BD, 3)
       let img = await this.cache(buildData, buildImg)
-      await this.reply(img)
+      return img
     }
   }
 
-  async getOneManLog (url) {
+  async getSummaryLog (url) {
 
     // 启动浏览器
     if (!puppeteer.browser) {
@@ -88,7 +173,7 @@ export class esologPuzzle extends plugin {
     }
     const page = await puppeteer.browser.newPage()
     try {
-      logger.info('----waitForWebLoad----')
+      //logger.info('----waitForWebLoad----')
       page.goto(url, { waitUntil: 'load', timeout: 120000 });
 
       // 设置超时时间为30秒
@@ -96,7 +181,7 @@ export class esologPuzzle extends plugin {
       const timeout = 30000; // 30秒
 
       // 等待页面加载完成，确保元素可访问
-      logger.info('----waitForSelector----')
+      //logger.info('----waitForSelector----')
       await page.waitForSelector('#summary-gear-0_wrapper');
       //await page.waitForSelector(selector, { timeout: timeout });
 
@@ -237,6 +322,61 @@ export class esologPuzzle extends plugin {
         virtual
       };
       return bd
+    } finally {
+
+    }    
+  }
+
+  async getLinks (url) {
+
+    // 启动浏览器
+    if (!puppeteer.browser) {
+      await puppeteer.browserInit()
+    }
+    const page = await puppeteer.browser.newPage()
+    try {
+      //logger.info('----waitForWebLoad----')
+      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+
+      // 设置超时时间为30秒
+      const selector = '#DataTables_Table_0_wrapper';
+      const timeout = 30000; // 30秒
+
+      // 等待页面加载完成，确保元素可访问
+      //logger.info('----waitForSelector----')
+      await page.waitForSelector('#DataTables_Table_0_wrapper');
+      //await page.waitForSelector(selector, { timeout: timeout });
+
+      const links = await page.evaluate(() => {
+        // 获取所有表格
+        const tables = document.querySelectorAll('.roles-table-0');
+        let linkList = [];
+        // 遍历每个表格
+        tables.forEach(table => {
+          // 获取表格第一列的所有单元格
+          const cells = table.querySelectorAll('tbody tr td:first-child a');
+          // 遍历每个单元格，提取超链接地址
+          cells.forEach(cell => {
+            linkList.push(cell.href);
+          });
+        });
+        return linkList;
+      });
+
+      //logger.info(links)
+      let virtual = 0
+      let allLinks = {
+        virtual,
+        links
+      };
+
+      return allLinks
+    } catch (error) {
+      let virtual = 1
+      let allLinks = {
+        virtual,
+      };
+      return allLinks
     } finally {
 
     }    
