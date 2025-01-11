@@ -86,15 +86,16 @@ export class esologPuzzle extends plugin {
         for (let oneMan of urls.links) {
           //logger.info(oneMan)
           let myMss = '已解析' + index + '人/' + maxNum + '人'
-          index++
+
           let message = [
           { type: 'at', qq: this.e.user_id},
           { type: 'text', text: myMss }
           ]
-          if(index==0 || index==5 || index==11)
+          if(index==1 || index==6 || index==11)
           {
             await this.reply(message, false, { recallMsg: -1 })
           }
+          index++
 
           let msg = await this.getOneManLog(oneMan)
           fakeMsg.push(msg)
