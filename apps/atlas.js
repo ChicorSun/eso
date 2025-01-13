@@ -97,11 +97,16 @@ export class atlas extends plugin {
   async showSets (e) {
     let name = this.e.message[0].text
     let noMaxLimit = false
+    let showEnglish = false
     let objSets = await database.name2index(name,1)
     let setNum = objSets.length
     if((name == "#神器") || (name == "#神器图鉴"))
     {
       noMaxLimit = true
+    }
+    if(name.includes("英文") || name.includes("英语"))
+    {
+      showEnglish = true
     }
 
     //logger.info('setNum:' + setNum)
@@ -125,7 +130,7 @@ export class atlas extends plugin {
         setData = await database.updateData(setKey, 1)
       	if(setData.atlasData[1].name == name)
       	{
-      		await this.showSetsInfo([setKey])
+      		await this.showSetsInfo([setKey], showEnglish)
       		break
       	}
       }
@@ -153,22 +158,38 @@ export class atlas extends plugin {
       return 1
     }
 
-    await this.showSetsInfo(objSets)
+    await this.showSetsInfo(objSets, showEnglish)
   }
 
-  async showSetsInfo (objSets) {
+  async showSetsInfo (objSets, showEnglish) {
     for (let setKey of objSets) {
       //更新装备图鉴变量
-      setData = await database.updateData(setKey, 1)
+      if(showEnglish)
+      {
+        setData = await database.updateData(setKey, 11)
+      }
+      else
+      {
+        setData = await database.updateData(setKey, 1)
+      }
+      
       let img = await this.cache(setData, setImg)
       await this.reply(img)
     }
   }
 
-  async showSkillsInfo (objSets) {
+  async showSkillsInfo (objSets, showEnglish) {
     for (let skillKey of objSets) {
       //更新技能图鉴变量
-      skillData = await database.updateData(skillKey, 2)
+      if(showEnglish)
+      {
+        skillData = await database.updateData(skillKey, 21)
+      }
+      else
+      {
+        skillData = await database.updateData(skillKey, 2)
+      }
+      
       let img = await this.cache(skillData, skillImg)
       await this.reply(img)
     }
@@ -179,6 +200,7 @@ export class atlas extends plugin {
 
     let name = this.e.message[0].text
     let noMaxLimit = false
+    let showEnglish = false
     let objSkills = await database.name2index(name,2)
     let skillNum = objSkills.length
 
@@ -188,6 +210,11 @@ export class atlas extends plugin {
     if((objSkills[0] < 0) || (skillNum <= 0))
     {
       return await this.reply(`抱歉,无法理解您指的是什么`)
+    }
+
+    if(name.includes("英文") || name.includes("英语"))
+    {
+      showEnglish = true
     }
 
 
@@ -204,7 +231,7 @@ export class atlas extends plugin {
         skillData = await database.updateData(skillKey, 2)
         if(skillData.atlasData[1].new_cn_name == name)
         {
-          await this.showSkillsInfo([skillKey])
+          await this.showSkillsInfo([skillKey], showEnglish)
           break
         }
       }
@@ -232,7 +259,7 @@ export class atlas extends plugin {
       return 1
     }
 
-    await this.showSkillsInfo(objSkills)
+    await this.showSkillsInfo(objSkills, showEnglish)
   }
 
   async cache (data, cachedata) {

@@ -927,7 +927,7 @@ class database {
       enFindByType = true
       keyType = 12
     }
-    name = name.replace("图鉴", "").replace("#", "").replace("套装", "").replace("套", "").replace("完美", "").replace("普通", "").replace("ESOLOG", "").replace("ITEMID", "")
+    name = name.replace("图鉴", "").replace("#", "").replace("套装", "").replace("套", "").replace("完美", "").replace("普通", "").replace("ESOLOG", "").replace("ITEMID", "").replace("英文", "").replace("英语", "")
     name = name.toLowerCase()
     if(name.length<4 && /^[A-Za-z]+$/.test(name))
     {
@@ -1100,7 +1100,7 @@ class database {
     if(mode == 0 || mode == 2 || mode == 3)
     {
       //logger.info(name)
-      name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("技能线", "").replace("技能", "")
+      name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("技能线", "").replace("技能", "").replace("英文", "").replace("英语", "")
       name = name.toLowerCase()
       name = name.replace("工会", "公会").replace("法会", "法师公会").replace("战会", "斗士公会").replace("战士公会", "斗士公会")
       name = name.replace("奶杖", "恢复法杖").replace("奶棒", "恢复法杖").replace("治疗杖", "恢复法杖").replace("剑盾", "单手武器与盾牌").replace("单手配盾", "单手武器与盾牌")
@@ -1548,7 +1548,7 @@ class database {
     return ret
   }
 
-  async updateSetData (setKey) {
+  async updateSetData (setKey, showEnglish) {
     if('done' != setData.init)
     {
       let data = await Atlas.get(this.e, 'atlas', 'set', 'sets')
@@ -1727,7 +1727,15 @@ class database {
       setData.atlasData[1].place_en = setsData[setKey].place.split(',')[0]
     }
 
-    setData.atlasData[1].msg = await this.bonuses2msg(setsDataCN[setsData[setKey].id].bonuses)
+    if(showEnglish)
+    {
+      setData.atlasData[1].msg = await this.bonuses2msg(setsData[setKey].bonuses)
+    }
+    else
+    {
+      setData.atlasData[1].msg = await this.bonuses2msg(setsDataCN[setsData[setKey].id].bonuses)
+    }
+    
     /*
       icon: gear_dunmer_heavy_head_d
       name: "中士的锁甲"
@@ -1757,7 +1765,7 @@ class database {
     //logger.info("["+setData.atlasData[1].item_class+" " + setData.atlasData[1].type +  "]<" + setData.atlasData[1].weight + ">" + setData.atlasData[1].name+setData.atlasData[1].name_en+" | " + setData.atlasData[1].place + "<"+setData.atlasData[1].place_en+"> | " + setData.atlasData[1].icon)
   }
 
-  async updateSkillData (objects) {
+  async updateSkillData (objects, showEnglish) {
     let enID = []
     let cnID = []
     let newENSkillData = []
@@ -1874,21 +1882,26 @@ class database {
     }
     
     let is_repeat = true
-    skillData.atlasData[1].msg = []
-    if(newENSkillData.passive == false || newCNSkillData['2'] == undefined)
+    let msgData = newCNSkillData
+    if(showEnglish)
     {
-      skillData.atlasData[1].msg[0] = await this.transColor(newCNSkillData.description)
+      msgData = newENSkillData
+    }
+    skillData.atlasData[1].msg = []
+    if(newENSkillData.passive == false || msgData['2'] == undefined)
+    {
+      skillData.atlasData[1].msg[0] = await this.transColor(msgData.description)
     }
     else
     {
-      var baseMsg = await this.transColor(newCNSkillData.description)
+      var baseMsg = await this.transColor(msgData.description)
       let mIndex = 0
       let mIn = 0
       is_repeat = false
       for (mIndex = 2; mIndex < 20; mIndex++) {
-        if(newCNSkillData[mIndex]!= undefined)
+        if(msgData[mIndex]!= undefined)
         {
-          if(baseMsg == newCNSkillData[mIndex].description)
+          if(baseMsg == msgData[mIndex].description)
           {
             is_repeat = true
           }
@@ -1897,13 +1910,13 @@ class database {
       mIn = 0
       if(!is_repeat)
       {
-        skillData.atlasData[1].msg[mIn] = skillMsgIndex[mIn] + ': ' + await this.transColor(newCNSkillData.description)
+        skillData.atlasData[1].msg[mIn] = skillMsgIndex[mIn] + ': ' + await this.transColor(msgData.description)
         mIn++
       }
       for (mIndex = 2; mIndex < 20; mIndex++) {
-        if(newCNSkillData[mIndex]!= undefined)
+        if(msgData[mIndex]!= undefined)
         {
-          skillData.atlasData[1].msg[mIn] = skillMsgIndex[mIn] + ': ' + await this.transColor(newCNSkillData[mIndex].description)
+          skillData.atlasData[1].msg[mIn] = skillMsgIndex[mIn] + ': ' + await this.transColor(msgData[mIndex].description)
           mIn++
         }
       }
@@ -2310,18 +2323,29 @@ class database {
   async updateData (setKey, type) {
     if(type == 1) //this is name for sets
     {
-      await this.updateSetData(setKey)
+      await this.updateSetData(setKey, 0)
       return setData
     }
     if(type == 2) //this is name for skills
     {
-      await this.updateSkillData(setKey)
+      await this.updateSkillData(setKey, 0)
       return skillData
     }
     if(type == 3) //this is name for builds
     {
       await this.updateBuildData(setKey)
       return buildData
+    }
+
+    if(type == 11) //this is name for sets-english
+    {
+      await this.updateSetData(setKey, 1)
+      return setData
+    }
+    if(type == 21) //this is name for skills-english
+    {
+      await this.updateSkillData(setKey, 1)
+      return skillData
     }
   }
 
