@@ -445,6 +445,23 @@ class database {
           delete setsData[setKey].styles.Apparel.Head.Medium
         }
       }
+
+      if(setsData[setKey].name == "Pillager's Profit")
+      {
+        if(setsDataCN[setsData[setKey].id].bonuses['5'].includes('高级力量'))
+        {
+          setsDataCN[setsData[setKey].id].bonuses['5'] = "（5件套）[ESOBOT改]在战斗中施放终极技能时，根据你消耗的终极点数量每2秒为12米范围内最多11名其他小队成员提供持续10秒的终极点恢复，每2秒恢复一次，恢复量为施放者消耗终极点的5%，单次恢复值最大为20终极点。"
+        }
+        //logger.info(setsDataCN[setsData[setKey].id])
+      }
+      if(setsData[setKey].name == "Perfected Pillager's Profit")
+      {
+        if(setsDataCN[setsData[setKey].id].bonuses['6'].includes('高级力量'))
+        {
+          setsDataCN[setsData[setKey].id].bonuses['6'] = "（5件套）[ESOBOT改]在战斗中施放终极技能时，根据你消耗的终极点数量每2秒为12米范围内最多11名其他小队成员提供持续10秒的终极点恢复，每2秒恢复一次，恢复量为施放者消耗终极点的5%，单次恢复值最大为20终极点。"
+        }
+        //logger.info(setsDataCN[setsData[setKey].id])
+      }
       
       var indexInList = await this.isInList(setsData[setKey].name, setsBlackList)
       if(indexInList > -1)
