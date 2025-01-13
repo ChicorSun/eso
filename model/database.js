@@ -1872,9 +1872,14 @@ class database {
     }
 
     //logger.info(newCNSkillData)
+    let msgData = newCNSkillData
+    if(showEnglish)
+    {
+      msgData = newENSkillData
+    }
     if(enID[3] != '0' && (newENSkillData.passive == false))
     {
-      skillData.atlasData[1].new_msg = await this.transColor(newCNSkillData.newEffect)
+      skillData.atlasData[1].new_msg = await this.transColor(msgData.newEffect)
     }
     else
     {
@@ -1882,11 +1887,6 @@ class database {
     }
     
     let is_repeat = true
-    let msgData = newCNSkillData
-    if(showEnglish)
-    {
-      msgData = newENSkillData
-    }
     skillData.atlasData[1].msg = []
     if(newENSkillData.passive == false || msgData['2'] == undefined)
     {
