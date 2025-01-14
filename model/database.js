@@ -462,6 +462,16 @@ class database {
         }
         //logger.info(setsDataCN[setsData[setKey].id])
       }
+
+      if(setsData[setKey].name == "Hollowfang Thirst")
+      {
+        if(setsDataCN[setsData[setKey].id].bonuses['5'].includes('|cffffff1750|r6'))
+        {
+          setsDataCN[setsData[setKey].id].bonuses['5'] = "（5件套）对目标造成暴击治疗或暴击伤害时，在目标位置生成一个血球。2秒后血球爆炸，为你和血球6米范围内的队伍成员恢复1750魔力，并附加次级活力，持续9秒，其受到的治疗和伤害护盾强度提高6%。该效果每9秒可触发一次。"
+        }
+        //logger.info(setsData[setKey])
+        //logger.info(setsDataCN[setsData[setKey].id])
+      }
       
       var indexInList = await this.isInList(setsData[setKey].name, setsBlackList)
       if(indexInList > -1)
