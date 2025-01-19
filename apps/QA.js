@@ -43,6 +43,12 @@ export class askQuestion extends plugin {
           reg: '^#*(攻略)$',
           /** 执行方法 */
           fnc: 'sendAnswer6'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(插件|SA插件|插件管理器)$',
+          /** 执行方法 */
+          fnc: 'sendAnswer7'
         }
       ]
     })
@@ -119,6 +125,20 @@ https://docs.qq.com/doc/DWUhhTHZmT3RIZE5I\n
       				   { type: 'image', file: './plugins/eso/resources/img/tips/guildList.jpg', asface: false}]
     	await this.reply(message, false, { recallMsg: -1 })
     }
+  }
+
+  async sendAnswer7 (e) {
+    let thisMsgSenderQQ = 1456181660;
+    let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
+    let willSendMessage = [`● 【上古卷轴OL SA插件管理器 安装与使用指南 https://b23.tv/p9BFai0\n`];
+    let fakeMsg = [];
+    fakeMsg.push({
+        user_id: thisMsgSenderQQ,
+        message: willSendMessage,
+        nickname: thisMsgSenderNickname,
+    });
+      
+    e.reply(e.group.makeForwardMsg(fakeMsg));
   }
 
   //判断字符串是否在字符串中
