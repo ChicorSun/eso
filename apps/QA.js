@@ -79,7 +79,7 @@ https://docs.qq.com/doc/DWUhhTHZmT3RIZE5I\n
 ● 【上古卷轴OL 新手保姆级指南超长十周年版2024】 https://www.bilibili.com/video/BV1Rz421y7xL/?share_source=copy_web&vd_source=d3a9d123bb7505332e2a2eef85a79781\n
 ● 全dlc4人副本hm攻略坦克视角【上古卷轴ol eso 亵渎坟墓hm UGhm 坦克视角攻略】 https://www.bilibili.com/video/BV1d24y1f7so/?share_source=copy_web&vd_source=d3a9d123bb7505332e2a2eef85a79781\n
 ● 【上古卷轴OL U41橡木重击术士 致命99.3K/瑞利98.3K/奈恩96.3K - PTS Wk5】 https://www.bilibili.com/video/BV11x4y1D7fP/?share_source=copy_web&vd_source=d3a9d123bb7505332e2a2eef85a79781\n
-● 【上古卷轴ol ESO奥术师DPS构筑全介绍】 https://www.bilibili.com/video/BV11P411q7fn/?share_source=copy_web&vd_source=d3a9d123bb7505332e2a2eef85a79781\n`];
+● 【上古卷轴ol ESO奥术师DPS构筑全介绍】 https://www.bilibili.com/video/BV11P411q7fn/?share_source=copy_web&vd_source=d3a9d123bb7505332e2a2eef85a79781`];
     let fakeMsg = [];
     fakeMsg.push({
         user_id: thisMsgSenderQQ,
@@ -130,7 +130,7 @@ https://docs.qq.com/doc/DWUhhTHZmT3RIZE5I\n
   async sendAnswer7 (e) {
     let thisMsgSenderQQ = 1456181660;
     let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
-    let willSendMessage = [`● 【上古卷轴OL SA插件管理器 安装与使用指南 https://b23.tv/p9BFai0\n`];
+    let willSendMessage = [`● 【上古卷轴OL SA插件管理器 安装与使用指南 https://b23.tv/p9BFai0`];
     let fakeMsg = [];
     fakeMsg.push({
         user_id: thisMsgSenderQQ,
