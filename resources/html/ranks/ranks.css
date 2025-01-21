@@ -71,7 +71,7 @@ body {
 .cell {
   width: 1074px;
   display: flex;
-  align-items: flex-start;
+  align-items: flex-start stretch;
   padding: 0px 5px 5px 5px;
   margin: 0px 0px 0px 0px;
 }
@@ -81,7 +81,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 0px 5px 5px 5px;
+  padding: 0px 2px 0px 5px;
   margin: 0px 0px 0px 0px;
   background-color: #252226;
 }
@@ -91,6 +91,8 @@ body {
 }
 
 .cell .namecard .indexblock {
+  position: relative; /* 或者使用 absolute */
+  top: 5px;
   text-align: center;
   height: 26px;
   display: flex;
@@ -107,6 +109,8 @@ body {
 }
 
 .indexblock .class{
+  position: relative; /* 或者使用 absolute */
+  left: -5px;
   font-size: 25px;
   color: #dedede;
 }
@@ -129,7 +133,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 0px 5px 5px 5px;
+  padding: 2px 5px 5px 5px;
   margin: 0px 0px 0px 5px;
   background-color: #252226;
 }
@@ -139,6 +143,8 @@ body {
   display: flex;
   align-items: center;
   width: 100%;
+  position: relative; /* 或者使用 absolute */
+  top: 3px;
 }
 
 .cell .setscard .circle {
@@ -161,7 +167,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 2px 5px 5px 5px;
+  padding: 3px 5px 5px 5px;
   margin: 0px 0px 0px 5px;
   background-color: #252226;
 }

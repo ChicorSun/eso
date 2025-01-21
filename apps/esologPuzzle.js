@@ -436,10 +436,13 @@ export class esologPuzzle extends plugin {
         logger.info(msg)
       }
       */
+      
+      
       //更新Build变量
       rankData = await database.updateData(RT, 4)
       let img = await puppeteer.screenshot('eso', rankData)
       return img
+      //return "text"
     }
   }
 
@@ -473,23 +476,23 @@ export class esologPuzzle extends plugin {
             const classType = row.querySelector('.players-table-name img').alt;
             const link = row.querySelector('.players-table-name a').href;
             const roleName = row.querySelector('.players-table-name a').textContent;
-            const accountName = row.querySelector('.display-name-col').textContent
-            const scriptText = row.querySelectorAll('script')[1].textContent;
-            const talentsCellMatch = scriptText.match(/talentsCell: '([^']+)'/);
-            const talents = talentsCellMatch ? talentsCellMatch[1].match(/src="([^"]+)"/g).map(img => img.replace('src="', '').replace('"', '')) : [];
-            const gearsMatch = scriptText.match(/talentsAndGear\["row-\d+-\d+"\]\.gear\.push\(([^)]+)\)/g);
-            /*
-            const gears = gearsMatch ? gearsMatch.map(gear => {
-                const gearObj = JSON.parse(gear.replace(/gear: /g, '"gear": ').replace(/name: /g, '"name": ').replace(/icon: /g, '"icon": ').replace(/quality: /g, '"quality": ').replace(/id: /g, '"id": '));
-                return {
-                    name: gearObj.name,
-                    icon: gearObj.icon,
-                    quality: gearObj.quality,
-                    id: gearObj.id
-                };
-            }) : [];
-            */
-            const gears = gearsMatch.map(gearStr => {
+            const accountName = row.querySelector('.display-name-col').textContent;
+            const scriptText = row.querySelectorAll('script') ? row.querySelectorAll('script')[1].textContent : 0;
+            const talentsCellMatch = scriptText ? scriptText.match(/talentsCell: '([^']+)'/) : 0;
+            let talents = false; // 默认值
+            if(talentsCellMatch != 0 && talentsCellMatch.length > 1)
+            {
+              talents = [];
+              talents = (talentsCellMatch[1].includes("png")) ? talentsCellMatch[1].match(/src="([^"]+)"/g).map(img => img.replace('src="', '').replace('"', '')) : [];
+           }
+            else
+            {
+              talents = [];
+            }
+
+            const gearsMatch = scriptText ? scriptText.match(/talentsAndGear\["row-\d+-\d+"\]\.gear\.push\(([^)]+)\)/g) : 0;
+            
+            const gears = gearsMatch ? gearsMatch.map(gearStr => {
                 const gearObj = {};
 
                 // 使用正则表达式匹配每个属性的值
@@ -509,8 +512,7 @@ export class esologPuzzle extends plugin {
                     quality: gearObj.quality,
                     id: gearObj.id
                 };
-            });
-
+            }) : [];
 
             data.push({
                 classImg,
@@ -518,9 +520,7 @@ export class esologPuzzle extends plugin {
                 link,
                 roleName,
                 accountName,
-                //script: scriptText,
                 talents,
-                //gearsMatch,
                 gears
             });
         });
