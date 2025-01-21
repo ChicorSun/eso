@@ -14,6 +14,8 @@ let dataExtractorSkillsENPath = './plugins/eso/resources/data/DataExtractor-Skil
 let dataExtractorSkillsCNPath = './plugins/eso/resources/data/DataExtractor-Skills-cn.lua'
 
 //数据库
+let allSets = []
+
 let setsData = [{
 }]
 let recipesData = [{
@@ -2394,7 +2396,6 @@ class database {
     rankData.rtData[1].head_title = 'Build Info from www.esolog.com'
     rankData.rtData[1].table = []
     let index = 0;
-    let allSets = []
     let indexAllSet = 0
     let needAdd = true
     let classColor = ''

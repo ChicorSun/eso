@@ -65,7 +65,7 @@ export class esologPuzzle extends plugin {
 
     if(url.includes("rankings"))
     {
-      await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
+      await this.reply('正在为您查询，请稍后...(大概需要15~25s)', true)
       let msg = await this.getRankLog(url)
       await this.reply(msg)
     }
