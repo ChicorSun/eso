@@ -1,0 +1,210 @@
+@font-face {
+  font-family: "tttgbnumber";
+  src: url("../../../../../resources/font/tttgbnumber.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+body {
+  font-family: sans-serif;
+  font-size: 32px;
+  width: 1080px;
+  color: #1e1f20;
+  transform: scale(1);
+  transform-origin: 0 0;
+}
+
+.container {
+  width: 100%;
+  text-align: center;
+  padding: 3px 3px 3px 3px;
+  background-color: #131014;
+  color: #FFFFFF;
+}
+
+.container .head_title {
+  height: 38px;
+  font-size: 20px;
+  font-family: "tttgbnumber";
+  text-align: center;
+  color: #919191;
+}
+
+.box{
+  margin: 0px 0px 0px 0px;
+}
+
+.item {
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.rank-container {
+  align-items: center;
+  background-color: rgba(13, 10, 14, 0.68);
+  color: #CCCCCC;
+  border-radius: 2px;
+  margin: 0 auto;
+}
+
+.top {
+  height: 40px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 5px 5px 5px 5px;
+  margin: 0px 0px 0px 0px;
+}
+
+.top .title{
+  width: 100%;
+  font-size: 20px;
+  text-align: center;
+  color: #c3e0c3;
+}
+
+.cell {
+  width: 1074px;
+  display: flex;
+  align-items: flex-start;
+  padding: 0px 5px 5px 5px;
+  margin: 0px 0px 0px 0px;
+}
+
+.cell .namecard {
+  width: 270px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0px 5px 5px 5px;
+  margin: 0px 0px 0px 0px;
+  background-color: #252226;
+}
+
+.indexblock, .accountName, .roleName {
+    margin-bottom: 8px; /* 添加间距 */
+}
+
+.cell .namecard .indexblock {
+  text-align: center;
+  height: 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%; /* 确保 index 和 class 占据整个父容器的宽度 */
+}
+
+.indexblock .index{
+  width: 80px;
+  font-size: 25px;
+  font-weight: bold;
+  color: #dedede;
+}
+
+.indexblock .class{
+  font-size: 25px;
+  color: #dedede;
+}
+
+.cell .namecard .accountName{
+  height: 25px;
+  font-size: 24px;
+  color: #dedede;
+  text-align: left;
+}
+
+.cell .namecard .roleName{
+  font-size: 20px;
+  color: #dedede;
+  text-align: left;
+}
+
+.cell .setscard {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0px 5px 5px 5px;
+  margin: 0px 0px 0px 5px;
+  background-color: #252226;
+}
+
+.cell .setscard .setBlock {
+  text-align: center;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.cell .setscard .circle {
+  width: 20px;          /* 设置宽度 */
+  height: 20px;         /* 设置高度，保持宽高相等 */
+  border-radius: 50%;    /* 设置边框半径为50%，使其成为圆形 */
+  align-items: left;
+  margin: 0px 0px 0px 3px;
+}
+
+.cell .setscard .setName{
+  font-size: 14px;
+  letter-spacing: 2px;
+  padding: 0px 0px 0px 5px;
+  align-items: left;
+}
+
+.cell .buildcard {
+  width: 590px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 2px 5px 5px 5px;
+  margin: 0px 0px 0px 5px;
+  background-color: #252226;
+}
+.cell .buildcard .gearsBlock{
+  width: 100%;
+  font-size: 30px;
+  color: #dedede;
+  text-align: center;
+}
+.cell .buildcard .talentsBlock{
+  width: 100%;
+  font-size: 30px;
+  color: #dedede;
+  text-align: center;
+}
+
+.cell .buildcard .gearsBlock .gearImg {
+    width: 41px;          /* 设置图片宽度 */
+    height: 41px;         /* 设置图片高度 */
+    object-fit: cover;    /* 确保图片填充整个区域 */
+    padding: 0px 0px 0px 0px;
+    margin: 0px -7px 0px 0px;
+}
+.cell .buildcard .talentsBlock .talentImg {
+    width: 44px;          /* 设置图片宽度 */
+    height: 44px;         /* 设置图片高度 */
+    object-fit: cover;    /* 确保图片填充整个区域 */
+    padding: 0px 0px 0px 0px;
+    margin: 0px -8px 0px 0px;
+}
+
+.cell .buildcard .talentsBlock .line {
+    width: 48px;          /* 设置图片宽度 */
+    transform: rotate(90deg);
+    position: relative; /* 或者使用 absolute */
+    top: -20px;        /* 向上移动20像素 */
+    padding: 0px 0px 0px 0px;
+    margin: 0px -21px 0px -14px;
+}
+
+.logo {
+  font-size: 14px;
+  font-family: "tttgbnumber";
+  text-align: center;
+  color: #7994a7;
+}

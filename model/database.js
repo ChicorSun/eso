@@ -2,6 +2,7 @@ import { createRequire } from 'module'
 import Atlas from './atlas.js'
 import Skills from './skills.js'
 import Builds from './builds.js'
+import RankTable from './rank.js'
 import fetch from 'node-fetch'
 import fs from 'node:fs'
 
@@ -61,6 +62,27 @@ let skillData = {
 //Build结构体变量
 let buildData = {
 }
+//Rank结构体变量
+let rankData = {
+}
+
+let gearColor = [
+  "rgb(255, 255, 255)",
+  "rgb(255, 99, 132)",
+  "rgb(54, 162, 235)",
+  "rgb(255, 206, 86)",
+  "rgb(75, 192, 192)",
+  "rgb(153, 102, 255)",
+  "rgb(255, 159, 64)",
+  "rgb(231, 76, 60)",
+  "rgb(46, 204, 113)",
+  "rgb(155, 89, 182)",
+  "rgb(52, 152, 219)",
+  "rgb(241, 196, 15)",
+  "rgb(189, 195, 199)",
+  "rgb(26, 188, 156)",
+  "rgb(243, 156, 18))"
+]
 
 let setType = [
   "竞技场",
@@ -2046,6 +2068,15 @@ class database {
     buildData.buildsData[1].gear[12].slot = '备用主手'
     buildData.buildsData[1].gear[13].slot = '备用副手'
 
+    for (let i = 0; i < 2; i++) {
+      for (let m = 0; m < 6; m++) {
+        buildData.buildsData[1].spell[i].bar[m].icon = 'empty'
+        buildData.buildsData[1].spell[i].bar[m].color = 'rgb(170, 170, 170)'
+        buildData.buildsData[1].spell[i].bar[m].name = 'N/A'
+        buildData.buildsData[1].spell[i].bar[m].address = ' '
+      }
+    }
+
     for (let GI of BD.gearData) {
       let index = -1;
       let error_set = 0;
@@ -2347,6 +2378,182 @@ class database {
     return buildData
   }
 
+  async updateRankData (RT) {
+    if('done' != rankData.init)
+    {
+      let data = await RankTable.get(this.e, 'builds', 'rank', 'rank')
+      if (!data)
+      {
+        logger.error('[ESO:图鉴] 初始化结构体失败')
+        return
+      }
+      rankData = data
+    }
+
+    rankData.rtData[1].title = '排行榜'
+    rankData.rtData[1].head_title = 'Build Info from www.esolog.com'
+    rankData.rtData[1].table = []
+    let index = 0;
+    let allSets = []
+    let indexAllSet = 0
+    let needAdd = true
+    let classColor = ''
+    for (let oneInfo of RT) {
+      index++;
+      let typeName = ''
+      if(oneInfo.classType.includes('StaminaDPS')){typeName += '耐系'; classColor = "rgb(47, 213, 14)";}
+      if(oneInfo.classType.includes('MagickaDPS')){typeName += '法系'; classColor = "rgb(58, 146, 254)";}
+      if(oneInfo.classType.includes('WerewolfDPS')){typeName += '狼人'; classColor = "rgb(137, 125, 23)";}
+      if(oneInfo.classType.includes('Tank')){typeName += '坦克'; classColor = "rgb(227, 36, 33)";}
+      if(oneInfo.classType.includes('Healer')){typeName += '治疗'; classColor = "rgb(221, 221, 221)";}
+      if(oneInfo.classType.includes('Templar')){typeName += '圣骑'}
+      if(oneInfo.classType.includes('DragonKnight')){typeName += '龙骑'}
+      if(oneInfo.classType.includes('Sorcerer')){typeName += '巫师'}
+      if(oneInfo.classType.includes('Nightblade')){typeName += '夜刃'}
+      if(oneInfo.classType.includes('Warden')){typeName += '窝登'}
+      if(oneInfo.classType.includes('Necromancer')){typeName += '死灵'}
+      if(oneInfo.classType.includes('Arcanist')){typeName += '奥术'}
+
+      let sets = []
+      let gears = []
+      let talents =[]
+      for (let oneGear of oneInfo.gears) {
+        let setIndex = 0
+        let setName = ''
+        let findSet = false
+        let imgPath = `./plugins/eso/resources/img/sets/${oneGear.icon}.png`
+        if (!fs.existsSync(imgPath)) {
+          let url = `https://eso-hub.com/storage/icons/${oneGear.icon}.png`
+          let dstpath = `./plugins/eso/resources/img/sets/${oneGear.icon}.png`
+          logger.info(url)
+          let ret = await Bot.download(url, dstpath)
+        }
+
+        let itemID = 'ITEMID'+oneGear.id
+        //logger.info(itemID)
+        
+        needAdd = true
+        if(allSets.length)
+        {
+          for (let singleSet of allSets) {
+            if(singleSet.id == oneGear.id)
+            {
+              needAdd = false
+              findSet = true
+              setName = singleSet.name
+              break;
+            }
+            indexAllSet++
+          }
+        }
+
+        if(needAdd)
+        {
+          let objSets =await this.name2index(itemID,1)
+          let setNum = objSets.length
+          if(setNum == 0 || objSets[0] == -1)
+          {
+            setIndex = 0
+            findSet = false
+          }
+          else
+          {
+            //logger.info(objSets)
+            setData = await this.updateData(objSets[0], 1)
+            //logger.info(setData.atlasData[1].name)
+            setName = setData.atlasData[1].name
+            findSet = true
+          }
+          if(findSet)
+          {
+            let allSetItem = {
+              name: setName,
+              id: oneGear.id,
+            };
+            allSets.push(allSetItem);
+          }
+        }
+
+        if(findSet)
+        {
+          needAdd = true
+          if(sets.length)
+          {
+            setIndex = 0
+            for (let oneSet of sets) {
+              setIndex++
+              if(oneSet.name == setName)
+              {
+                needAdd = false
+                break;
+              }
+            }
+          }
+
+          if(needAdd)
+          {
+            setIndex++
+            let setItem = {
+              name: setName,
+              color: gearColor[setIndex],
+            };
+            sets.push(setItem);
+          }
+        }
+
+        let gear = {
+          icon: oneGear.icon,
+          color: gearColor[setIndex],
+        };
+        gears.push(gear);
+      }
+
+      for (let oneTalent of oneInfo.talents) {
+        let icon = ''
+        icon = oneTalent.split('.png')[0].split('abilities/')[1]
+        if(icon == '???')
+        {
+          icon = 'empty'
+        }
+
+        let isExist = "不存在"
+        let imgPath = `./plugins/eso/resources/img/skills/${icon}.png`
+        if (fs.existsSync(imgPath)) {
+          isExist = "存在"
+        }
+        else
+        {
+          let url = `https://eso-hub.com/storage/icons/${icon}.png`
+          let dstpath = `./plugins/eso/resources/img/skills/${icon}.png`
+          let ret = await Bot.download(url, dstpath)
+        }
+
+        let singleTalent = {
+          icon: icon,
+          name: icon,
+        };
+        //logger.info(singleTalent)
+        talents.push(singleTalent);
+      }
+
+      let onePerson = {
+        index: index,
+        type: typeName,
+        typeColor: classColor,
+        accountName: oneInfo.accountName,
+        roleName: oneInfo.roleName,
+        sets: sets,
+        gears: gears,
+        talents: talents,
+      };
+      rankData.rtData[1].table.push(onePerson);
+    }
+
+    //logger.info(rankData.rtData[1])
+
+    rankData.rtData[1].head_title = "Build Info from www.esolog.com"
+  }
+
   async updateData (setKey, type) {
     if(type == 1) //this is name for sets
     {
@@ -2362,6 +2569,11 @@ class database {
     {
       await this.updateBuildData(setKey)
       return buildData
+    }
+    if(type == 4) //this is name for rank
+    {
+      await this.updateRankData(setKey)
+      return rankData
     }
 
     if(type == 11) //this is name for sets-english

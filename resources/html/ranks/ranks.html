@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/ranks/ranks.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+
+    {{each rtData val index}}
+    {{if index==0}}
+    {{else}}
+    <div class="head_title">{{val.head_title}}</div>
+    <div class="item ">
+      <div class="box">
+        <div class="rank-container">
+          <div class="top">
+            <div class="title">{{val.title}}</div>
+          </div>
+          {{each val.table item}}
+          <div class="cell">
+            <div class="namecard">
+              <div class="indexblock">
+                <div class="index">No.{{item.index}}</div>
+                <div class="class" style="color: {{item.typeColor}};">{{item.type}}</div>
+              </div>
+              <div class="accountName">{{item.accountName}}</div>
+              <div class="roleName">{{item.roleName}}</div>
+            </div>
+            <div class="setscard">
+              {{each item.sets item}}
+              <div class="setBlock">
+                <div class="circle" style="background-color: {{item.color}};"></div>
+                <div class="setName">{{item.name}}</div>
+              </div>
+              {{/each}}
+            </div>
+            <div class="buildcard">
+              <div class="gearsBlock">
+                {{each item.gears item}}
+                <img class="gearImg" src="{{pluResPath}}img/sets/{{item.icon}}.png" style="border: 4px solid {{item.color}};"/>
+                {{/each}}
+              </div>
+              <div class="talentsBlock">
+                {{each item.talents item index}}
+                <img class="talentImg" src="{{pluResPath}}img/skills/{{item.icon}}.png">
+                {{if index === 5}}
+                <img class="line" src="{{pluResPath}}img/icon/line.png" />
+                {{/if}}
+                {{/each}}
+              </div>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+    <div class="logo">Created By ESO-Bot</div>
+  </div>
+</body>

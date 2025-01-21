@@ -1,0 +1,70 @@
+- date: 2023-01-01
+  pic: bg1
+  des: Rank表格
+- title: "排行榜"
+  head_title: "Build Info from www.esolog.com"
+  table:
+    - index: "1"
+      type: "定职"
+      typeColor: "rgb(58, 146, 254)"
+      accountName: "@xxxxx"
+      roleName: "abcdefg"
+      sets:
+        - name: "gear_aaaa"
+          color: "rgb(163, 53, 238)"
+        - name: "gear_bbbb"
+          color: "rgb(163, 53, 238)"
+        - name: "gear_cccc"
+          color: "rgb(163, 53, 238)"
+        - name: "gear_cccc"
+          color: "rgb(163, 53, 238)"
+      gears:
+        - icon: gear_dunmer_heavy_head_d
+          color: "rgb(163, 53, 238)"
+        - icon: gear_dunmer_heavy_head_d
+          color: "rgb(163, 53, 238)"
+        - icon: gear_dunmer_heavy_head_d
+          color: "rgb(163, 53, 238)"
+        - icon: gear_dunmer_heavy_head_d
+          color: "rgb(163, 53, 238)"
+      talents:
+        - icon: ability_mageguild_002_b
+          name: "名字名字"
+        - icon: ability_mageguild_002_b
+          name: "名字名字"
+        - icon: ability_mageguild_002_b
+          name: "名字名字"
+        - icon: ability_mageguild_002_b
+          name: "名字名字"
+    - index: "2"
+      type: "定职"
+      typeColor: "rgb(58, 146, 254)"
+      accountName: "@xxxxx"
+      roleName: "abcdefg"
+      sets:
+        - name: "gear_aaaa"
+          color: "rgb(163, 53, 238)"
+        - name: "gear_bbbb"
+          color: "rgb(163, 53, 238)"
+        - name: "gear_cccc"
+          color: "rgb(163, 53, 238)"
+        - name: "gear_cccc"
+          color: "rgb(163, 53, 238)"
+      gears:
+        - icon: gear_dunmer_heavy_head_d
+          color: "rgb(163, 53, 238)"
+        - icon: gear_dunmer_heavy_head_d
+          color: "rgb(163, 53, 238)"
+        - icon: gear_dunmer_heavy_head_d
+          color: "rgb(163, 53, 238)"
+        - icon: gear_dunmer_heavy_head_d
+          color: "rgb(163, 53, 238)"
+      talents:
+        - icon: ability_mageguild_002_b
+          name: "名字名字"
+        - icon: ability_mageguild_002_b
+          name: "名字名字"
+        - icon: ability_mageguild_002_b
+          name: "名字名字"
+        - icon: ability_mageguild_002_b
+          name: "名字名字"

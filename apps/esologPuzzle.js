@@ -8,6 +8,10 @@ import md5 from 'md5'
 let buildData = {
 }
 
+//Rank结构体变量
+let rankData = {
+}
+
 //cacheData to save img
 let buildImg = {
   md5: '',
@@ -59,9 +63,15 @@ export class esologPuzzle extends plugin {
       //return await this.reply(img)
       //------------------------------------  
 
-    if(url.includes("source"))
+    if(url.includes("rankings"))
     {
-      await this.reply('正在为您查询，请稍后...(大概需要10s)', true)
+      await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
+      let msg = await this.getRankLog(url)
+      await this.reply(msg)
+    }
+    else if(url.includes("source"))
+    {
+      await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
       let msg = await this.getOneManLog(url)
       await this.reply(msg)
     }
@@ -383,6 +393,156 @@ export class esologPuzzle extends plugin {
         virtual,
       };
       return allLinks
+    } finally {
+
+    }    
+  }
+
+  async getRankLog (url) {
+    let URL = url
+
+    let BuildTable = await this.getRankData(URL)
+
+    if(BuildTable.virtual)
+    {
+      let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
+      return text
+    }
+    else
+    {
+      let RT = BuildTable.ranks
+      //logger.info('一共' + RT.length + '个目标')
+      //logger.info(RT)
+
+      /*
+      for (let oneInfo of RT) {
+        let msg = ''
+        if(oneInfo.roleName[0] == '-')
+        {
+          oneInfo.roleName = oneInfo.roleName.replace('-','')
+        }
+        oneInfo.accountName = oneInfo.accountName.split('\n')[0];
+        msg += '\n' + 'Class: ' + oneInfo.classType + '\n' + 'RoleName: ' + oneInfo.roleName + '\n' + 'AccountName: ' + oneInfo.accountName
+        let index = 0
+        for (let oneTalent of oneInfo.talents) {
+          msg += '\n' + 'Talents[' + index + ']: ' + oneTalent
+          index++;
+        }
+        index = 0;
+        for (let oneGear of oneInfo.gears) {
+          msg += '\n' + 'Gears[' + index + ']: ' + oneGear.name + '|' + oneGear.icon + '(' + oneGear.quality + ')' + '[' + oneGear.id + ']' //name, icon, quality, id
+          index++;
+        }
+        logger.info(msg)
+      }
+      */
+      //更新Build变量
+      rankData = await database.updateData(RT, 4)
+      let img = await puppeteer.screenshot('eso', rankData)
+      return img
+    }
+  }
+
+  async getRankData (url) {
+
+    // 启动浏览器
+    if (!puppeteer.browser) {
+      await puppeteer.browserInit()
+    }
+    const page = await puppeteer.browser.newPage()
+    try {
+      //logger.info('----waitForWebLoad----')
+      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+
+      // 设置超时时间为30秒
+      const selector = '#DataTables_Table_0_wrapper';
+      const timeout = 30000; // 30秒
+
+      // 等待页面加载完成，确保元素可访问
+      //logger.info('----waitForSelector----')
+      await page.waitForSelector('#DataTables_Table_0_wrapper');
+      //await page.waitForSelector(selector, { timeout: timeout });
+
+      //#DataTables_Table_0 tbody tr
+      const ranks = await page.evaluate(() => {
+        const rows = document.querySelectorAll('#DataTables_Table_0 tbody tr');
+        const data = [];
+
+        rows.forEach(row => {
+            const classImg = row.querySelector('.players-table-name img').src;
+            const classType = row.querySelector('.players-table-name img').alt;
+            const link = row.querySelector('.players-table-name a').href;
+            const roleName = row.querySelector('.players-table-name a').textContent;
+            const accountName = row.querySelector('.display-name-col').textContent
+            const scriptText = row.querySelectorAll('script')[1].textContent;
+            const talentsCellMatch = scriptText.match(/talentsCell: '([^']+)'/);
+            const talents = talentsCellMatch ? talentsCellMatch[1].match(/src="([^"]+)"/g).map(img => img.replace('src="', '').replace('"', '')) : [];
+            const gearsMatch = scriptText.match(/talentsAndGear\["row-\d+-\d+"\]\.gear\.push\(([^)]+)\)/g);
+            /*
+            const gears = gearsMatch ? gearsMatch.map(gear => {
+                const gearObj = JSON.parse(gear.replace(/gear: /g, '"gear": ').replace(/name: /g, '"name": ').replace(/icon: /g, '"icon": ').replace(/quality: /g, '"quality": ').replace(/id: /g, '"id": '));
+                return {
+                    name: gearObj.name,
+                    icon: gearObj.icon,
+                    quality: gearObj.quality,
+                    id: gearObj.id
+                };
+            }) : [];
+            */
+            const gears = gearsMatch.map(gearStr => {
+                const gearObj = {};
+
+                // 使用正则表达式匹配每个属性的值
+                const nameMatch = gearStr.match(/name: "([^"]+)"/);
+                const iconMatch = gearStr.match(/icon: "([^"]+)"/);
+                const qualityMatch = gearStr.match(/quality: "([^"]+)"/);
+                const idMatch = gearStr.match(/id: (\d+)/);
+
+                if (nameMatch) gearObj.name = nameMatch[1];
+                if (iconMatch) gearObj.icon = iconMatch[1];
+                if (qualityMatch) gearObj.quality = qualityMatch[1];
+                if (idMatch) gearObj.id = parseInt(idMatch[1], 10);
+
+                return {
+                    name: gearObj.name,
+                    icon: gearObj.icon,
+                    quality: gearObj.quality,
+                    id: gearObj.id
+                };
+            });
+
+
+            data.push({
+                classImg,
+                classType,
+                link,
+                roleName,
+                accountName,
+                //script: scriptText,
+                talents,
+                //gearsMatch,
+                gears
+            });
+        });
+
+        return data;
+      });
+
+      //logger.info(ranks)
+      let virtual = 0
+      let rankTable = {
+        virtual,
+        ranks
+      };
+
+      return rankTable
+    } catch (error) {
+      let virtual = 1
+      let rankTable = {
+        virtual,
+      };
+
+      return rankTable
     } finally {
 
     }    
