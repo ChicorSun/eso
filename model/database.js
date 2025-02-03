@@ -1153,7 +1153,7 @@ class database {
       //logger.info(name)
       name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("技能线", "").replace("技能", "").replace("英文", "").replace("英语", "")
       name = name.toLowerCase()
-      name = name.replace("工会", "公会").replace("法会", "法师公会").replace("战会", "斗士公会").replace("战士公会", "斗士公会")
+      name = name.replace("工会", "公会").replace("斗会", "斗士公会").replace("法会", "法师公会").replace("战会", "斗士公会").replace("战士公会", "斗士公会")
       name = name.replace("奶杖", "恢复法杖").replace("奶棒", "恢复法杖").replace("治疗杖", "恢复法杖").replace("剑盾", "单手武器与盾牌").replace("单手配盾", "单手武器与盾牌")
       if(mode!=3)
       {
