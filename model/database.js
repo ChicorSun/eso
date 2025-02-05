@@ -2429,7 +2429,7 @@ class database {
     return buildData
   }
 
-  async updateRankData (RT) {
+  async updateRankData (BuildTable) {
     if('done' != rankData.init)
     {
       let data = await RankTable.get(this.e, 'builds', 'rank', 'rank')
@@ -2448,6 +2448,34 @@ class database {
     let indexAllSet = 0
     let needAdd = true
     let classColor = ''
+    let RT = BuildTable.ranks
+
+    if(BuildTable.zone.zoneImage.includes("png"))
+    {
+      rankData.rtData[1].zoneIcon = BuildTable.zone.zoneImage.split('.png')[0].split('zones/')[1]
+    }
+    else
+    {
+      rankData.rtData[1].zoneIcon = "empty"
+    }
+    rankData.rtData[1].zoneName = BuildTable.zone.zoneName
+    rankData.rtData[1].zoneType = BuildTable.zone.zoneType
+
+    rankData.rtData[1].filterMetric = BuildTable.filterInfo.metric
+    rankData.rtData[1].filterBoss = BuildTable.filterInfo.boss
+    rankData.rtData[1].filterDifficulty = BuildTable.filterInfo.difficulty
+    rankData.rtData[1].filterClass = BuildTable.filterInfo.class
+
+    let findSet = false
+    let zoneImgPath = `./plugins/eso/resources/img/zones/${rankData.rtData[1].zoneIcon}.png`
+    if (!fs.existsSync(zoneImgPath)) {
+      let url = `https://assets.rpglogs.com/img/eso/zones/${rankData.rtData[1].zoneIcon}.png`
+      let dstpath = `./plugins/eso/resources/img/zones/${rankData.rtData[1].zoneIcon}.png`
+      logger.info(url)
+      let ret = await Bot.download(url, dstpath)
+    }
+    //logger.info(rankData.rtData[1])
+
     for (let oneInfo of RT) {
       index++;
       let typeName = ''

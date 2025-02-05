@@ -3,6 +3,13 @@
   des: Rank表格
 - title: "排行榜"
   head_title: "Build Info from www.esolog.com"
+  zoneIcon: zone-16
+  zoneName: "Dreadsail Reef"
+  zoneType: "Trial Zone"
+  filterMetric: "Damage"
+  filterBoss: "Lylanar and Turlassil"
+  filterDifficulty: "Veteran Hard Mode"
+  filterClass: "DPS"
   table:
     - index: "1"
       type: "定职"

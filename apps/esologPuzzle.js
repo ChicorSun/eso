@@ -411,6 +411,8 @@ export class esologPuzzle extends plugin {
     else
     {
       let RT = BuildTable.ranks
+      //logger.info(BuildTable.zone)
+      //logger.info(BuildTable.filterInfo)
       //logger.info('一共' + RT.length + '个目标')
       //logger.info(RT)
 
@@ -439,7 +441,7 @@ export class esologPuzzle extends plugin {
       
       
       //更新Build变量
-      rankData = await database.updateData(RT, 4)
+      rankData = await database.updateData(BuildTable, 4)
       let img = await puppeteer.screenshot('eso', rankData)
       return img
       //return "text"
@@ -465,6 +467,37 @@ export class esologPuzzle extends plugin {
       //logger.info('----waitForSelector----')
       await page.waitForSelector('#DataTables_Table_0_wrapper');
       //await page.waitForSelector(selector, { timeout: timeout });
+
+      const zoneImage = await page.$eval('#zone-image', img => img.src);
+      const zoneName = await page.$eval('.zone-name', a => a.textContent);
+      const zoneType = await page.$eval('#zone-type', span => span.textContent.trim());
+      let zone = {
+        zoneImage,
+        zoneName,
+        zoneType
+      };
+
+      const filterInfo = await page.evaluate(() => {
+        const filterConfig = {};
+
+        // 提取 metric
+        const metricText = document.querySelector('#filter-metric-text')?.textContent || 'N/A';
+        filterConfig.metric = metricText;
+
+        // 提取 boss
+        const bossText = document.querySelector('#filter-boss-text')?.textContent || 'N/A';
+        filterConfig.boss = bossText;
+
+        // 提取 difficulty
+        const difficultyText = document.querySelector('#filter-difficulty-text')?.textContent || 'N/A';
+        filterConfig.difficulty = difficultyText;
+
+        // 提取 class
+        const classText = document.querySelector('#filter-class-text')?.textContent || 'N/A';
+        filterConfig.class = classText;
+
+        return filterConfig;
+      });
 
       //#DataTables_Table_0 tbody tr
       const ranks = await page.evaluate(() => {
@@ -532,6 +565,8 @@ export class esologPuzzle extends plugin {
       let virtual = 0
       let rankTable = {
         virtual,
+        zone,
+        filterInfo,
         ranks
       };
 

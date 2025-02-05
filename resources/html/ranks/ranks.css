@@ -53,19 +53,117 @@ body {
 }
 
 .top {
-  height: 40px;
+  height: 80px;
   width: 100%;
   display: flex;
   align-items: center;
   padding: 5px 5px 5px 5px;
+  margin: 0px 0px 10px 0px;
+}
+
+.top .zonePic{
+  width: 80px;
+  height: 100%;
+  text-align: left;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 5px 0px 0px;
+}
+
+.top .zoneImg{
+  text-align: left;
+  width: 80px;          /* 设置图片宽度 */
+  height: 80px;         /* 设置图片高度 */
+  object-fit: cover;    /* 确保图片填充整个区域 */
+  padding: 0px 0px 0px 0px;
   margin: 0px 0px 0px 0px;
 }
 
-.top .title{
+.top .zoneStrBlock{
+  width: 970px;
+  height: 100%;
+  text-align: right;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.top .zoneStrBlock .title{
+  height: 43px;
+  width: 100%;
+  text-align: left;
+  color: #c3e0c3;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 3px 0px;
+}
+
+.top .zoneStrBlock .title .mainTitle{
+  font-size: 42px;
+  float:left;
+  text-align: left;
+  color: #c3e0c3;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.top .zoneStrBlock .title .littleTitle{
+  font-size: 28px;
+  float:left;
+  text-align: left;
+  color: #c3e0c3;
+  padding: 0px 0px 0px 0px;
+  margin: 14px 0px 0px 4px;
+}
+
+.top .des{
+  float:left;
   width: 100%;
   font-size: 20px;
-  text-align: center;
+  text-align: left;
   color: #c3e0c3;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
+}
+
+.top .des .circle {
+  width: 20px;          /* 设置宽度 */
+  height: 20px;         /* 设置高度，保持宽高相等 */
+  border-radius: 50%;    /* 设置边框半径为50%，使其成为圆形 */
+  float:left;
+  position: relative; /* 或者使用 absolute */
+  top: 2px;        /* 向上移动20像素 */
+  padding: 0px 0px 0px 0px;
+  margin: 0px 2px 0px 3px;
+}
+
+.top .des .zoneType {
+  float:left;
+  text-align: left;
+  color: #c3e0c3;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 10px 0px 0px;
+}
+
+.top .des .filterBoss {
+  float:left;
+  text-align: left;
+  color: #c3e0c3;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 10px 0px 0px;
+}
+
+.top .des .filterMetric {
+  float:left;
+  text-align: left;
+  color: #c3e0c3;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 10px 0px 0px;
+}
+
+.top .des .filterClass {
+  float:left;
+  text-align: left;
+  color: #c3e0c3;
+  padding: 0px 0px 0px 0px;
+  margin: 0px 0px 0px 0px;
 }
 
 .cell {

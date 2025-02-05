@@ -18,7 +18,25 @@
       <div class="box">
         <div class="rank-container">
           <div class="top">
-            <div class="title">{{val.title}}</div>
+            <div class="zonePic">
+              <img class="zoneImg" src="{{pluResPath}}img/zones/{{val.zoneIcon}}.png"/>
+            </div>
+            <div class="zoneStrBlock">
+              <div class="title">
+                <div class="mainTitle">{{val.zoneName}}</div>
+                <div class="littleTitle">({{val.filterDifficulty}})</div>
+              </div>
+              <div class="des">
+                <div class="circle" style="background-color: #c3e0c3;"></div>
+                <div class="zoneType">{{val.zoneType}}</div>
+                <div class="circle" style="background-color: #c3e0c3;"></div>
+                <div class="filterBoss">{{val.filterBoss}}</div>
+                <div class="circle" style="background-color: #c3e0c3;"></div>
+                <div class="filterMetric">{{val.filterMetric}}</div>
+                <div class="circle" style="background-color: #c3e0c3;"></div>
+                <div class="filterClass">{{val.filterClass}}</div>
+              </div>
+            </div>
           </div>
           {{each val.table item}}
           <div class="cell">
