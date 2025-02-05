@@ -1956,7 +1956,7 @@ class database {
     {
       msgData = newENSkillData
     }
-    if(enID[3] != '0' && (newENSkillData.passive == false && newENSkillData['1']))
+    if(enID[3] != '0' && (newENSkillData.passive == false))
     {
       skillData.atlasData[1].new_msg = await this.transColor(msgData.newEffect)
     }
@@ -1967,7 +1967,7 @@ class database {
     
     let is_repeat = true
     skillData.atlasData[1].msg = []
-    if((newENSkillData.passive == false && newENSkillData['1']) || msgData['2'] == undefined)
+    if((newENSkillData.passive == false) || msgData['2'] == undefined)
     {
       skillData.atlasData[1].msg[0] = await this.transColor(msgData.description)
     }
