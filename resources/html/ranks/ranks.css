@@ -115,7 +115,7 @@ body {
 
 .top .des{
   float:left;
-  width: 100%;
+  width: 1000px;
   font-size: 20px;
   text-align: left;
   color: #c3e0c3;
@@ -124,12 +124,12 @@ body {
 }
 
 .top .des .circle {
-  width: 20px;          /* 设置宽度 */
-  height: 20px;         /* 设置高度，保持宽高相等 */
+  width: 18px;          /* 设置宽度 */
+  height: 18px;         /* 设置高度，保持宽高相等 */
   border-radius: 50%;    /* 设置边框半径为50%，使其成为圆形 */
   float:left;
   position: relative; /* 或者使用 absolute */
-  top: 2px;        /* 向上移动20像素 */
+  top: 5px;
   padding: 0px 0px 0px 0px;
   margin: 0px 2px 0px 3px;
 }
@@ -139,7 +139,7 @@ body {
   text-align: left;
   color: #c3e0c3;
   padding: 0px 0px 0px 0px;
-  margin: 0px 10px 0px 0px;
+  margin: 0px 6px 0px 0px;
 }
 
 .top .des .filterBoss {
@@ -147,7 +147,7 @@ body {
   text-align: left;
   color: #c3e0c3;
   padding: 0px 0px 0px 0px;
-  margin: 0px 10px 0px 0px;
+  margin: 0px 6px 0px 0px;
 }
 
 .top .des .filterMetric {
@@ -155,7 +155,7 @@ body {
   text-align: left;
   color: #c3e0c3;
   padding: 0px 0px 0px 0px;
-  margin: 0px 10px 0px 0px;
+  margin: 0px 6px 0px 0px;
 }
 
 .top .des .filterClass {
