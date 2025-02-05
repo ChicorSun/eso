@@ -63,8 +63,8 @@
             {{/each}}
           </div>
           <div class="parameters_values">
-            {{each val.p_value item}}
-            <div class="onePara">{{item}}</div>
+            {{each val.p_value item index}}
+            <div class="onePara" style="color: {{val.p_name[index] == '消耗' ? val.cost_color : 'inherit'}};">{{item}}</div>
             {{/each}}
           </div>
           <img class="line" src="{{pluResPath}}img/icon/line.png" />

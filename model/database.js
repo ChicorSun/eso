@@ -543,7 +543,7 @@ class database {
             continue
           }
           var oneSkill = allSkillData[lineKey][classKey].skills[skillKey]
-          if(oneSkill.passive == false)
+          if(oneSkill.passive == false && oneSkill['1'])
           {
             baseIndex = 1
             if(allSkillData[lineKey][classKey].skills['1'].ultimate)
@@ -643,7 +643,7 @@ class database {
           }
           else
           {
-            if(oneSkill.passive == false)
+            if(oneSkill.passive == false && oneSkill['1'])
             {
               let thisIndex = skillKey - baseIndex
               if(thisIndex == 0 || thisIndex == 1)
@@ -716,7 +716,7 @@ class database {
           skillID2IndexCN[oneSkill.id]["address"] = allSkillData[lineKey][classKey].name + indexStr
           //logger.info(skillID2IndexCN[oneSkill.id]["address"])
 
-          if(oneSkill.passive == false)
+          if(oneSkill.passive == false && oneSkill['1'])
           {
             skillID2IndexCN[oneSkill[1].id] = []
             skillID2IndexCN[oneSkill[1].id][0] = lineKey
@@ -725,6 +725,20 @@ class database {
             skillID2IndexCN[oneSkill[1].id][3] = '1'
             skillID2IndexCN[oneSkill[1].id]["address"] = allSkillData[lineKey][classKey].name + indexStr
             //logger.info(skillID2IndexCN[oneSkill[1].id]["address"])
+            /*
+            if(!oneSkill[1].ultimate) {
+              if(oneSkill[1].powerTypes['1'] > -1) {
+                logger.info(oneSkill[1].name + '|type:1, cost:' + oneSkill[1].powerTypes['1'])
+              } else if(oneSkill[1].powerTypes['4'] > -1) {
+                logger.info(oneSkill[1].name + '|type:4, cost:' + oneSkill[1].powerTypes['4'])
+              } else if(oneSkill[1].powerTypes['32'] > -1) {
+                logger.info(oneSkill[1].name + '|type:32, cost:' + oneSkill[1].powerTypes['32'])
+              } else {
+                logger.info(oneSkill[1].name + '| type:')
+                logger.info(oneSkill[1].powerTypes)
+              }
+            }
+            */
 
             skillID2IndexCN[oneSkill[2].id] = []
             skillID2IndexCN[oneSkill[2].id][0] = lineKey
@@ -733,6 +747,20 @@ class database {
             skillID2IndexCN[oneSkill[2].id][3] = '2'
             skillID2IndexCN[oneSkill[2].id]["address"] = allSkillData[lineKey][classKey].name + indexStr
             //logger.info(skillID2IndexCN[oneSkill[2].id]["address"])
+            /*
+            if(!oneSkill[2].ultimate) {
+              if(oneSkill[2].powerTypes['1'] > -1) {
+                logger.info(oneSkill[2].name + '|type:1, cost:' + oneSkill[2].powerTypes['1'])
+              } else if(oneSkill[2].powerTypes['4'] > -1) {
+                logger.info(oneSkill[2].name + '|type:4, cost:' + oneSkill[2].powerTypes['4'])
+              } else if(oneSkill[2].powerTypes['32'] > -1) {
+                logger.info(oneSkill[2].name + '|type:32, cost:' + oneSkill[2].powerTypes['32'])
+              } else {
+                logger.info(oneSkill[2].name + '| type:')
+                logger.info(oneSkill[2].powerTypes)
+              }
+            }
+            */
           }
         }
       }
@@ -1240,7 +1268,7 @@ class database {
               index++
               //logger.info('              |---[' + lineKey + '_' + classKey + '_' + skillKey + '_0|' + oneSkill.id + ']' + oneSkill.name)
             }
-            if(oneSkill.passive == false)
+            if(oneSkill.passive == false && oneSkill['1'])
             {
               if(oneSkill[1].id == name)
               {
@@ -1272,7 +1300,7 @@ class database {
             {
               cnName = skillsDataCN[cnID[0]][cnID[1]].skills[cnID[2]][cnID[3]].name
             }
-            if(oneSkill.passive == false)
+            if(oneSkill.passive == false && oneSkill['1'])
             {
               cnWayOneID = skillID2IndexCN[oneSkill[1].id]
               if(cnWayOneID[3] == '0')
@@ -1296,7 +1324,7 @@ class database {
             }
 
             /*
-            if(oneSkill.passive == false)
+            if(oneSkill.passive == false && oneSkill['1'])
             {
               baseIndex = 1
               if(skillsDataCN[cnWayTwoID[0]][cnWayTwoID[1]].skills['1'].ultimate)
@@ -1399,7 +1427,7 @@ class database {
               }
             }
             */
-            if(oneSkill.passive == false)
+            if(oneSkill.passive == false && oneSkill['1'])
             {
               if(notAbbrSkill && (oneSkill[1].name.toLowerCase().includes(name) || cnWayOneName.includes(name) || skillsData[lineKey][classKey].name.toLowerCase().includes(name) || skillsDataCN[cnWayOneID[0]][cnWayOneID[1]].name.toLowerCase().includes(name) || cnWayOneID["address"].includes(name)))
               {
@@ -1531,7 +1559,7 @@ class database {
               index++
               //logger.info('              |---[' + lineKey + '_' + classKey + '_' + skillKey + '_0|' + oneSkill.id + ']' + oneSkill.name)
             }
-            if(oneSkill.passive == false)
+            if(oneSkill.passive == false && oneSkill['1'])
             {
               if(oneSkill[1].name.toLowerCase() == name)
               {
@@ -1558,7 +1586,7 @@ class database {
               index++
               //logger.info('              |---[' + lineKey + '_' + classKey + '_' + skillKey + '_0|' + oneSkill.id + ']' + oneSkill.name)
             }
-            if(oneSkill.passive == false)
+            if(oneSkill.passive == false && oneSkill['1'])
             {
               if(oneSkill[1].icon.split('icons/')[1].split('.')[0] == name)
               {
@@ -1928,7 +1956,7 @@ class database {
     {
       msgData = newENSkillData
     }
-    if(enID[3] != '0' && (newENSkillData.passive == false))
+    if(enID[3] != '0' && (newENSkillData.passive == false && newENSkillData['1']))
     {
       skillData.atlasData[1].new_msg = await this.transColor(msgData.newEffect)
     }
@@ -1939,7 +1967,7 @@ class database {
     
     let is_repeat = true
     skillData.atlasData[1].msg = []
-    if(newENSkillData.passive == false || msgData['2'] == undefined)
+    if((newENSkillData.passive == false && newENSkillData['1']) || msgData['2'] == undefined)
     {
       skillData.atlasData[1].msg[0] = await this.transColor(msgData.description)
     }
@@ -1979,13 +2007,34 @@ class database {
     let index = 0
     /*---------------------------------------------------------------*/
     skillData.atlasData[1].p_name[index] = '消耗'
+    skillData.atlasData[1].cost_color = "rgb(204, 204, 204)"
     if(newCNSkillData.ultimate)
     {
       skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 终极点'
+      skillData.atlasData[1].cost_color = "rgb(240, 240, 240)"
     }
     else
     {
-      skillData.atlasData[1].p_value[index] = newCNSkillData.cost
+      if(newCNSkillData.powerTypes)
+      {
+        //logger.info(newCNSkillData.powerTypes)
+        if(newCNSkillData.powerTypes['1'] > -1) {
+          skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 魔力'
+          skillData.atlasData[1].cost_color = "rgb(58, 146, 254)"
+        } else if(newCNSkillData.powerTypes['4'] > -1) {
+          skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 耐力'
+          skillData.atlasData[1].cost_color = "rgb(47, 213, 14)"
+        } else if(newCNSkillData.powerTypes['32'] > -1) {
+          skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 生命'
+          skillData.atlasData[1].cost_color = "rgb(227, 36, 33)"
+        } else {
+          skillData.atlasData[1].p_value[index] = newCNSkillData.cost
+        }
+      }
+      else
+      {
+        skillData.atlasData[1].p_value[index] = newCNSkillData.cost
+      }
     }
     index++
     /*---------------------------------------------------------------*/
