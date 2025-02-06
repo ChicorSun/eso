@@ -17,7 +17,7 @@ export class help extends plugin {
       priority: 500,
       rule: [
         {
-          reg: '^#*(ESO|eso)?(命令|帮助|菜单|help|说明|功能|指令|使用说明|)$',
+          reg: '^#*(ESO|eso)?(命令|帮助|菜单|help|说明|功能|指令|使用说明)$',
           fnc: 'help'
         }
       ]
