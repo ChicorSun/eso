@@ -1,32 +1,64 @@
 - pic: 帮助
   cmd: 帮助
   des: 常用指令及功能查询
-- group: ESO常用指令
+- group: 服务器指令
   group_class: data_box_split1
   list:
     - icon: ..\icon\eso
       title: "#服务器状态"
       desc: "查询当前服务器状态"
       item_class: item_split2
+    - icon: ..\icon\eso
+      title: "#服务器公告"
+      desc: "查询服务器维护计划"
+- group: 无畏者指令
+  group_class: data_box_split1
+  list:
     - icon: ..\icon\dungeon
-      title: "#闯世 #无畏 #无畏者日常"
-      desc: "提供闯世者日常信息"
+      title: "#无畏"
+      desc: "提供无畏日常信息"
       item_class: item_split2
     - icon: ..\icon\dungeon
-      title: "#今日闯世 #今日无畏"
-      desc: "提供今日闯世者日常详细信息"
+      title: "#今日无畏"
+      desc: "提供今日刷新后的无畏套装"
       item_class: item_split2
     - icon: ..\icon\dungeon
-      title: "#明日闯世 #明日无畏"
-      desc: "提供明日闯世者日常详细信息"
+      title: "#昨日无畏"
+      desc: "提供今日刷新前的无畏套装"
       item_class: item_split2
-    - icon: ..\icon\alchemy
-      title: "#大力丸配方 #三回药配方"
-      desc: "提供大力丸或三回药的配方"
+    - icon: ..\icon\dungeon
+      title: "#明日无畏"
+      desc: "提供明日刷新后的无畏套装"
       item_class: item_split2
+- group: 图鉴查询
+  group_class: data_box_split1
+  list:
     - icon: u34_mythic_oakensoul_ring
-      title: "#装备名 #图鉴"
+      title: "#图鉴"
+      desc: "查询套装图鉴帮助(#不可省略)"
+      item_class: item_split2
+    - icon: antiquities_u40_mythic_emblemofthelastking
+      title: "#装备名"
       desc: "查询套装的图鉴(#不可省略)"
+      item_class: item_split2
+    - icon: ../skills/ability_darkbrotherhood_passive_001
+      title: "*图鉴"
+      desc: "查询技能图鉴帮助(*不可省略)"
+      item_class: item_split2
+    - icon: ../skills/ability_dragonknight_020
+      title: "*技能名"
+      desc: "查询技能的图鉴(*不可省略)"
+      item_class: item_split2
+- group: ESOLOG解析
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\esolog
+      title: "排行榜网址"
+      desc: "发送esolog排行榜网址，生成图表"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "个人BD网址"
+      desc: "发送esolog个人装备技能网址"
       item_class: item_split2
 - group: 其他指令及功能
   group_class: data_box_split1
@@ -46,4 +78,12 @@
     - icon: ..\turnplate\base
       title: "禁言转盘"
       desc: "给你提供随机时长的禁言套餐"
+      item_class: item_split2
+    - icon: ..\icon\water
+      title: "#发言榜(日榜|月榜)"
+      desc: "群友水群次数排行榜"
+      item_class: item_split2
+    - icon: ..\icon\update
+      title: "#更新eso"
+      desc: "更新ESO-BOT"
       item_class: item_split2
