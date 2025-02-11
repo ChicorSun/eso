@@ -137,7 +137,19 @@ export class esologPuzzle extends plugin {
     return allLinks
   }
 
-  async getOneManLog (url) {
+  async getOneManLog (src_url) {
+    let url = src_url
+    if(url.includes("translate"))
+    {
+      if(url.includes("translate=false"))
+      {
+        url.replace("translate=false", "translate=true")
+      }
+    }
+    else
+    {
+      url = url + "&translate=true"
+    }
     let summaryURL = url
     let buffsURL = url
     let urlType = ''
