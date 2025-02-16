@@ -12,7 +12,7 @@ Yunzai系列Bot插件,本插件基于TRSS-Yunzai作为开发环境,其他框架�
 
 | 名称 | 作者 | GitHub | Gitee | 备注  |
 |------| ---- | ------ | ----- | ----- |
-| TRSS-Yunzai | [@时雨🌌星空](../../../../TimeRainStarSky) | [☞GitHub](https://github.com/TimeRainStarSky/Yunzai) | [☞Gitee](https://gitee.com/TimeRainStarSky/Yunzai) | Yunzai 应用端，支持多账号，支持协议端：go-cqhttp、ComWeChat、GSUIDCore、ICQQ、QQBot、QQ频道、微信、KOOK、Telegram、Discord、OPQBot |
+| TRSS-Yunzai | [@时雨🌌星空](https://gitee.com/TimeRainStarSky) | [☞GitHub](https://github.com/TimeRainStarSky/Yunzai) | [☞Gitee](https://gitee.com/TimeRainStarSky/Yunzai) | Yunzai 应用端，支持多账号，支持协议端：go-cqhttp、ComWeChat、GSUIDCore、ICQQ、QQBot、QQ频道、微信、KOOK、Telegram、Discord、OPQBot |
 | 插件集合索引库 | [@渔火Arcadia](https://gitee.com/yhArcadia) | [☞GitHub](https://github.com/yhArcadia/Yunzai-Bot-plugins-index) | [☞Gitee](https://gitee.com/yhArcadia/Yunzai-Bot-plugins-index) | 云崽相关内容索引库 |
 
 ## 安装插件
@@ -90,5 +90,5 @@ pnpm install --filter=eso
 ## 鸣谢
 
 - [ESOLOG](https://www.esologs.com/)
-- [TRSS-Yunzai](../../TimeRainStarSky/Yunzai)
+- [TRSS-Yunzai](https://gitee.com/TimeRainStarSky/Yunzai)
 - [Yunzai-Bot](https://gitee.com/Le-niao/Yunzai-Bot)
