@@ -21,7 +21,9 @@ Yunzai系列Bot插件,本插件基于TRSS-Yunzai作为开发环境,其他框架�
 
 #### 使用GitHub安装
 
-考虑到github访问困难，不便于更新维护，目前暂时停止更新
+```bash
+git clone --depth=1 https://github.com/ChicorSun/eso.git ./plugins/eso/
+```
 
 #### 使用Gitee安装
 
