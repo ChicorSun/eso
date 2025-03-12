@@ -2367,28 +2367,28 @@ class database {
             {
               if(enID[1]>=1 && enID[1]<=3)
               {
+                classIcon = "ON-icon-class-Warden"
+                classStr = "守望者"
+              }
+              else if(enID[1]>=4 && enID[1]<=6)
+              {
                 classIcon = "ON-icon-class-Templar"
                 classStr = "圣骑士"
               }
-              else if(enID[1]>=4 && enID[1]<=6)
+              else if(enID[1]>=7 && enID[1]<=9)
               {
                 classIcon = "ON-icon-class-Dragonknight"
                 classStr = "龙骑士"
               }
-              else if(enID[1]>=7 && enID[1]<=9)
+              else if(enID[1]>=10 && enID[1]<=12)
               {
                 classIcon = "ON-icon-class-Nightblade"
                 classStr = "夜刃"
               }
-              else if(enID[1]>=10 && enID[1]<=12)
+              else if(enID[1]>=13 && enID[1]<=15)
               {
                 classIcon = "ON-icon-class-Sorcerer"
                 classStr = "巫师"
-              }
-              else if(enID[1]>=13 && enID[1]<=15)
-              {
-                classIcon = "ON-icon-class-Warden"
-                classStr = "守望者"
               }
               else if(enID[1]>=16 && enID[1]<=18)
               {
