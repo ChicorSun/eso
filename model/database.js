@@ -1168,6 +1168,7 @@ class database {
     let enFindByMsg = true
     let enFindByType = false
     */
+    let enSkipVengeance = true
     let notAbbrSkill = true
     let index = 0
     let isThisOne = false    
@@ -1215,6 +1216,10 @@ class database {
       {
         notAbbrSkill = false
       }
+      if(name.includes('复仇') || name.includes('vengeance'))
+      {
+        enSkipVengeance = false
+      }
       if('done' != addrSkill[0].init)
       {
         let data = await Skills.get(this.e, 'skills', 'abbrSkill', 'abbrSkill')
@@ -1250,7 +1255,11 @@ class database {
         {
           continue
         }
-        //s('       |---' + allSkillData[lineKey][classKey].name)
+        //logger.info('       |---' + allSkillData[lineKey][classKey].name)
+        if(enSkipVengeance && (allSkillData[lineKey][classKey].name.includes("Vengeance") || allSkillData[lineKey][classKey].name.includes("复仇")))
+        {
+          continue
+        }
         var keysSkill = Object.keys(allSkillData[lineKey][classKey].skills)
         var numSkill = keysSkill.length
         for (let skillKey of keysSkill) {
@@ -1921,9 +1930,16 @@ class database {
     skillData.atlasData[1].new_cn_name = newCNSkillData.name
     skillData.atlasData[1].new_en_name = '<' + newENSkillData.name + '>'
 
-
     skillData.atlasData[1].type_cn = skillsDataCN[cnID[0]].name
-    skillData.atlasData[1].type_en = skillsData[enID[0]].name
+    
+    if(cnID['address'].includes("复仇"))
+    {
+      skillData.atlasData[1].type_en = "限时白板PVP区域专用技能"
+    }
+    else
+    {
+      skillData.atlasData[1].type_en = skillsData[enID[0]].name
+    }
 
     skillData.atlasData[1].place_cn = cnID['address']
     skillData.atlasData[1].place_en = skillsData[enID[0]][enID[1]].name
