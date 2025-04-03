@@ -45,6 +45,10 @@ export class atlas extends plugin {
     })
   }
 
+  async skipBipu (e) {
+    await this.reply(`*哔噗！*`)
+  }
+
   async showSetTips (e) {
     await this.reply(`查看装备图鉴请使用\n`
                       +`#装备名+图鉴 的格式，如: \n`
@@ -76,6 +80,10 @@ export class atlas extends plugin {
         return 0
     }
 
+    if((name == "*哔噗！*"))
+    {
+      return this.skipBipu(e)
+    }
     if((name == "#图鉴") || (name == "#套装") || (name == "*套装"))
     {
       return this.showSetTips(e)
@@ -114,7 +122,7 @@ export class atlas extends plugin {
     //logger.info('objSets:' + objSets)
     if((objSets[0] < 0) || (setNum <= 0))
     {
-      return await this.reply(`抱歉,无法理解您指的是什么`)
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以*开头才能查询技能`)
     }
 
     if((setNum >= 5 && setNum <= 20) || noMaxLimit)
@@ -210,7 +218,7 @@ export class atlas extends plugin {
 
     if((objSkills[0] < 0) || (skillNum <= 0))
     {
-      return await this.reply(`抱歉,无法理解您指的是什么`)
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头才能查询装备`)
     }
 
     if(name.includes("英文") || name.includes("英语"))
