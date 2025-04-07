@@ -109,7 +109,7 @@ export class atlas extends plugin {
     let showEnglish = false
     let objSets = await database.name2index(name,1)
     let setNum = objSets.length
-    if((name == "#神器") || (name == "#神器图鉴"))
+    if((name == "#神器") || (name == "#神器图鉴") || (name == "#怪物") || (name == "#怪物套") || (name == "#怪物图鉴") || (name == "#怪物套图鉴") || (name == "#爬塔") || (name == "#爬塔套") || (name == "#爬塔套图鉴"))
     {
       noMaxLimit = true
     }

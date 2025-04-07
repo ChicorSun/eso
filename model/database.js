@@ -1006,6 +1006,11 @@ class database {
       enFindByType = true
       keyType = 12
     }
+    if((name == "#怪物") || (name == "#怪物套") || (name == "#怪物图鉴") || (name == "#怪物套图鉴"))
+    {
+      enFindByType = true
+      keyType = 8
+    }
     name = name.replace("图鉴", "").replace("#", "").replace("套装", "").replace("套", "").replace("完美", "").replace("普通", "").replace("ESOLOG", "").replace("ITEMID", "").replace("英文", "").replace("英语", "")
     name = name.toLowerCase()
     if(name.length<4 && /^[A-Za-z]+$/.test(name))
@@ -1064,9 +1069,19 @@ class database {
         }
         if(enFindByType)
         {
-          if(setsData[setKey].type == keyType)
+          if(keyType == 8)
           {
-            isThisOne = true
+            if((setsData[setKey].type == 8) || (setsData[setKey].type == 13) ||(setsData[setKey].type == 14))
+            {
+              isThisOne = true
+            }
+          }
+          else
+          {
+            if(setsData[setKey].type == keyType)
+            {
+              isThisOne = true
+            }
           }
         }
       }
