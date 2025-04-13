@@ -79,7 +79,7 @@ export class serverStatus extends plugin {
   async sendStatus (e) {
   	//判断是否需要更新服务器状态变量并执行
     let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD'+'_'+'HH'+':'+'mm').replace(/是0/g, "是").replace(/点0/g, "点")
-    //if(now != status.time)
+    if(now != status.time)
     {
     	await this.updateESOStatus()
     	status.time = now
