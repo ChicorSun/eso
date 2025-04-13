@@ -2,7 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import fetch from 'node-fetch'
 import moment from 'moment'
-import ServerStatus from '../model/ServerStatus.js'
+import ServerStatus from '../model/serverstatus.js'
 import md5 from 'md5'
 
 //serverStatus结构体变量
