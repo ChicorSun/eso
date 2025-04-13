@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/servers/servers.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+
+    {{each serverData val index}}
+    {{if index==0}}
+    <style> .container { background: url("{{pluResPath}}img/background/{{val.pic}}.png") #fff; background-repeat: no-repeat; background-size: 100% 100%; }</style>
+    {{else}}
+    <div class="item ">
+      <div class="box">        
+        <div class="server-container">
+          <div class="top">
+            <div class="title">{{val.title}}</div>
+          </div>
+          <div class="notes">
+            {{each val.msg item}}
+            <div class="msg">{{item}}</div>
+            {{/each}}
+          </div>
+          {{each val.servers item}}
+          <div class="bar">
+            <div class="bar-string">
+              <span class="bar-name">{{item.name}}</span>
+            </div>
+            <div class="bar-value">
+              <span class="bar-status"  style="color: {{item.color}};">{{item.status}}</span>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+    <div class="logo">Created By ESO-Bot</div>
+  </div>
+</body>

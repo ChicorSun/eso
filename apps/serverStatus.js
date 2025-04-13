@@ -1,31 +1,55 @@
+import fs from 'fs'
 import plugin from '../../../lib/plugins/plugin.js'
+import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import fetch from 'node-fetch'
 import moment from 'moment'
+import ServerStatus from '../model/ServerStatus.js'
+import md5 from 'md5'
 
-//服务器公告
-let notes = {
-  time: '2023-01-01_00:00',
-  msg: 'Not all Systems Operational',
+//serverStatus结构体变量
+let serverData = {
 }
 
-let lastNotes = {
-  time: '2023-01-01_00:00',
-  msg: 'Not all Systems Operational',
+//cacheData to save img
+let serverImg = {
+  md5: '',
+  img: ''
 }
+
+//服务器列表
+let serverList= [
+  ['pcNA','PC 美服'],
+  ['pcEU','PC 欧服'],
+  ['pcPTS','PC 测试服'],
+  ['xbNA','XBOX 美服'],
+  ['xbEU','XBOX 欧服'],
+  ['psNA','PS 美服'],
+  ['psEU','PS 欧服']
+]
 
 //服务器状态
 let status = {
   time: '2023-01-01_00:00',
+  msg: 'Not all Systems Operational',
   pcNA: 1,
   pcEU: 1,
-  pts: 1,
+  pcPTS: 1,
+  xbNA: 1,
+  xbEU: 1,
+  psNA: 1,
+  psEU: 1,
 }
 
 let lastStatus = {
   time: '2023-01-01_00:00',
+  msg: 'Not all Systems Operational',
   pcNA: 1,
   pcEU: 1,
-  pts: 1,
+  pcPTS: 1,
+  xbNA: 1,
+  xbEU: 1,
+  psNA: 1,
+  psEU: 1,
 }
 
 export class serverStatus extends plugin {
@@ -41,35 +65,12 @@ export class serverStatus extends plugin {
       rule: [
         {
           /** 命令正则匹配 */
-          reg: '^#*(服务器公告)$',
-          /** 执行方法 */
-          fnc: 'sendNotes'
-        },
-        {
-          /** 命令正则匹配 */
-          reg: '^#*(服务器状态)$',
+          reg: '^#*(服务器公告|服务器状态)$',
           /** 执行方法 */
           fnc: 'sendStatus'
         }
       ]
     })
-  }
-
-  /**
-   * #服务器公告
-   * @提供服务器公告查询
-   */
-  async sendNotes (e) {
-    /*
-    let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD'+'_'+'HH'+':'+'mm').replace(/是0/g, "是").replace(/点0/g, "点")
-    if(now != notes.time)
-    {
-      notes.time = now
-      lastNotes = notes
-    }
-    */
-    await this.reply('正在为您查询，请稍后...')
-    await this.updateESONotes(e)
   }
 
   /**
@@ -79,7 +80,7 @@ export class serverStatus extends plugin {
   async sendStatus (e) {
   	//判断是否需要更新服务器状态变量并执行
     let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD'+'_'+'HH'+':'+'mm').replace(/是0/g, "是").replace(/点0/g, "点")
-    if(now != status.time)
+    //if(now != status.time)
     {
     	await this.updateESOStatus()
     	status.time = now
@@ -87,57 +88,60 @@ export class serverStatus extends plugin {
     	lastStatus.time = status.time
       if(status.pcNA != 1){lastStatus.pcNA = 0}else{lastStatus.pcNA = 1}
       if(status.pcEU != 1){lastStatus.pcEU = 0}else{lastStatus.pcEU = 1}
-      if(status.pts != 1){lastStatus.pts = 0}else{lastStatus.pts = 1}
+      if(status.pcPTS != 1){lastStatus.pcPTS = 0}else{lastStatus.pcPTS = 1}
+      if(status.xbNA != 1){lastStatus.xbNA = 0}else{lastStatus.xbNA = 1}
+      if(status.xbEU != 1){lastStatus.xbEU = 0}else{lastStatus.xbEU = 1}
+      if(status.psNA != 1){lastStatus.psNA = 0}else{lastStatus.psNA = 1}
+      if(status.psEU != 1){lastStatus.psEU = 0}else{lastStatus.psEU = 1}
+      lastStatus.msg = []
+      lastStatus.msg += status.msg
     }
 
-    let index = status.pcNA + 2*status.pcEU + 4*status.pts
-    let imgPath = `./plugins/eso/resources/img/status/status_${index}.jpg`
-
-    /** 最后回复消息 */
-    await this.e.reply(segment.image(`file://${imgPath}`))
-  }
-
-
-  /**
-   * @更新服务器公告
-   */
-  async updateESONotes (e) {
-    /** 服务器公告接口地址 */
-    let url = 'https://esoserverstatus.net/'
-    /** 调用接口获取数据 */
-    let res = await fetch(url)
-
-    /** 判断接口是否请求成功 */
-    if (!res) {
-      logger.error('[服务器状态] 接口请求失败')
-      return await this.reply('由于网络波动，更新服务器公告失败，请稍后重试')
+	if('done' != serverData.init)
+    {
+    	let ssData = await ServerStatus.get(this.e, 'eso', 'serverStatus', 'serverStatus')
+        if (!ssData)
+        {
+        	logger.error('[ESO:服务器状态] 初始化结构体失败')
+            return
+        }
+        serverData = ssData
     }
 
-    logger.info('[服务器公告] 更新服务器公告')
-    let notesData = await res.text()
-    let tempData = notesData.split('id="alert-box"')[1]
-    tempData = tempData.split('align="center"')[0]
-    tempData = tempData.split('status-text">')[1]
-    tempData = tempData.split('</div>')[0]
-
-    let msg = []
-    var msgIndex = 0
-    let srcMsgs = tempData.split('<br/>')
+    serverData.serverData[1].msg = []
+    let tmpMsg = status.msg
+    let msgIndex = 0
+    let srcMsgs = tmpMsg.split('\n').filter(line => line.trim() !== '').map(line => line.replace(/\t/g, ''));
     for (let oneMsg of srcMsgs) {
-      msg = msg + oneMsg
+      serverData.serverData[1].msg[msgIndex] = oneMsg
       msgIndex = msgIndex + 1
     }
-
-    tempData = msg
-    msg = []
-    msgIndex = 0
-    srcMsgs = tempData.split('<br />')
-    for (let oneMsg of srcMsgs) {
-      msg = msg + oneMsg
-      msgIndex = msgIndex + 1
+    logger.info(serverData.serverData[1].msg)
+    serverData.serverData[1].servers = []
+    for (let server of serverList) {
+    	let oneServer = {
+    		name: `PC-NA`,
+    		status: `Online`,
+    		color: `rgb(58, 146, 254)`
+    	};
+    	oneServer.name = server[1]
+    	if(status[server[0]] == 0)
+    	{
+    		oneServer.status = `Offline`
+    		oneServer.color = `rgb(254, 0, 0)`
+    	}
+    	else
+    	{
+    		oneServer.status = `Online`
+    		oneServer.color = `rgb(19, 217, 98)`
+    	}
+        serverData.serverData[1].servers.push(oneServer);
     }
 
-    await this.reply(msg, true)
+    //logger.info(serverData.serverData[0])
+    //logger.info(serverData.serverData[1])
+	let img = await this.cache(serverData, serverImg)
+    await this.e.reply(img)
   }
 
   /**
@@ -155,10 +159,34 @@ export class serverStatus extends plugin {
       return await this.reply('由于网络波动，更新服务器状态失败，请稍后重试')
     }
 
-    logger.info('[服务器状态] 更新服务器状态')
-    /** 接口结果，分别解析出美服、欧服、测试服状态 */
-    let statusData = await res.text()
-    let tempData = statusData.split('PC-NA')[1]
+    //logger.info('[服务器公告] 更新服务器公告')
+    let notesData = await res.text()
+    let tempData = notesData.split('id="alert-box"')[1]
+    tempData = tempData.split('align="center"')[0]
+    tempData = tempData.split('status-text">')[1]
+    tempData = tempData.split('</div>')[0]
+
+    let msg = []
+    var msgIndex = 0
+    let srcMsgs = tempData.split('<br/>')
+    for (let oneMsg of srcMsgs) {
+      msg = msg + oneMsg
+      msgIndex = msgIndex + 1
+    }
+
+    tempData = msg
+    status.msg = []
+    msgIndex = 0
+    srcMsgs = tempData.split('<br />')
+    for (let oneMsg of srcMsgs) {
+      status.msg = status.msg + oneMsg
+      msgIndex = msgIndex + 1
+    }
+
+    //logger.info('[服务器状态] 更新服务器状态')
+    /** 接口结果，分别解析出每个服务器的状态 */
+    let statusData = notesData
+    tempData = statusData.split('PC-NA')[1]
     tempData = tempData.split('PC-PTS')[0]
     tempData = tempData.split('<b>')[1]
     tempData = tempData.split('</b>')[0]
@@ -174,7 +202,30 @@ export class serverStatus extends plugin {
     tempData = tempData.split('XBOX-EU')[0]
     tempData = tempData.split('<b>')[1]
     tempData = tempData.split('</b>')[0]
-    if(tempData == "Offline"){status.pts = 0}else{status.pts = 1}
+    if(tempData == "Offline"){status.pcPTS = 0}else{status.pcPTS = 1}
+
+    tempData = statusData.split('XBOX-EU')[1]
+    tempData = tempData.split('XBOX-NA')[0]
+    tempData = tempData.split('<b>')[1]
+    tempData = tempData.split('</b>')[0]
+    if(tempData == "Offline"){status.xbEU = 0}else{status.xbEU = 1}
+
+    tempData = statusData.split('XBOX-NA')[1]
+    tempData = tempData.split('PS4-EU')[0]
+    tempData = tempData.split('<b>')[1]
+    tempData = tempData.split('</b>')[0]
+    if(tempData == "Offline"){status.xbNA = 0}else{status.xbNA = 1}
+
+    tempData = statusData.split('PS4-EU')[1]
+    tempData = tempData.split('PS4-NA')[0]
+    tempData = tempData.split('<b>')[1]
+    tempData = tempData.split('</b>')[0]
+    if(tempData == "Offline"){status.psEU = 0}else{status.psEU = 1}
+
+    tempData = statusData.split('PS4-NA')[1]
+	tempData = tempData.split('<b>')[1]
+    tempData = tempData.split('</b>')[0]
+    if(tempData == "Offline"){status.psNA = 0}else{status.psNA = 1}
   }
 
 
@@ -186,8 +237,16 @@ export class serverStatus extends plugin {
         //logger.info(lastStatus.time)
   	if(lastStatus.time != '2023-01-01_00:00')
   	{
-        //logger.info('lastStatus.pcNA ：'+lastStatus.pcNA+'|status.pcNA :'+status.pcNA)
-        //logger.info('lastStatus.pcEU ：'+lastStatus.pcEU+'|status.pcEU :'+status.pcEU)
+  		/*
+        logger.info('lastStatus.pcEU ：'+lastStatus.pcEU+'|status.pcEU :'+status.pcEU)
+        logger.info('lastStatus.pcNA ：'+lastStatus.pcNA+'|status.pcNA :'+status.pcNA)
+        logger.info('lastStatus.pcPTS ：'+lastStatus.pcPTS+'|status.pcPTS :'+status.pcPTS)
+        logger.info('lastStatus.xbEU ：'+lastStatus.xbEU+'|status.xbEU :'+status.xbEU)
+        logger.info('lastStatus.xbNA ：'+lastStatus.xbNA+'|status.xbNA :'+status.xbNA)
+        logger.info('lastStatus.psEU ：'+lastStatus.psEU+'|status.psEU :'+status.psEU)
+        logger.info('lastStatus.psNA ：'+lastStatus.psNA+'|status.psNA :'+status.psNA)
+        logger.info('status.msg ：'+status.msg)
+        */
   		if((lastStatus.pcNA == 1) && (status.pcNA == 0))//美服进入维护
   		{
         logger.info('美服维护了！')
@@ -213,5 +272,15 @@ export class serverStatus extends plugin {
   			await this.e.reply(message, false, { recallMsg: -1 })
   		}
   	}
+  }
+  async cache (data) {
+    let tmp = md5(JSON.stringify(data))
+    if (serverImg.md5 == tmp) return serverImg.img
+
+    //serverImg.img = 0
+    serverImg.img = await puppeteer.screenshot('serverStatus', data) /*html file saved in folder data/html/eso/ */
+    serverImg.md5 = tmp
+
+    return serverImg.img
   }
 }

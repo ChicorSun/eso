@@ -1,0 +1,29 @@
+- date: 2023-01-01
+  pic: bg1
+  title: 服务器状态
+  des: 查询服务器状态
+- title: "服务器状态"
+  msg:
+    - "Not all Systems Operational"
+  servers:
+    - name: "PC 美服"
+      status: "online"
+      color: "rgb(58, 146, 254)"
+    - name: "PC 欧服"
+      status: "online"
+      color: "rgb(58, 146, 254)"
+    - name: "PC 测试服"
+      status: "online"
+      color: "rgb(58, 146, 254)"
+    - name: "XBOX 美服"
+      status: "online"
+      color: "rgb(58, 146, 254)"
+    - name: "XBOX 欧服"
+      status: "online"
+      color: "rgb(58, 146, 254)"
+    - name: "PS 美服"
+      status: "online"
+      color: "rgb(58, 146, 254)"
+    - name: "PS 欧服"
+      status: "online"
+      color: "rgb(58, 146, 254)"
