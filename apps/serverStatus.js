@@ -1,4 +1,3 @@
-import fs from 'fs'
 import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import fetch from 'node-fetch'
@@ -116,7 +115,7 @@ export class serverStatus extends plugin {
       serverData.serverData[1].msg[msgIndex] = oneMsg
       msgIndex = msgIndex + 1
     }
-    logger.info(serverData.serverData[1].msg)
+    //logger.info(serverData.serverData[1].msg)
     serverData.serverData[1].servers = []
     for (let server of serverList) {
     	let oneServer = {
