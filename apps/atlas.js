@@ -46,7 +46,8 @@ export class atlas extends plugin {
   }
 
   async skipBipu (e) {
-    await this.reply(`*哔噗！*`)
+    //await this.reply(`*哔噗！*`)
+    return 0
   }
 
   async showSetTips (e) {
