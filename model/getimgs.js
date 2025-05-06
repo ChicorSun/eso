@@ -15,7 +15,7 @@ class getimgs {
       if (fs.existsSync(customImg)) {
         //logger.info(customImg + ` is exist.`)
       } else {
-        logger.info(customImg + ` is not exist, now download it.`)
+        //logger.info(customImg + ` is not exist, now download it.`)
         let url = ``
         if(type == `zones`)
         {
