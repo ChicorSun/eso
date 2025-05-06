@@ -164,19 +164,8 @@ export class goldenVendor extends plugin {
     let icon = gearData.split("icons/")[1]
     icon = icon.split('.png')[0]
     //logger.info(icon)
-    let isExist = "不存在"
-    let imgPath = `./plugins/eso/resources/img/sets/${icon}.png`
-    if (fs.existsSync(imgPath)) {
-      isExist = "存在"
-      //logger.info("["+setData.atlasData[1].item_class+" " + setData.atlasData[1].type +  "]<" + setData.atlasData[1].weight + ">" + setData.atlasData[1].name+setData.atlasData[1].name_en+" | " + setData.atlasData[1].icon + " | " + isExist)
-    }
-    else
-    {
-      let url = `https://eso-hub.com/storage/icons/${icon}.png`
-      let dstpath = `./plugins/eso/resources/img/sets/${icon}.png`
-      let ret = await Bot.download(url, dstpath)
-      //logger.info("["+setData.atlasData[1].item_class+" " + setData.atlasData[1].type +  "]<" + setData.atlasData[1].weight + ">" + setData.atlasData[1].name+setData.atlasData[1].name_en+" | " + setData.atlasData[1].icon + " | " + isExist)
-    }
+    let imgPath = await getimgs.realpath(icon, "sets")
+    icon = `../../../../../` + imgPath
 
     let title = ''
     let desc = ''

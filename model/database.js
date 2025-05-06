@@ -4,6 +4,7 @@ import Skills from './skills.js'
 import Builds from './builds.js'
 import RankTable from './rank.js'
 import fetch from 'node-fetch'
+import getimgs from './getimgs.js'
 import fs from 'node:fs'
 
 const require = createRequire(import.meta.url);
@@ -1851,21 +1852,8 @@ class database {
       place_en: "<Wayrest Sewers>"
       msg:
     */
-
-    let isExist = "不存在"
-    let imgPath = `./plugins/eso/resources/img/sets/${setData.atlasData[1].icon}.png`
-    if (fs.existsSync(imgPath)) {
-      isExist = "存在"
-      //logger.info("["+setData.atlasData[1].item_class+" " + setData.atlasData[1].type +  "]<" + setData.atlasData[1].weight + ">" + setData.atlasData[1].name+setData.atlasData[1].name_en+" | " + setData.atlasData[1].icon + " | " + isExist)
-    }
-    else
-    {
-      let url = `https://eso-hub.com/storage/icons/${setData.atlasData[1].icon}.png`
-      let dstpath = `./plugins/eso/resources/img/sets/${setData.atlasData[1].icon}.png`
-      let ret = await Bot.download(url, dstpath)
-      //logger.info("["+setData.atlasData[1].item_class+" " + setData.atlasData[1].type +  "]<" + setData.atlasData[1].weight + ">" + setData.atlasData[1].name+setData.atlasData[1].name_en+" | " + setData.atlasData[1].icon + " | " + isExist)
-    }
-    //logger.info("["+setData.atlasData[1].item_class+" " + setData.atlasData[1].type +  "]<" + setData.atlasData[1].weight + ">" + setData.atlasData[1].name+setData.atlasData[1].name_en+" | " + setData.atlasData[1].place + "<"+setData.atlasData[1].place_en+"> | " + setData.atlasData[1].icon)
+    let imgPath = await getimgs.realpath(setData.atlasData[1].icon, "sets")
+    setData.atlasData[1].icon = `../../../../../` + imgPath
   }
 
   async updateSkillData (objects, showEnglish) {
@@ -1916,28 +1904,12 @@ class database {
     
     skillData.atlasData[1].src_icon = srcENSkillData.icon.split('.')[0].split('icons/')[1]
     skillData.atlasData[1].new_icon = newENSkillData.icon.split('.')[0].split('icons/')[1]
-    let isExist = "不存在"
-    let imgPath = `./plugins/eso/resources/img/skills/${skillData.atlasData[1].src_icon}.png`
-    if (fs.existsSync(imgPath)) {
-      isExist = "存在"
-    }
-    else
-    {
-      let url = `https://eso-hub.com/storage/icons/${skillData.atlasData[1].src_icon}.png`
-      let dstpath = `./plugins/eso/resources/img/skills/${skillData.atlasData[1].src_icon}.png`
-      let ret = await Bot.download(url, dstpath)
-    }
 
-    imgPath = `./plugins/eso/resources/img/skills/${skillData.atlasData[1].new_icon}.png`
-    if (fs.existsSync(imgPath)) {
-      isExist = "存在"
-    }
-    else
-    {
-      let url = `https://eso-hub.com/storage/icons/${skillData.atlasData[1].new_icon}.png`
-      let dstpath = `./plugins/eso/resources/img/skills/${skillData.atlasData[1].new_icon}.png`
-      let ret = await Bot.download(url, dstpath)
-    }
+    let imgPath = await getimgs.realpath(skillData.atlasData[1].src_icon, "skills")
+    skillData.atlasData[1].src_icon = `../../../../../` + imgPath
+
+    imgPath = await getimgs.realpath(skillData.atlasData[1].new_icon, "skills")
+    skillData.atlasData[1].new_icon = `../../../../../` + imgPath
 
     skillData.atlasData[1].src_cn_name = srcCNSkillData.name
     skillData.atlasData[1].src_en_name = '<' + srcENSkillData.name + '>'
@@ -2293,17 +2265,9 @@ class database {
         buildData.buildsData[1].gear[index].enchant = await this.enchant2str(GI.enchant['text'], set_type)
         buildData.buildsData[1].gear[index].enchantColor = GI.enchant['color']
       }
-      let isExist = "不存在"
-      let imgPath = `./plugins/eso/resources/img/sets/${buildData.buildsData[1].gear[index].icon}.png`
-      if (fs.existsSync(imgPath)) {
-        isExist = "存在"
-      }
-      else
-      {
-        let url = `https://eso-hub.com/storage/icons/${buildData.buildsData[1].gear[index].icon}.png`
-        let dstpath = `./plugins/eso/resources/img/sets/${buildData.buildsData[1].gear[index].icon}.png`
-        let ret = await Bot.download(url, dstpath)
-      }
+
+      let imgPath = await getimgs.realpath(buildData.buildsData[1].gear[index].icon, "sets")
+      buildData.buildsData[1].gear[index].icon = `../../../../../` + imgPath
     }
 
     var talentIndex = 0
@@ -2437,17 +2401,8 @@ class database {
           buildData.buildsData[1].spell[i].bar[talentIndex].color = oneTalent['color']
           buildData.buildsData[1].spell[i].bar[talentIndex].name = oneTalent['text']
           buildData.buildsData[1].spell[i].bar[talentIndex].address = '变种技能'
-          let isExist = "不存在"
-          let imgPath = `./plugins/eso/resources/img/skills/${buildData.buildsData[1].spell[i].bar[talentIndex].icon}.png`
-          if (fs.existsSync(imgPath)) {
-            isExist = "存在"
-          }
-          else
-          {
-            let url = `https://eso-hub.com/storage/icons/${buildData.buildsData[1].spell[i].bar[talentIndex].icon}.png`
-            let dstpath = `./plugins/eso/resources/img/skills/${buildData.buildsData[1].spell[i].bar[talentIndex].icon}.png`
-            let ret = await Bot.download(url, dstpath)
-          }
+          let imgPath = await getimgs.realpath(buildData.buildsData[1].spell[i].bar[talentIndex].icon, "skills")
+          buildData.buildsData[1].spell[i].bar[talentIndex].icon = `../../../../../` + imgPath
         }
       }
       talentIndex++
@@ -2497,14 +2452,8 @@ class database {
     rankData.rtData[1].filterDifficulty = BuildTable.filterInfo.difficulty
     rankData.rtData[1].filterClass = BuildTable.filterInfo.class
 
-    let findSet = false
-    let zoneImgPath = `./plugins/eso/resources/img/zones/${rankData.rtData[1].zoneIcon}.png`
-    if (!fs.existsSync(zoneImgPath)) {
-      let url = `https://assets.rpglogs.com/img/eso/zones/${rankData.rtData[1].zoneIcon}.png`
-      let dstpath = `./plugins/eso/resources/img/zones/${rankData.rtData[1].zoneIcon}.png`
-      logger.info(url)
-      let ret = await Bot.download(url, dstpath)
-    }
+    let imgPath = await getimgs.realpath(rankData.rtData[1].zoneIcon, "zones")
+    rankData.rtData[1].zoneIcon = `../../../../../` + imgPath
     //logger.info(rankData.rtData[1])
 
     for (let oneInfo of RT) {
@@ -2530,13 +2479,9 @@ class database {
         let setIndex = 0
         let setName = ''
         let findSet = false
-        let imgPath = `./plugins/eso/resources/img/sets/${oneGear.icon}.png`
-        if (!fs.existsSync(imgPath)) {
-          let url = `https://eso-hub.com/storage/icons/${oneGear.icon}.png`
-          let dstpath = `./plugins/eso/resources/img/sets/${oneGear.icon}.png`
-          logger.info(url)
-          let ret = await Bot.download(url, dstpath)
-        }
+        let imgPath = await getimgs.realpath(oneGear.icon, "sets")
+        oneGear.icon = `../../../../../` + imgPath
+
 
         let itemID = 'ITEMID'+oneGear.id
         //logger.info(itemID)
@@ -2624,18 +2569,8 @@ class database {
         {
           icon = 'empty'
         }
-
-        let isExist = "不存在"
-        let imgPath = `./plugins/eso/resources/img/skills/${icon}.png`
-        if (fs.existsSync(imgPath)) {
-          isExist = "存在"
-        }
-        else
-        {
-          let url = `https://eso-hub.com/storage/icons/${icon}.png`
-          let dstpath = `./plugins/eso/resources/img/skills/${icon}.png`
-          let ret = await Bot.download(url, dstpath)
-        }
+        let imgPath = await getimgs.realpath(icon, "skills")
+        icon = `../../../../../` + imgPath
 
         let singleTalent = {
           icon: icon,

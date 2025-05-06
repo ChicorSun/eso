@@ -2,6 +2,7 @@ import fs from 'fs'
 import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import Speech from '../model/speech.js'
+import getimgs from '../model/getimgs.js'
 import md5 from 'md5'
 
 //发言榜榜单上限人数
@@ -90,17 +91,9 @@ export class speechStatic extends plugin {
                 index: '',
                 name: `name`
             };
-            onePerson.id = item.user_id
-            let imgPath = `./plugins/eso/resources/img/avatar/${item.user_id}.png`
-            if (fs.existsSync(imgPath))
-            {
-            }
-            else
-            {
-                let url = `https://q1.qlogo.cn/g?b=qq&nk=${item.user_id}&s=160`
-                let dstpath = `./plugins/eso/resources/img/avatar/${item.user_id}.png`
-                let ret = await Bot.download(url, dstpath)
-            }
+
+            let imgPath = await getimgs.realpath(item.user_id, "avatar")
+            onePerson.id = `../../../../../` + imgPath
 
             if(paiming == 0)
             {
