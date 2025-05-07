@@ -8,6 +8,13 @@ import md5 from 'md5'
 let buildData = {
 }
 
+//Group结构体数组
+let groupData = {
+  reportsID: '',
+  fightIndex: 0,
+  memberData: [],
+}
+
 //Rank结构体变量
 let rankData = {
 }
@@ -54,6 +61,10 @@ export class esologPuzzle extends plugin {
     }
 
     let url = 'https://www.esologs.com' + urlTemp[1]
+    let reportsID = ''
+    let fightIndex = 1
+    let sourceIndex = 1
+
 
     //开始查询并返回Build结构体
       
@@ -62,6 +73,54 @@ export class esologPuzzle extends plugin {
       //let img = await this.cache(buildData, buildImg)
       //return await this.reply(img)
       //------------------------------------  
+
+    if(!url.includes("rankings"))
+    {
+      let reportTemp = url.split('reports/')
+      if(reportTemp[1]) {
+        if(url.includes("?")) {
+          let reportTempID = reportTemp[1].split('?')
+          reportsID = reportTempID[0]
+        } else {
+          reportsID = reportTemp[1]
+        }
+      } else {
+        reportsID = ''
+      }
+
+      if(url.includes("fight=")) {
+        let urlTemp2 = url.split('fight=')
+        if(urlTemp2[1]) {
+          let urlKeyText = urlTemp2[1].split('&')
+          if(urlKeyText[0]) {
+            fightIndex = urlKeyText[0]
+          }
+        } else {
+          fightIndex = 0
+        }
+      } else {
+        fightIndex = 0
+      }
+
+      if(url.includes("source="))
+      {
+        let urlTemp3 = url.split('source=')
+        if(urlTemp3[1]) {
+          let urlKeyText = urlTemp3[1].split('&')
+          if(urlKeyText[0]) {
+            sourceIndex = urlKeyText[0]
+          }
+        } else {
+          sourceIndex = 0
+        }
+      } else {
+        sourceIndex = 0
+      }
+
+      logger.info('reportsID:' + reportsID)
+      logger.info('fightIndex:' + fightIndex)
+      logger.info('sourceIndex:' + sourceIndex)
+    }
 
     if(url.includes("rankings"))
     {
@@ -72,6 +131,10 @@ export class esologPuzzle extends plugin {
     else if(url.includes("source"))
     {
       await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
+      if((groupData.reportsID != reportsID) || (groupData.fightIndex != fightIndex))
+      {
+        await this.getGroupLog(reportsID, fightIndex)
+      }
       let msg = await this.getOneManLog(url)
       await this.reply(msg)
     }
@@ -93,6 +156,10 @@ export class esologPuzzle extends plugin {
         let thisMsgSenderQQ = 1456181660;
         let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
         let fakeMsg = [];
+        if((groupData.reportsID != reportsID) || (groupData.fightIndex != fightIndex))
+        {
+          await this.getGroupLog(reportsID, fightIndex)
+        }
         for (let oneMan of urls.links) {
           //logger.info(oneMan)
           let myMss = '已解析' + index + '人/' + maxNum + '人'
@@ -137,6 +204,202 @@ export class esologPuzzle extends plugin {
     return allLinks
   }
 
+  async getGroupLog (reportsID, fightIndex) {
+    let tfbURL = `https://tfb.gg/log-insights?url=https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}`
+
+    //logger.info('reportsID:' + reportsID)
+    //logger.info('fightIndex:' + fightIndex)
+    logger.info('tfbURL:' + tfbURL)
+
+    let GD = await this.getTfbLog(tfbURL)
+    if(GD.virtual)
+    {
+      logger.info('获取grouplog失败')
+      let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
+      return text
+    }
+    else
+    {
+      
+      groupData.reportsID = reportsID
+      groupData.fightIndex = fightIndex
+      groupData.memberData = []
+      for (let singleData of GD.data) {
+        let url = singleData.href
+        let sourceIndex = 0
+
+        if(url.includes("source="))
+        {
+          let urlTemp3 = url.split('source=')
+          if(urlTemp3[1])
+          {
+            let urlKeyText = urlTemp3[1].split('&')
+            if(urlKeyText[0])
+            {
+              sourceIndex = urlKeyText[0]
+            }
+          }
+          else
+          {
+            sourceIndex = 0
+          }
+        }
+        else
+        {
+          sourceIndex = 0
+        }
+
+
+        /*--------------------分析span内的文本---------------------*/
+        let accountName = ''
+        let playerName = ''
+        let lNum = 0
+        let mNum = 0
+        let hNum = 0
+        let gearSets = []
+        let race = ''
+        let stone = ''
+        let food = ''
+        let potion = ''
+        let extra_potion = ''
+
+        let setsNum = singleData.preContent.length
+        let spanIndex = 0
+        let have_stone = 0
+        let have_food = 0
+        let stoneIndex = 0
+
+        for (let spanInfo of singleData.spans) {
+          if(spanIndex == 0){accountName = spanInfo}
+          else if(spanIndex == 1){playerName = spanInfo}
+          else if(spanIndex == 2){lNum = spanInfo}
+          else if(spanIndex == 4){mNum = spanInfo}
+          else if(spanIndex == 6){hNum = spanInfo}
+          else if(spanIndex > 6 && spanIndex < 7+setsNum){
+            gearSets.push(spanInfo);
+          }
+          else if(spanIndex == 7+setsNum){race = spanInfo}
+          else if(spanIndex == 8+setsNum){
+            if((spanInfo[0] == 'T') && (spanInfo[1] == 'h') && (spanInfo[2] == 'e'))
+            {
+              stoneIndex = spanIndex
+              have_stone = 1
+              stone = spanInfo
+            } else {
+              food = spanInfo
+            }
+          }
+          else if(spanIndex == 9+setsNum){
+            if(have_stone)
+            {
+              food = spanInfo
+            } else {
+              potion = spanInfo
+            }
+          }
+          else if(spanIndex == 10+setsNum){
+            if(have_stone)
+            {
+              potion = spanInfo
+            }
+            else
+            {
+              extra_potion = spanInfo
+            }
+          }
+          else if(spanIndex == 11+setsNum){extra_potion = spanInfo}
+          spanIndex++
+        }
+        if(food == '☹️')
+        {
+          food = potion
+          potion = extra_potion
+          have_food = 0
+        } else {
+          have_food = 1
+        }
+        /*--------------------------------------------------------*/
+
+
+        /*--------------------分析imgs内的文本---------------------*/
+        let className = ''
+        let roleName = ''
+        let talentPics = []
+        let food_icon = ''
+        let potion_icon = ''
+        let talentNum = 0
+        let imgIndex = 0
+        let after_skills = 0
+        for (let imgData of singleData.images) {
+          //logger.info(imgData)
+          if(imgIndex == 0){
+            className = imgData.alt.split(' ')[0]
+            roleName = imgData.alt.split(' ')[1]
+          }
+          else if(imgIndex > 0){
+            if(!after_skills)
+            {
+              if(imgData.src.includes("abilities"))
+              {
+                talentPics.push(imgData.src);
+                talentNum++
+              }
+              else
+              {
+                after_skills = 1
+              }
+            }
+            else
+            {
+              if(have_food && (imgIndex == talentNum+3))
+              {
+                food_icon = imgData.src
+              }
+              if(have_food && (imgIndex == talentNum+4))
+              {
+                potion_icon = imgData.src
+              }
+              if(!have_food && (imgIndex == talentNum+3))
+              {
+                potion_icon = imgData.src
+              }
+            }
+          }
+          imgIndex++
+        }
+        
+        let oneMember = {
+          sourceIndex: sourceIndex,
+          accountName: accountName,
+          playerName: playerName,
+          className: className,
+          roleName: roleName,
+          gearSets: gearSets,
+          setsNum: singleData.preContent,
+          talentPics: talentPics,
+          lNum: lNum,
+          mNum: mNum,
+          hNum: hNum,
+          race: race,
+          stone: stone,
+          food: food,
+          food_icon: food_icon,
+          potion: potion,
+          potion_icon: potion_icon,
+        };
+        groupData.memberData.push(oneMember);
+      }
+      /*
+      groupData = {
+        reportsID: '',
+        fightIndex: 0,
+        memberData: [],
+      }
+      */
+      //logger.info(groupData.memberData)
+    }
+  }
+
   async getOneManLog (src_url) {
     let url = src_url
     if(url.includes("translate"))
@@ -152,8 +415,78 @@ export class esologPuzzle extends plugin {
     }
     let summaryURL = url
     let buffsURL = url
+    let tfbURL = url
     let urlType = ''
     let urlTemp = url.split('type=')
+
+    let reportTemp = url.split('reports/')
+    let reportsID = ''
+
+    let fightIndex = 1
+
+    let sourceIndex = 1
+
+    if(reportTemp[1])
+    {
+      if(url.includes("?"))
+      {
+        let reportTempID = reportTemp[1].split('?')
+        reportsID = reportTempID[0]
+      }
+      else
+      {
+        reportsID = reportTemp[1]
+      }
+    }
+    else
+    {
+      reportsID = ''
+    }
+
+    if(url.includes("fight="))
+    {
+      let urlTemp2 = url.split('fight=')
+      if(urlTemp2[1])
+      {
+        let urlKeyText = urlTemp2[1].split('&')
+        if(urlKeyText[0])
+        {
+          fightIndex = urlKeyText[0]
+        }
+      }
+      else
+      {
+        fightIndex = 0
+      }
+    }
+    else
+    {
+      fightIndex = 0
+    }
+
+    if(url.includes("source="))
+    {
+      let urlTemp3 = url.split('source=')
+      if(urlTemp3[1])
+      {
+        let urlKeyText = urlTemp3[1].split('&')
+        if(urlKeyText[0])
+        {
+          sourceIndex = urlKeyText[0]
+        }
+      }
+      else
+      {
+        sourceIndex = 0
+      }
+    }
+    else
+    {
+      sourceIndex = 0
+    }
+
+
+    //https://tfb.gg/log-insights?url=https://www.esologs.com/reports/DW7JaCGqYn4pzcFm?fight=6
 
     if(urlTemp[1])
     {
@@ -166,12 +499,18 @@ export class esologPuzzle extends plugin {
         buffsURL = url.replace(urlType, "auras")
       }
     }
+
+    tfbURL = `https://tfb.gg/log-insights?url=https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}`
+
     //logger.info('url:' + url)
     //logger.info('summaryURL:' + summaryURL)
     //logger.info('buffsURL:' + buffsURL)
+    //logger.info('reportsID:' + reportsID)
+    //logger.info('fightIndex:' + fightIndex)
+    //logger.info('sourceIndex:' + sourceIndex)
+    //logger.info('tfbURL:' + tfbURL)
 
     let BD = await this.getSummaryLog(summaryURL)
-
     if(BD.virtual)
     {
       let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
@@ -184,6 +523,85 @@ export class esologPuzzle extends plugin {
         BD.accountName= ''
       }
       //logger.info('playerName:' + BD.playerName + ', accountName:' + BD.accountName)
+      if((groupData.reportsID == reportsID) && (groupData.fightIndex == fightIndex))
+      {
+        /*
+      let bd = {
+        virtual,
+        playerName,
+        accountName,
+        className,
+        roleName,
+        actorTable,
+        links,
+        gearData,
+        talentData,
+        gearSets,
+        setsNum,
+        talentPics,
+        lNum,
+        mNum,
+        hNum,
+        race,
+        stone,
+        food,
+        food_icon,
+        potion,
+        potion_icon,
+      };
+
+        let oneMember = {
+          sourceIndex: sourceIndex,
+          accountName: accountName,
+          playerName: playerName,
+          className: className,
+          roleName: roleName,
+          gearSets: gearSets,
+          setsNum: singleData.preContent,
+          talentPics: talentPics,
+          lNum: lNum,
+          mNum: mNum,
+          hNum: hNum,
+          race: race,
+          stone: stone,
+          food: food,
+          food_icon: food_icon,
+          potion: potion,
+          potion_icon: potion_icon,
+        };
+        groupData.memberData.push(oneMember);
+         */
+        let index = 0
+        let find_it = 0
+        for (let imgData of groupData.memberData) {
+          if(groupData.memberData[index].sourceIndex == sourceIndex)
+          {
+            find_it = 1
+            break
+          }
+          index++
+        }
+        if(find_it)
+        {
+          BD.accountName = groupData.memberData[index].accountName
+          BD.playerName = groupData.memberData[index].playerName
+          BD.className = groupData.memberData[index].className
+          BD.roleName = groupData.memberData[index].roleName
+          BD.gearSets = groupData.memberData[index].gearSets
+          BD.setsNum = groupData.memberData[index].setsNum
+          BD.talentPics = groupData.memberData[index].talentPics
+          BD.lNum = groupData.memberData[index].lNum
+          BD.mNum = groupData.memberData[index].mNum
+          BD.hNum = groupData.memberData[index].hNum
+          BD.race = groupData.memberData[index].race
+          BD.stone = groupData.memberData[index].stone
+          BD.food = groupData.memberData[index].food
+          BD.food_icon = groupData.memberData[index].food_icon
+          BD.potion = groupData.memberData[index].potion
+          BD.potion_icon = groupData.memberData[index].potion_icon
+        }
+      }
+      //logger.info(BD)
 
       //更新Build变量
       buildData = await database.updateData(BD, 3)
@@ -191,6 +609,75 @@ export class esologPuzzle extends plugin {
       let img = await puppeteer.screenshot('eso', buildData)
       return img
     }
+  }
+
+  async getTfbLog (url) {
+
+    // 启动浏览器
+    if (!puppeteer.browser) {
+      await puppeteer.browserInit()
+    }
+    const page = await puppeteer.browser.newPage()
+    try {
+      //logger.info('----waitForWebLoad----')
+      page.goto(url, { waitUntil: 'networkidle2', timeout: 120000 });
+
+      // 设置超时时间为30秒
+      const selector = '#summary-gear-0_wrapper';
+      const timeout = 30000; // 30秒
+
+      // 等待页面加载完成，确保元素可访问
+      //logger.info('----waitForSelector----')
+      await page.waitForSelector('.grid.sm\\:grid-cols-2.gap-4.items-start', { timeout: 30000 });
+
+      // 确保页面包含“Detected Issues”且不包含“Retrieving Player Data”
+      await page.waitForFunction(
+        () => {
+          const issues = document.querySelector('.grid.sm\\:grid-cols-2.gap-4.items-start').textContent.includes('Detected Issues');
+          const retrieving = document.querySelector('.grid.sm\\:grid-cols-2.gap-4.items-start').textContent.includes('Retrieving Player Data');
+          return issues && !retrieving;
+        },
+        { timeout: 30000 }
+      );
+
+      const data = await page.evaluate(() => {
+        const links = document.querySelectorAll('.grid.sm\\:grid-cols-2.gap-4.items-start a');
+        const result = [];
+
+        links.forEach(link => {
+          const images = link.querySelectorAll('img');
+          const spans = link.querySelectorAll('span');
+          const preContent = link.querySelectorAll('pre') ? link.querySelectorAll('pre'): '';
+          const item = {
+            href: link.href,
+            images: Array.from(images).map(img => ({
+              src: img.src,
+              alt: img.alt
+            })),
+            spans: Array.from(spans).map(span => span.textContent.trim()),
+            preContent: Array.from(preContent).map(pre => pre.textContent.trim()),
+          };
+          result.push(item);
+        });
+
+        return result;
+      });
+
+      let virtual = 0
+      let gd = {
+        virtual,
+        data,
+      };
+      return gd
+    } catch (error) {
+      let virtual = 1
+      let gd = {
+        virtual
+      };
+      return gd
+    } finally {
+
+    }    
   }
 
   async getSummaryLog (url) {
@@ -325,22 +812,51 @@ export class esologPuzzle extends plugin {
         }
       }
 
+      let className = ''
+      let roleName = ''
+      let lNum = 0
+      let mNum = 0
+      let hNum = 0
+      let gearSets = []
+      let setsNum = []
+      let talentPics = []
+      let race = ''
+      let stone = ''
+      let food = ''
+      let food_icon = ''
+      let potion = ''
+      let potion_icon = ''
+
       let virtual = 0
       let bd = {
         virtual,
         playerName,
         accountName,
+        className,
+        roleName,
         actorTable,
         links,
         gearData,
-        talentData
+        talentData,
+        gearSets,
+        setsNum,
+        talentPics,
+        lNum,
+        mNum,
+        hNum,
+        race,
+        stone,
+        food,
+        food_icon,
+        potion,
+        potion_icon,
       };
       //logger.info(bd.playerName)
       //logger.info(bd.actorTable)
       //logger.info(bd.links)
       //logger.info(bd.accountName)
       //logger.info(bd.gearData)
-      //logger.info(bd.talentData) 
+      //logger.info(bd.talentData)
 
 
       return bd
