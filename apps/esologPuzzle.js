@@ -4,6 +4,9 @@ import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
 import md5 from 'md5'
 
+//完整开关
+let support_extra_mode = 0
+
 //Build结构体变量
 let buildData = {
 }
@@ -41,6 +44,14 @@ export class esologPuzzle extends plugin {
           reg: '^.*esologs.com.*$',
           /** 执行方法 */
           fnc: 'logPuzzle'
+        },
+        {
+          reg: '^#*(完整分析开|完整分析开启|开启完整分析|开完整分析|完整解析开|完整解析开启|开启完整解析|开完整解析)$',
+          fnc: 'completePuzzle_enable'
+        },
+        {
+          reg: '^#*(完整分析关|完整分析关闭|关闭完整分析|关完整分析|完整解析关|完整解析关闭|关闭完整解析|关完整解析)$',
+          fnc: 'completePuzzle_disable'
         }
       ]
     })
@@ -52,7 +63,18 @@ export class esologPuzzle extends plugin {
    */
   async logPuzzle (e) {
     //解析url
+    let tmpComPuzzleEnable = 0
     let urlText = this.e.message[0].text
+    if(urlText.includes("完整") || support_extra_mode)
+    {
+      tmpComPuzzleEnable = 1
+    }
+    else
+    {
+      tmpComPuzzleEnable = 0
+    }
+    urlText = urlText.replace("完整分析", "").replace("完整解析", "").replace("完整", "")
+
     let urlTemp = urlText.split('esologs.com')
     if(urlTemp.length < 2)
     {
@@ -131,7 +153,7 @@ export class esologPuzzle extends plugin {
     else if(url.includes("source"))
     {
       await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
-      if((groupData.reportsID != reportsID) || (groupData.fightIndex != fightIndex))
+      if(tmpComPuzzleEnable && ((groupData.reportsID != reportsID) || (groupData.fightIndex != fightIndex)))
       {
         await this.getGroupLog(reportsID, fightIndex)
       }
@@ -156,7 +178,7 @@ export class esologPuzzle extends plugin {
         let thisMsgSenderQQ = 1456181660;
         let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
         let fakeMsg = [];
-        if((groupData.reportsID != reportsID) || (groupData.fightIndex != fightIndex))
+        if(tmpComPuzzleEnable && ((groupData.reportsID != reportsID) || (groupData.fightIndex != fightIndex)))
         {
           await this.getGroupLog(reportsID, fightIndex)
         }
@@ -1120,5 +1142,24 @@ export class esologPuzzle extends plugin {
     cachedata.md5 = tmp
 
     return cachedata.img
+  }
+
+  async completePuzzle_enable(e) {
+    if(support_extra_mode == 1) return e.reply('本就开着啊', true)
+    let userinfo = await Bot.pickMember(e.group_id, e.user_id).getSimpleInfo()
+    userinfo.is_owner = await Bot.pickMember(e.group_id, e.user_id).is_owner
+    userinfo.is_admin = await Bot.pickMember(e.group_id, e.user_id).is_admin
+    if (!userinfo.is_owner && !userinfo.is_admin) return e.reply('请联系管理员才能开启完整分析', true)
+    support_extra_mode = 1
+    await this.e.reply('完整分析ESOLOG功能已开启')
+  }
+  async completePuzzle_disable(e) {
+    if(support_extra_mode == 0) return e.reply('本就关着啊', true)
+    let userinfo = await Bot.pickMember(e.group_id, e.user_id).getSimpleInfo()
+    userinfo.is_owner = await Bot.pickMember(e.group_id, e.user_id).is_owner
+    userinfo.is_admin = await Bot.pickMember(e.group_id, e.user_id).is_admin
+    if (!userinfo.is_owner && !userinfo.is_admin) return e.reply('请联系管理员才能关闭完整分析', true)
+    support_extra_mode = 0
+    await this.e.reply('完整分析ESOLOG功能已关闭')
   }
 }
