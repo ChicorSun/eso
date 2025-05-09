@@ -4,18 +4,11 @@ import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
 import md5 from 'md5'
 
-//完整开关
-let support_extra_mode = 0
+//快速模式开关
+let fast_mode = 0
 
 //Build结构体变量
 let buildData = {
-}
-
-//Group结构体数组
-let groupData = {
-  reportsID: '',
-  fightIndex: 0,
-  memberData: [],
 }
 
 //Rank结构体变量
@@ -46,12 +39,12 @@ export class esologPuzzle extends plugin {
           fnc: 'logPuzzle'
         },
         {
-          reg: '^#*(完整分析开|完整分析开启|开启完整分析|开完整分析|完整解析开|完整解析开启|开启完整解析|开完整解析)$',
-          fnc: 'completePuzzle_enable'
+          reg: '^#*(快速分析开|快速分析开启|开启快速分析|开快速分析|快速解析开|快速解析开启|开启快速解析|开快速解析)$',
+          fnc: 'fastPuzzle_enable'
         },
         {
-          reg: '^#*(完整分析关|完整分析关闭|关闭完整分析|关完整分析|完整解析关|完整解析关闭|关闭完整解析|关完整解析)$',
-          fnc: 'completePuzzle_disable'
+          reg: '^#*(快速分析关|快速分析关闭|关闭快速分析|关快速分析|快速解析关|快速解析关闭|关闭快速解析|关快速解析)$',
+          fnc: 'fastPuzzle_disable'
         }
       ]
     })
@@ -65,84 +58,25 @@ export class esologPuzzle extends plugin {
     //解析url
     let tmpComPuzzleEnable = 0
     let urlText = this.e.message[0].text
-    if(urlText.includes("完整") || support_extra_mode)
-    {
+    if(urlText.includes("完整") || !fast_mode) {
       tmpComPuzzleEnable = 1
-    }
-    else
-    {
+    } else {
       tmpComPuzzleEnable = 0
     }
-    urlText = urlText.replace("完整分析", "").replace("完整解析", "").replace("完整", "")
+    if(urlText.includes("快速") || fast_mode) {
+      tmpComPuzzleEnable = 0
+    } else {
+      tmpComPuzzleEnable = 1
+    }
+    urlText = urlText.replace("完整分析", "").replace("快速分析", "").replace("完整解析", "").replace("快速解析", "").replace("完整", "").replace("快速", "")
 
     let urlTemp = urlText.split('esologs.com')
     if(urlTemp.length < 2)
     {
-      return await this.reply(`抱歉，不支持解析该目标\n`
-                      +`请发送esologs相关的地址`)
+      return await this.reply(`我可以帮忙分析log，你只需将页面网址发群里就行`)
     }
 
     let url = 'https://www.esologs.com' + urlTemp[1]
-    let reportsID = ''
-    let fightIndex = 1
-    let sourceIndex = 1
-
-
-    //开始查询并返回Build结构体
-      
-      //------------------------------------    
-      //buildData = await database.updateData("", 3)
-      //let img = await this.cache(buildData, buildImg)
-      //return await this.reply(img)
-      //------------------------------------  
-
-    if(!url.includes("rankings"))
-    {
-      let reportTemp = url.split('reports/')
-      if(reportTemp[1]) {
-        if(url.includes("?")) {
-          let reportTempID = reportTemp[1].split('?')
-          reportsID = reportTempID[0]
-        } else {
-          reportsID = reportTemp[1]
-        }
-      } else {
-        reportsID = ''
-      }
-
-      if(url.includes("fight=")) {
-        let urlTemp2 = url.split('fight=')
-        if(urlTemp2[1]) {
-          let urlKeyText = urlTemp2[1].split('&')
-          if(urlKeyText[0]) {
-            fightIndex = urlKeyText[0]
-          }
-        } else {
-          fightIndex = 0
-        }
-      } else {
-        fightIndex = 0
-      }
-
-      if(url.includes("source="))
-      {
-        let urlTemp3 = url.split('source=')
-        if(urlTemp3[1]) {
-          let urlKeyText = urlTemp3[1].split('&')
-          if(urlKeyText[0]) {
-            sourceIndex = urlKeyText[0]
-          }
-        } else {
-          sourceIndex = 0
-        }
-      } else {
-        sourceIndex = 0
-      }
-
-      logger.info('reportsID:' + reportsID)
-      logger.info('fightIndex:' + fightIndex)
-      logger.info('sourceIndex:' + sourceIndex)
-    }
 
     if(url.includes("rankings"))
     {
@@ -150,57 +84,84 @@ export class esologPuzzle extends plugin {
       let msg = await this.getRankLog(url)
       await this.reply(msg)
     }
-    else if(url.includes("source"))
-    {
-      await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
-      if(tmpComPuzzleEnable && ((groupData.reportsID != reportsID) || (groupData.fightIndex != fightIndex)))
-      {
-        await this.getGroupLog(reportsID, fightIndex)
-      }
-      let msg = await this.getOneManLog(url)
-      await this.reply(msg)
-    }
     else
     {
-      await this.reply('正在为您查询，请稍后...(可能需要120s)', true)
-      let urls = await this.getAllLinks(url)
-      //logger.info(urls)
+      let reportsID = ''
+      let fightIndex = 1
+      let sourceIndex = 1
 
-      if(urls.virtual || urls.links.length == 0)
+      reportsID = await this.splitStr(url, 'reports/', '?')
+
+      fightIndex = await this.splitStr(url, 'fight=', '&')
+
+      sourceIndex = await this.splitStr(url, 'source=', '&')
+
+      logger.info('reportsID:' + reportsID)
+      logger.info('fightIndex:' + fightIndex)
+      logger.info('sourceIndex:' + sourceIndex)
+
+      if(reportsID == '')
       {
-        let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
-        await this.reply(text)
+        return await this.reply('请发送详细页面的地址', true)
       }
-      else
+      else if(fightIndex == '')
       {
-        let index = 0
-        let maxNum = urls.links.length
-        let thisMsgSenderQQ = 1456181660;
-        let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
-        let fakeMsg = [];
-        if(tmpComPuzzleEnable && ((groupData.reportsID != reportsID) || (groupData.fightIndex != fightIndex)))
+        return await this.reply('请发送详细的某次战斗的地址', true)
+      }
+      else if(sourceIndex == '')
+      {
+        //查询团队信息
+        await this.reply('正在为您查询...', true)
+        let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&type=summary&translate=true`
+        let urls = await this.getAllLinks(summaryURL)
+        logger.info(summaryURL)
+        logger.info(urls)
+
+        if(urls.virtual || urls.links.length == 0)
         {
-          await this.getGroupLog(reportsID, fightIndex)
+          let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
+          await this.reply(text)
         }
-        for (let oneMan of urls.links) {
-          //logger.info(oneMan)
-          let myMss = '已解析' + index + '人/' + maxNum + '人'
-
-          let message = [
-          { type: 'at', qq: this.e.user_id},
-          { type: 'text', text: myMss }
-          ]
-          if(index==1 || index==6 || index==11)
+        else
+        {
+          if(tmpComPuzzleEnable)
           {
-            await this.reply(message, false, { recallMsg: -1 })
-          }
-          index++
+            let index = 0
+            let maxNum = urls.links.length
+            let thisMsgSenderQQ = 1456181660;
+            let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
+            let fakeMsg = [];
+            let sourceIndex = ''
+            await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true)
+            for (let oneMan of urls.links) {
+              sourceIndex = await this.splitStr(oneMan, 'source=', '&')
+              //logger.info(oneMan)
+              let myMss = '已解析' + index + '人/' + maxNum + '人'
 
-          let msg = await this.getOneManLog(oneMan)
-          fakeMsg.push(msg)
-        }
-        await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true))
-      }      
+              let message = [
+              { type: 'at', qq: this.e.user_id},
+              { type: 'text', text: myMss }
+              ]
+              if(index==1 || index==6 || index==11)
+              {
+                await this.reply(message, false, { recallMsg: -1 })
+              }
+              index++
+
+              let msg = await this.getOneManLog(reportsID, fightIndex, sourceIndex)
+              fakeMsg.push(msg)
+            }
+            await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true))
+          } else {
+            await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
+          }
+        }      
+      } else {
+        //查询单人的信息
+        await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
+        let msg = await this.getOneManLog(reportsID, fightIndex, sourceIndex)
+        await this.reply(msg)
+      }
     }
   }
 
@@ -226,311 +187,12 @@ export class esologPuzzle extends plugin {
     return allLinks
   }
 
-  async getGroupLog (reportsID, fightIndex) {
-    let tfbURL = `https://tfb.gg/log-insights?url=https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}`
+  async getOneManLog (reportsID, fightIndex, sourceIndex) {
+    let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&type=summary&translate=true`
+    let buffsURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&type=auras&translate=true`
 
-    //logger.info('reportsID:' + reportsID)
-    //logger.info('fightIndex:' + fightIndex)
-    logger.info('tfbURL:' + tfbURL)
-
-    let GD = await this.getTfbLog(tfbURL)
-    if(GD.virtual)
-    {
-      logger.info('获取grouplog失败')
-      let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
-      return text
-    }
-    else
-    {
-      
-      groupData.reportsID = reportsID
-      groupData.fightIndex = fightIndex
-      groupData.memberData = []
-      for (let singleData of GD.data) {
-        let url = singleData.href
-        let sourceIndex = 0
-
-        if(url.includes("source="))
-        {
-          let urlTemp3 = url.split('source=')
-          if(urlTemp3[1])
-          {
-            let urlKeyText = urlTemp3[1].split('&')
-            if(urlKeyText[0])
-            {
-              sourceIndex = urlKeyText[0]
-            }
-          }
-          else
-          {
-            sourceIndex = 0
-          }
-        }
-        else
-        {
-          sourceIndex = 0
-        }
-
-
-        /*--------------------分析span内的文本---------------------*/
-        let accountName = ''
-        let playerName = ''
-        let lNum = 0
-        let mNum = 0
-        let hNum = 0
-        let gearSets = []
-        let race = ''
-        let stone = ''
-        let food = ''
-        let potion = ''
-        let extra_potion = ''
-
-        let setsNum = singleData.preContent.length
-        let spanIndex = 0
-        let have_stone = 0
-        let have_food = 0
-        let stoneIndex = 0
-
-        for (let spanInfo of singleData.spans) {
-          if(spanIndex == 0){accountName = spanInfo}
-          else if(spanIndex == 1){playerName = spanInfo}
-          else if(spanIndex == 2){lNum = spanInfo}
-          else if(spanIndex == 4){mNum = spanInfo}
-          else if(spanIndex == 6){hNum = spanInfo}
-          else if(spanIndex > 6 && spanIndex < 7+setsNum){
-            gearSets.push(spanInfo);
-          }
-          else if(spanIndex == 7+setsNum){race = spanInfo}
-          else if(spanIndex == 8+setsNum){
-            if((spanInfo[0] == 'T') && (spanInfo[1] == 'h') && (spanInfo[2] == 'e'))
-            {
-              stoneIndex = spanIndex
-              have_stone = 1
-              stone = spanInfo
-            } else {
-              food = spanInfo
-            }
-          }
-          else if(spanIndex == 9+setsNum){
-            if(have_stone)
-            {
-              food = spanInfo
-            } else {
-              potion = spanInfo
-            }
-          }
-          else if(spanIndex == 10+setsNum){
-            if(have_stone)
-            {
-              potion = spanInfo
-            }
-            else
-            {
-              extra_potion = spanInfo
-            }
-          }
-          else if(spanIndex == 11+setsNum){extra_potion = spanInfo}
-          spanIndex++
-        }
-        if(food == '☹️')
-        {
-          food = potion
-          potion = extra_potion
-          have_food = 0
-        } else {
-          have_food = 1
-        }
-        /*--------------------------------------------------------*/
-
-
-        /*--------------------分析imgs内的文本---------------------*/
-        let className = ''
-        let roleName = ''
-        let talentPics = []
-        let food_icon = ''
-        let potion_icon = ''
-        let talentNum = 0
-        let imgIndex = 0
-        let after_skills = 0
-        for (let imgData of singleData.images) {
-          //logger.info(imgData)
-          if(imgIndex == 0){
-            className = imgData.alt.split(' ')[0]
-            roleName = imgData.alt.split(' ')[1]
-          }
-          else if(imgIndex > 0){
-            if(!after_skills)
-            {
-              if(imgData.src.includes("abilities"))
-              {
-                talentPics.push(imgData.src);
-                talentNum++
-              }
-              else
-              {
-                after_skills = 1
-              }
-            }
-            else
-            {
-              if(have_food && (imgIndex == talentNum+3))
-              {
-                food_icon = imgData.src
-              }
-              if(have_food && (imgIndex == talentNum+4))
-              {
-                potion_icon = imgData.src
-              }
-              if(!have_food && (imgIndex == talentNum+3))
-              {
-                potion_icon = imgData.src
-              }
-            }
-          }
-          imgIndex++
-        }
-        
-        let oneMember = {
-          sourceIndex: sourceIndex,
-          accountName: accountName,
-          playerName: playerName,
-          className: className,
-          roleName: roleName,
-          gearSets: gearSets,
-          setsNum: singleData.preContent,
-          talentPics: talentPics,
-          lNum: lNum,
-          mNum: mNum,
-          hNum: hNum,
-          race: race,
-          stone: stone,
-          food: food,
-          food_icon: food_icon,
-          potion: potion,
-          potion_icon: potion_icon,
-        };
-        groupData.memberData.push(oneMember);
-      }
-      /*
-      groupData = {
-        reportsID: '',
-        fightIndex: 0,
-        memberData: [],
-      }
-      */
-      //logger.info(groupData.memberData)
-    }
-  }
-
-  async getOneManLog (src_url) {
-    let url = src_url
-    if(url.includes("translate"))
-    {
-      if(url.includes("translate=false"))
-      {
-        url.replace("translate=false", "translate=true")
-      }
-    }
-    else
-    {
-      url = url + "&translate=true"
-    }
-    let summaryURL = url
-    let buffsURL = url
-    let tfbURL = url
-    let urlType = ''
-    let urlTemp = url.split('type=')
-
-    let reportTemp = url.split('reports/')
-    let reportsID = ''
-
-    let fightIndex = 1
-
-    let sourceIndex = 1
-
-    if(reportTemp[1])
-    {
-      if(url.includes("?"))
-      {
-        let reportTempID = reportTemp[1].split('?')
-        reportsID = reportTempID[0]
-      }
-      else
-      {
-        reportsID = reportTemp[1]
-      }
-    }
-    else
-    {
-      reportsID = ''
-    }
-
-    if(url.includes("fight="))
-    {
-      let urlTemp2 = url.split('fight=')
-      if(urlTemp2[1])
-      {
-        let urlKeyText = urlTemp2[1].split('&')
-        if(urlKeyText[0])
-        {
-          fightIndex = urlKeyText[0]
-        }
-      }
-      else
-      {
-        fightIndex = 0
-      }
-    }
-    else
-    {
-      fightIndex = 0
-    }
-
-    if(url.includes("source="))
-    {
-      let urlTemp3 = url.split('source=')
-      if(urlTemp3[1])
-      {
-        let urlKeyText = urlTemp3[1].split('&')
-        if(urlKeyText[0])
-        {
-          sourceIndex = urlKeyText[0]
-        }
-      }
-      else
-      {
-        sourceIndex = 0
-      }
-    }
-    else
-    {
-      sourceIndex = 0
-    }
-
-
-    //https://tfb.gg/log-insights?url=https://www.esologs.com/reports/DW7JaCGqYn4pzcFm?fight=6
-
-    if(urlTemp[1])
-    {
-      let urlKeyText = urlTemp[1].split('&')
-      if(urlKeyText[0])
-      {
-        urlType = urlKeyText[0]
-        //logger.info(urlType)
-        summaryURL = url.replace(urlType, "summary")
-        buffsURL = url.replace(urlType, "auras")
-      }
-    }
-
-    tfbURL = `https://tfb.gg/log-insights?url=https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}`
-
-    //logger.info('url:' + url)
     //logger.info('summaryURL:' + summaryURL)
     //logger.info('buffsURL:' + buffsURL)
-    //logger.info('reportsID:' + reportsID)
-    //logger.info('fightIndex:' + fightIndex)
-    //logger.info('sourceIndex:' + sourceIndex)
-    //logger.info('tfbURL:' + tfbURL)
 
     let BD = await this.getSummaryLog(summaryURL)
     if(BD.virtual)
@@ -545,84 +207,6 @@ export class esologPuzzle extends plugin {
         BD.accountName= ''
       }
       //logger.info('playerName:' + BD.playerName + ', accountName:' + BD.accountName)
-      if((groupData.reportsID == reportsID) && (groupData.fightIndex == fightIndex))
-      {
-        /*
-      let bd = {
-        virtual,
-        playerName,
-        accountName,
-        className,
-        roleName,
-        actorTable,
-        links,
-        gearData,
-        talentData,
-        gearSets,
-        setsNum,
-        talentPics,
-        lNum,
-        mNum,
-        hNum,
-        race,
-        stone,
-        food,
-        food_icon,
-        potion,
-        potion_icon,
-      };
-
-        let oneMember = {
-          sourceIndex: sourceIndex,
-          accountName: accountName,
-          playerName: playerName,
-          className: className,
-          roleName: roleName,
-          gearSets: gearSets,
-          setsNum: singleData.preContent,
-          talentPics: talentPics,
-          lNum: lNum,
-          mNum: mNum,
-          hNum: hNum,
-          race: race,
-          stone: stone,
-          food: food,
-          food_icon: food_icon,
-          potion: potion,
-          potion_icon: potion_icon,
-        };
-        groupData.memberData.push(oneMember);
-         */
-        let index = 0
-        let find_it = 0
-        for (let imgData of groupData.memberData) {
-          if(groupData.memberData[index].sourceIndex == sourceIndex)
-          {
-            find_it = 1
-            break
-          }
-          index++
-        }
-        if(find_it)
-        {
-          BD.accountName = groupData.memberData[index].accountName
-          BD.playerName = groupData.memberData[index].playerName
-          BD.className = groupData.memberData[index].className
-          BD.roleName = groupData.memberData[index].roleName
-          BD.gearSets = groupData.memberData[index].gearSets
-          BD.setsNum = groupData.memberData[index].setsNum
-          BD.talentPics = groupData.memberData[index].talentPics
-          BD.lNum = groupData.memberData[index].lNum
-          BD.mNum = groupData.memberData[index].mNum
-          BD.hNum = groupData.memberData[index].hNum
-          BD.race = groupData.memberData[index].race
-          BD.stone = groupData.memberData[index].stone
-          BD.food = groupData.memberData[index].food
-          BD.food_icon = groupData.memberData[index].food_icon
-          BD.potion = groupData.memberData[index].potion
-          BD.potion_icon = groupData.memberData[index].potion_icon
-        }
-      }
       //logger.info(BD)
 
       //更新Build变量
@@ -631,75 +215,6 @@ export class esologPuzzle extends plugin {
       let img = await puppeteer.screenshot('eso', buildData)
       return img
     }
-  }
-
-  async getTfbLog (url) {
-
-    // 启动浏览器
-    if (!puppeteer.browser) {
-      await puppeteer.browserInit()
-    }
-    const page = await puppeteer.browser.newPage()
-    try {
-      //logger.info('----waitForWebLoad----')
-      page.goto(url, { waitUntil: 'networkidle2', timeout: 120000 });
-
-      // 设置超时时间为30秒
-      const selector = '#summary-gear-0_wrapper';
-      const timeout = 30000; // 30秒
-
-      // 等待页面加载完成，确保元素可访问
-      //logger.info('----waitForSelector----')
-      await page.waitForSelector('.grid.sm\\:grid-cols-2.gap-4.items-start', { timeout: 30000 });
-
-      // 确保页面包含“Detected Issues”且不包含“Retrieving Player Data”
-      await page.waitForFunction(
-        () => {
-          const issues = document.querySelector('.grid.sm\\:grid-cols-2.gap-4.items-start').textContent.includes('Detected Issues');
-          const retrieving = document.querySelector('.grid.sm\\:grid-cols-2.gap-4.items-start').textContent.includes('Retrieving Player Data');
-          return issues && !retrieving;
-        },
-        { timeout: 30000 }
-      );
-
-      const data = await page.evaluate(() => {
-        const links = document.querySelectorAll('.grid.sm\\:grid-cols-2.gap-4.items-start a');
-        const result = [];
-
-        links.forEach(link => {
-          const images = link.querySelectorAll('img');
-          const spans = link.querySelectorAll('span');
-          const preContent = link.querySelectorAll('pre') ? link.querySelectorAll('pre'): '';
-          const item = {
-            href: link.href,
-            images: Array.from(images).map(img => ({
-              src: img.src,
-              alt: img.alt
-            })),
-            spans: Array.from(spans).map(span => span.textContent.trim()),
-            preContent: Array.from(preContent).map(pre => pre.textContent.trim()),
-          };
-          result.push(item);
-        });
-
-        return result;
-      });
-
-      let virtual = 0
-      let gd = {
-        virtual,
-        data,
-      };
-      return gd
-    } catch (error) {
-      let virtual = 1
-      let gd = {
-        virtual
-      };
-      return gd
-    } finally {
-
-    }    
   }
 
   async getSummaryLog (url) {
@@ -734,13 +249,16 @@ export class esologPuzzle extends plugin {
         const anchors = Array.from(document.querySelectorAll('#filter-source-text a'));
         return anchors.map(anchor => anchor.href);
       });
-
+            
       const actorTable = [];
       // 使用页面评估函数来提取角色名和账户名
       const result = await page.evaluate(() => {
-        // 获取所有角色菜单项
-        const actorMenuItems = document.querySelectorAll('.actor-menu-item > a.actor-menu-link');
+        const container = document.getElementById("filter-source-selection-container")
+        const table = container.querySelector("table.actor-menu-table")
+        const uls = table.querySelectorAll("ul")
+        uls.forEach(ul => ul.remove());
 
+        const actorMenuItems = table.querySelectorAll('.actor-menu-item > a.actor-menu-link');
         // 遍历每个角色菜单项
         return Array.from(actorMenuItems).map(item => {
           // 提取角色名
@@ -752,6 +270,7 @@ export class esologPuzzle extends plugin {
         });
       });
       actorTable.push(...result);
+      //logger.info(actorTable)
 
       const gearData = await page.evaluate(() => {
         // 获取表格中所有的行（除去标题行）
@@ -836,12 +355,6 @@ export class esologPuzzle extends plugin {
 
       let className = ''
       let roleName = ''
-      let lNum = 0
-      let mNum = 0
-      let hNum = 0
-      let gearSets = []
-      let setsNum = []
-      let talentPics = []
       let race = ''
       let stone = ''
       let food = ''
@@ -856,16 +369,9 @@ export class esologPuzzle extends plugin {
         accountName,
         className,
         roleName,
-        actorTable,
         links,
         gearData,
         talentData,
-        gearSets,
-        setsNum,
-        talentPics,
-        lNum,
-        mNum,
-        hNum,
         race,
         stone,
         food,
@@ -874,12 +380,6 @@ export class esologPuzzle extends plugin {
         potion_icon,
       };
       //logger.info(bd.playerName)
-      //logger.info(bd.actorTable)
-      //logger.info(bd.links)
-      //logger.info(bd.accountName)
-      //logger.info(bd.gearData)
-      //logger.info(bd.talentData)
-
 
       return bd
     } catch (error) {
@@ -1133,6 +633,31 @@ export class esologPuzzle extends plugin {
     }    
   }
 
+  async splitStr (inputStr, beforeStr, afterStr) {
+    let sourceStr = inputStr
+    let outputStr = ''
+
+    if(inputStr.includes(beforeStr)) {
+      let tmpStr1 = inputStr.split(beforeStr)
+      if(tmpStr1[1]) {
+        let tmpStr2 = tmpStr1[1].split(afterStr)
+        if(tmpStr2[0]) {
+          outputStr = tmpStr2[0]
+        }
+        else
+        {
+          outputStr = tmpStr1[1]
+        }
+      } else {
+        outputStr = ''
+      }
+    } else {
+      outputStr = ''
+    }
+
+    return outputStr
+  }
+
   async cache (data, cachedata) {
     let tmp = md5(JSON.stringify(data))
     if (cachedata.md5 == tmp) return cachedata.img
@@ -1144,22 +669,22 @@ export class esologPuzzle extends plugin {
     return cachedata.img
   }
 
-  async completePuzzle_enable(e) {
-    if(support_extra_mode == 1) return e.reply('本就开着啊', true)
+  async fastPuzzle_enable(e) {
+    if(fast_mode == 1) return e.reply('本就开着啊', true)
     let userinfo = await Bot.pickMember(e.group_id, e.user_id).getSimpleInfo()
     userinfo.is_owner = await Bot.pickMember(e.group_id, e.user_id).is_owner
     userinfo.is_admin = await Bot.pickMember(e.group_id, e.user_id).is_admin
-    if (!userinfo.is_owner && !userinfo.is_admin) return e.reply('请联系管理员才能开启完整分析', true)
-    support_extra_mode = 1
-    await this.e.reply('完整分析ESOLOG功能已开启')
+    if (!userinfo.is_owner && !userinfo.is_admin) return e.reply('请联系管理员才能开启快速分析', true)
+    fast_mode = 1
+    await this.e.reply('快速分析ESOLOG功能已开启')
   }
-  async completePuzzle_disable(e) {
-    if(support_extra_mode == 0) return e.reply('本就关着啊', true)
+  async fastPuzzle_disable(e) {
+    if(fast_mode == 0) return e.reply('本就关着啊', true)
     let userinfo = await Bot.pickMember(e.group_id, e.user_id).getSimpleInfo()
     userinfo.is_owner = await Bot.pickMember(e.group_id, e.user_id).is_owner
     userinfo.is_admin = await Bot.pickMember(e.group_id, e.user_id).is_admin
-    if (!userinfo.is_owner && !userinfo.is_admin) return e.reply('请联系管理员才能关闭完整分析', true)
-    support_extra_mode = 0
-    await this.e.reply('完整分析ESOLOG功能已关闭')
+    if (!userinfo.is_owner && !userinfo.is_admin) return e.reply('请联系管理员才能关闭快速分析', true)
+    fast_mode = 0
+    await this.e.reply('快速分析ESOLOG功能已关闭')
   }
 }
