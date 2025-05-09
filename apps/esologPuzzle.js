@@ -263,10 +263,14 @@ export class esologPuzzle extends plugin {
         return Array.from(actorMenuItems).map(item => {
           // 提取角色名
           const actorName = item.textContent.trim();
+
+          const img = item.querySelector("img")
+          const img_class = img.getAttribute("class")
+
           // 提取账户名，它位于角色名同一行的下一个td元素中
           const accountId = item.closest('tr').querySelector('.ability-menu-id')?.textContent.trim() || '';
       
-          return { actorName, accountId };
+          return { actorName, img_class, accountId };
         });
       });
       actorTable.push(...result);
@@ -343,18 +347,59 @@ export class esologPuzzle extends plugin {
       });
 
       let accountName = ''
+      let className = ''
+      let roleName = ''
+      let classNameCN = ''
+      let roleNameCN = ''
       let has_find = false
       for (let oneActor of actorTable) {
         oneActor.actorName = oneActor.actorName.replace("+", "")
         if(!has_find && oneActor.actorName == playerName)
         {
+          //logger.info(oneActor.img_class)
+          if(oneActor.img_class.includes("Arcanist")) {
+            className = "Arcanist"
+            classNameCN = "奥术"
+          } else if(oneActor.img_class.includes("Dragonknight")) {
+            className = "Dragonknight"
+            classNameCN = "龙骑"
+          } else if(oneActor.img_class.includes("Necromancer")) {
+            className = "Necromancer"
+            classNameCN = "死灵"
+          } else if(oneActor.img_class.includes("Nightblade")) {
+            className = "Nightblade"
+            classNameCN = "夜刃"
+          } else if(oneActor.img_class.includes("Sorcerer")) {
+            className = "Sorcerer"
+            classNameCN = "巫师"
+          } else if(oneActor.img_class.includes("Templar")) {
+            className = "Templar"
+            classNameCN = "圣骑"
+          } else if(oneActor.img_class.includes("Warden")) {
+            className = "Warden"
+            classNameCN = "窝登"
+          }
+
+          if(oneActor.img_class.includes("StaminaDPS")) {
+            roleName = "StaminaDPS"
+            roleNameCN = "耐系"
+          } else if(oneActor.img_class.includes("MagickaDPS")) {
+            roleName = "MagickaDPS"
+            roleNameCN = "法系"
+          } else if(oneActor.img_class.includes("Healer")) {
+            roleName = "Healer"
+            roleNameCN = "奶妈"
+          } else if(oneActor.img_class.includes("Tank")) {
+            roleName = "Tank"
+            roleNameCN = "坦克"
+          }
+          
           accountName = oneActor.accountId
+          //logger.info(oneActor.img_class)
           has_find = true
         }
       }
-
-      let className = ''
-      let roleName = ''
+      
       let race = ''
       let stone = ''
       let food = ''
@@ -368,7 +413,9 @@ export class esologPuzzle extends plugin {
         playerName,
         accountName,
         className,
+        classNameCN,
         roleName,
+        roleNameCN,
         links,
         gearData,
         talentData,
@@ -380,6 +427,9 @@ export class esologPuzzle extends plugin {
         potion_icon,
       };
       //logger.info(bd.playerName)
+      //logger.info(bd.accountName)
+      //logger.info(bd.className)
+      //logger.info(bd.roleName)
 
       return bd
     } catch (error) {

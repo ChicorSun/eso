@@ -2408,6 +2408,50 @@ class database {
       talentIndex++
     }
 
+    if(BD.className != '' && BD.roleName != '')
+    {
+      classIcon = BD.className + '_' + BD.roleName
+      classStr = BD.roleNameCN + BD.classNameCN
+    }
+
+    if(BD.className != '' && BD.roleName == '')
+    {
+      if(BD.className == 'Warden')
+      {
+        classIcon = "ON-icon-class-Warden"
+        classStr = "守望者"
+      }
+      else if(BD.className == 'Warden')
+      {
+        classIcon = "ON-icon-class-Templar"
+        classStr = "圣骑士"
+      }
+      else if(BD.className == 'Warden')
+      {
+        classIcon = "Dragonknight"
+        classStr = "龙骑士"
+      }
+      else if(BD.className == 'Warden')
+      {
+        classIcon = "Nightblade"
+        classStr = "夜刃"
+      }
+      else if(BD.className == 'Sorcerer')
+      {
+        classIcon = "ON-icon-class-Sorcerer"
+        classStr = "巫师"
+      }
+      else if(BD.className == 'Necromancer')
+      {
+        classIcon = "ON-icon-class-Necromancer"
+        classStr = "死灵"
+      }
+      else if(BD.className == 'Arcanist')
+      {
+        classIcon = "ON-icon-class-Arcanist"
+        classStr = "奥术师"
+      }
+    }
     buildData.buildsData[1].race = classStr
     buildData.buildsData[1].class = classIcon
     //logger.info(buildData.buildsData[1])
