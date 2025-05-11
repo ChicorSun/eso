@@ -57,7 +57,7 @@ export class esologPuzzle extends plugin {
   async logPuzzle (e) {
     //解析url
     let tmpComPuzzleEnable = 0
-    let urlText = this.e.message[0].text
+    let urlText = await this.trimText(e)
     if(urlText.includes("完整") || !fast_mode) {
       tmpComPuzzleEnable = 1
     } else {
@@ -706,6 +706,21 @@ export class esologPuzzle extends plugin {
     }
 
     return outputStr
+  }
+
+  async trimText (e) {
+    let text = ''
+    for (let eachArry of e.message) {
+      if((typeof(eachArry.type) != "undefined") && (eachArry.type == 'text'))
+      {
+        if(typeof(eachArry.text) != "undefined")
+        {
+          text = eachArry.text
+        }
+      }
+    }
+
+    return text
   }
 
   async cache (data, cachedata) {

@@ -73,7 +73,7 @@ export class atlas extends plugin {
 
 
   async showAtlas (e) {
-    let name = this.e.message[0].text
+    let name = await this.trimText(e)
     //logger.info(name)
 
     if(name.includes("/"))
@@ -105,7 +105,7 @@ export class atlas extends plugin {
   }
 
   async showSets (e) {
-    let name = this.e.message[0].text
+    let name = await this.trimText(e)
     let noMaxLimit = false
     let showEnglish = false
     let objSets = await database.name2index(name,1)
@@ -208,7 +208,7 @@ export class atlas extends plugin {
   async showSkills (e) {
     //return await this.reply(`该功能暂不可用，作者@Chicor正在施工中...`)
 
-    let name = this.e.message[0].text
+    let name = await this.trimText(e)
     let noMaxLimit = false
     let showEnglish = false
     let objSkills = await database.name2index(name,2)
@@ -270,6 +270,21 @@ export class atlas extends plugin {
     }
 
     await this.showSkillsInfo(objSkills, showEnglish)
+  }
+
+  async trimText (e) {
+    let text = ''
+    for (let eachArry of e.message) {
+      if((typeof(eachArry.type) != "undefined") && (eachArry.type == 'text'))
+      {
+        if(typeof(eachArry.text) != "undefined")
+        {
+          text = eachArry.text
+        }
+      }
+    }
+
+    return text
   }
 
   async cache (data, cachedata) {

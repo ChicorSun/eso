@@ -52,7 +52,7 @@ export class allNotice extends plugin {
             await this.reply(message, false, { recallMsg: -1 })
         }
 
-        let myMss = this.e.message[0].text
+        let myMss = await this.trimText(e)
         myMss = myMss.replace("#全体成员", "").replace("全体成员", "")
         let message = [
                           { type: 'text', text: '群友' },
@@ -74,7 +74,7 @@ export class allNotice extends plugin {
     }
   }
 
-//计算是否有权限
+  //计算是否有权限
   async calAddTime (e) {
     let time = 0
 
@@ -99,5 +99,20 @@ export class allNotice extends plugin {
     }
 
     return time
+  }
+
+  async trimText (e) {
+    let text = ''
+    for (let eachArry of e.message) {
+      if((typeof(eachArry.type) != "undefined") && (eachArry.type == 'text'))
+      {
+        if(typeof(eachArry.text) != "undefined")
+        {
+          text = eachArry.text
+        }
+      }
+    }
+
+    return text
   }
 }
