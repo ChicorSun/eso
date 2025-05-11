@@ -272,19 +272,25 @@ export class atlas extends plugin {
     await this.showSkillsInfo(objSkills, showEnglish)
   }
 
-  async trimText (e) {
-    let text = ''
+  async trimText(e) {
+    let text = '';
     for (let eachArry of e.message) {
-      if((typeof(eachArry.type) != "undefined") && (eachArry.type == 'text'))
-      {
-        if(typeof(eachArry.text) != "undefined")
-        {
-          text = eachArry.text
+        if ((typeof eachArry.type !== "undefined") && (eachArry.type === 'text')) {
+            if (typeof eachArry.text !== "undefined") {
+                text = eachArry.text;
+
+                // 手动去掉开头的空格
+                let firstNonSpacePos = 0;
+                while (firstNonSpacePos < text.length && /\s/.test(text[firstNonSpacePos])) {
+                    firstNonSpacePos++;
+                }
+                text = text.substring(firstNonSpacePos);
+                break;
+            }
         }
-      }
     }
 
-    return text
+    return text;
   }
 
   async cache (data, cachedata) {
