@@ -11,6 +11,9 @@ let fast_mode = 0
 let buildData = {
 }
 
+//Group结构体数组
+let groupsData = []
+
 //Rank结构体变量
 let rankData = {
 }
@@ -112,12 +115,28 @@ export class esologPuzzle extends plugin {
       {
         //查询团队信息
         await this.reply('正在为您查询...', true)
-        let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&type=summary&translate=true`
-        let urls = await this.getAllLinks(summaryURL)
-        logger.info(summaryURL)
-        logger.info(urls)
-
-        if(urls.virtual || urls.links.length == 0)
+        let has_find = false
+        let recordID = 0
+        for (let groupData of groupsData) {
+          if((groupData.reportsID == reportsID) && (groupData.fightIndex == fightIndex))
+          {
+            has_find = true
+            break
+          }
+          recordID++
+        }
+        if(!has_find)
+        {
+          recordID = await this.getGroupLog(reportsID, fightIndex)
+          /*
+          if(recordID != -1)
+          {
+            logger.info(groupsData[recordID])
+          }
+          */
+        }
+        
+        if(recordID == -1)
         {
           let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
           await this.reply(text)
@@ -127,15 +146,14 @@ export class esologPuzzle extends plugin {
           if(tmpComPuzzleEnable)
           {
             let index = 0
-            let maxNum = urls.links.length
+            let maxNum = groupsData[recordID].memberData.length
             let thisMsgSenderQQ = 1456181660;
             let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
             let fakeMsg = [];
             let sourceIndex = ''
             await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true)
-            for (let oneMan of urls.links) {
-              sourceIndex = await this.splitStr(oneMan, 'source=', '&')
-              //logger.info(oneMan)
+            for (let oneMan of groupsData[recordID].memberData) {
+              sourceIndex = oneMan.sourceIndex
               let myMss = '已解析' + index + '人/' + maxNum + '人'
 
               let message = [
@@ -148,46 +166,114 @@ export class esologPuzzle extends plugin {
               }
               index++
 
-              let msg = await this.getOneManLog(reportsID, fightIndex, sourceIndex)
+              let msg = await this.getOneManLog(reportsID, fightIndex, sourceIndex, false)
               fakeMsg.push(msg)
             }
             await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true))
           } else {
             await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
           }
+          delete groupsData[recordID]
         }      
       } else {
         //查询单人的信息
         await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
-        let msg = await this.getOneManLog(reportsID, fightIndex, sourceIndex)
+        let msg = await this.getOneManLog(reportsID, fightIndex, sourceIndex, true)
         await this.reply(msg)
       }
     }
   }
 
-  async getAllLinks (url) {
-    let summaryURL = url
-    let urlType = ''
-    let urlTemp = url.split('type=')
+  async getGroupLog (reportsID, fightIndex) {
+    let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&type=summary&translate=true`
 
-    if(urlTemp[1])
+    let GD = await this.getGroupData(summaryURL)
+    if(!GD.virtual)
     {
-      let urlKeyText = urlTemp[1].split('&')
-      if(urlKeyText[0])
-      {
-        urlType = urlKeyText[0]
-        //logger.info(urlType)
-        summaryURL = url.replace(urlType, "summary")
-      }
-    }
-    //logger.info('url:' + url)
-    //logger.info('summaryURL:' + summaryURL)
+      let groupData = {
+        reportsID: '',
+        fightIndex: 0,
+        memberData: [],
+      };
 
-    let allLinks = await this.getLinks(summaryURL)
-    return allLinks
+      groupData.memberData = []
+      for (let oneMan of GD.data) {
+        let sourceIndex = 0
+        let class_role = ''
+        let className = ''
+        let classNameCN = ''
+        let roleName = ''
+        let roleNameCN = ''
+
+        sourceIndex = await this.splitStr(oneMan.link, 'source=', '&')
+        class_role = oneMan.className_roleName
+
+        //logger.info(class_role)
+        if(class_role.includes("Arcanist")) {
+          className = "Arcanist"
+          classNameCN = "奥术"
+        } else if(class_role.includes("Dragonknight")) {
+          className = "Dragonknight"
+          classNameCN = "龙骑"
+        } else if(class_role.includes("Necromancer")) {
+          className = "Necromancer"
+          classNameCN = "死灵"
+        } else if(class_role.includes("Nightblade")) {
+          className = "Nightblade"
+          classNameCN = "夜刃"
+        } else if(class_role.includes("Sorcerer")) {
+          className = "Sorcerer"
+          classNameCN = "巫师"
+        } else if(class_role.includes("Templar")) {
+          className = "Templar"
+          classNameCN = "圣骑"
+        } else if(class_role.includes("Warden")) {
+          className = "Warden"
+          classNameCN = "窝登"
+        }
+
+        if(class_role.includes("Stamina")) {
+          roleName = "StaminaDPS"
+          roleNameCN = "耐系"
+        } else if(class_role.includes("Magicka")) {
+          roleName = "MagickaDPS"
+          roleNameCN = "法系"
+        } else if(class_role.includes("Healer")) {
+          roleName = "Healer"
+          roleNameCN = "奶妈"
+        } else if(class_role.includes("Tank")) {
+          roleName = "Tank"
+          roleNameCN = "坦克"
+        }
+
+        let oneMember = {
+          sourceIndex: sourceIndex,
+          accountName: oneMan.accountName,
+          playerName: oneMan.playerName,
+          className: className,
+          classNameCN: classNameCN,
+          roleName: roleName,
+          roleNameCN: roleNameCN,
+          gears: oneMan.gears,
+          talents: oneMan.talents,
+        };
+        groupData.memberData.push(oneMember);
+      }
+      groupData.reportsID = reportsID
+      groupData.fightIndex = fightIndex
+      groupsData.push(groupData);
+
+      let recordID = groupsData.length - 1
+      return recordID
+    }
+    else
+    {
+      return -1
+    }
   }
 
-  async getOneManLog (reportsID, fightIndex, sourceIndex) {
+  async getOneManLog (reportsID, fightIndex, sourceIndex, delete_record) {
+    let need_group_data = true
     let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&type=summary&translate=true`
     let buffsURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&type=auras&translate=true`
 
@@ -202,10 +288,45 @@ export class esologPuzzle extends plugin {
     }
     else
     {
+      let has_find = false
+      let recordID = 0
+      for (let groupData of groupsData) {
+        if((groupData.reportsID == reportsID) && (groupData.fightIndex == fightIndex))
+        {
+          has_find = true
+          break
+        }
+        recordID++
+      }
+
+      if(need_group_data && !has_find)
+      {
+        recordID = await this.getGroupLog(reportsID, fightIndex)
+      }
+
+      if(recordID != -1)
+      {
+        for (let oneMan of groupsData[recordID].memberData) {
+          if(sourceIndex == oneMan.sourceIndex)
+          {
+            BD.className = oneMan.className
+            BD.classNameCN = oneMan.classNameCN
+            BD.roleName = oneMan.roleName
+            BD.roleNameCN = oneMan.roleNameCN
+            break
+          }
+        }
+        if(delete_record)
+        {
+          delete groupsData[recordID]
+        }
+      }
+
       if(!BD.accountName.includes('@'))
       {
         BD.accountName= ''
       }
+
       //logger.info('playerName:' + BD.playerName + ', accountName:' + BD.accountName)
       //logger.info(BD)
 
@@ -443,7 +564,7 @@ export class esologPuzzle extends plugin {
     }    
   }
 
-  async getLinks (url) {
+  async getGroupData (url) {
 
     // 启动浏览器
     if (!puppeteer.browser) {
@@ -460,39 +581,94 @@ export class esologPuzzle extends plugin {
 
       // 等待页面加载完成，确保元素可访问
       //logger.info('----waitForSelector----')
-      await page.waitForSelector('#DataTables_Table_0_wrapper');
+      await page.waitForSelector('.character-details-contents');
+      //await page.waitForSelector('#DataTables_Table_0_wrapper');
       //await page.waitForSelector(selector, { timeout: timeout });
 
-      const links = await page.evaluate(() => {
-        // 获取所有表格
-        const tables = document.querySelectorAll('.roles-table-0');
-        let linkList = [];
+      const data = await page.evaluate(() => {
+        // 获取character-details-contents下的所有.roles-table-0表格
+        const tables = document.querySelectorAll('.character-details-contents .roles-table-0');
+        let gdArray = [];
+
         // 遍历每个表格
         tables.forEach(table => {
-          // 获取表格第一列的所有单元格
-          const cells = table.querySelectorAll('tbody tr td:first-child a');
-          // 遍历每个单元格，提取超链接地址
-          cells.forEach(cell => {
-            linkList.push(cell.href);
+          // 获取表格的所有行
+          const rows = table.querySelectorAll('tbody tr');
+          // 遍历每一行
+          rows.forEach(row => {
+            // 创建一个结构体对象
+            let gdItem = {
+              link: '',
+              playerName: '',
+              accountName: '',
+              className_roleName: '',
+              gears: [],
+              talents: []
+            };
+
+            // 获取第一列的class=name-and-spec的span
+            const nameAndSpecSpan = row.querySelector('td:first-child .name-and-spec');
+            if (nameAndSpecSpan) {
+              // 提取超链接地址和文本
+              const linkAnchor = nameAndSpecSpan.querySelector('a');
+              if (linkAnchor) {
+                gdItem.link = linkAnchor.href;
+                gdItem.playerName = linkAnchor.textContent.trim();
+              }
+              // 提取accountName
+              const accountNameSpan = nameAndSpecSpan.querySelector('.display-name.artifact');
+              if (accountNameSpan) {
+                gdItem.accountName = accountNameSpan.textContent.trim();
+              }
+              // 提取className_roleName
+              const classSpecDescSpan = nameAndSpecSpan.querySelector('.class-spec-desc');
+              if (classSpecDescSpan) {
+                gdItem.className_roleName = classSpecDescSpan.textContent.trim();
+              }
+            }
+
+            // 获取第二列gear-cell中的所有超链接
+            const gearAnchors = row.querySelectorAll('td.gear-cell a');
+            gearAnchors.forEach(anchor => {
+              gdItem.gears.push({
+                gearUrl: anchor.href,
+                gearName: anchor.title,
+                img: anchor.querySelector('img').src
+              });
+            });
+
+            // 获取第三列talents-cell中的所有超链接
+            const talentAnchors = row.querySelectorAll('td.talents-cell a');
+            talentAnchors.forEach(anchor => {
+              gdItem.talents.push({
+                talentUrl: anchor.href,
+                talentName: anchor.title,
+                img: anchor.querySelector('img').src
+              });
+            });
+
+            // 将结构体对象添加到数组中
+            gdArray.push(gdItem);
           });
         });
-        return linkList;
+
+        return gdArray;
       });
 
-      //logger.info(links)
+      //logger.info(data)
       let virtual = 0
-      let allLinks = {
+      let gd = {
         virtual,
-        links
+        data,
       };
 
-      return allLinks
+      return gd
     } catch (error) {
       let virtual = 1
-      let allLinks = {
+      let gd = {
         virtual,
       };
-      return allLinks
+      return gd
     } finally {
 
     }    
