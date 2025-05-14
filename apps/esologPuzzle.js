@@ -116,14 +116,16 @@ export class esologPuzzle extends plugin {
         //查询团队信息
         await this.reply('正在为您查询...', true)
         let has_find = false
-        let recordID = 0
+        let recordID = -1
+        let index = 0
         for (let groupData of groupsData) {
           if((groupData.reportsID == reportsID) && (groupData.fightIndex == fightIndex))
           {
             has_find = true
+            recordID = index
             break
           }
-          recordID++
+          index++
         }
         if(!has_find)
         {
@@ -173,7 +175,7 @@ export class esologPuzzle extends plugin {
           } else {
             await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
           }
-          delete groupsData[recordID]
+          //delete groupsData[recordID]
         }      
       } else {
         //查询单人的信息
@@ -193,7 +195,7 @@ export class esologPuzzle extends plugin {
       let groupData = {
         reportsID: '',
         fightIndex: 0,
-        memberData: [],
+        memberData: []
       };
 
       groupData.memberData = []
@@ -255,7 +257,7 @@ export class esologPuzzle extends plugin {
           roleName: roleName,
           roleNameCN: roleNameCN,
           gears: oneMan.gears,
-          talents: oneMan.talents,
+          talents: oneMan.talents
         };
         groupData.memberData.push(oneMember);
       }
@@ -289,17 +291,21 @@ export class esologPuzzle extends plugin {
     else
     {
       let has_find = false
-      let recordID = 0
+      let recordID = -1
+      let index = 0
+      index = 0
       for (let groupData of groupsData) {
+
         if((groupData.reportsID == reportsID) && (groupData.fightIndex == fightIndex))
         {
           has_find = true
+          recordID = index
           break
         }
-        recordID++
+        index++
       }
 
-      if(need_group_data && !has_find)
+      if((BD.className == '' || BD.roleName == '') && need_group_data && !has_find)
       {
         recordID = await this.getGroupLog(reportsID, fightIndex)
       }
@@ -318,7 +324,7 @@ export class esologPuzzle extends plugin {
         }
         if(delete_record)
         {
-          delete groupsData[recordID]
+          //delete groupsData[recordID]
         }
       }
 
