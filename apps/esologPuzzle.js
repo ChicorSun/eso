@@ -11,6 +11,10 @@ let fast_mode = 0
 let buildData = {
 }
 
+//Buffs结构体变量
+let buffsData = {
+}
+
 //Group结构体数组
 let groupsData = []
 
@@ -277,12 +281,27 @@ export class esologPuzzle extends plugin {
   async getOneManLog (reportsID, fightIndex, sourceIndex, delete_record) {
     let need_group_data = true
     let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&type=summary&translate=true`
-    let buffsURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&type=auras&translate=true`
-
+    let buffsURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&target=${sourceIndex}&type=auras&translate=true`
+    let buffInfo = ''
     //logger.info('summaryURL:' + summaryURL)
     //logger.info('buffsURL:' + buffsURL)
 
     let BD = await this.getSummaryLog(summaryURL)
+    let SD = await this.getBuffsLog(buffsURL)
+
+    if(SD.virtual)
+    {
+      //logger.info('SD:获取失败')
+    }
+    else
+    {
+      buffsData  = await database.updateData(SD, 5)
+      //logger.info('SD.data:' + SD.data)
+      //logger.info('Buff num:' + SD.data.length)
+      //logger.info(buffsData)
+      BD.stoneInfo = buffsData.stoneInfo
+    }
+
     if(BD.virtual)
     {
       let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
@@ -342,6 +361,83 @@ export class esologPuzzle extends plugin {
       let img = await puppeteer.screenshot('eso', buildData)
       return img
     }
+  }
+
+  async getBuffsLog (url) {
+
+    // 启动浏览器
+    if (!puppeteer.browser) {
+      await puppeteer.browserInit()
+    }
+    const page = await puppeteer.browser.newPage()
+    try {
+      //logger.info('----waitForWebLoad----')
+      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+
+      // 设置超时时间为30秒
+      const selector = '#summary-gear-0_wrapper';
+      const timeout = 30000; // 30秒
+
+      // 等待页面加载完成，确保元素可访问
+      //logger.info('----waitForSelector----')
+      await page.waitForSelector('.spells-table-wrapper');
+      //await page.waitForSelector(selector, { timeout: timeout });
+      //logger.info('----Get it----')
+      
+      const data = await page.evaluate(() => {
+        // 获取所有包含auras-table的表格
+        const tables = document.querySelectorAll('.spells-table-wrapper .auras-table');
+        let dataList = [];
+  
+        // 遍历每个表格
+        tables.forEach(table => {
+          // 获取表格的所有行
+          const rows = table.querySelectorAll('tbody tr');
+          // 遍历每一行
+          rows.forEach(row => {
+            // 获取第一列的单元格
+            const firstCell = row.querySelector('td:first-child');
+            if (firstCell) {
+              // 获取img的地址
+              const img = firstCell.querySelector('img')?.src || '';
+              // 获取class包含"tooltip main-table-link school-2"的超链接
+              const linkElement = firstCell.querySelector('a.tooltip.main-table-link');
+              const link = linkElement?.href || '';
+              const buffName = linkElement?.textContent || '';
+              
+              if (img && link && buffName) {
+                // 将数据添加到数组中
+                dataList.push({
+                  img: img,
+                  link: link,
+                  buffName: buffName
+                });
+              }
+            }
+          });
+        });
+  
+        return dataList;
+      });
+
+      let virtual = 0
+      let sd = {
+        virtual,
+        data
+      };
+      //logger.info(sd.data)
+      //logger.info(sd.data.length)
+
+      return sd
+    } catch (error) {
+      let virtual = 1
+      let sd = {
+        virtual
+      };
+      return sd
+    } finally {
+
+    }    
   }
 
   async getSummaryLog (url) {
@@ -528,7 +624,7 @@ export class esologPuzzle extends plugin {
       }
       
       let race = ''
-      let stone = ''
+      let stoneInfo = [];
       let food = ''
       let food_icon = ''
       let potion = ''
@@ -547,7 +643,7 @@ export class esologPuzzle extends plugin {
         gearData,
         talentData,
         race,
-        stone,
+        stoneInfo,
         food,
         food_icon,
         potion,

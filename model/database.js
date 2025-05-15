@@ -68,6 +68,135 @@ let buildData = {
 //Rank结构体变量
 let rankData = {
 }
+//Buffs结构体变量
+let buffsData = {
+}
+
+let races =
+[
+  {
+    "race_zh": "高精灵",
+    "race_en": "Altmer"
+  },
+  {
+    "race_zh": "木精灵",
+    "race_en": "Bosmer"
+  },
+  {
+    "race_zh": "卡吉特",
+    "race_en": "Khajiit"
+  },
+  {
+    "race_zh": "布莱顿",
+    "race_en": "Breton"
+  },
+  {
+    "race_zh": "兽人",
+    "race_en": "Orc"
+  },
+  {
+    "race_zh": "红卫",
+    "race_en": "Redguard"
+  },
+  {
+    "race_zh": "亚龙人",
+    "race_en": "Argonian"
+  },
+  {
+    "race_zh": "暗精灵",
+    "race_en": "Dunmer"
+  },
+  {
+    "race_zh": "诺德人",
+    "race_en": "Nord"
+  },
+  {
+    "race_zh": "帝国人",
+    "race_en": "Imperial"
+  }
+]
+
+let stones =
+[
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Apprentice.png",
+    "stone_zh": "学徒座",
+    "stone_en": "The Apprentice",
+    "stone_msg": "增加你的法术伤害238",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Atronach.png",
+    "stone_zh": "侍灵座",
+    "stone_en": "The Atronach",
+    "stone_msg": "增加魔法回复310",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Lady.png",
+    "stone_zh": "女神座",
+    "stone_en": "The Lady",
+    "stone_msg": "增加物理抗性和魔法抗性2744",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Lord.png",
+    "stone_zh": "君王座",
+    "stone_en": "The Lord",
+    "stone_msg": "增加最大生命2225",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Lover.png",
+    "stone_zh": "恋人座",
+    "stone_en": "The Lover",
+    "stone_msg": "增加法术和物理穿透2744",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Mage.png",
+    "stone_zh": "法师座",
+    "stone_en": "The Mage",
+    "stone_msg": "增加最大魔法2023",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Ritual.png",
+    "stone_zh": "仪式座",
+    "stone_en": "The Ritual",
+    "stone_msg": "增加你造成的治疗8%",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Serpent.png",
+    "stone_zh": "毒蛇座",
+    "stone_en": "The Serpent",
+    "stone_msg": "增加耐力恢复310",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Shadow.png",
+    "stone_zh": "暗影座",
+    "stone_en": "The Shadow",
+    "stone_msg": "增加暴击伤害和暴击治疗11%",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Steed.png",
+    "stone_zh": "战马座",
+    "stone_en": "The Steed",
+    "stone_msg": "增加生命恢复238，增加10%移速",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Thief.png",
+    "stone_zh": "盗贼座",
+    "stone_en": "The Thief",
+    "stone_msg": "增加武器和法术暴击1333",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Tower.png",
+    "stone_zh": "高塔座",
+    "stone_en": "The Tower",
+    "stone_msg": "增加最大耐力2023",
+  },
+  {
+    "stone_pic_url": "ON-icon-mundusstone-Warrior.png",
+    "stone_zh": "战士座",
+    "stone_en": "The Warrior",
+    "stone_msg": "增加你的武器伤害238",
+  }
+]
 
 let gearColor = [
   "rgb(255, 255, 255)",
@@ -2093,7 +2222,9 @@ class database {
     }
 
     buildData.buildsData[1].head_title = "Build Info from www.esolog.com created by " + BD.playerName + BD.accountName
-    buildData.buildsData[1].title = BD.playerName + BD.accountName
+    buildData.buildsData[1].accountName = BD.accountName
+    buildData.buildsData[1].playerName = BD.playerName
+    buildData.buildsData[1].stone = BD.stoneInfo
 
     for (let i = 0; i < 14; i++) {
       buildData.buildsData[1].gear[i].name_cn = 'N/A'
@@ -2452,7 +2583,7 @@ class database {
         classStr = "奥术师"
       }
     }
-    buildData.buildsData[1].race = classStr
+    buildData.buildsData[1].title = classStr
     buildData.buildsData[1].class = classIcon
     //logger.info(buildData.buildsData[1])
 
@@ -2642,6 +2773,53 @@ class database {
     rankData.rtData[1].head_title = "Build Info from www.esolog.com"
   }
 
+  async updateBuffsData (BuffsTable) {
+    /*
+    let buffsData = {
+  "stone" : [{"name_en": "", "name_cn": "", "img": "",}],
+  "food"  : [{"name_en": "", "name_cn": "", "img": "",}],
+  "line"  : [{"name_en": "", "name_cn": "", "img": "",}],
+}*/
+    let stoneInfo = [];
+
+    for (let oneBuff of BuffsTable.data) {
+      //logger.info(oneBuff.img)
+      //logger.info(oneBuff.link)
+      //logger.info(oneBuff.buffName)
+
+      //寻找并分辨出梦达斯石头
+      if(oneBuff.buffName.includes('Boon:'))
+      {
+        //logger.info(oneBuff.buffName)
+        for (let stone of stones) {
+          if(oneBuff.buffName.includes(stone["stone_en"]))
+          {
+            //logger.info(stone["stone_pic_url"])
+            //logger.info(stone["stone_zh"])
+            //logger.info(stone["stone_en"])
+
+            if (!stoneInfo.some(item => item.name_en === stone["stone_en"])) {
+              // 添加到结果数组中
+              stoneInfo.push({
+                name_en: stone["stone_en"],
+                name_cn: stone["stone_zh"],
+                img: stone["stone_pic_url"]
+              });
+            }
+          }
+        }
+      }
+    }
+    //logger.info(stoneInfo)
+
+    buffsData = {
+      stoneInfo: stoneInfo,
+    }
+    //logger.info(buffsData)
+
+    return buffsData
+  }
+
   async updateData (setKey, type) {
     if(type == 1) //this is name for sets
     {
@@ -2662,6 +2840,11 @@ class database {
     {
       await this.updateRankData(setKey)
       return rankData
+    }
+    if(type == 5) //this is name for buffs
+    {
+      await this.updateBuffsData(setKey)
+      return buffsData
     }
 
     if(type == 11) //this is name for sets-english

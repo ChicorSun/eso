@@ -4,12 +4,35 @@
 - head_title: "Build Info from www.esolog.com created by @Chicor"
   class: ON-icon-class-Sorcerer
   title: "法系巫师-试炼"
-  race: "高精灵<Altmer>"
+  playerName: "playerName"
+  accountName: "@GameID"
+  race_name_en: "Altmer"
+  race_name_cn: "高精灵"
+  race_img: ON-icon-mundusstone-Thief.png
   mp: "?"
   hp: "?"
   sp: "?"
-  stone: ON-icon-mundusstone-Thief
-  stone_string: "未知<unknown>"
+  line:
+    - img: ON-icon-mundusstone-Thief.png
+      name_en: "unknown"
+      name_cn: "未知"
+    - img: ON-icon-mundusstone-Thief.png
+      name_en: "unknown"
+      name_cn: "未知"
+    - img: ON-icon-mundusstone-Thief.png
+      name_en: "unknown"
+      name_cn: "未知"
+  food:
+    - img: ON-icon-mundusstone-Thief.png
+      name_en: "unknown"
+      name_cn: "未知"
+  stone:
+    - img: ON-icon-mundusstone-Thief.png
+      name_en: "unknown"
+      name_cn: "未知"
+    - img: ON-icon-mundusstone-Thief.png
+      name_en: "unknown"
+      name_cn: "未知"
   gear:
     - icon: gear_dunmer_heavy_head_d
       type: "Light"

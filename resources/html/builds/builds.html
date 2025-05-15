@@ -19,36 +19,42 @@
         <img id="class_pic" src="{{pluResPath}}img/classes/{{val.class}}.png" />
       </div>
 
-      <div id="Race">
+      <div id="title_div">
         <div id="build_title_div">
           <span id="build_title">{{val.title}}</span>
         </div>
-        <div id="race_div">
-          <span id="race_string">{{val.race}}</span>
+        <div id="name_div">
+          <span id="name_string">{{val.playerName}}{{val.accountName}}</span>
         </div>
       </div>
-
-      <div id="Point" >
-        <div id="mp_div">
-          <span id="mp_pic"></span>
-          <span id="mp">{{val.mp}}</span>
+      <div id="SkillLineInfo">
+      {{each val.line item}}
+        <div id="SkillLine">
+          <img id="skillLine_pic" src="{{pluResPath}}img/stones/{{item.img}}" />
+          <span id="skillLine_string">{{item.name_cn}}</span>
         </div>
-        <div id="hp_div">
-          <span id="hp_pic"></span>
-          <span id="hp">{{val.hp}}</span>
-        </div>
-        <div id="sp_div">
-          <span id="sp_pic"></span>
-          <span id="sp">{{val.sp}}</span>
-        </div>
+      {{/each}}
       </div>
-
-      <div id="Stone">
-        <div id="stone_pic_div">
-          <img id="stone_pic" src="{{pluResPath}}img/stones/{{val.stone}}.png" />
+      <div id="BuffsInfo">
+        <div id="Race">
+          <img id="race_pic" src="{{pluResPath}}img/stones/{{val.race_img}}" />
+          <span id="race_string">{{val.race_name_cn}}</span>
         </div>
-        <div id="stone_div">
-          <span id="stone_string">{{val.stone_string}}</span>
+        <div id="FoodInfo">
+        {{each val.food item}}
+          <div id="Food">
+            <img id="food_pic" src="{{pluResPath}}img/stones/{{item.img}}" />
+            <span id="food_string">{{item.name_cn}}</span>
+          </div>
+        {{/each}}
+        </div>
+        <div id="StoneInfo">
+        {{each val.stone item}}
+          <div id="Stone">
+            <img id="stone_pic" src="{{pluResPath}}img/stones/{{item.img}}" />
+            <span id="stone_string">{{item.name_cn}}</span>
+          </div>
+        {{/each}}
         </div>
       </div>
     </div>
