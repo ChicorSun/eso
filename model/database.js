@@ -9,11 +9,6 @@ import fs from 'node:fs'
 
 const require = createRequire(import.meta.url);
 
-let dataExtractorItemsENPath = './plugins/eso/resources/data/DataExtractor-Items-en.lua'
-let dataExtractorItemsCNPath = './plugins/eso/resources/data/DataExtractor-Items-cn.lua'
-let dataExtractorSkillsENPath = './plugins/eso/resources/data/DataExtractor-Skills-en.lua'
-let dataExtractorSkillsCNPath = './plugins/eso/resources/data/DataExtractor-Skills-cn.lua'
-
 let dataExtractorENPath = './plugins/eso/resources/data/DataExtractor-en.lua'
 let dataExtractorCNPath = './plugins/eso/resources/data/DataExtractor-cn.lua'
 
@@ -28,6 +23,8 @@ let furnituresData = [{
 }]
 let collfurnituresData = [{
 }]
+let foodsData = [{
+}]
 let skillsData = [{
 }]
 
@@ -38,6 +35,8 @@ let recipesDataCN = [{
 let furnituresDataCN = [{
 }]
 let collfurnituresDataCN = [{
+}]
+let foodsDataCN = [{
 }]
 let skillsDataCN = [{
 }]
@@ -1029,6 +1028,7 @@ class database {
         recipesData = itemsData['Recipes']
         furnituresData = itemsData['Furniture']
         collfurnituresData = itemsData['CollectibleFurniture']
+        foodsData = itemsData['Foods']
       }
     }
 
@@ -1094,6 +1094,7 @@ class database {
         recipesDataCN = itemsData['Recipes']
         furnituresDataCN = itemsData['Furniture']
         collfurnituresDataCN = itemsData['CollectibleFurniture']
+        foodsDataCN = itemsData['Foods']
       }
     }
 
@@ -2262,6 +2263,7 @@ class database {
     buildData.buildsData[1].accountName = BD.accountName
     buildData.buildsData[1].playerName = BD.playerName
     buildData.buildsData[1].stone = BD.stoneInfo
+    buildData.buildsData[1].food = BD.foodInfo
 
     for (let i = 0; i < 14; i++) {
       buildData.buildsData[1].gear[i].name_cn = 'N/A'
@@ -2811,14 +2813,10 @@ class database {
   }
 
   async updateBuffsData (BuffsTable) {
-    /*
-    let buffsData = {
-  "stone" : [{"name_en": "", "name_cn": "", "img": "",}],
-  "food"  : [{"name_en": "", "name_cn": "", "img": "",}],
-  "line"  : [{"name_en": "", "name_cn": "", "img": "",}],
-}*/
     let stoneInfo = [];
     let foodInfo = [];
+
+    await this.init_database()
 
     for (let oneBuff of BuffsTable.data) {
       let buffID = await this.splitStr(oneBuff.link, 'ability=', '')
@@ -2851,11 +2849,14 @@ class database {
         if(food["buffid"] == buffID)
         {
           if (!foodInfo.some(item => item.name_en === food["name_en"])) {
+            let img = await this.splitStr(foodsDataCN[food["itemid"]].icon, 'icons/', '.dds')
+            let imgPath = await getimgs.realpath(img, "foods")
+            let icon = `../../../../../` + imgPath
             // 添加到结果数组中
             foodInfo.push({
-              name_en: food["name_en"],
-              name_cn: food["name_cn"],
-              img: food["img"]
+              name_en: foodsData[food["itemid"]].name,
+              name_cn: foodsDataCN[food["itemid"]].name,
+              img: icon
             });
           }       
           break
@@ -2867,7 +2868,7 @@ class database {
       stoneInfo: stoneInfo,
       foodInfo: foodInfo,
     }
-    logger.info(buffsData)
+    //logger.info(buffsData)
 
     return buffsData
   }

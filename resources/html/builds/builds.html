@@ -40,14 +40,7 @@
           <img id="race_pic" src="{{pluResPath}}img/stones/{{val.race_img}}" />
           <span id="race_string">{{val.race_name_cn}}</span>
         </div>
-        <div id="FoodInfo">
-        {{each val.food item}}
-          <div id="Food">
-            <img id="food_pic" src="{{pluResPath}}img/stones/{{item.img}}" />
-            <span id="food_string">{{item.name_cn}}</span>
-          </div>
-        {{/each}}
-        </div>
+        
         <div id="StoneInfo">
         {{each val.stone item}}
           <div id="Stone">
@@ -56,6 +49,16 @@
           </div>
         {{/each}}
         </div>
+
+        <div id="FoodInfo">
+        {{each val.food item}}
+          <div id="Food">
+            <img id="food_pic" src="{{pluResPath}}img/foods/{{item.img}}.png" />
+            <span id="food_string">{{item.name_cn}}</span>
+          </div>
+        {{/each}}
+        </div>
+        
       </div>
     </div>
     <div class="gears">
