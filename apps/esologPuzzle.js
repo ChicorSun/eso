@@ -284,7 +284,7 @@ export class esologPuzzle extends plugin {
     let buffsURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&target=${sourceIndex}&type=auras&translate=true`
     let buffInfo = ''
     //logger.info('summaryURL:' + summaryURL)
-    //logger.info('buffsURL:' + buffsURL)
+    logger.info('buffsURL:' + buffsURL)
 
     let BD = await this.getSummaryLog(summaryURL)
     let SD = await this.getBuffsLog(buffsURL)

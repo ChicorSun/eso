@@ -14,6 +14,9 @@ let dataExtractorItemsCNPath = './plugins/eso/resources/data/DataExtractor-Items
 let dataExtractorSkillsENPath = './plugins/eso/resources/data/DataExtractor-Skills-en.lua'
 let dataExtractorSkillsCNPath = './plugins/eso/resources/data/DataExtractor-Skills-cn.lua'
 
+let dataExtractorENPath = './plugins/eso/resources/data/DataExtractor-en.lua'
+let dataExtractorCNPath = './plugins/eso/resources/data/DataExtractor-cn.lua'
+
 //数据库
 let allSets = []
 
@@ -196,6 +199,40 @@ let stones =
     "stone_en": "The Warrior",
     "stone_msg": "增加你的武器伤害238",
   }
+]
+
+var foodBuffs = [
+  {"buffid": "61218", "itemid": "68253", "img": "", "quality": "", "name_en": "Longfin Pasty with Melon Sauce", "name_zh": ""},
+  {"buffid": "61255", "itemid": "68247", "img": "", "quality": "", "name_en": "Braised Rabbit with Spring Vegetables", "name_zh": ""},
+  {"buffid": "61257", "itemid": "68243", "img": "", "quality": "", "name_en": "Melon-Baked Parmesan Pork", "name_zh": ""},
+  {"buffid": "61259", "itemid": "43142", "img": "", "quality": "", "name_en": "Argonian Saddle-Cured Rabbit", "name_zh": ""},
+  {"buffid": "61260", "itemid": "43154", "img": "", "quality": "", "name_en": "Fresh Apples and Eidar Cheese", "name_zh": ""},
+  {"buffid": "61261", "itemid": "68239", "img": "", "quality": "", "name_en": "Hearty Garlic Corn Chowder", "name_zh": ""},
+  {"buffid": "61294", "itemid": "68250", "img": "", "quality": "", "name_en": "Late Hearthfire Vegetable Tart", "name_zh": ""},
+  {"buffid": "61322", "itemid": "68257", "img": "", "quality": "", "name_en": "Markarth Mead", "name_zh": ""},
+  {"buffid": "61325", "itemid": "68260", "img": "", "quality": "", "name_en": "Muthsera's Remorse", "name_zh": ""},
+  {"buffid": "61328", "itemid": "68263", "img": "", "quality": "", "name_en": "Hagraven's Tonic", "name_zh": ""},
+  {"buffid": "61335", "itemid": "68266", "img": "", "quality": "", "name_en": "Bravil Bitter Barley Beer", "name_zh": ""},
+  {"buffid": "61340", "itemid": "68268", "img": "", "quality": "", "name_en": "Camlorn Sweet Brown Ale", "name_zh": ""},
+  {"buffid": "61345", "itemid": "68271", "img": "", "quality": "", "name_en": "Rosy Disposition Tonic", "name_zh": ""},
+  {"buffid": "61350", "itemid": "68276", "img": "", "quality": "", "name_en": "Lusty Argonian Maid Mazte", "name_zh": ""},
+  {"buffid": "68411", "itemid": "64711", "img": "", "quality": "", "name_en": "Crown Fortifying Meal", "name_zh": ""},
+  {"buffid": "68416", "itemid": "64712", "img": "", "quality": "", "name_en": "Crown Refreshing Drink", "name_zh": ""},
+  {"buffid": "71057", "itemid": "71057", "img": "", "quality": "", "name_en": "Orzorga's Tripe Trifle Pocket", "name_zh": ""},
+  {"buffid": "72822", "itemid": "71058", "img": "", "quality": "", "name_en": "Orzorga's Blood Price Pie", "name_zh": ""},
+  {"buffid": "72824", "itemid": "71059", "img": "", "quality": "", "name_en": "Orzorga's Smoked Bear Haunch", "name_zh": ""},
+  {"buffid": "84720", "itemid": "87695", "img": "", "quality": "", "name_en": "Ghastly Eye Bowl", "name_zh": ""},
+  {"buffid": "84731", "itemid": "87697", "img": "", "quality": "", "name_en": "Witchmother's Potent Brew", "name_zh": ""},
+  {"buffid": "84709", "itemid": "87691", "img": "", "quality": "", "name_en": "Crunchy Spider Skewer", "name_zh": ""},
+  {"buffid": "86673", "itemid": "112425", "img": "", "quality": "", "name_en": "Lava Foot Soup-and-Saltrice", "name_zh": ""},
+  {"buffid": "89955", "itemid": "120762", "img": "", "quality": "", "name_en": "Candied Jester's Coins", "name_zh": ""},
+  {"buffid": "89957", "itemid": "120763", "img": "", "quality": "", "name_en": "Dubious Camoran Throne", "name_zh": ""},
+  {"buffid": "89971", "itemid": "120764", "img": "", "quality": "", "name_en": "Jewels of Misrule", "name_zh": ""},
+  {"buffid": "100498", "itemid": "133556", "img": "", "quality": "", "name_en": "Clockwork Citrus Filet", "name_zh": ""},
+  {"buffid": "107748", "itemid": "139016", "img": "", "quality": "", "name_en": "Artaeum Pickled Fish Bowl", "name_zh": ""},
+  {"buffid": "107789", "itemid": "139018", "img": "", "quality": "", "name_en": "Artaeum Takeaway Broth", "name_zh": ""},
+  {"buffid": "127596", "itemid": "153629", "img": "", "quality": "", "name_en": "Bewitched Sugar Skulls", "name_zh": ""},
+  {"buffid": "147687", "itemid": "171323", "img": "", "quality": "", "name_en": "Colovian War Torte", "name_zh": ""},
 ]
 
 let gearColor = [
@@ -974,7 +1011,7 @@ class database {
     {    
       //logger.info("Init ESOdataBaseEN")
       var luaToJson = require('lua-to-json')
-      var luaSrc = fs.readFileSync(dataExtractorItemsENPath, 'utf8')
+      var luaSrc = fs.readFileSync(dataExtractorENPath, 'utf8')
       var lua_code = luaToJson(luaSrc)
       var allAccounts = lua_code.DataExtractorSavedVariables.Default
       var accounts = Object.keys(allAccounts)
@@ -1007,7 +1044,7 @@ class database {
     {
       //logger.info("Init ESOskillsDataEN")
       var luaToJson = require('lua-to-json')
-      var luaSrc = fs.readFileSync(dataExtractorSkillsENPath, 'utf8')
+      var luaSrc = fs.readFileSync(dataExtractorENPath, 'utf8')
       var lua_code = luaToJson(luaSrc)
       var allAccounts = lua_code.DataExtractorSavedVariables.Default
       var accounts = Object.keys(allAccounts)
@@ -1039,7 +1076,7 @@ class database {
     {
       //logger.info("Init ESOdataBaseCN")
       var luaToJson = require('lua-to-json')
-      var luaSrc = fs.readFileSync(dataExtractorItemsCNPath, 'utf8')
+      var luaSrc = fs.readFileSync(dataExtractorCNPath, 'utf8')
       var lua_code = luaToJson(luaSrc)
       var allAccounts = lua_code.DataExtractorSavedVariables.Default
       var accounts = Object.keys(allAccounts)
@@ -1072,7 +1109,7 @@ class database {
     {
       //logger.info("Init ESOskillsDataCN")
       var luaToJson = require('lua-to-json')
-      var luaSrc = fs.readFileSync(dataExtractorSkillsCNPath, 'utf8')
+      var luaSrc = fs.readFileSync(dataExtractorCNPath, 'utf8')
       var lua_code = luaToJson(luaSrc)
       var allAccounts = lua_code.DataExtractorSavedVariables.Default
       var accounts = Object.keys(allAccounts)
@@ -2781,10 +2818,12 @@ class database {
   "line"  : [{"name_en": "", "name_cn": "", "img": "",}],
 }*/
     let stoneInfo = [];
+    let foodInfo = [];
 
     for (let oneBuff of BuffsTable.data) {
+      let buffID = await this.splitStr(oneBuff.link, 'ability=', '')
       //logger.info(oneBuff.img)
-      //logger.info(oneBuff.link)
+      //logger.info(buffID)
       //logger.info(oneBuff.buffName)
 
       //寻找并分辨出梦达斯石头
@@ -2794,10 +2833,6 @@ class database {
         for (let stone of stones) {
           if(oneBuff.buffName.includes(stone["stone_en"]))
           {
-            //logger.info(stone["stone_pic_url"])
-            //logger.info(stone["stone_zh"])
-            //logger.info(stone["stone_en"])
-
             if (!stoneInfo.some(item => item.name_en === stone["stone_en"])) {
               // 添加到结果数组中
               stoneInfo.push({
@@ -2809,13 +2844,30 @@ class database {
           }
         }
       }
+
+      //寻找并分辨出食物
+      for (let food of foodBuffs) {
+        //logger.info('buffID: ' + buffID + ', foodID: ' + food["buffid"])
+        if(food["buffid"] == buffID)
+        {
+          if (!foodInfo.some(item => item.name_en === food["name_en"])) {
+            // 添加到结果数组中
+            foodInfo.push({
+              name_en: food["name_en"],
+              name_cn: food["name_cn"],
+              img: food["img"]
+            });
+          }       
+          break
+        }
+      }
     }
-    //logger.info(stoneInfo)
 
     buffsData = {
       stoneInfo: stoneInfo,
+      foodInfo: foodInfo,
     }
-    //logger.info(buffsData)
+    logger.info(buffsData)
 
     return buffsData
   }
@@ -2857,6 +2909,39 @@ class database {
       await this.updateSkillData(setKey, 1)
       return skillData
     }
+  }
+
+  async splitStr (inputStr, beforeStr, afterStr) {
+    let sourceStr = inputStr
+    let outputStr = ''
+
+    if(inputStr.includes(beforeStr)) {
+      let tmpStr1 = inputStr.split(beforeStr)
+      if(tmpStr1[1]) {
+        if(afterStr != '')
+        {
+          let tmpStr2 = tmpStr1[1].split(afterStr)
+          if(tmpStr2[0]) {
+            outputStr = tmpStr2[0]
+          }
+          else
+          {
+            outputStr = tmpStr1[1]
+          }
+        }
+        else
+        {
+          outputStr = tmpStr1[1]
+        } 
+
+      } else {
+        outputStr = ''
+      }
+    } else {
+      outputStr = ''
+    }
+
+    return outputStr
   }
 
   async bonuses2msg (bonuses) {
