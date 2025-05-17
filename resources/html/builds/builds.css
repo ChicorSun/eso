@@ -90,8 +90,7 @@ body {
 
 /* BuffsInfo内的Race，FoodInfo，StoneInfo布局 */
 #Race {
-  /*display: flex;*/
-  display: none;
+  display: flex;
   flex-direction: row; /* 从左到右排列 */
   gap: 1px; /* 间距 */
 }

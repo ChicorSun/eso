@@ -234,6 +234,20 @@ var foodBuffs = [
   {"buffid": "147687", "itemid": "171323", "img": "", "quality": "", "name_en": "Colovian War Torte", "name_zh": ""},
 ]
 
+var raceBuffs = [
+  {"buffid": "35965", "img": "Altmer", "name_en": "Altmer", "name_cn": "高精灵"},
+  {"buffid": "36008", "img": "Bosmer", "name_en": "Bosmer", "name_cn": "木精灵"},
+  {"buffid": "70390", "img": "Khajiit", "name_en": "Khajiit", "name_cn": "卡吉特"},
+  {"buffid": "36247", "img": "Breton", "name_en": "Breton", "name_cn": "布莱顿"},
+  {"buffid": "33293", "img": "Orc", "name_en": "Orc", "name_cn": "兽人"},
+  {"buffid": "45278", "img": "Redguard", "name_en": "Redguard", "name_cn": "红卫"},
+  {"buffid": "117754", "img": "Redguard", "name_en": "Redguard", "name_cn": "红卫"},
+  {"buffid": "36582", "img": "Argonian", "name_en": "Argonian", "name_cn": "亚龙人"},
+  {"buffid": "36588", "img": "Dunmer", "name_en": "Dunmer", "name_cn": "暗精灵"},
+  {"buffid": "45304", "img": "Nord", "name_en": "Nord", "name_cn": "诺德人"},
+  {"buffid": "36312", "img": "Imperial", "name_en": "Imperial", "name_cn": "帝国人"},
+]
+
 let gearColor = [
   "rgb(255, 255, 255)",
   "rgb(255, 99, 132)",
@@ -2265,6 +2279,19 @@ class database {
     buildData.buildsData[1].stone = BD.stoneInfo
     buildData.buildsData[1].food = BD.foodInfo
 
+    if(BD.raceInfo[0] != undefined)
+    {
+      buildData.buildsData[1].race_name_en = BD.raceInfo[0].name_en
+      buildData.buildsData[1].race_name_cn = BD.raceInfo[0].name_cn
+      buildData.buildsData[1].race_img = BD.raceInfo[0].img
+    }
+    else
+    {
+      buildData.buildsData[1].race_name_en = 'unknown'
+      buildData.buildsData[1].race_name_cn = '未知'
+      buildData.buildsData[1].race_img = '../../../../.././plugins/eso/resources/img/races/Dunmer'
+    }    
+
     for (let i = 0; i < 14; i++) {
       buildData.buildsData[1].gear[i].name_cn = 'N/A'
       buildData.buildsData[1].gear[i].name_en = ''
@@ -2815,6 +2842,7 @@ class database {
   async updateBuffsData (BuffsTable) {
     let stoneInfo = [];
     let foodInfo = [];
+    let raceInfo = [];
 
     await this.init_database()
 
@@ -2862,11 +2890,30 @@ class database {
           break
         }
       }
+
+      //寻找并分辨出种族
+      for (let race of raceBuffs) {
+        if(race["buffid"] == buffID)
+        {
+          if (!raceInfo.some(item => item.name_en === race["name_en"])) {
+            let imgPath = await getimgs.realpath(race["img"], "races")
+            let icon = `../../../../../` + imgPath
+            // 添加到结果数组中
+            raceInfo.push({
+              name_en: race["name_en"],
+              name_cn: race["name_cn"],
+              img: icon
+            });
+          }       
+          break
+        }
+      }
     }
 
     buffsData = {
       stoneInfo: stoneInfo,
       foodInfo: foodInfo,
+      raceInfo: raceInfo,
     }
     //logger.info(buffsData)
 
