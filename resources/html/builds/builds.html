@@ -24,14 +24,14 @@
           <span id="build_title">{{val.title}}</span>
         </div>
         <div id="name_div">
-          <span id="name_string">{{val.playerName}}{{val.accountName}}</span>
+          <span id="name_string" style="font-size: {{val.fontSize}};">{{val.playerName}}{{val.accountName}}</span>
         </div>
       </div>
       <div id="SkillLineInfo">
       {{each val.line item}}
         <div id="SkillLine">
-          <img id="skillLine_pic" src="{{pluResPath}}img/stones/{{item.img}}" />
-          <span id="skillLine_string">{{item.name_cn}}</span>
+          <img id="skillLine_pic" src="{{pluResPath}}img/classes/{{item.img}}.png" />
+          <span id="skillLine_string">{{item.line_name}}</span>
         </div>
       {{/each}}
       </div>
@@ -58,7 +58,7 @@
           </div>
         {{/each}}
         </div>
-        
+
       </div>
     </div>
     <div class="gears">

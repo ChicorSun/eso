@@ -248,6 +248,40 @@ var raceBuffs = [
   {"buffid": "36312", "img": "Imperial", "name_en": "Imperial", "name_cn": "帝国人"},
 ]
 
+var skillLineBuffs = {
+}
+
+var skillLine2class = {
+  "黑暗魔法": {"class_img": "ON-icon-class-Sorcerer", "class_name": "巫师"},
+  "魔族召唤": {"class_img": "ON-icon-class-Sorcerer", "class_name": "巫师"},
+  "风暴呼唤": {"class_img": "ON-icon-class-Sorcerer", "class_name": "巫师"},
+
+  "神族之矛": {"class_img": "ON-icon-class-Templar", "class_name": "圣骑"},
+  "黎明之怒": {"class_img": "ON-icon-class-Templar", "class_name": "圣骑"},
+  "恢复之光": {"class_img": "ON-icon-class-Templar", "class_name": "圣骑"},
+
+  "烈焰之刃": {"class_img": "ON-icon-class-Dragonknight", "class_name": "龙骑"},
+  "巨龙之力": {"class_img": "ON-icon-class-Dragonknight", "class_name": "龙骑"},
+  "大地之心": {"class_img": "ON-icon-class-Dragonknight", "class_name": "龙骑"},
+
+  "刺杀": {"class_img": "ON-icon-class-Nightblade", "class_name": "夜刃"},
+  "暗影": {"class_img": "ON-icon-class-Nightblade", "class_name": "夜刃"},
+  "虹吸": {"class_img": "ON-icon-class-Nightblade", "class_name": "夜刃"},
+
+  "动物伙伴": {"class_img": "ON-icon-class-Warden", "class_name": "守望"},
+  "绿色平衡": {"class_img": "ON-icon-class-Warden", "class_name": "守望"},
+  "凛冬之拥": {"class_img": "ON-icon-class-Warden", "class_name": "守望"},
+
+  "墓穴领主": {"class_img": "ON-icon-class-Necromancer", "class_name": "死灵"},
+  "白骨暴君": {"class_img": "ON-icon-class-Necromancer", "class_name": "死灵"},
+  "存世亡者": {"class_img": "ON-icon-class-Necromancer", "class_name": "死灵"},
+
+  "古籍使者": {"class_img": "ON-icon-class-Arcanist", "class_name": "奥术师"},
+  "异典士兵": {"class_img": "ON-icon-class-Arcanist", "class_name": "奥术师"},
+  "药剂符师": {"class_img": "ON-icon-class-Arcanist", "class_name": "奥术师"},
+}
+
+
 let gearColor = [
   "rgb(255, 255, 255)",
   "rgb(255, 99, 132)",
@@ -626,6 +660,7 @@ class database {
   async enhance_database () {
     await this.enhance_setsData()
     await this.enhance_skillsData()
+    //logger.info(skillLineBuffs)
   }
 
   async enhance_setsData () {
@@ -701,6 +736,8 @@ class database {
     let baseIndex = 1
     let indexStr = ''
 
+    skillLineBuffs = {}
+
     for (let lineKey of keysLine) {
       if(lineKey == 9)
       {
@@ -714,7 +751,7 @@ class database {
         {
           continue
         }
-        //logger.info('       ' +  classKey + '|---' + allSkillData[lineKey][classKey].name)
+
         var keysSkill = Object.keys(allSkillData[lineKey][classKey].skills)
         var numSkill = keysSkill.length
         for (let skillKey of keysSkill) {
@@ -723,6 +760,7 @@ class database {
             continue
           }
           var oneSkill = allSkillData[lineKey][classKey].skills[skillKey]
+
           if(oneSkill.passive == false && oneSkill['1'])
           {
             baseIndex = 1
@@ -817,6 +855,13 @@ class database {
           skillID2IndexCN[oneSkill.id][1] = classKey
           skillID2IndexCN[oneSkill.id][2] = skillKey
           skillID2IndexCN[oneSkill.id][3] = '0'
+          if(skillLine2class[allSkillData[lineKey][classKey].name]!= undefined)
+          {
+            let icon = await this.splitStr(oneSkill.icon, 'icons/', '.dds')
+            skillLineBuffs[icon] = allSkillData[lineKey][classKey].name
+            //logger.info('       ' +  classKey + '|---' + allSkillData[lineKey][classKey].name + '[' + skillLine2class[allSkillData[lineKey][classKey].name].class_name + ']' + oneSkill.name + '(' + oneSkill.icon +')')
+          }
+
           if(oneSkill.ultimate)
           {
             indexStr = '大招'
@@ -904,6 +949,13 @@ class database {
             skillID2IndexCN[oneSkill[1].id][2] = skillKey
             skillID2IndexCN[oneSkill[1].id][3] = '1'
             skillID2IndexCN[oneSkill[1].id]["address"] = allSkillData[lineKey][classKey].name + indexStr
+            
+            if(skillLine2class[allSkillData[lineKey][classKey].name]!= undefined)
+            {
+              let icon = await this.splitStr(oneSkill[1].icon, 'icons/', '.dds')
+              skillLineBuffs[icon] = allSkillData[lineKey][classKey].name
+              //logger.info('       ' +  classKey + '|---' + allSkillData[lineKey][classKey].name + '[' + skillLine2class[allSkillData[lineKey][classKey].name].class_name + ']' + oneSkill[1].name + '(' + oneSkill[1].icon +')')
+            }
             //logger.info(skillID2IndexCN[oneSkill[1].id]["address"])
             /*
             if(!oneSkill[1].ultimate) {
@@ -926,6 +978,13 @@ class database {
             skillID2IndexCN[oneSkill[2].id][2] = skillKey
             skillID2IndexCN[oneSkill[2].id][3] = '2'
             skillID2IndexCN[oneSkill[2].id]["address"] = allSkillData[lineKey][classKey].name + indexStr
+
+            if(skillLine2class[allSkillData[lineKey][classKey].name]!= undefined)
+            {
+              let icon = await this.splitStr(oneSkill[2].icon, 'icons/', '.dds')
+              skillLineBuffs[icon] = allSkillData[lineKey][classKey].name
+              //logger.info('       ' +  classKey + '|---' + allSkillData[lineKey][classKey].name + '[' + skillLine2class[allSkillData[lineKey][classKey].name].class_name + ']' + oneSkill[2].name + '(' + oneSkill[2].icon +')')
+            }
             //logger.info(skillID2IndexCN[oneSkill[2].id]["address"])
             /*
             if(!oneSkill[2].ultimate) {
@@ -2359,6 +2418,7 @@ class database {
       let objSets = await this.name2index('ESOLOG'+GI.set,1)
       let setNum = objSets.length
       let itemIDMode = false
+
       if(setNum == 0 || objSets[0] == -1)
       {
         if(GI.name['link'].includes('?pcs='))
@@ -2429,7 +2489,7 @@ class database {
       }
       if(error_set)
       {
-        buildData.buildsData[1].gear[index].icon = GI.name['image'].split('/eso/abilities/')[1].split('.')[0]
+        buildData.buildsData[1].gear[index].icon = await this.splitStr(GI.name['image'], '/eso/abilities/', '.')
         buildData.buildsData[1].gear[index].type = GI.type
         if(GI.type == 'Light')
         {
@@ -2470,6 +2530,8 @@ class database {
     var talentIndex = 0
     let classIcon = ''
     let classStr = ''
+    let skillLineInfo = []
+
     for (let TI of BD.talentData) {
       let oneTalent = ''
       for (let i = 0; i < 2; i++) {
@@ -2541,6 +2603,19 @@ class database {
             let enID = skillKey.split('_')
             if(enID[0]==1)
             {
+              //logger.info(skillsDataCN[enID[0]][enID[1]].name)
+
+              if (!skillLineInfo.some(item => item.line_name === skillsDataCN[enID[0]][enID[1]].name)) {
+                let imgPath = await getimgs.realpath(skillLine2class[skillsDataCN[enID[0]][enID[1]].name].class_img, "classes")
+                let icon = `../../../../../` + imgPath
+                // 添加到结果数组中
+                skillLineInfo.push({
+                  img: icon,
+                  class_name: skillLine2class[skillsDataCN[enID[0]][enID[1]].name].class_name,
+                  line_name: skillsDataCN[enID[0]][enID[1]].name
+                });
+              }
+
               if(enID[1]>=1 && enID[1]<=3)
               {
                 classIcon = "ON-icon-class-Warden"
@@ -2604,6 +2679,22 @@ class database {
       }
       talentIndex++
     }
+
+    if(skillLineInfo.length < 3)
+    {
+      for (let eachLine of BD.skillLineInfo) {
+        if (!skillLineInfo.some(item => item.line_name === eachLine.line_name)) {
+          // 添加到结果数组中
+          skillLineInfo.push({
+            img: eachLine.img,
+            class_name: eachLine.class_name,
+            line_name: eachLine.line_name
+          });
+        }
+      }
+    }
+    //logger.info(skillLineInfo)
+    buildData.buildsData[1].line = skillLineInfo
 
     if(BD.className != '' && BD.roleName != '')
     {
@@ -2843,11 +2934,13 @@ class database {
     let stoneInfo = [];
     let foodInfo = [];
     let raceInfo = [];
+    let skillLineInfo = [];
 
     await this.init_database()
 
     for (let oneBuff of BuffsTable.data) {
       let buffID = await this.splitStr(oneBuff.link, 'ability=', '')
+      let buffIcon = await this.splitStr(oneBuff.img, 'abilities/', '.png')
       //logger.info(oneBuff.img)
       //logger.info(buffID)
       //logger.info(oneBuff.buffName)
@@ -2908,12 +3001,59 @@ class database {
           break
         }
       }
+
+      //寻找并分辨出技能线
+      if(buffIcon.includes('ability_'))
+      {
+        continue;
+      }
+      if(
+        (buffIcon == 'ability_dragonknight_025')
+         || (buffIcon == 'ability_sorcerer_038')
+         || (buffIcon == 'ability_sorcerer_044')
+         || (buffIcon == 'ability_sorcerer_045')
+         || (buffIcon == 'ability_templar_cleansing_ritual')
+         || (buffIcon == 'ability_dragonknight_020')
+         || (buffIcon == 'ability_templar_032')
+         || (buffIcon == 'ability_dragonknight_021')
+         || (buffIcon == 'ability_sorcerer_011')
+         || (buffIcon == 'ability_warden_007')
+         || (buffIcon == 'ability_sorcerer_013')
+         || (buffIcon == 'ability_templar_027')
+         || (buffIcon == 'ability_dragonknight_028')
+         || (buffIcon == 'passive_sorcerer_046')
+         || (buffIcon == 'ability_sorcerer_022')
+         || (buffIcon == 'passive_sorcerer_036')
+         || (buffIcon == 'ability_templar_022')
+         || (buffIcon == 'ability_templar_014')
+         || (buffIcon == 'ability_templar_012')
+         || (buffIcon == 'ability_dragonknight_023')
+        )
+      {
+        continue;
+      }
+
+      if(skillLineBuffs[buffIcon]!= undefined)
+      {
+        //logger.info(buffIcon)
+        if (!skillLineInfo.some(item => item.line_name === skillLineBuffs[buffIcon])) {
+          let imgPath = await getimgs.realpath(skillLine2class[skillLineBuffs[buffIcon]].class_img, "classes")
+          let icon = `../../../../../` + imgPath
+          // 添加到结果数组中
+          skillLineInfo.push({
+            img: icon,
+            class_name: skillLine2class[skillLineBuffs[buffIcon]].class_name,
+            line_name: skillLineBuffs[buffIcon]
+          });
+        }
+      }
     }
 
     buffsData = {
       stoneInfo: stoneInfo,
       foodInfo: foodInfo,
       raceInfo: raceInfo,
+      skillLineInfo: skillLineInfo
     }
     //logger.info(buffsData)
 

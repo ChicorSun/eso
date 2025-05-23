@@ -6,6 +6,7 @@
   title: "法系巫师-试炼"
   playerName: "playerName"
   accountName: "@GameID"
+  fontSize: "40px"
   race_name_en: "Altmer"
   race_name_cn: "高精灵"
   race_img: ON-icon-mundusstone-Thief.png
@@ -14,14 +15,14 @@
   sp: "?"
   line:
     - img: ON-icon-mundusstone-Thief.png
-      name_en: "unknown"
-      name_cn: "未知"
+      class_name: "unknown"
+      line_name: "未知"
     - img: ON-icon-mundusstone-Thief.png
-      name_en: "unknown"
-      name_cn: "未知"
+      class_name: "unknown"
+      line_name: "未知"
     - img: ON-icon-mundusstone-Thief.png
-      name_en: "unknown"
-      name_cn: "未知"
+      class_name: "unknown"
+      line_name: "未知"
   food:
     - img: ON-icon-mundusstone-Thief.png
       name_en: "unknown"

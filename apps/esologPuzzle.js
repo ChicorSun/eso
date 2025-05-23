@@ -301,7 +301,8 @@ export class esologPuzzle extends plugin {
       //logger.info(buffsData)
       BD.stoneInfo = buffsData.stoneInfo
       BD.foodInfo = buffsData.foodInfo
-      BD.raceInfo = buffsData.raceInfo      
+      BD.raceInfo = buffsData.raceInfo 
+      BD.skillLineInfo = buffsData.skillLineInfo   
     }
 
     if(BD.virtual)
@@ -629,6 +630,7 @@ export class esologPuzzle extends plugin {
       let stoneInfo = [];
       let foodInfo = [];
       let raceInfo = [];
+      let skillLineInfo = [];
       let food = ''
       let food_icon = ''
       let potion = ''
@@ -650,6 +652,7 @@ export class esologPuzzle extends plugin {
         stoneInfo,
         foodInfo,
         raceInfo,
+        skillLineInfo,
         food,
         food_icon,
         potion,

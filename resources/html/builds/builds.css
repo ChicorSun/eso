@@ -46,15 +46,15 @@ body {
 
   #Class{height:100%;width:14%;float:left;}
     #class_pic{height:150px;width:150px;float:left;transform:translateY(-35px)}
-  #title_div{height:100%;width:64%;float:left;font-size:32px;text-align: left;}
+  #title_div{width:51%;float:left;font-size:32px;text-align: left;}
     #build_title_div{height:50%;}
       #build_title{  font-size: 40px;}
-    #name_div{height:50%;}
-      #name_string{width:1200px;  font-size: 40px;}
+    #name_div{}
+      #name_string{width:550px;}
 
 /* 容器布局 */
 #SkillLineInfo {
-  width:18%;
+  width:13%;
   float:left;
   display: flex;
   flex-direction: column; /* 从上到下排列 */
@@ -75,8 +75,7 @@ body {
 #SkillLine {
   width:100%;
   height:33%;
-  /*display: flex;*/
-  display: none;
+  display: flex;
   flex-direction: row;
   gap: 1px; /* 间距 */
 }
