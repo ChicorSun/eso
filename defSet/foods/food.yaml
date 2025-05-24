@@ -1,0 +1,36 @@
+- date: 2023-01-01
+  pic: bg1
+  des: 技能图鉴
+- src_icon: ability_1handed_001
+  new_icon: ability_1handed_001_b
+  src_cn_name: "技能中文名"
+  src_en_name: "<技能英文名>"
+  new_cn_name: "技能中文名"
+  new_en_name: "<技能英文名>"
+
+  type_cn: "类型中文"
+  type_en: "类型英文"
+
+  place_cn: "技能线中文"
+  place_en: "技能线英文"
+
+  src_Skills_class: src_Skills_left_class
+  arrow_class: arrow_class_show
+  new_Skills_class: new_Skills_class_show
+  parameter_class: parameter_class_show
+  p_name:
+    - "消耗"
+    - "施法时间"
+    - "目标"
+    - "持续时间"
+    - "施法距离"
+  p_value:
+    - "1337耐力"
+    - "瞬发"
+    - "敌人"
+    - "6秒"
+    - "28米"
+  cost_color: "rgb(163, 53, 238)"
+  msg:
+    - "技能描述"
+  new_msg: "新增技能描述"

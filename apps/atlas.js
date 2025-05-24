@@ -23,6 +23,16 @@ let skillImg = {
   img: ''
 }
 
+//食物图鉴结构体变量
+let foodData = {
+}
+
+//cacheData to save img
+let foodImg = {
+  md5: '',
+  img: ''
+}
+
 export class atlas extends plugin {
   constructor (e) {
     super({
@@ -71,6 +81,15 @@ export class atlas extends plugin {
                       +`*法会一(所在技能线位置)`)
   }
 
+  async showFoodTips (e) {
+    await this.reply(`查看食物图鉴请使用\n`
+                      +`%食物名+图鉴 的格式，如: \n`
+                      +`%强效巫母之酿图鉴(正常查询)\n`
+                      +`%强效巫母之酿(可省略"图鉴")\n`
+                      +`%巫母汤(常用简称)\n`
+                      +`%巫母(模糊匹配)`)
+  }
+
 
   async showAtlas (e) {
     let name = await this.trimText(e)
@@ -85,13 +104,17 @@ export class atlas extends plugin {
     {
       return this.skipBipu(e)
     }
-    if((name == "#图鉴") || (name == "#套装") || (name == "*套装"))
+    if((name == "#图鉴") || (name == "#套装") || (name == "*套装") || (name == "%套装"))
     {
       return this.showSetTips(e)
     }
-    if((name == "*图鉴") || (name == "*技能") || (name == "#技能"))
+    if((name == "*图鉴") || (name == "*技能") || (name == "#技能") || (name == "%技能"))
     {
       return this.showSkillTips(e)
+    }
+    if((name == "%图鉴") || (name == "%食物") || (name == "#食物") || (name == "*食物"))
+    {
+      return this.showFoodTips(e)
     }
 
     if(name.includes("#"))
@@ -101,6 +124,10 @@ export class atlas extends plugin {
     else if(name.includes("*"))
     {
       await this.showSkills(e)
+    }
+    else if(name.includes("%"))
+    {
+      await this.showFoods(e)
     }
   }
 
@@ -123,7 +150,7 @@ export class atlas extends plugin {
     //logger.info('objSets:' + objSets)
     if((objSets[0] < 0) || (setNum <= 0))
     {
-      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以*开头才能查询技能`)
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以*开头查询技能或以%开头查询食物`)
     }
 
     if((setNum >= 5 && setNum <= 20) || noMaxLimit)
@@ -188,23 +215,6 @@ export class atlas extends plugin {
     }
   }
 
-  async showSkillsInfo (objSets, showEnglish) {
-    for (let skillKey of objSets) {
-      //更新技能图鉴变量
-      if(showEnglish)
-      {
-        skillData = await database.updateData(skillKey, 21)
-      }
-      else
-      {
-        skillData = await database.updateData(skillKey, 2)
-      }
-      
-      let img = await this.cache(skillData, skillImg)
-      await this.reply(img)
-    }
-  }
-
   async showSkills (e) {
     //return await this.reply(`该功能暂不可用，作者@Chicor正在施工中...`)
 
@@ -219,7 +229,7 @@ export class atlas extends plugin {
 
     if((objSkills[0] < 0) || (skillNum <= 0))
     {
-      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头才能查询装备`)
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备或以%开头查询食物`)
     }
 
     if(name.includes("英文") || name.includes("英语"))
@@ -271,6 +281,108 @@ export class atlas extends plugin {
 
     await this.showSkillsInfo(objSkills, showEnglish)
   }
+
+  async showSkillsInfo (objSets, showEnglish) {
+    for (let skillKey of objSets) {
+      //更新技能图鉴变量
+      if(showEnglish)
+      {
+        skillData = await database.updateData(skillKey, 21)
+      }
+      else
+      {
+        skillData = await database.updateData(skillKey, 2)
+      }
+      
+      let img = await this.cache(skillData, skillImg)
+      await this.reply(img)
+    }
+  }
+
+  async showFoods (e) {
+    //return await this.reply(`该功能暂不可用，作者@Chicor正在施工中...`)
+
+    let name = await this.trimText(e)
+    let noMaxLimit = false
+    let showEnglish = false
+    let objFoods = await database.name2index(name,3)
+    let foodNum = objFoods.length
+
+    //logger.info('foodNum:' + foodNum)
+    //logger.info('objFoods:' + objFoods)
+
+    if((objFoods[0] < 0) || (foodNum <= 0))
+    {
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备或以*开头查询技能`)
+    }
+
+    if(name.includes("英文") || name.includes("英语"))
+    {
+      showEnglish = true
+    }
+
+    
+    if((foodNum >= 4 && foodNum <= 25) || noMaxLimit)
+    {
+      let msgList = '我猜您想问的是以下食物之一？'
+      for (let foodKey of objFoods) {
+        foodData = await database.updateData(foodKey, 6)
+        msgList += `\n*`+foodData.atlasData[1].new_cn_name+'图鉴'
+      }
+      msgList += `\n`+'图片太多，不再一一列出'
+      await this.reply(msgList)
+      for (let foodKey of objFoods) {
+        foodData = await database.updateData(foodKey, 6)
+        if(foodData.atlasData[1].new_cn_name == name)
+        {
+          await this.showFoodsInfo([foodKey], showEnglish)
+          break
+        }
+      }
+
+      return 1
+    }
+
+    if(foodNum > 1 && foodNum < 4)
+    {
+      let msgList = '我猜您想问的是以下技能之一？'
+      for (let foodKey of objFoods) {
+        foodData = await database.updateData(foodKey, 6)
+        msgList += `\n*`+foodData.atlasData[1].new_cn_name+'图鉴'
+      }
+      await this.reply(msgList)
+    }
+
+    if(foodNum >= 26 && noMaxLimit==0)
+    {
+      return await this.reply(`对不起，请描述的再详细一点`)
+    }
+
+    if(foodNum <= 0 || foodNum > 4)
+    {
+      return 1
+    }
+
+    await this.showFoodsInfo(objFoods, showEnglish)
+  }
+  
+  async showFoodsInfo (objFoods, showEnglish) {
+    for (let foodKey of objFoods) {
+      //更新食物图鉴变量
+      if(showEnglish)
+      {
+        foodData = await database.updateData(foodKey, 61)
+      }
+      else
+      {
+        foodData = await database.updateData(foodKey, 6)
+      }
+      
+      let img = await this.cache(foodData, foodImg)
+      await this.reply(img)
+    }
+  }
+
 
   async trimText(e) {
     let text = '';

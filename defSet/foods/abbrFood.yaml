@@ -1,0 +1,12 @@
+- version: 1000_2025_05_24
+  des: 食物别称对照表
+  init: done
+- name: "Witchmother's Potent Brew"
+  cnName: "强效巫母之酿"
+  abbr:
+    - "巫母汤"
+- name: "Bewitched Sugar Skulls"
+  cnName: "蛊惑的糖果骷髅头"
+  abbr:
+    - "甜糖骷髅"
+    - "甜糖颅骨"

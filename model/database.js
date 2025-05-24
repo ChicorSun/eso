@@ -1,6 +1,7 @@
 import { createRequire } from 'module'
 import Atlas from './atlas.js'
 import Skills from './skills.js'
+import Foods from './foods.js'
 import Builds from './builds.js'
 import RankTable from './rank.js'
 import fetch from 'node-fetch'
@@ -49,9 +50,14 @@ let addrSet = [{
 let addrSkill = [{
 }]
 
+//食物别名数据库
+let addrFood = [{
+}]
+
 //匹配到的项目序号的集合数组
 let objSets = [-1]
 let objSkills = [-1]
+let objFoods = [-1]
 
 //技能ID转中文序号对照表
 let skillID2IndexCN = {
@@ -64,6 +70,10 @@ let setData = {
 //技能图鉴结构体变量
 let skillData = {
 }
+//食物图鉴结构体变量
+let foodData = {
+}
+
 //Build结构体变量
 let buildData = {
 }
@@ -1875,6 +1885,106 @@ class database {
     //logger.info(allList)
   }
 
+  async foodsName2Index (keyword, mode) {
+    objFoods = [-1]
+    let name = keyword
+    let enEsologMode = false
+    let enitemIDMode = false
+    let enFindByMsg = true
+    let enFindByType = false
+    let onlyNormal = false
+    let notAbbrFood = true
+    let index = 0
+    let isThisOne = false
+    var keysFood = Object.keys(foodsData)
+    var numFoods = keysFood.length
+    let keyType = 0
+
+    if(name.includes("ITEMID"))
+    {
+      enitemIDMode = true
+      notAbbrFood = true
+    }
+    if(name.includes("ESOLOG"))
+    {
+      enEsologMode = true
+      notAbbrFood = true
+    }
+    
+    name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("%", "").replace("ESOLOG", "").replace("ITEMID", "").replace("英文", "").replace("英语", "")
+    name = name.toLowerCase()
+    if(name.length<4 && /^[A-Za-z]+$/.test(name))
+    {
+      notAbbrFood = false
+    }
+
+    if('done' != addrFood[0].init)
+    {
+      let data = await Foods.get(this.e, 'foods', 'abbrFood', 'abbrFood')
+      addrFood = data.atlasData
+      //logger.info('[ESO:图鉴] 初始化食物别名对照表')
+    }
+
+    for (let foodKey of keysFood) {
+      isThisOne = false
+      if(enitemIDMode)
+      {
+        //logger.info(foodsData[foodKey]["id"])
+        if(foodsData[foodKey]["id"] == name)
+        {
+          isThisOne = true
+        }
+      }
+      else
+      {
+        if(notAbbrFood && (foodsData[foodKey]["name"]).toLowerCase().includes(name))
+        {
+          isThisOne = true
+        }
+        if(notAbbrFood && (foodsDataCN[foodKey]["name"]).toLowerCase().includes(name))
+        {
+          isThisOne = true
+        }
+      }
+
+      let srcName = name
+      let abbrIndex = -1
+      if(!enEsologMode)
+      {
+        for (let eachAbbr of addrFood) {
+          if(isThisOne)
+          {
+            break;
+          }
+          abbrIndex += 1
+          if(abbrIndex > 0)
+          {
+            //logger.info(eachAbbr.name)
+            for (let eachAbbrName of eachAbbr.abbr) {
+              //logger.info('---'+eachAbbrName)
+              if(eachAbbrName.toLowerCase().includes(name))
+              {
+                //logger.info('------'+foodsData[foodKey]["name"])
+                if((foodsData[foodKey]["name"]).toLowerCase().includes(eachAbbr.name.toLowerCase()))
+                {
+                  isThisOne = true
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if(isThisOne)
+      {
+        objFoods[index] = foodKey
+        index++
+      }
+    }
+    let foodNum = index
+  }
+
   async name2index (name, type) {
     await this.init_database()
     let ret = []
@@ -1887,6 +1997,11 @@ class database {
     {
       await this.skillsName2Index(name, 0)
       return objSkills
+    }
+    if(type == 3) //this is name for foods
+    {
+      await this.foodsName2Index(name, 0)
+      return objFoods
     }
 
     return ret
@@ -2318,6 +2433,82 @@ class database {
       index++
     }
     /*---------------------------------------------------------------*/
+  }
+
+  async updateFoodData (objects, showEnglish) {
+    //logger.info(foodsDataCN[objects])
+    //logger.info(foodsData[objects])
+
+    if('done' != foodData.init)
+    {
+      let data = await Skills.get(this.e, 'skills', 'skill', 'skills')
+      if (!data)
+      {
+        logger.error('[ESO:图鉴] 初始化食物结构体失败')
+        return
+      }
+      foodData = data
+      logger.info('[ESO:图鉴] 初始化食物结构体变量')
+    }
+   
+    foodData.atlasData[1].src_icon = await this.splitStr(foodsDataCN[objects]["icon"], 'icons/', '.dds')
+    foodData.atlasData[1].new_icon = await this.splitStr(foodsDataCN[objects]["icon"], 'icons/', '.dds')
+
+    let imgPath = await getimgs.realpath(foodData.atlasData[1].src_icon, "foods")
+    foodData.atlasData[1].src_icon = `../../../../../` + imgPath
+
+    imgPath = await getimgs.realpath(foodData.atlasData[1].new_icon, "foods")
+    foodData.atlasData[1].new_icon = `../../../../../` + imgPath
+
+    foodData.atlasData[1].src_cn_name = foodsDataCN[objects]["name"]
+    foodData.atlasData[1].src_en_name = '<' + foodsData[objects]["name"] + '>'
+
+    foodData.atlasData[1].new_cn_name = foodsDataCN[objects]["name"]
+    foodData.atlasData[1].new_en_name = '<' + foodsData[objects]["name"] + '>'
+
+    foodData.atlasData[1].type_cn = foodsDataCN[objects]["itemTypeText"]
+    
+    if(foodsDataCN[objects]["itemTypeText"] != foodsDataCN[objects]["specializedItemTypeText"])
+    {
+      foodData.atlasData[1].type_en = foodsDataCN[objects]["specializedItemTypeText"]
+    }
+    else
+    {
+      foodData.atlasData[1].type_en = '常见' + foodsDataCN[objects]["specializedItemTypeText"]
+    }
+    
+    
+
+    foodData.atlasData[1].place_cn = foodsDataCN[objects]["quality"]
+
+    if(foodsDataCN[objects]["canBeCrafted"])
+    {
+      foodData.atlasData[1].place_en = "可制造"
+    }
+    else
+    {
+      foodData.atlasData[1].place_en = "不可造"
+    }
+
+    foodData.atlasData[1].src_Skills_class = 'src_Skills_middle_class'
+    foodData.atlasData[1].arrow_class = 'arrow_class_hide'
+    foodData.atlasData[1].new_Skills_class = 'new_Skills_class_hide'
+
+    foodData.atlasData[1].parameter_class = 'parameter_class_hide'
+    
+    if(showEnglish)
+    {
+      foodData.atlasData[1].msg =  [await this.transColor(foodsData[objects]["description"])]
+      foodData.atlasData[1].new_msg = foodsData[objects]["ingredients"]
+    }
+    else
+    {
+      foodData.atlasData[1].msg = [await this.transColor(foodsDataCN[objects]["description"])]
+      foodData.atlasData[1].new_msg = foodsDataCN[objects]["ingredients"]
+    }
+    
+    foodData.atlasData[1].p_name = []
+    foodData.atlasData[1].p_value = []
   }
 
   async updateBuildData (BD) {
@@ -3086,6 +3277,11 @@ class database {
       await this.updateBuffsData(setKey)
       return buffsData
     }
+    if(type == 6) //this is name for foods
+    {
+      await this.updateFoodData(setKey, 0)
+      return foodData
+    }
 
     if(type == 11) //this is name for sets-english
     {
@@ -3096,6 +3292,11 @@ class database {
     {
       await this.updateSkillData(setKey, 1)
       return skillData
+    }
+    if(type == 61) //this is name for foods
+    {
+      await this.updateFoodData(setKey, 1)
+      return foodData
     }
   }
 
