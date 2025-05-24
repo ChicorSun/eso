@@ -345,7 +345,7 @@ export class atlas extends plugin {
 
     if(foodNum > 1 && foodNum < 4)
     {
-      let msgList = '我猜您想问的是以下技能之一？'
+      let msgList = '我猜您想问的是以下食物之一？'
       for (let foodKey of objFoods) {
         foodData = await database.updateData(foodKey, 6)
         msgList += `\n*`+foodData.atlasData[1].new_cn_name+'图鉴'
