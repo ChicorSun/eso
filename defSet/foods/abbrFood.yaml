@@ -11,3 +11,29 @@
     - "甜糖骷髅"
     - "甜糖颅骨"
     - "骷髅糖"
+- name: "Orzorga's Smoked Bear Haunch"
+  cnName: "欧佐加的烟熏熊臀"
+  abbr:
+    - "熊屁股"
+- name: "Old Aldmeri Orphan Gruel"
+  cnName: "古精灵孤儿粥"
+  abbr:
+    - "先祖神州孤儿粥"
+    - "先祖神舟孤儿粥"
+- name: "Pack Leader's Bone Broth"
+  cnName: "头狼骨汤"
+  abbr:
+    - "群狼之首的骨头汤"
+    - "群狼首领骨头汤"
+    - "头狼骨头汤"
+    - "狼王骨头汤"
+- name: "Artaeum Takeaway Broth"
+  cnName: "阿蒂姆外卖肉汤"
+  abbr:
+    - "鱼汤"
+- name: "Clockwork Citrus Filet"
+  cnName: "发条青柠肉片"
+  abbr:
+    - "发条城青柠肉片"
+    - "发条城菲力牛排"
+    - "发条菲力牛排"
