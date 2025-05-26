@@ -4,183 +4,23 @@ import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
 import md5 from 'md5'
 
-// 截图队列管理器
-class ScreenshotManager {
-  constructor() {
-    this.queue = []
-    this.isProcessing = false
-  }
-
-  async enqueue(type, data) {
-    return new Promise((resolve, reject) => {
-      this.queue.push({
-        type,
-        data: JSON.parse(JSON.stringify(data)), // 深度拷贝
-        resolve,
-        reject
-      })
-      this.processQueue()
-    })
-  }
-
-  async processQueue() {
-    if (this.isProcessing || this.queue.length === 0) return
-
-    this.isProcessing = true
-    const task = this.queue.shift()
-
-    try {
-      const result = await puppeteer.screenshot(task.type, task.data)
-      task.resolve(result)
-    } catch (error) {
-      task.reject(error)
-    } finally {
-      this.isProcessing = false
-      this.processQueue()
-    }
-  }
-}
-
-// 页面计数管理器
-class PageCounter {
-  constructor(maxPages = 5) {
-    this.activePages = 0;
-    this.maxPages = maxPages;
-    this.browser = null;
-    this.initializationPromise = null;
-    this.waitTimeout = 300000; // 5分钟超时
-  }
-
-  async initBrowser() {
-    if (this.initializationPromise) {
-      return this.initializationPromise;
-    }
-
-    this.initializationPromise = (async () => {
-      try {
-        if (!this.browser) {
-          logger.info('正在初始化浏览器...');
-          if (!puppeteer.browser) {
-            await puppeteer.browserInit();
-          }
-          this.browser = puppeteer.browser;
-          if (!this.browser) {
-            throw new Error('浏览器初始化失败');
-          }
-          logger.info('浏览器初始化成功');
-        }
-        return this.browser;
-      } catch (error) {
-        logger.error(`浏览器初始化失败: ${error}`);
-        this.initializationPromise = null;
-        throw error;
-      }
-    })();
-
-    return this.initializationPromise;
-  }
-
-  async waitForAvailableSlot() {
-    const startTime = Date.now();
-    let warningShown = false;
-    
-    while (this.activePages >= this.maxPages) {
-      const waitTime = Date.now() - startTime;
-      
-      // 如果等待超过30秒且未显示警告，显示警告信息
-      if (waitTime > 30000 && !warningShown) {
-        logger.info(`当前活动页面数(${this.activePages})已达到最大限制(${this.maxPages})，正在等待空闲槽位...`);
-        warningShown = true;
-      }
-      
-      // 如果等待时间超过设定的超时时间，抛出错误
-      if (waitTime > this.waitTimeout) {
-        throw new Error(`等待可用页面槽位超时(${this.waitTimeout / 1000}秒)`);
-      }
-      
-      // 等待100ms后重试
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-
-  async acquirePage() {
-    try {
-      // 等待可用槽位
-      await this.waitForAvailableSlot();
-      
-      // 确保浏览器已初始化
-      const browser = await this.initBrowser();
-      
-      // 再次检查browser是否可用
-      if (!browser || typeof browser.newPage !== 'function') {
-        logger.error('浏览器对象无效或newPage方法不可用');
-        throw new Error('浏览器对象无效');
-      }
-
-      this.activePages++;
-      logger.info(`创建新页面 (当前活动页面: ${this.activePages}/${this.maxPages})`);
-      
-      const page = await browser.newPage();
-      return page;
-    } catch (error) {
-      if (this.activePages > 0) {
-        this.activePages--; // 如果创建页面失败，减少计数
-      }
-      logger.error(`创建页面失败: ${error}`);
-      // 如果是浏览器相关错误，尝试重置浏览器
-      if (error.message.includes('浏览器')) {
-        this.browser = null;
-        this.initializationPromise = null;
-      }
-      throw error;
-    }
-  }
-
-  releasePage() {
-    if (this.activePages > 0) {
-      this.activePages--;
-      logger.info(`释放页面 (当前活动页面: ${this.activePages}/${this.maxPages})`);
-    }
-  }
-
-  getCurrentPages() {
-    return this.activePages;
-  }
-
-  async closeBrowser() {
-    if (this.browser) {
-      try {
-        await puppeteer.browser.close();
-        this.browser = null;
-        this.initializationPromise = null;
-        this.activePages = 0;
-        logger.info('浏览器已关闭');
-      } catch (error) {
-        logger.error(`关闭浏览器失败: ${error}`);
-      }
-    }
-  }
-}
-
-// 创建全局单例
-const screenshotManager = new ScreenshotManager()
-const pageCounter = new PageCounter(5) // 最多5个并发页面
-
-// 确保在进程退出时关闭浏览器
-process.on('exit', async () => {
-  await pageCounter.closeBrowser();
-});
-
-process.on('SIGINT', async () => {
-  await pageCounter.closeBrowser();
-  process.exit();
-});
-
 //快速模式开关
 let fast_mode = 0
 
+//Build结构体变量
+let buildData = {
+}
+
+//Buffs结构体变量
+let buffsData = {
+}
+
 //Group结构体数组
 let groupsData = []
+
+//Rank结构体变量
+let rankData = {
+}
 
 //cacheData to save img
 let buildImg = {
@@ -452,29 +292,33 @@ export class esologPuzzle extends plugin {
     let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&type=summary&translate=true`
     let buffsURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&target=${sourceIndex}&type=auras&translate=true`
     let buffInfo = ''
-    //logger.info('buffsURL:' + buffsURL)
+    logger.info('buffsURL:' + buffsURL)
 
+    let page = null;
     try {
+      // 启动浏览器
+      if (!puppeteer.browser) {
+        await puppeteer.browserInit()
+      }
+      page = await puppeteer.browser.newPage()
+      
+      // 设置页面超时
+      await page.setDefaultNavigationTimeout(30000)
+      
       // 并发获取数据
       const [BD, SD] = await Promise.all([
         this.getSummaryLog(summaryURL),
         this.getBuffsLog(buffsURL)
       ]);
 
-      // 初始化局部变量
-      let localBuffsData = {}
-      let localBuildData = {}
-
       if(SD.virtual) {
         //logger.info('SD:获取失败')
       } else {
-        // 深度拷贝SD数据
-        const sdCopy = JSON.parse(JSON.stringify(SD))
-        localBuffsData = await database.updateData(sdCopy, 5)
-        BD.stoneInfo = localBuffsData.stoneInfo
-        BD.foodInfo = localBuffsData.foodInfo
-        BD.raceInfo = localBuffsData.raceInfo 
-        BD.skillLineInfo = localBuffsData.skillLineInfo   
+        buffsData = await database.updateData(SD, 5)
+        BD.stoneInfo = buffsData.stoneInfo
+        BD.foodInfo = buffsData.foodInfo
+        BD.raceInfo = buffsData.raceInfo 
+        BD.skillLineInfo = buffsData.skillLineInfo   
       }
 
       if(BD.virtual) {
@@ -516,63 +360,46 @@ export class esologPuzzle extends plugin {
           BD.accountName= ''
         }
 
-        // 深度拷贝BD数据
-        const bdCopy = JSON.parse(JSON.stringify(BD))
-        localBuildData = await database.updateData(bdCopy, 3)
-        
-        // 使用截图队列管理器
-        try {
-          const img = await screenshotManager.enqueue('eso', localBuildData)
-          return img
-        } catch (error) {
-          logger.error(`截图出错: ${error}`)
-          return `抱歉，生成图片时出现错误: ${error.message}`
-        }
+        //更新Build变量
+        buildData = await database.updateData(BD, 3)
+        let img = await puppeteer.screenshot('eso', buildData)
+        return img
       }
     } catch (error) {
       logger.error(`获取日志出错: ${error}`)
       return `抱歉，获取日志时出现错误: ${error.message}`
+    } finally {
+      // 关闭页面释放资源
+      if (page) {
+        try {
+          await page.close()
+        } catch (e) {
+          logger.error(`关闭页面出错: ${e}`)
+        }
+      }
     }
   }
 
   async getBuffsLog (url) {
-    let page = null;
+
+    // 启动浏览器
+    if (!puppeteer.browser) {
+      await puppeteer.browserInit()
+    }
+    const page = await puppeteer.browser.newPage()
     try {
-      // 获取新页面并设置超时
-      page = await pageCounter.acquirePage().catch(e => {
-        logger.error(`获取页面失败: ${e}`);
-        throw e;
-      });
+      //logger.info('----waitForWebLoad----')
+      page.goto(url, { waitUntil: 'load', timeout: 120000 });
 
-      if (!page) {
-        throw new Error('无法创建新页面');
-      }
-
-      await page.setDefaultNavigationTimeout(60000);
-
-      // 设置页面视口大小
-      await page.setViewport({
-        width: 1920,
-        height: 1080
-      });
-
-      // 等待页面导航完成
-      await page.goto(url, { 
-        waitUntil: ['networkidle0', 'domcontentloaded'],
-        timeout: 60000 
-      }).catch(e => {
-        logger.error(`页面导航失败: ${e}`);
-        throw e;
-      });
+      // 设置超时时间为30秒
+      const selector = '#summary-gear-0_wrapper';
+      const timeout = 30000; // 30秒
 
       // 等待页面加载完成，确保元素可访问
-      await page.waitForSelector('.spells-table-wrapper', { 
-        timeout: 30000,
-        visible: true 
-      }).catch(e => {
-        logger.error(`等待元素超时: ${e}`);
-        throw e;
-      });
+      //logger.info('----waitForSelector----')
+      await page.waitForSelector('.spells-table-wrapper');
+      //await page.waitForSelector(selector, { timeout: timeout });
+      //logger.info('----Get it----')
       
       const data = await page.evaluate(() => {
         // 获取所有包含auras-table的表格
@@ -608,9 +435,6 @@ export class esologPuzzle extends plugin {
         });
   
         return dataList;
-      }).catch(e => {
-        logger.error(`页面数据提取失败: ${e}`);
-        throw e;
       });
 
       let virtual = 0
@@ -618,64 +442,40 @@ export class esologPuzzle extends plugin {
         virtual,
         data
       };
+      //logger.info(sd.data)
+      //logger.info(sd.data.length)
 
       return sd
     } catch (error) {
-      logger.error(`获取Buffs数据失败: ${error}`);
       let virtual = 1
       let sd = {
         virtual
       };
       return sd
     } finally {
-      if (page) {
-        try {
-          await page.close().catch(e => logger.error(`关闭页面失败: ${e}`));
-        } finally {
-          pageCounter.releasePage();
-        }
-      }
+
     }    
   }
 
   async getSummaryLog (url) {
-    let page = null;
+
+    // 启动浏览器
+    if (!puppeteer.browser) {
+      await puppeteer.browserInit()
+    }
+    const page = await puppeteer.browser.newPage()
     try {
-      // 获取新页面并设置超时
-      page = await pageCounter.acquirePage().catch(e => {
-        logger.error(`获取页面失败: ${e}`);
-        throw e;
-      });
+      //logger.info('----waitForWebLoad----')
+      page.goto(url, { waitUntil: 'load', timeout: 120000 });
 
-      if (!page) {
-        throw new Error('无法创建新页面');
-      }
-
-      await page.setDefaultNavigationTimeout(60000);
-
-      // 设置页面视口大小
-      await page.setViewport({
-        width: 1920,
-        height: 1080
-      });
-
-      // 等待页面导航完成
-      await page.goto(url, { 
-        waitUntil: ['networkidle0', 'domcontentloaded'],
-        timeout: 60000 
-      }).catch(e => {
-        logger.error(`页面导航失败: ${e}`);
-        throw e;
-      });
+      // 设置超时时间为30秒
+      const selector = '#summary-gear-0_wrapper';
+      const timeout = 30000; // 30秒
 
       // 等待页面加载完成，确保元素可访问
-      await page.waitForSelector('#summary-gear-0_wrapper', { 
-        timeout: 30000,
-        visible: true 
-      }).catch(e => {
-        logger.error(`等待元素超时: ${e}`);
-        throw e;
-      });
+      //logger.info('----waitForSelector----')
+      await page.waitForSelector('#summary-gear-0_wrapper');
+      //await page.waitForSelector(selector, { timeout: timeout });
 
       const actorName = await page.evaluate(() => {
         const actorElement = document.getElementById('filter-source-text');
@@ -714,6 +514,7 @@ export class esologPuzzle extends plugin {
         });
       });
       actorTable.push(...result);
+      //logger.info(actorTable)
 
       const gearData = await page.evaluate(() => {
         // 获取表格中所有的行（除去标题行）
@@ -795,6 +596,7 @@ export class esologPuzzle extends plugin {
         oneActor.actorName = oneActor.actorName.replace("+", "")
         if(!has_find && oneActor.actorName == playerName)
         {
+          //logger.info(oneActor.img_class)
           if(oneActor.img_class.includes("Arcanist")) {
             className = "Arcanist"
             classNameCN = "奥术"
@@ -833,6 +635,7 @@ export class esologPuzzle extends plugin {
           }
           
           accountName = oneActor.accountId
+          //logger.info(oneActor.img_class)
           has_find = true
         }
       }
@@ -869,32 +672,31 @@ export class esologPuzzle extends plugin {
         potion,
         potion_icon,
       };
+      //logger.info(bd.playerName)
+      //logger.info(bd.accountName)
+      //logger.info(bd.className)
+      //logger.info(bd.roleName)
 
       return bd
     } catch (error) {
-      logger.error(`获取Summary数据失败: ${error}`);
       let virtual = 1
       let bd = {
         virtual
       };
       return bd
     } finally {
-      if (page) {
-        try {
-          await page.close().catch(e => logger.error(`关闭页面失败: ${e}`));
-        } finally {
-          pageCounter.releasePage();
-        }
-      }
+
     }    
   }
 
   async getGroupData (url) {
-    let page = null;
+
+    // 启动浏览器
+    if (!puppeteer.browser) {
+      await puppeteer.browserInit()
+    }
+    const page = await puppeteer.browser.newPage()
     try {
-      // 获取新页面
-      page = await pageCounter.acquirePage();
-      
       //logger.info('----waitForWebLoad----')
       page.goto(url, { waitUntil: 'load', timeout: 120000 });
 
@@ -905,6 +707,8 @@ export class esologPuzzle extends plugin {
       // 等待页面加载完成，确保元素可访问
       //logger.info('----waitForSelector----')
       await page.waitForSelector('.character-details-contents');
+      //await page.waitForSelector('#DataTables_Table_0_wrapper');
+      //await page.waitForSelector(selector, { timeout: timeout });
 
       const data = await page.evaluate(() => {
         // 获取character-details-contents下的所有.roles-table-0表格
@@ -991,15 +795,7 @@ export class esologPuzzle extends plugin {
       };
       return gd
     } finally {
-      if (page) {
-        try {
-          await page.close();
-        } catch (e) {
-          logger.error(`关闭页面出错: ${e}`);
-        } finally {
-          pageCounter.releasePage(); // 无论页面是否成功关闭，都释放计数
-        }
-      }
+
     }    
   }
 
@@ -1008,36 +804,59 @@ export class esologPuzzle extends plugin {
 
     let BuildTable = await this.getRankData(URL)
 
-    if(BuildTable.virtual) {
+    if(BuildTable.virtual)
+    {
       let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
       return text
-    } else {
+    }
+    else
+    {
       let RT = BuildTable.ranks
-      
-      // 初始化局部变量
-      let localRankData = {}
-      
-      // 深度拷贝BuildTable数据
-      const buildTableCopy = JSON.parse(JSON.stringify(BuildTable))
-      localRankData = await database.updateData(buildTableCopy, 4)
-      
-      // 使用截图队列管理器
-      try {
-        const img = await screenshotManager.enqueue('eso', localRankData)
-        return img
-      } catch (error) {
-        logger.error(`截图出错: ${error}`)
-        return `抱歉，生成图片时出现错误: ${error.message}`
+      //logger.info(BuildTable.zone)
+      //logger.info(BuildTable.filterInfo)
+      //logger.info('一共' + RT.length + '个目标')
+      //logger.info(RT)
+
+      /*
+      for (let oneInfo of RT) {
+        let msg = ''
+        if(oneInfo.roleName[0] == '-')
+        {
+          oneInfo.roleName = oneInfo.roleName.replace('-','')
+        }
+        oneInfo.accountName = oneInfo.accountName.split('\n')[0];
+        msg += '\n' + 'Class: ' + oneInfo.classType + '\n' + 'RoleName: ' + oneInfo.roleName + '\n' + 'AccountName: ' + oneInfo.accountName
+        let index = 0
+        for (let oneTalent of oneInfo.talents) {
+          msg += '\n' + 'Talents[' + index + ']: ' + oneTalent
+          index++;
+        }
+        index = 0;
+        for (let oneGear of oneInfo.gears) {
+          msg += '\n' + 'Gears[' + index + ']: ' + oneGear.name + '|' + oneGear.icon + '(' + oneGear.quality + ')' + '[' + oneGear.id + ']' //name, icon, quality, id
+          index++;
+        }
+        logger.info(msg)
       }
+      */
+      
+      
+      //更新Build变量
+      rankData = await database.updateData(BuildTable, 4)
+      let img = await puppeteer.screenshot('eso', rankData)
+      return img
+      //return "text"
     }
   }
 
   async getRankData (url) {
-    let page = null;
+
+    // 启动浏览器
+    if (!puppeteer.browser) {
+      await puppeteer.browserInit()
+    }
+    const page = await puppeteer.browser.newPage()
     try {
-      // 获取新页面
-      page = await pageCounter.acquirePage();
-      
       //logger.info('----waitForWebLoad----')
       page.goto(url, { waitUntil: 'load', timeout: 120000 });
 
@@ -1048,6 +867,7 @@ export class esologPuzzle extends plugin {
       // 等待页面加载完成，确保元素可访问
       //logger.info('----waitForSelector----')
       await page.waitForSelector('#DataTables_Table_0_wrapper');
+      //await page.waitForSelector(selector, { timeout: timeout });
 
       const zoneImage = await page.$eval('#zone-image', img => img.src);
       const zoneName = await page.$eval('.zone-name', a => a.textContent);
@@ -1157,16 +977,10 @@ export class esologPuzzle extends plugin {
       let rankTable = {
         virtual,
       };
+
       return rankTable
     } finally {
-      if (page) {
-        try {
-          await page.close();
-        } catch (e) {
-          logger.error(`关闭页面出错: ${e}`);
-        } finally {
-        }
-      }
+
     }    
   }
 

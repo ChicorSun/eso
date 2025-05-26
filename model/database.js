@@ -7,197 +7,11 @@ import RankTable from './rank.js'
 import fetch from 'node-fetch'
 import getimgs from './getimgs.js'
 import fs from 'node:fs'
-import path from 'path'
 
 const require = createRequire(import.meta.url);
 
-// 缓存管理器类
-class CacheManager {
-  constructor(maxSize = 1000) {
-    this.cache = new Map();
-    this.maxSize = maxSize;
-    this.accessCount = new Map(); // 记录每个键的访问次数
-  }
-
-  // 获取缓存
-  get(key) {
-    const stringKey = JSON.stringify(key);
-    if (this.cache.has(stringKey)) {
-      // 增加访问计数
-      this.accessCount.set(stringKey, (this.accessCount.get(stringKey) || 0) + 1);
-      return this.cache.get(stringKey);
-    }
-    return null;
-  }
-
-  // 设置缓存
-  set(key, value) {
-    const stringKey = JSON.stringify(key);
-    
-    // 如果缓存已满，删除访问次数最少的项
-    if (this.cache.size >= this.maxSize) {
-      let minCount = Infinity;
-      let leastUsedKey = null;
-      
-      // 找出访问次数最少的键
-      for (const [key, count] of this.accessCount.entries()) {
-        if (count < minCount) {
-          minCount = count;
-          leastUsedKey = key;
-        }
-      }
-      
-      // 删除访问次数最少的项
-      if (leastUsedKey) {
-        this.cache.delete(leastUsedKey);
-        this.accessCount.delete(leastUsedKey);
-      }
-    }
-    
-    // 添加新项
-    this.cache.set(stringKey, value);
-    this.accessCount.set(stringKey, 1);
-  }
-
-  // 清除缓存
-  clear() {
-    this.cache.clear();
-    this.accessCount.clear();
-  }
-
-  // 获取缓存大小
-  size() {
-    return this.cache.size;
-  }
-
-  // 获取指定键的访问次数
-  getAccessCount(key) {
-    const stringKey = JSON.stringify(key);
-    return this.accessCount.get(stringKey) || 0;
-  }
-}
-
-// 创建缓存实例
-const setsName2IndexCache = new CacheManager(1000);
-const skillsName2IndexCache = new CacheManager(1000);
-const foodsName2IndexCache = new CacheManager(1000);
-const updateSetDataCache = new CacheManager(1000);
-const updateSkillDataCache = new CacheManager(1000);
-const updateFoodDataCache = new CacheManager(1000);
-
-// 配置文件路径
-const CONFIG = {
-  dataExtractorEN: './plugins/eso/resources/data/DataExtractor-en.lua',
-  dataExtractorCN: './plugins/eso/resources/data/DataExtractor-cn.lua',
-  cacheDir: './plugins/eso/cache'
-}
-
-// 缓存控制
-const CACHE_CONFIG = {
-  ttl: 24 * 60 * 60 * 1000, // 缓存24小时
-  version: '1.0'
-}
-
-class DatabaseLoader {
-  constructor() {
-    this.cache = new Map()
-    this.initPromise = null
-    this.luaToJson = null
-  }
-
-  async ensureCacheDir() {
-    if (!fs.existsSync(CONFIG.cacheDir)) {
-      await fs.promises.mkdir(CONFIG.cacheDir, { recursive: true })
-    }
-  }
-
-  getCachePath(key) {
-    return path.join(CONFIG.cacheDir, `${key}.json`)
-  }
-
-  async loadFromCache(key) {
-    const cachePath = this.getCachePath(key)
-    try {
-      if (fs.existsSync(cachePath)) {
-        const cacheData = JSON.parse(await fs.promises.readFile(cachePath, 'utf8'))
-        if (cacheData.version === CACHE_CONFIG.version && 
-            Date.now() - cacheData.timestamp < CACHE_CONFIG.ttl) {
-          return cacheData.data
-        }
-      }
-    } catch (e) {
-      console.error(`Cache read error for ${key}:`, e)
-    }
-    return null
-  }
-
-  async saveToCache(key, data) {
-    const cachePath = this.getCachePath(key)
-    try {
-      await this.ensureCacheDir()
-      await fs.promises.writeFile(cachePath, JSON.stringify({
-        version: CACHE_CONFIG.version,
-        timestamp: Date.now(),
-        data
-      }))
-    } catch (e) {
-      console.error(`Cache write error for ${key}:`, e)
-    }
-  }
-
-  async loadLuaFile(filePath, key) {
-    // 先尝试从缓存加载
-    const cachedData = await this.loadFromCache(key)
-    if (cachedData) {
-      return cachedData
-    }
-
-    // 懒加载lua-to-json
-    if (!this.luaToJson) {
-      this.luaToJson = require('lua-to-json')
-    }
-
-    // 使用流式读取处理大文件
-    const luaSrc = await new Promise((resolve, reject) => {
-      let content = ''
-      const stream = fs.createReadStream(filePath, { encoding: 'utf8' })
-      stream.on('data', chunk => { content += chunk })
-      stream.on('end', () => resolve(content))
-      stream.on('error', reject)
-    })
-
-    const data = this.luaToJson(luaSrc)
-    
-    // 只保留需要的数据
-    const processedData = this.extractNeededData(data)
-    
-    // 保存到缓存
-    await this.saveToCache(key, processedData)
-    
-    return processedData
-  }
-
-  extractNeededData(data) {
-    if (!data?.DataExtractorSavedVariables?.Default) {
-      return null
-    }
-
-    const allAccounts = data.DataExtractorSavedVariables.Default
-    const account = Object.keys(allAccounts)[0]
-    if (!account) {
-      return null
-    }
-
-    const accountData = allAccounts[account]['$AccountWide']
-    return {
-      items: accountData.dataItems || {},
-      skills: accountData.dataSkills || {}
-    }
-  }
-}
-
-// 导出单例
-export const dbLoader = new DatabaseLoader()
+let dataExtractorENPath = './plugins/eso/resources/data/DataExtractor-en.lua'
+let dataExtractorCNPath = './plugins/eso/resources/data/DataExtractor-cn.lua'
 
 //数据库
 let allSets = []
@@ -250,10 +64,22 @@ let skillID2IndexCN = {
   init: '-1',
 }
 
+//装备图鉴结构体变量
+let setData = {
+}
+//技能图鉴结构体变量
+let skillData = {
+}
 //食物图鉴结构体变量
 let foodData = {
 }
 
+//Build结构体变量
+let buildData = {
+}
+//Rank结构体变量
+let rankData = {
+}
 //Buffs结构体变量
 let buffsData = {
 }
@@ -1256,71 +1082,137 @@ class database {
   }
 
   async init_databaseEN () {
-    try {
-      const data = await dbLoader.loadLuaFile(CONFIG.dataExtractorEN, 'en_data')
-      if (!data) return
+    //Update english sets database
+    var keysSet = Object.keys(setsData)
+    var numSets = keysSet.length
+    if (numSets > 10)
+    {
+      //logger.info("DataBaseEN is ready, no need to update.")
+    }
+    else
+    {    
+      //logger.info("Init ESOdataBaseEN")
+      var luaToJson = require('lua-to-json')
+      var luaSrc = fs.readFileSync(dataExtractorENPath, 'utf8')
+      var lua_code = luaToJson(luaSrc)
+      var allAccounts = lua_code.DataExtractorSavedVariables.Default
+      var accounts = Object.keys(allAccounts)
+      var account_index = 0
 
-      // 检查是否需要更新
-      const keysSet = Object.keys(setsData)
-      const keysSkill = Object.keys(skillsData)
-      
-      // 只在需要时更新数据
-      if (keysSet.length <= 10) {
-        const { items } = data
-        if (items?.Sets) {
-          setsData = items.Sets
-          recipesData = items.Recipes || {}
-          furnituresData = items.Furniture || {}
-          collfurnituresData = items.CollectibleFurniture || {}
-          foodsData = items.Foods || {}
-        }
-      }
+      for (let account of accounts) {
+        account_index = account_index+1
+        if (account_index > 1)
+          break
 
-      if (keysSkill.length <= 3) {
-        skillsData = data.skills || {}
+        //logger.info(account)
+        var aData = allAccounts[account]['$AccountWide']
+        var itemsData = aData.dataItems
+        setsData = itemsData['Sets']
+        recipesData = itemsData['Recipes']
+        furnituresData = itemsData['Furniture']
+        collfurnituresData = itemsData['CollectibleFurniture']
+        foodsData = itemsData['Foods']
       }
-    } catch (error) {
-      console.error('Error initializing EN database:', error)
+    }
+
+    //Update english skills database
+    var keysSkill = Object.keys(skillsData)
+    var numSkills = keysSkill.length
+    //logger.info(numSkills)
+    if (numSkills > 3)
+    {
+      //logger.info("SkillsDataEN is ready, no need to update.")
+    }
+    else
+    {
+      //logger.info("Init ESOskillsDataEN")
+      var luaToJson = require('lua-to-json')
+      var luaSrc = fs.readFileSync(dataExtractorENPath, 'utf8')
+      var lua_code = luaToJson(luaSrc)
+      var allAccounts = lua_code.DataExtractorSavedVariables.Default
+      var accounts = Object.keys(allAccounts)
+      var account_index = 0
+
+      for (let account of accounts) {
+        account_index = account_index+1
+        if (account_index > 1)
+          break
+
+        //logger.info(account)
+        var aData = allAccounts[account]['$AccountWide']
+        skillsData = aData['dataSkills']
+        //logger.info(skillsData)
+      }
     }
   }
 
   async init_databaseCN () {
-    try {
-      const data = await dbLoader.loadLuaFile(CONFIG.dataExtractorCN, 'cn_data')
-      if (!data) return
+    //Update chinses sets database
+    var keysSet = Object.keys(setsDataCN)
+    var numSets = keysSet.length
 
-      // 检查是否需要更新
-      const keysSet = Object.keys(setsDataCN)
-      const keysSkill = Object.keys(skillsDataCN)
-      
-      // 只在需要时更新数据
-      if (keysSet.length <= 10) {
-        const { items } = data
-        if (items?.Sets) {
-          setsDataCN = items.Sets
-          recipesDataCN = items.Recipes || {}
-          furnituresDataCN = items.Furniture || {}
-          collfurnituresDataCN = items.CollectibleFurniture || {}
-          foodsDataCN = items.Foods || {}
-        }
-      }
+    if (numSets > 10)
+    {
+      //logger.info("DataBaseCN is ready, no need to update.")
+    }
+    else
+    {
+      //logger.info("Init ESOdataBaseCN")
+      var luaToJson = require('lua-to-json')
+      var luaSrc = fs.readFileSync(dataExtractorCNPath, 'utf8')
+      var lua_code = luaToJson(luaSrc)
+      var allAccounts = lua_code.DataExtractorSavedVariables.Default
+      var accounts = Object.keys(allAccounts)
+      var account_index = 0
 
-      if (keysSkill.length <= 3) {
-        skillsDataCN = data.skills || {}
+      for (let account of accounts) {
+        account_index = account_index+1
+        if (account_index > 1)
+          break
+
+        //logger.info(account)
+        var aData = allAccounts[account]['$AccountWide']
+        var itemsData = aData.dataItems
+        setsDataCN = itemsData['Sets']
+        recipesDataCN = itemsData['Recipes']
+        furnituresDataCN = itemsData['Furniture']
+        collfurnituresDataCN = itemsData['CollectibleFurniture']
+        foodsDataCN = itemsData['Foods']
       }
-    } catch (error) {
-      console.error('Error initializing CN database:', error)
+    }
+
+    //Update chinses skills database
+    var keysSkill = Object.keys(skillsDataCN)
+    var numSkills = keysSkill.length
+    //logger.info(numSkills)
+    if (numSkills > 3)
+    {
+      //logger.info("SkillsDataCN is ready, no need to update.")
+    }
+    else
+    {
+      //logger.info("Init ESOskillsDataCN")
+      var luaToJson = require('lua-to-json')
+      var luaSrc = fs.readFileSync(dataExtractorCNPath, 'utf8')
+      var lua_code = luaToJson(luaSrc)
+      var allAccounts = lua_code.DataExtractorSavedVariables.Default
+      var accounts = Object.keys(allAccounts)
+      var account_index = 0
+
+      for (let account of accounts) {
+        account_index = account_index+1
+        if (account_index > 1)
+          break
+
+        //logger.info(account)
+        var aData = allAccounts[account]['$AccountWide']
+        skillsDataCN = aData['dataSkills']
+        //logger.info(skillsDataCN)
+      }
     }
   }
 
   async setsName2Index (keyword) {
-    // 检查缓存
-    const cachedResult = setsName2IndexCache.get(keyword);
-    if (cachedResult !== null) {
-      objSets = cachedResult;
-      return;
-    }
-
     objSets = [-1]
     let name = keyword
     let enEsologMode = false
@@ -1529,20 +1421,9 @@ class database {
         }
       }
     }
-
-    // 存入缓存
-    setsName2IndexCache.set(keyword, [...objSets]); // 使用数组的深拷贝
   }
 
   async skillsName2Index (keyword, mode) {
-    // 检查缓存
-    const cacheKey = { keyword, mode };
-    const cachedResult = skillsName2IndexCache.get(cacheKey);
-    if (cachedResult !== null) {
-      objSkills = cachedResult;
-      return;
-    }
-
     objSkills = [-1]
     let name = keyword
     let cnName = ''
@@ -2002,20 +1883,9 @@ class database {
       }
     }
     //logger.info(allList)
-    
-    // 存入缓存
-    skillsName2IndexCache.set({ keyword, mode }, [...objSkills]);
   }
 
   async foodsName2Index (keyword, mode) {
-    // 检查缓存
-    const cacheKey = { keyword, mode };
-    const cachedResult = foodsName2IndexCache.get(cacheKey);
-    if (cachedResult !== null) {
-      objFoods = cachedResult;
-      return;
-    }
-
     objFoods = [-1]
     let name = keyword
     let enEsologMode = false
@@ -2113,9 +1983,6 @@ class database {
       }
     }
     let foodNum = index
-    
-    // 存入缓存
-    foodsName2IndexCache.set({ keyword, mode }, [...objFoods]);
   }
 
   async name2index (name, type) {
@@ -2141,23 +2008,17 @@ class database {
   }
 
   async updateSetData (setKey, showEnglish) {
-    // 检查缓存
-    const cacheKey = { setKey, showEnglish };
-    const cachedResult = updateSetDataCache.get(cacheKey);
-    if (cachedResult !== null) {
-      return cachedResult;
+    if('done' != setData.init)
+    {
+      let data = await Atlas.get(this.e, 'atlas', 'set', 'sets')
+      if (!data)
+      {
+        logger.error('[ESO:图鉴] 初始化结构体失败')
+        return
+      }
+      setData = data
+      //logger.info('[ESO:图鉴] 初始化结构体变量')
     }
-
-    // 创建局部setData变量
-    let setData = {}
-    
-    // 初始化setData
-    let data = await Atlas.get(this.e, 'atlas', 'set', 'sets')
-    if (!data) {
-      logger.error('[ESO:图鉴] 初始化结构体失败')
-      return
-    }
-    setData = JSON.parse(JSON.stringify(data)) // 深度拷贝
 
     setData.atlasData[1].name = setsDataCN[setsData[setKey].id].name
     setData.atlasData[1].name_en = '<'+setsData[setKey].name+'>'
@@ -2348,20 +2209,9 @@ class database {
     */
     let imgPath = await getimgs.realpath(setData.atlasData[1].icon, "sets")
     setData.atlasData[1].icon = `../../../../../` + imgPath
-    
-    // 存入缓存
-    updateSetDataCache.set({ setKey, showEnglish }, setData);
-    return setData // 返回局部变量
   }
 
   async updateSkillData (objects, showEnglish) {
-    // 检查缓存
-    const cacheKey = { objects, showEnglish };
-    const cachedResult = updateSkillDataCache.get(cacheKey);
-    if (cachedResult !== null) {
-      return cachedResult;
-    }
-
     let enID = []
     let cnID = []
     let newENSkillData = []
@@ -2369,16 +2219,19 @@ class database {
     let srcENSkillData = []
     let srcCNSkillData = []
 
-    // 创建局部skillData变量
-    let skillData = {}
-    
-    // 初始化skillData
-    let data = await Skills.get(this.e, 'skills', 'skill', 'skills')
-    if (!data) {
-      logger.error('[ESO:图鉴] 初始化技能结构体失败')
-      return
+    //logger.info(objects)
+
+    if('done' != skillData.init)
+    {
+      let data = await Skills.get(this.e, 'skills', 'skill', 'skills')
+      if (!data)
+      {
+        logger.error('[ESO:图鉴] 初始化技能结构体失败')
+        return
+      }
+      skillData = data
+      logger.info('[ESO:图鉴] 初始化技能结构体变量')
     }
-    skillData = JSON.parse(JSON.stringify(data)) // 深度拷贝
 
     enID = objects.split('_')
 
@@ -2580,25 +2433,13 @@ class database {
       index++
     }
     /*---------------------------------------------------------------*/
-
-    // 存入缓存
-    updateSkillDataCache.set({ objects, showEnglish }, skillData);
-    return skillData // 返回局部变量
   }
 
   async updateFoodData (objects, showEnglish) {
-    // 检查缓存
-    const cacheKey = { objects, showEnglish };
-    const cachedResult = updateFoodDataCache.get(cacheKey);
-    if (cachedResult !== null) {
-      return cachedResult;
-    }
+    //logger.info(foodsDataCN[objects])
+    //logger.info(foodsData[objects])
 
-    // 创建局部foodData变量
-    let foodData = {}
-    
-    // 初始化foodData
-    if(!foodData.init || foodData.init === 'done')
+    if('done' != foodData.init)
     {
       let data = await Skills.get(this.e, 'skills', 'skill', 'skills')
       if (!data)
@@ -2606,7 +2447,7 @@ class database {
         logger.error('[ESO:图鉴] 初始化食物结构体失败')
         return
       }
-      foodData = JSON.parse(JSON.stringify(data)) // 深度拷贝
+      foodData = data
       logger.info('[ESO:图鉴] 初始化食物结构体变量')
     }
    
@@ -2635,6 +2476,8 @@ class database {
     {
       foodData.atlasData[1].type_en = '常见' + foodsDataCN[objects]["specializedItemTypeText"]
     }
+    
+    
 
     foodData.atlasData[1].place_cn = foodsDataCN[objects]["quality"]
 
@@ -2666,23 +2509,19 @@ class database {
     
     foodData.atlasData[1].p_name = []
     foodData.atlasData[1].p_value = []
-
-    // 存入缓存
-    updateFoodDataCache.set({ objects, showEnglish }, foodData);
-    return foodData // 返回局部变量
   }
 
   async updateBuildData (BD) {
-    // 创建局部buildData变量
-    let buildData = {}
-    
-    // 初始化buildData
-    let data = await Builds.get(this.e, 'builds', 'build', 'builds')
-    if (!data) {
-      logger.error('[ESO:图鉴] 初始化结构体失败')
-      return
+    if('done' != buildData.init)
+    {
+      let data = await Builds.get(this.e, 'builds', 'build', 'builds')
+      if (!data)
+      {
+        logger.error('[ESO:图鉴] 初始化结构体失败')
+        return
+      }
+      buildData = data
     }
-    buildData = JSON.parse(JSON.stringify(data)) // 深度拷贝
 
     buildData.buildsData[1].head_title = "Build Info from www.esolog.com created by " + BD.playerName + BD.accountName
     buildData.buildsData[1].accountName = BD.accountName
@@ -2690,11 +2529,14 @@ class database {
     buildData.buildsData[1].stone = BD.stoneInfo
     buildData.buildsData[1].food = BD.foodInfo
 
-    if(BD.raceInfo[0] != undefined) {
+    if(BD.raceInfo[0] != undefined)
+    {
       buildData.buildsData[1].race_name_en = BD.raceInfo[0].name_en
       buildData.buildsData[1].race_name_cn = BD.raceInfo[0].name_cn
       buildData.buildsData[1].race_img = BD.raceInfo[0].img
-    } else {
+    }
+    else
+    {
       buildData.buildsData[1].race_name_en = 'unknown'
       buildData.buildsData[1].race_name_cn = '未知'
       buildData.buildsData[1].race_img = '../../../../.././plugins/eso/resources/img/races/Dunmer'
@@ -2792,8 +2634,7 @@ class database {
       {
         error_set = 1;
         for (let setKey of objSets) {
-          let setData = {}
-          setData = JSON.parse(JSON.stringify(await this.updateData(setKey, 1)))
+          setData = await this.updateData(setKey, 1)
           if(setData.atlasData[1].name_en == ('<'+GI.set+'>') || setData.atlasData[1].name == GI.set || itemIDMode)
           {
             buildData.buildsData[1].gear[index].icon = GI.name['image'].split('/eso/abilities/')[1].split('.')[0]
@@ -3004,9 +2845,7 @@ class database {
             }
             
             skillNum = objSkills.length
-
-            let skillData = {}
-            skillData = JSON.parse(JSON.stringify(await this.updateData(skillKey, 2)))
+            await this.updateData(skillKey, 2)
             if(skillNum == 1 || skillData.atlasData[1].new_en_name == ('<'+oneTalent['text']+'>') || skillData.atlasData[1].new_cn_name == oneTalent['text'])
             {
               buildData.buildsData[1].spell[i].bar[talentIndex].icon = skillData.atlasData[1].new_icon
@@ -3096,20 +2935,20 @@ class database {
     buildData.buildsData[1].class = classIcon
     //logger.info(buildData.buildsData[1])
 
-    return buildData // 返回局部变量
+    return buildData
   }
 
   async updateRankData (BuildTable) {
-    // 创建局部变量
-    let rankData = {}
-    
-    // 初始化rankData
-    let data = await RankTable.get(this.e, 'builds', 'rank', 'rank')
-    if (!data) {
-      logger.error('[ESO:图鉴] 初始化结构体失败')
-      return
+    if('done' != rankData.init)
+    {
+      let data = await RankTable.get(this.e, 'builds', 'rank', 'rank')
+      if (!data)
+      {
+        logger.error('[ESO:图鉴] 初始化结构体失败')
+        return
+      }
+      rankData = data
     }
-    rankData = JSON.parse(JSON.stringify(data)) // 深度拷贝
 
     rankData.rtData[1].title = '排行榜'
     rankData.rtData[1].head_title = 'Build Info from www.esolog.com'
@@ -3197,8 +3036,7 @@ class database {
           else
           {
             //logger.info(objSets)
-            let setData = {}
-            setData = JSON.parse(JSON.stringify(await this.updateData(objSets[0], 1)))
+            setData = await this.updateData(objSets[0], 1)
             //logger.info(setData.atlasData[1].name)
             setName = setData.atlasData[1].name
             findSet = true
@@ -3281,8 +3119,6 @@ class database {
     //logger.info(rankData.rtData[1])
 
     rankData.rtData[1].head_title = "Build Info from www.esolog.com"
-    
-    return rankData // 返回局部变量
   }
 
   async updateBuffsData (BuffsTable) {
@@ -3296,10 +3132,14 @@ class database {
     for (let oneBuff of BuffsTable.data) {
       let buffID = await this.splitStr(oneBuff.link, 'ability=', '')
       let buffIcon = await this.splitStr(oneBuff.img, 'abilities/', '.png')
+      //logger.info(oneBuff.img)
+      //logger.info(buffID)
+      //logger.info(oneBuff.buffName)
 
       //寻找并分辨出梦达斯石头
       if(oneBuff.buffName.includes('Boon:'))
       {
+        //logger.info(oneBuff.buffName)
         for (let stone of stones) {
           if(oneBuff.buffName.includes(stone["stone_en"]))
           {
@@ -3317,6 +3157,7 @@ class database {
 
       //寻找并分辨出食物
       for (let food of foodBuffs) {
+        //logger.info('buffID: ' + buffID + ', foodID: ' + food["buffid"])
         if(food["buffid"] == buffID)
         {
           if (!foodInfo.some(item => item.name_en === food["name_en"])) {
@@ -3385,6 +3226,7 @@ class database {
 
       if(skillLineBuffs[buffIcon]!= undefined)
       {
+        //logger.info(buffIcon)
         if (!skillLineInfo.some(item => item.line_name === skillLineBuffs[buffIcon])) {
           let imgPath = await getimgs.realpath(skillLine2class[skillLineBuffs[buffIcon]].class_img, "classes")
           let icon = `../../../../../` + imgPath
@@ -3398,13 +3240,13 @@ class database {
       }
     }
 
-    // 创建局部buffsData变量
-    let buffsData = {
-      stoneInfo: JSON.parse(JSON.stringify(stoneInfo)),
-      foodInfo: JSON.parse(JSON.stringify(foodInfo)),
-      raceInfo: JSON.parse(JSON.stringify(raceInfo)),
-      skillLineInfo: JSON.parse(JSON.stringify(skillLineInfo))
+    buffsData = {
+      stoneInfo: stoneInfo,
+      foodInfo: foodInfo,
+      raceInfo: raceInfo,
+      skillLineInfo: skillLineInfo
     }
+    //logger.info(buffsData)
 
     return buffsData
   }
@@ -3412,40 +3254,49 @@ class database {
   async updateData (setKey, type) {
     if(type == 1) //this is name for sets
     {
-      return await this.updateSetData(setKey, 0)
+      await this.updateSetData(setKey, 0)
+      return setData
     }
     if(type == 2) //this is name for skills
     {
-      return await this.updateSkillData(setKey, 0)
+      await this.updateSkillData(setKey, 0)
+      return skillData
     }
     if(type == 3) //this is name for builds
     {
-      return await this.updateBuildData(setKey)
+      await this.updateBuildData(setKey)
+      return buildData
     }
     if(type == 4) //this is name for rank
     {
-      return await this.updateRankData(setKey)
+      await this.updateRankData(setKey)
+      return rankData
     }
     if(type == 5) //this is name for buffs
     {
-      return await this.updateBuffsData(setKey)
+      await this.updateBuffsData(setKey)
+      return buffsData
     }
     if(type == 6) //this is name for foods
     {
-      return await this.updateFoodData(setKey, 0)
+      await this.updateFoodData(setKey, 0)
+      return foodData
     }
 
     if(type == 11) //this is name for sets-english
     {
-      return await this.updateSetData(setKey, 1)
+      await this.updateSetData(setKey, 1)
+      return setData
     }
     if(type == 21) //this is name for skills-english
     {
-      return await this.updateSkillData(setKey, 1)
+      await this.updateSkillData(setKey, 1)
+      return skillData
     }
     if(type == 61) //this is name for foods
     {
-      return await this.updateFoodData(setKey, 1)
+      await this.updateFoodData(setKey, 1)
+      return foodData
     }
   }
 
