@@ -7,11 +7,125 @@ import RankTable from './rank.js'
 import fetch from 'node-fetch'
 import getimgs from './getimgs.js'
 import fs from 'node:fs'
+import md5 from 'md5'
 
 const require = createRequire(import.meta.url);
 
 let dataExtractorENPath = './plugins/eso/resources/data/DataExtractor-en.lua'
 let dataExtractorCNPath = './plugins/eso/resources/data/DataExtractor-cn.lua'
+
+// 缓存路径
+const cachePath = './plugins/eso/custome_resources/cache/'
+const MAX_CACHE_ENTRIES = 1000
+
+// 数据文件的 MD5 值
+let currentMD5 = null
+
+// 计算文件的 MD5
+function calculateMD5(filePath) {
+  try {
+    const fileBuffer = fs.readFileSync(filePath)
+    let MD5val = md5(JSON.stringify(fileBuffer))
+    return MD5val
+  } catch (error) {
+    logger.error(`[ESO:图鉴] 计算MD5失败: ${error.message}`)
+    return null
+  }
+}
+
+// 缓存管理类
+class CacheManager {
+  constructor(cacheFile) {
+    this.cacheFile = cachePath + cacheFile
+    this.cache = new Map()
+    this.accessCount = new Map()
+    this.loadCache()
+  }
+
+  loadCache() {
+    try {
+      if (!fs.existsSync(cachePath)) {
+        fs.mkdirSync(cachePath, { recursive: true })
+      }
+      
+      if (fs.existsSync(this.cacheFile)) {
+        const data = JSON.parse(fs.readFileSync(this.cacheFile, 'utf8'))
+        
+        // 检查缓存文件中的 MD5 是否与当前数据文件一致
+        if (!data.md5 || data.md5 !== currentMD5) {
+          logger.info(`[ESO:图鉴] 数据文件已更新，清除缓存: ${this.cacheFile}`)
+          fs.unlinkSync(this.cacheFile)
+          this.cache.clear()
+          this.accessCount.clear()
+          return
+        }
+        
+        this.cache = new Map(Object.entries(data.cache))
+        this.accessCount = new Map(Object.entries(data.accessCount))
+      }
+    } catch (error) {
+      logger.error(`[ESO:图鉴] 加载缓存文件失败: ${error.message}`)
+      this.cache.clear()
+      this.accessCount.clear()
+    }
+  }
+
+  saveCache() {
+    try {
+      const data = {
+        md5: currentMD5,
+        cache: Object.fromEntries(this.cache),
+        accessCount: Object.fromEntries(this.accessCount)
+      }
+      fs.writeFileSync(this.cacheFile, JSON.stringify(data, null, 2))
+    } catch (error) {
+      logger.error(`[ESO:图鉴] 保存缓存文件失败: ${error.message}`)
+    }
+  }
+
+  get(key) {
+    if (this.cache.has(key)) {
+      this.accessCount.set(key, (this.accessCount.get(key) || 0) + 1)
+      this.saveCache()
+      return this.cache.get(key)
+    }
+    return null
+  }
+
+  set(key, value) {
+    if (this.cache.size >= MAX_CACHE_ENTRIES) {
+      // 找到访问次数最少的键
+      let minKey = null
+      let minCount = Infinity
+      for (const [k, count] of this.accessCount) {
+        if (count < minCount) {
+          minCount = count
+          minKey = k
+        }
+      }
+      if (minKey) {
+        this.cache.delete(minKey)
+        this.accessCount.delete(minKey)
+      }
+    }
+    
+    this.cache.set(key, value)
+    this.accessCount.set(key, 1)
+    this.saveCache()
+  }
+}
+
+// 缓存管理器实例Map
+const cacheManagers = new Map()
+
+// 获取缓存管理器实例
+function getCacheManager(type) {
+  const cacheFile = `index_table_${String(type).padStart(2, '0')}.json`
+  if (!cacheManagers.has(type)) {
+    cacheManagers.set(type, new CacheManager(cacheFile))
+  }
+  return cacheManagers.get(type)
+}
 
 //数据库
 let allSets = []
@@ -54,35 +168,13 @@ let addrSkill = [{
 let addrFood = [{
 }]
 
-//匹配到的项目序号的集合数组
-let objSets = [-1]
-let objSkills = [-1]
-let objFoods = [-1]
-
 //技能ID转中文序号对照表
 let skillID2IndexCN = {
   init: '-1',
 }
 
-//装备图鉴结构体变量
-let setData = {
-}
-//技能图鉴结构体变量
-let skillData = {
-}
 //食物图鉴结构体变量
-let foodData = {
-}
 
-//Build结构体变量
-let buildData = {
-}
-//Rank结构体变量
-let rankData = {
-}
-//Buffs结构体变量
-let buffsData = {
-}
 
 let races =
 [
@@ -660,6 +752,12 @@ class database {
   }
 
   async init_database () {
+    // 计算数据文件的 MD5 值
+    if (!currentMD5) {
+      currentMD5 = calculateMD5(dataExtractorCNPath)
+      logger.info(`[ESO:图鉴] 数据文件MD5: ${currentMD5}`)
+    }
+
     await this.init_databaseEN()
     await this.init_databaseCN()
 
@@ -1082,138 +1180,117 @@ class database {
   }
 
   async init_databaseEN () {
-    //Update english sets database
-    var keysSet = Object.keys(setsData)
-    var numSets = keysSet.length
-    if (numSets > 10)
-    {
-      //logger.info("DataBaseEN is ready, no need to update.")
-    }
-    else
-    {    
-      //logger.info("Init ESOdataBaseEN")
-      var luaToJson = require('lua-to-json')
-      var luaSrc = fs.readFileSync(dataExtractorENPath, 'utf8')
-      var lua_code = luaToJson(luaSrc)
-      var allAccounts = lua_code.DataExtractorSavedVariables.Default
-      var accounts = Object.keys(allAccounts)
-      var account_index = 0
+    try {
+      //检查英文数据库是否已加载
+      var keysSet = Object.keys(setsData)
+      var numSets = keysSet.length
+      var keysSkill = Object.keys(skillsData)
+      var numSkills = keysSkill.length
 
-      for (let account of accounts) {
-        account_index = account_index+1
-        if (account_index > 1)
-          break
-
-        //logger.info(account)
-        var aData = allAccounts[account]['$AccountWide']
-        var itemsData = aData.dataItems
-        setsData = itemsData['Sets']
-        recipesData = itemsData['Recipes']
-        furnituresData = itemsData['Furniture']
-        collfurnituresData = itemsData['CollectibleFurniture']
-        foodsData = itemsData['Foods']
+      if (numSets > 10 && numSkills > 3) {
+        //logger.info("英文数据库已加载，无需更新")
+        return
       }
-    }
 
-    //Update english skills database
-    var keysSkill = Object.keys(skillsData)
-    var numSkills = keysSkill.length
-    //logger.info(numSkills)
-    if (numSkills > 3)
-    {
-      //logger.info("SkillsDataEN is ready, no need to update.")
-    }
-    else
-    {
-      //logger.info("Init ESOskillsDataEN")
-      var luaToJson = require('lua-to-json')
-      var luaSrc = fs.readFileSync(dataExtractorENPath, 'utf8')
-      var lua_code = luaToJson(luaSrc)
-      var allAccounts = lua_code.DataExtractorSavedVariables.Default
-      var accounts = Object.keys(allAccounts)
-      var account_index = 0
-
-      for (let account of accounts) {
-        account_index = account_index+1
-        if (account_index > 1)
-          break
-
-        //logger.info(account)
-        var aData = allAccounts[account]['$AccountWide']
-        skillsData = aData['dataSkills']
-        //logger.info(skillsData)
+      //logger.info("正在加载英文数据库...")
+      const luaToJson = require('lua-to-json')
+      const luaSrc = await fs.promises.readFile(dataExtractorENPath, 'utf8')
+      const lua_code = luaToJson(luaSrc)
+      
+      if (!lua_code?.DataExtractorSavedVariables?.Default) {
+        logger.error('[ESO:图鉴] 英文数据文件格式错误')
+        return
       }
+
+      // 获取第一个账号的数据
+      const firstAccount = Object.keys(lua_code.DataExtractorSavedVariables.Default)[0]
+      if (!firstAccount) {
+        logger.error('[ESO:图鉴] 英文数据文件中未找到账号数据')
+        return
+      }
+
+      const accountData = lua_code.DataExtractorSavedVariables.Default[firstAccount]['$AccountWide']
+      if (!accountData) {
+        logger.error('[ESO:图鉴] 英文数据文件中未找到账号全局数据')
+        return
+      }
+
+      // 加载物品数据
+      const itemsData = accountData.dataItems
+      if (itemsData) {
+        setsData = itemsData['Sets'] || [{}]
+        recipesData = itemsData['Recipes'] || [{}]
+        furnituresData = itemsData['Furniture'] || [{}]
+        collfurnituresData = itemsData['CollectibleFurniture'] || [{}]
+        foodsData = itemsData['Foods'] || [{}]
+      }
+
+      // 加载技能数据
+      skillsData = accountData['dataSkills'] || [{}]
+
+      //logger.info('[ESO:图鉴] 英文数据库加载完成')
+    } catch (error) {
+      logger.error(`[ESO:图鉴] 加载英文数据库失败: ${error}`)
     }
   }
 
   async init_databaseCN () {
-    //Update chinses sets database
-    var keysSet = Object.keys(setsDataCN)
-    var numSets = keysSet.length
+    try {
+      //检查中文数据库是否已加载
+      var keysSet = Object.keys(setsDataCN)
+      var numSets = keysSet.length
+      var keysSkill = Object.keys(skillsDataCN)
+      var numSkills = keysSkill.length
 
-    if (numSets > 10)
-    {
-      //logger.info("DataBaseCN is ready, no need to update.")
-    }
-    else
-    {
-      //logger.info("Init ESOdataBaseCN")
-      var luaToJson = require('lua-to-json')
-      var luaSrc = fs.readFileSync(dataExtractorCNPath, 'utf8')
-      var lua_code = luaToJson(luaSrc)
-      var allAccounts = lua_code.DataExtractorSavedVariables.Default
-      var accounts = Object.keys(allAccounts)
-      var account_index = 0
-
-      for (let account of accounts) {
-        account_index = account_index+1
-        if (account_index > 1)
-          break
-
-        //logger.info(account)
-        var aData = allAccounts[account]['$AccountWide']
-        var itemsData = aData.dataItems
-        setsDataCN = itemsData['Sets']
-        recipesDataCN = itemsData['Recipes']
-        furnituresDataCN = itemsData['Furniture']
-        collfurnituresDataCN = itemsData['CollectibleFurniture']
-        foodsDataCN = itemsData['Foods']
+      if (numSets > 10 && numSkills > 3) {
+        //logger.info("中文数据库已加载，无需更新")
+        return
       }
-    }
 
-    //Update chinses skills database
-    var keysSkill = Object.keys(skillsDataCN)
-    var numSkills = keysSkill.length
-    //logger.info(numSkills)
-    if (numSkills > 3)
-    {
-      //logger.info("SkillsDataCN is ready, no need to update.")
-    }
-    else
-    {
-      //logger.info("Init ESOskillsDataCN")
-      var luaToJson = require('lua-to-json')
-      var luaSrc = fs.readFileSync(dataExtractorCNPath, 'utf8')
-      var lua_code = luaToJson(luaSrc)
-      var allAccounts = lua_code.DataExtractorSavedVariables.Default
-      var accounts = Object.keys(allAccounts)
-      var account_index = 0
-
-      for (let account of accounts) {
-        account_index = account_index+1
-        if (account_index > 1)
-          break
-
-        //logger.info(account)
-        var aData = allAccounts[account]['$AccountWide']
-        skillsDataCN = aData['dataSkills']
-        //logger.info(skillsDataCN)
+      //logger.info("正在加载中文数据库...")
+      const luaToJson = require('lua-to-json')
+      const luaSrc = await fs.promises.readFile(dataExtractorCNPath, 'utf8')
+      const lua_code = luaToJson(luaSrc)
+      
+      if (!lua_code?.DataExtractorSavedVariables?.Default) {
+        logger.error('[ESO:图鉴] 中文数据文件格式错误')
+        return
       }
+
+      // 获取第一个账号的数据
+      const firstAccount = Object.keys(lua_code.DataExtractorSavedVariables.Default)[0]
+      if (!firstAccount) {
+        logger.error('[ESO:图鉴] 中文数据文件中未找到账号数据')
+        return
+      }
+
+      const accountData = lua_code.DataExtractorSavedVariables.Default[firstAccount]['$AccountWide']
+      if (!accountData) {
+        logger.error('[ESO:图鉴] 中文数据文件中未找到账号全局数据')
+        return
+      }
+
+      // 加载物品数据
+      const itemsData = accountData.dataItems
+      if (itemsData) {
+        setsDataCN = itemsData['Sets'] || [{}]
+        recipesDataCN = itemsData['Recipes'] || [{}]
+        furnituresDataCN = itemsData['Furniture'] || [{}]
+        collfurnituresDataCN = itemsData['CollectibleFurniture'] || [{}]
+        foodsDataCN = itemsData['Foods'] || [{}]
+      }
+
+      // 加载技能数据
+      skillsDataCN = accountData['dataSkills'] || [{}]
+
+      //logger.info('[ESO:图鉴] 中文数据库加载完成')
+    } catch (error) {
+      logger.error(`[ESO:图鉴] 加载中文数据库失败: ${error}`)
     }
   }
 
   async setsName2Index (keyword) {
-    objSets = [-1]
+    let objSets = [-1]
     let name = keyword
     let enEsologMode = false
     let enitemIDMode = false
@@ -1421,10 +1498,11 @@ class database {
         }
       }
     }
+    return objSets
   }
 
   async skillsName2Index (keyword, mode) {
-    objSkills = [-1]
+    let objSkills = [-1]
     let name = keyword
     let cnName = ''
     let cnWayOneName = ''
@@ -1882,11 +1960,11 @@ class database {
         }
       }
     }
-    //logger.info(allList)
+    return objSkills //logger.info(allList)
   }
 
   async foodsName2Index (keyword, mode) {
-    objFoods = [-1]
+    let objFoods = [-1]
     let name = keyword
     let enEsologMode = false
     let enitemIDMode = false
@@ -1983,31 +2061,72 @@ class database {
       }
     }
     let foodNum = index
+    
+    return objFoods
   }
 
   async name2index (name, type) {
     await this.init_database()
     let ret = []
+    
+    // 检查缓存
+    const cacheManager = getCacheManager(type)
+    const cachedResult = cacheManager.get(name)
+    if (cachedResult !== null) {
+      return cachedResult
+    }
+    let result
     if(type == 1) //this is name for sets
     {
-      await this.setsName2Index(name)
-      return objSets
+      result = await this.setsName2Index(name)
+      cacheManager.set(name, result)
+      return result
     }
     if(type == 2) //this is name for skills
     {
-      await this.skillsName2Index(name, 0)
-      return objSkills
+      result = await this.skillsName2Index(name, 0)
+      cacheManager.set(name, result)
+      return result
+    }
+    if(type == 20) //this is name for skills
+    {
+      result = await this.skillsName2Index(name, 0)
+      cacheManager.set(name, result)
+      return result
+    }
+    if(type == 21) //this is name for skills
+    {
+      result = await this.skillsName2Index(name, 1)
+      cacheManager.set(name, result)
+      return result
+    }
+    if(type == 22) //this is name for skills
+    {
+      result = await this.skillsName2Index(name, 2)
+      cacheManager.set(name, result)
+      return result
+    }
+    if(type == 23) //this is name for skills
+    {
+      result = await this.skillsName2Index(name, 3)
+      cacheManager.set(name, result)
+      return result
     }
     if(type == 3) //this is name for foods
     {
-      await this.foodsName2Index(name, 0)
-      return objFoods
+      result = await this.foodsName2Index(name, 0)
+      cacheManager.set(name, result)
+      return result
     }
 
     return ret
   }
 
   async updateSetData (setKey, showEnglish) {
+    let setData = {
+      init: 'none',
+      atlasData: [{}]
+    }
     if('done' != setData.init)
     {
       let data = await Atlas.get(this.e, 'atlas', 'set', 'sets')
@@ -2016,7 +2135,7 @@ class database {
         logger.error('[ESO:图鉴] 初始化结构体失败')
         return
       }
-      setData = data
+      setData = JSON.parse(JSON.stringify(data))
       //logger.info('[ESO:图鉴] 初始化结构体变量')
     }
 
@@ -2209,9 +2328,15 @@ class database {
     */
     let imgPath = await getimgs.realpath(setData.atlasData[1].icon, "sets")
     setData.atlasData[1].icon = `../../../../../` + imgPath
+
+    return setData
   }
 
   async updateSkillData (objects, showEnglish) {
+    let skillData = {
+      init: 'none',
+      atlasData: [{}]
+    }
     let enID = []
     let cnID = []
     let newENSkillData = []
@@ -2229,8 +2354,8 @@ class database {
         logger.error('[ESO:图鉴] 初始化技能结构体失败')
         return
       }
-      skillData = data
-      logger.info('[ESO:图鉴] 初始化技能结构体变量')
+      skillData = JSON.parse(JSON.stringify(data))
+      //logger.info('[ESO:图鉴] 初始化技能结构体变量')
     }
 
     enID = objects.split('_')
@@ -2433,9 +2558,34 @@ class database {
       index++
     }
     /*---------------------------------------------------------------*/
+    return skillData
   }
 
   async updateFoodData (objects, showEnglish) {
+    let foodData = {
+      init: 'none',
+      atlasData: [{}, {
+        src_icon: '',
+        new_icon: '',
+        src_cn_name: '',
+        src_en_name: '',
+        new_cn_name: '',
+        new_en_name: '',
+        type_cn: '',
+        type_en: '',
+        place_cn: '',
+        place_en: '',
+        src_Skills_class: '',
+        arrow_class: '',
+        new_Skills_class: '',
+        parameter_class: '',
+        msg: [],
+        new_msg: '',
+        p_name: [],
+        p_value: []
+      }]
+    }
+
     //logger.info(foodsDataCN[objects])
     //logger.info(foodsData[objects])
 
@@ -2447,8 +2597,8 @@ class database {
         logger.error('[ESO:图鉴] 初始化食物结构体失败')
         return
       }
-      foodData = data
-      logger.info('[ESO:图鉴] 初始化食物结构体变量')
+      foodData = JSON.parse(JSON.stringify(data))
+      //logger.info('[ESO:图鉴] 初始化食物结构体变量')
     }
    
     foodData.atlasData[1].src_icon = await this.splitStr(foodsDataCN[objects]["icon"], 'icons/', '.dds')
@@ -2509,9 +2659,20 @@ class database {
     
     foodData.atlasData[1].p_name = []
     foodData.atlasData[1].p_value = []
+    
+    return foodData
   }
 
   async updateBuildData (BD) {
+    let buildData = {
+      init: 'none',
+      buildsData: [{}, {
+        gear: Array(14).fill().map(() => ({})),
+        spell: Array(2).fill().map(() => ({
+          bar: Array(6).fill().map(() => ({}))
+        }))
+      }]
+    }
     if('done' != buildData.init)
     {
       let data = await Builds.get(this.e, 'builds', 'build', 'builds')
@@ -2520,7 +2681,7 @@ class database {
         logger.error('[ESO:图鉴] 初始化结构体失败')
         return
       }
-      buildData = data
+      buildData = JSON.parse(JSON.stringify(data))
     }
 
     buildData.buildsData[1].head_title = "Build Info from www.esolog.com created by " + BD.playerName + BD.accountName
@@ -2634,7 +2795,7 @@ class database {
       {
         error_set = 1;
         for (let setKey of objSets) {
-          setData = await this.updateData(setKey, 1)
+          let setData = await this.updateData(setKey, 1)
           if(setData.atlasData[1].name_en == ('<'+GI.set+'>') || setData.atlasData[1].name == GI.set || itemIDMode)
           {
             buildData.buildsData[1].gear[index].icon = GI.name['image'].split('/eso/abilities/')[1].split('.')[0]
@@ -2742,7 +2903,7 @@ class database {
           continue;
         }
 
-        await this.skillsName2Index(oneTalent['text'],2)
+        let objSkills = await this.name2index(oneTalent['text'],22)
         //logger.info('=======' + oneTalent['text'])
         let skillNum = objSkills.length
         let error_skill = 1;
@@ -2751,7 +2912,7 @@ class database {
           //logger.info('=======' + oneTalent)
           let icon_name = oneTalent['icon'].split('/eso/abilities/')[1].split('.')[0]
           let icon_trans_name = 'none'
-          await this.skillsName2Index(icon_name,3)
+          objSkills = await this.name2index(icon_name,23)
           //logger.info('=======' + icon_name)
           skillNum = objSkills.length
           if(skillNum == 0 || objSkills[0] == -1)
@@ -2766,7 +2927,7 @@ class database {
             }
             if(icon_trans_name != 'none')
             {
-              await this.skillsName2Index(icon_trans_name,3)
+              objSkills = await this.name2index(icon_trans_name,23)
               skillNum = objSkills.length
               //logger.info(objSkills)
               if(skillNum > 0 && objSkills[0] != -1)
@@ -2806,46 +2967,10 @@ class database {
                   line_name: skillsDataCN[enID[0]][enID[1]].name
                 });
               }
-
-              if(enID[1]>=1 && enID[1]<=3)
-              {
-                classIcon = "ON-icon-class-Warden"
-                classStr = "守望者"
-              }
-              else if(enID[1]>=4 && enID[1]<=6)
-              {
-                classIcon = "ON-icon-class-Templar"
-                classStr = "圣骑士"
-              }
-              else if(enID[1]>=7 && enID[1]<=9)
-              {
-                classIcon = "ON-icon-class-Dragonknight"
-                classStr = "龙骑士"
-              }
-              else if(enID[1]>=10 && enID[1]<=12)
-              {
-                classIcon = "ON-icon-class-Nightblade"
-                classStr = "夜刃"
-              }
-              else if(enID[1]>=13 && enID[1]<=15)
-              {
-                classIcon = "ON-icon-class-Sorcerer"
-                classStr = "巫师"
-              }
-              else if(enID[1]>=16 && enID[1]<=18)
-              {
-                classIcon = "ON-icon-class-Necromancer"
-                classStr = "死灵"
-              }
-              else if(enID[1]>=19 && enID[1]<=21)
-              {
-                classIcon = "ON-icon-class-Arcanist"
-                classStr = "奥术师"
-              }
             }
             
             skillNum = objSkills.length
-            await this.updateData(skillKey, 2)
+            let skillData = await this.updateData(skillKey, 2)
             if(skillNum == 1 || skillData.atlasData[1].new_en_name == ('<'+oneTalent['text']+'>') || skillData.atlasData[1].new_cn_name == oneTalent['text'])
             {
               buildData.buildsData[1].spell[i].bar[talentIndex].icon = skillData.atlasData[1].new_icon
@@ -2939,6 +3064,12 @@ class database {
   }
 
   async updateRankData (BuildTable) {
+    let rankData = {
+      init: 'none',
+      rtData: [{}, {
+        table: []
+      }]
+    }
     if('done' != rankData.init)
     {
       let data = await RankTable.get(this.e, 'builds', 'rank', 'rank')
@@ -2947,7 +3078,7 @@ class database {
         logger.error('[ESO:图鉴] 初始化结构体失败')
         return
       }
-      rankData = data
+      rankData = JSON.parse(JSON.stringify(data))
     }
 
     rankData.rtData[1].title = '排行榜'
@@ -3035,8 +3166,8 @@ class database {
           }
           else
           {
-            //logger.info(objSets)
-            setData = await this.updateData(objSets[0], 1)
+            //logger.info(objSets)        
+            let setData = await this.updateData(objSets[0], 1)
             //logger.info(setData.atlasData[1].name)
             setName = setData.atlasData[1].name
             findSet = true
@@ -3119,6 +3250,7 @@ class database {
     //logger.info(rankData.rtData[1])
 
     rankData.rtData[1].head_title = "Build Info from www.esolog.com"
+    return rankData
   }
 
   async updateBuffsData (BuffsTable) {
@@ -3240,7 +3372,7 @@ class database {
       }
     }
 
-    buffsData = {
+    let buffsData = {
       stoneInfo: stoneInfo,
       foodInfo: foodInfo,
       raceInfo: raceInfo,
@@ -3254,44 +3386,36 @@ class database {
   async updateData (setKey, type) {
     if(type == 1) //this is name for sets
     {
-      await this.updateSetData(setKey, 0)
-      return setData
+      return await this.updateSetData(setKey, 0)
     }
     if(type == 2) //this is name for skills
     {
-      await this.updateSkillData(setKey, 0)
-      return skillData
+      return await this.updateSkillData(setKey, 0)
     }
     if(type == 3) //this is name for builds
     {
-      await this.updateBuildData(setKey)
-      return buildData
+      return await this.updateBuildData(setKey)
     }
     if(type == 4) //this is name for rank
     {
-      await this.updateRankData(setKey)
-      return rankData
+      return await this.updateRankData(setKey)
     }
     if(type == 5) //this is name for buffs
     {
-      await this.updateBuffsData(setKey)
-      return buffsData
+      return await this.updateBuffsData(setKey)
     }
     if(type == 6) //this is name for foods
     {
-      await this.updateFoodData(setKey, 0)
-      return foodData
+      return await this.updateFoodData(setKey, 0)
     }
 
     if(type == 11) //this is name for sets-english
     {
-      await this.updateSetData(setKey, 1)
-      return setData
+      return await this.updateSetData(setKey, 1)
     }
     if(type == 21) //this is name for skills-english
     {
-      await this.updateSkillData(setKey, 1)
-      return skillData
+      return await this.updateSkillData(setKey, 1)
     }
     if(type == 61) //this is name for foods
     {
