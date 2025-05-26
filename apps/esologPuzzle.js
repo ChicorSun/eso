@@ -156,34 +156,25 @@ export class esologPuzzle extends plugin {
             let thisMsgSenderQQ = 1456181660;
             let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
             let fakeMsg = [];
-            await this.reply('正在完整解析全队信息，请稍后...(可能需要60s)', true)
-            
-            try {
-              // 创建Promise数组用于并发请求
-              const promises = groupsData[recordID].memberData.map(async (oneMan, idx) => {
-                const sourceIndex = oneMan.sourceIndex;
-                return this.getOneManLog(reportsID, fightIndex, sourceIndex, false)
-                  .then(msg => {
-                    // 每处理5个请求打印一次进度
-                    if(idx % 5 === 0 && idx != 0) {
-                      let progressMsg = `已解析${idx}人/${maxNum}人`;
-                      this.reply([
-                        { type: 'at', qq: this.e.user_id},
-                        { type: 'text', text: progressMsg }
-                      ], false, { recallMsg: -1 });
-                    }
-                    return msg;
-                  });
-              });
+            let sourceIndex = ''
+            await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true)
+            for (let oneMan of groupsData[recordID].memberData) {
+              sourceIndex = oneMan.sourceIndex
+              let myMss = '已解析' + index + '人/' + maxNum + '人'
 
-              // 等待所有请求完成
-              fakeMsg = await Promise.all(promises);
-            } catch (error) {
-              logger.error(`解析出错: ${error}`);
-              await this.reply('解析过程中出现错误,请稍后重试');
-              return;
+              let message = [
+              { type: 'at', qq: this.e.user_id},
+              { type: 'text', text: myMss }
+              ]
+              if(index==1 || index==6 || index==11)
+              {
+                await this.reply(message, false, { recallMsg: -1 })
+              }
+              index++
+
+              let msg = await this.getOneManLog(reportsID, fightIndex, sourceIndex, false)
+              fakeMsg.push(msg)
             }
-
             await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true))
           } else {
             await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
@@ -292,91 +283,86 @@ export class esologPuzzle extends plugin {
     let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&type=summary&translate=true`
     let buffsURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&target=${sourceIndex}&type=auras&translate=true`
     let buffInfo = ''
+    //logger.info('summaryURL:' + summaryURL)
     logger.info('buffsURL:' + buffsURL)
 
-    let page = null;
-    try {
-      // 启动浏览器
-      if (!puppeteer.browser) {
-        await puppeteer.browserInit()
-      }
-      page = await puppeteer.browser.newPage()
-      
-      // 设置页面超时
-      await page.setDefaultNavigationTimeout(30000)
-      
-      // 并发获取数据
-      const [BD, SD] = await Promise.all([
-        this.getSummaryLog(summaryURL),
-        this.getBuffsLog(buffsURL)
-      ]);
+    let BD = await this.getSummaryLog(summaryURL)
+    let SD = await this.getBuffsLog(buffsURL)
 
-      if(SD.virtual) {
-        //logger.info('SD:获取失败')
-      } else {
-        buffsData = await database.updateData(SD, 5)
-        BD.stoneInfo = buffsData.stoneInfo
-        BD.foodInfo = buffsData.foodInfo
-        BD.raceInfo = buffsData.raceInfo 
-        BD.skillLineInfo = buffsData.skillLineInfo   
+    if(SD.virtual)
+    {
+      //logger.info('SD:获取失败')
+    }
+    else
+    {
+      buffsData  = await database.updateData(SD, 5)
+      //logger.info('SD.data:' + SD.data)
+      //logger.info('Buff num:' + SD.data.length)
+      //logger.info(buffsData)
+      BD.stoneInfo = buffsData.stoneInfo
+      BD.foodInfo = buffsData.foodInfo
+      BD.raceInfo = buffsData.raceInfo 
+      BD.skillLineInfo = buffsData.skillLineInfo   
+    }
+
+    if(BD.virtual)
+    {
+      let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
+      return text
+    }
+    else
+    {
+      let has_find = false
+      let recordID = -1
+      let index = 0
+      index = 0
+      for (let groupData of groupsData) {
+
+        if((groupData.reportsID == reportsID) && (groupData.fightIndex == fightIndex))
+        {
+          has_find = true
+          recordID = index
+          break
+        }
+        index++
       }
 
-      if(BD.virtual) {
-        let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
-        return text
-      } else {
-        let has_find = false
-        let recordID = -1
-        let index = 0
-        for (let groupData of groupsData) {
-          if((groupData.reportsID == reportsID) && (groupData.fightIndex == fightIndex)) {
-            has_find = true
-            recordID = index
+      if((BD.className == '' || BD.roleName == '') && need_group_data && !has_find)
+      {
+        recordID = await this.getGroupLog(reportsID, fightIndex)
+      }
+
+      if(recordID != -1)
+      {
+        for (let oneMan of groupsData[recordID].memberData) {
+          if(sourceIndex == oneMan.sourceIndex)
+          {
+            BD.className = oneMan.className
+            BD.classNameCN = oneMan.classNameCN
+            BD.roleName = oneMan.roleName
+            BD.roleNameCN = oneMan.roleNameCN
             break
           }
-          index++
         }
-
-        if((BD.className == '' || BD.roleName == '') && need_group_data && !has_find) {
-          recordID = await this.getGroupLog(reportsID, fightIndex)
-        }
-
-        if(recordID != -1) {
-          for (let oneMan of groupsData[recordID].memberData) {
-            if(sourceIndex == oneMan.sourceIndex) {
-              BD.className = oneMan.className
-              BD.classNameCN = oneMan.classNameCN
-              BD.roleName = oneMan.roleName
-              BD.roleNameCN = oneMan.roleNameCN
-              break
-            }
-          }
-          if(delete_record) {
-            //delete groupsData[recordID]
-          }
-        }
-
-        if(!BD.accountName.includes('@')) {
-          BD.accountName= ''
-        }
-
-        //更新Build变量
-        buildData = await database.updateData(BD, 3)
-        let img = await puppeteer.screenshot('eso', buildData)
-        return img
-      }
-    } catch (error) {
-      logger.error(`获取日志出错: ${error}`)
-      return `抱歉，获取日志时出现错误: ${error.message}`
-    } finally {
-      // 关闭页面释放资源
-      if (page) {
-        try {
-          await page.close()
-        } catch (e) {
-          logger.error(`关闭页面出错: ${e}`)
+        if(delete_record)
+        {
+          //delete groupsData[recordID]
         }
       }
+
+      if(!BD.accountName.includes('@'))
+      {
+        BD.accountName= ''
+      }
+
+      //logger.info('playerName:' + BD.playerName + ', accountName:' + BD.accountName)
+      //logger.info(BD)
+
+      //更新Build变量
+      buildData = await database.updateData(BD, 3)
+      //let img = await this.cache(buildData, buildImg)
+      let img = await puppeteer.screenshot('eso', buildData)
+      return img
     }
   }
 
