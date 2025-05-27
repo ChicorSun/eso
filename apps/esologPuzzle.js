@@ -11,7 +11,7 @@ const MAX_WAIT_TIME = 60000
 // 日志打印间隔（毫秒）
 const LOG_INTERVAL = 5000
 // 页面加载等待时间（毫秒）
-const PAGE_TIMEOUT = 120000
+const PAGE_TIMEOUT = 30000
 // 当前正在访问的页面数
 let running_page_num = 0
 
