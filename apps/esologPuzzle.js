@@ -4,19 +4,20 @@ import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
 import md5 from 'md5'
 
+// 最大并发数
+const MAX_WEB_NUM = 6
+// 最大等待时间（毫秒）
+const MAX_WAIT_TIME = 60000
+// 日志打印间隔（毫秒）
+const LOG_INTERVAL = 5000
+// 当前运行的页面数
+let running_page_num = 0
+
 //快速模式开关
 let fast_mode = 0
 
-//Buffs结构体变量
-let buffsData = {
-}
-
 //Group结构体数组
 let groupsData = []
-
-//Rank结构体变量
-let rankData = {
-}
 
 //cacheData to save img
 let buildImg = {
@@ -147,41 +148,68 @@ export class esologPuzzle extends plugin {
         {
           if(tmpComPuzzleEnable)
           {
-            let index = 0
             let maxNum = groupsData[recordID].memberData.length
-            let thisMsgSenderQQ = 1456181660;
-            let thisMsgSenderNickname = '@Yui结衣(导航精灵)';
-            let fakeMsg = [];
-            let sourceIndex = ''
             await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true)
-            for (let oneMan of groupsData[recordID].memberData) {
-              sourceIndex = oneMan.sourceIndex
-              let myMss = '已解析' + index + '人/' + maxNum + '人'
-
-              let message = [
-              { type: 'at', qq: this.e.user_id},
-              { type: 'text', text: myMss }
-              ]
-              if(index==1 || index==6 || index==11)
-              {
-                await this.reply(message, false, { recallMsg: -1 })
-              }
-              index++
-
-              let msg = {}
+            
+            // 创建计数器用于进度提示
+            let completedCount = 0
+            
+            // 第一阶段：并发获取所有成员的日志和构建数据
+            const memberPromises = groupsData[recordID].memberData.map(async (oneMan, index) => {
+              const sourceIndex = oneMan.sourceIndex
               let BD = await this.getOneManLog(reportsID, fightIndex, sourceIndex, false)
-              if(BD.virtual)
-              {
-                msg = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
-              }
-              else
-              {
+              
+              let result;
+              if(BD.virtual) {
+                result = {
+                  index,
+                  isError: true,
+                  data: `抱歉，不支持解析该目标\n请发送包含装备以及技能信息的esologs地址`
+                }
+              } else {
                 //更新Build变量
                 let buildData = JSON.parse(JSON.stringify(await database.updateData(BD, 3)))
-                msg = await puppeteer.screenshot('eso', buildData)
+                result = {
+                  index,
+                  isError: false,
+                  data: buildData
+                }
+              }
+
+              // 更新完成计数并发送进度
+              completedCount++
+              if(completedCount % 5 === 0 || completedCount === maxNum) {
+                let progressMsg = [
+                  { type: 'at', qq: this.e.user_id },
+                  { type: 'text', text: `已获取 ${completedCount}/${maxNum} 人的数据` }
+                ]
+                await this.reply(progressMsg, false, { recallMsg: -1 })
+              }
+
+              return result
+            })
+
+            // 等待所有数据获取完成
+            const results = await Promise.all(memberPromises)
+            
+            // 按原始索引排序
+            const sortedResults = results.sort((a, b) => a.index - b.index)
+
+            // 第二阶段：生成截图
+            await this.reply('所有数据获取完成，正在生成图片...', true)
+            
+            const fakeMsg = []
+            for (const result of sortedResults) {
+              let msg
+              if (result.isError) {
+                msg = result.data // 错误消息
+              } else {
+                msg = await puppeteer.screenshot('eso', result.data)
               }
               fakeMsg.push(msg)
             }
+            
+            // 发送结果
             await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true))
           } else {
             await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
@@ -313,14 +341,14 @@ export class esologPuzzle extends plugin {
     }
     else
     {
-      buffsData  = await database.updateData(SD, 5)
+      let buffsData  = await database.updateData(SD, 5)
       //logger.info('SD.data:' + SD.data)
       //logger.info('Buff num:' + SD.data.length)
       //logger.info(buffsData)
       BD.stoneInfo = buffsData.stoneInfo
       BD.foodInfo = buffsData.foodInfo
       BD.raceInfo = buffsData.raceInfo 
-      BD.skillLineInfo = buffsData.skillLineInfo   
+      BD.skillLineInfo = buffsData.skillLineInfo 
     }
 
     if(BD.virtual)
@@ -382,29 +410,61 @@ export class esologPuzzle extends plugin {
   }
 
   async getWebData (url, type) {
-    let result
-    switch (type) {
-      case 'summary':
-        result = await this.getSummaryLog(url)
-        break
-      case 'buffs':
-        result = await this.getBuffsLog(url)
-        break
-      case 'group':
-        result = await this.getGroupData(url)
-        break
-      case 'rank':
-        result = await this.getRankData(url)
-        break
-      default:
-        result = await this.getSummaryLog(url)
-        break
+    let result;
+    
+    try {
+      // 等待直到有可用的并发槽或超时
+      const startTime = Date.now();
+      let lastLogTime = 0;
+      while (running_page_num >= MAX_WEB_NUM) {
+        // 每5秒打印一次日志
+        const now = Date.now();
+        if (now - lastLogTime >= LOG_INTERVAL) {
+          logger.info(`[ESO:战斗日志] 当前运行页面数: ${running_page_num}，等待可用槽位...`);
+          lastLogTime = now;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 检查是否超时
+        if (now - startTime > MAX_WAIT_TIME) {
+          throw new Error('[ESO:战斗日志] 等待可用槽位超时');
+        }
+      }
+
+      // 增加运行页面计数
+      running_page_num++;
+      logger.info(`[ESO:战斗日志] 页面数+1: ${running_page_num}`);
+
+      switch (type) {
+        case 'summary':
+          result = await this.getSummaryLog(url);
+          break;
+        case 'buffs':
+          result = await this.getBuffsLog(url);
+          break;
+        case 'group':
+          result = await this.getGroupData(url);
+          break;
+        case 'rank':
+          result = await this.getRankData(url);
+          break;
+        default:
+          result = await this.getSummaryLog(url);
+          break;
+      }
+
+      return result;
+    } catch (error) {
+      logger.error(`[ESO:战斗日志] 获取页面数据出错: ${error.message}`);
+      throw error;
+    } finally {
+      // 减少运行页面计数
+      running_page_num--;
+      logger.info(`[ESO:战斗日志] 页面数-1: ${running_page_num}`);
     }
-    return result
   }
 
   async getBuffsLog (url) {
-
     // 启动浏览器
     if (!puppeteer.browser) {
       await puppeteer.browserInit()
@@ -476,12 +536,10 @@ export class esologPuzzle extends plugin {
       };
       return sd
     } finally {
-
     }    
   }
 
   async getSummaryLog (url) {
-
     // 启动浏览器
     if (!puppeteer.browser) {
       await puppeteer.browserInit()
@@ -708,12 +766,10 @@ export class esologPuzzle extends plugin {
       };
       return bd
     } finally {
-
     }    
   }
 
   async getGroupData (url) {
-
     // 启动浏览器
     if (!puppeteer.browser) {
       await puppeteer.browserInit()
@@ -818,7 +874,6 @@ export class esologPuzzle extends plugin {
       };
       return gd
     } finally {
-
     }    
   }
 
@@ -864,7 +919,7 @@ export class esologPuzzle extends plugin {
       
       
       //更新Build变量
-      rankData = await database.updateData(BuildTable, 4)
+      let rankData = await database.updateData(BuildTable, 4)
       let img = await puppeteer.screenshot('eso', rankData)
       return img
       //return "text"
@@ -872,7 +927,6 @@ export class esologPuzzle extends plugin {
   }
 
   async getRankData (url) {
-
     // 启动浏览器
     if (!puppeteer.browser) {
       await puppeteer.browserInit()
@@ -1002,7 +1056,6 @@ export class esologPuzzle extends plugin {
 
       return rankTable
     } finally {
-
     }    
   }
 
