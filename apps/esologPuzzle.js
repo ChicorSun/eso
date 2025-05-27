@@ -10,7 +10,9 @@ const MAX_WEB_NUM = 6
 const MAX_WAIT_TIME = 60000
 // 日志打印间隔（毫秒）
 const LOG_INTERVAL = 5000
-// 当前运行的页面数
+// 页面加载等待时间（毫秒）
+const PAGE_TIMEOUT = 30000
+// 当前正在访问的页面数
 let running_page_num = 0
 
 //快速模式开关
@@ -223,7 +225,7 @@ export class esologPuzzle extends plugin {
         if(BD.virtual)
         {
           let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
-          return text
+          await this.reply(text)
         }
         else
         {
@@ -420,7 +422,7 @@ export class esologPuzzle extends plugin {
         // 每5秒打印一次日志
         const now = Date.now();
         if (now - lastLogTime >= LOG_INTERVAL) {
-          logger.info(`[ESO:战斗日志] 当前运行页面数: ${running_page_num}，等待可用槽位...`);
+          logger.info(`[ESO:战斗日志] 当前访问页面数: ${running_page_num}，等待可用槽位...`);
           lastLogTime = now;
         }
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -431,7 +433,7 @@ export class esologPuzzle extends plugin {
         }
       }
 
-      // 增加运行页面计数
+      // 增加访问页面计数
       running_page_num++;
       logger.info(`[ESO:战斗日志] 页面数+1: ${running_page_num}`);
 
@@ -458,7 +460,7 @@ export class esologPuzzle extends plugin {
       logger.error(`[ESO:战斗日志] 获取页面数据出错: ${error.message}`);
       throw error;
     } finally {
-      // 减少运行页面计数
+      // 减访问页面计数
       running_page_num--;
       logger.info(`[ESO:战斗日志] 页面数-1: ${running_page_num}`);
     }
@@ -471,42 +473,31 @@ export class esologPuzzle extends plugin {
     }
     const page = await puppeteer.browser.newPage()
     try {
-      //logger.info('----waitForWebLoad----')
-      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+      // 等待页面加载，如果超时则继续执行
+      try {
+        await page.goto(url, { waitUntil: 'load', timeout: PAGE_TIMEOUT });
+      } catch (e) {
+        logger.warn(`[ESO:战斗日志] 页面加载超时，继续执行: ${e.message}`);
+      }
 
-      // 设置超时时间为30秒
-      const selector = '#summary-gear-0_wrapper';
-      const timeout = 30000; // 30秒
-
-      // 等待页面加载完成，确保元素可访问
-      //logger.info('----waitForSelector----')
-      await page.waitForSelector('.spells-table-wrapper');
-      //await page.waitForSelector(selector, { timeout: timeout });
-      //logger.info('----Get it----')
+      // 等待元素出现，如果找不到则抛出错误
+      await page.waitForSelector('.spells-table-wrapper', { timeout: PAGE_TIMEOUT });
       
       const data = await page.evaluate(() => {
-        // 获取所有包含auras-table的表格
         const tables = document.querySelectorAll('.spells-table-wrapper .auras-table');
         let dataList = [];
   
-        // 遍历每个表格
         tables.forEach(table => {
-          // 获取表格的所有行
           const rows = table.querySelectorAll('tbody tr');
-          // 遍历每一行
           rows.forEach(row => {
-            // 获取第一列的单元格
             const firstCell = row.querySelector('td:first-child');
             if (firstCell) {
-              // 获取img的地址
               const img = firstCell.querySelector('img')?.src || '';
-              // 获取class包含"tooltip main-table-link school-2"的超链接
               const linkElement = firstCell.querySelector('a.tooltip.main-table-link');
               const link = linkElement?.href || '';
               const buffName = linkElement?.textContent || '';
               
               if (img && link && buffName) {
-                // 将数据添加到数组中
                 dataList.push({
                   img: img,
                   link: link,
@@ -525,17 +516,22 @@ export class esologPuzzle extends plugin {
         virtual,
         data
       };
-      //logger.info(sd.data)
-      //logger.info(sd.data.length)
-
       return sd
     } catch (error) {
+      logger.error(`[ESO:战斗日志] getBuffsLog 出错: ${error.message}`);
       let virtual = 1
       let sd = {
         virtual
       };
       return sd
     } finally {
+      try {
+        if (!page.isClosed()) {
+          await page.close();
+        }
+      } catch (e) {
+        logger.error(`[ESO:战斗日志] 关闭页面出错: ${e.message}`);
+      }
     }    
   }
 
@@ -546,22 +542,19 @@ export class esologPuzzle extends plugin {
     }
     const page = await puppeteer.browser.newPage()
     try {
-      //logger.info('----waitForWebLoad----')
-      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+      // 等待页面加载，如果超时则继续执行
+      try {
+        await page.goto(url, { waitUntil: 'load', timeout: PAGE_TIMEOUT });
+      } catch (e) {
+        logger.warn(`[ESO:战斗日志] 页面加载超时，继续执行: ${e.message}`);
+      }
 
-      // 设置超时时间为30秒
-      const selector = '#summary-gear-0_wrapper';
-      const timeout = 30000; // 30秒
-
-      // 等待页面加载完成，确保元素可访问
-      //logger.info('----waitForSelector----')
-      await page.waitForSelector('#summary-gear-0_wrapper');
-      //await page.waitForSelector(selector, { timeout: timeout });
+      // 等待元素出现，如果找不到则抛出错误
+      await page.waitForSelector('#summary-gear-0_wrapper', { timeout: PAGE_TIMEOUT });
 
       const actorName = await page.evaluate(() => {
         const actorElement = document.getElementById('filter-source-text');
         const actorName = actorElement ? actorElement.textContent : 'NONE';
-
         return actorName
       });
       let playerName = actorName.replace(" ", "")
@@ -760,12 +753,20 @@ export class esologPuzzle extends plugin {
 
       return bd
     } catch (error) {
+      logger.error(`[ESO:战斗日志] getSummaryLog 出错: ${error.message}`);
       let virtual = 1
       let bd = {
         virtual
       };
       return bd
     } finally {
+      try {
+        if (!page.isClosed()) {
+          await page.close();
+        }
+      } catch (e) {
+        logger.error(`[ESO:战斗日志] 关闭页面出错: ${e.message}`);
+      }
     }    
   }
 
@@ -776,18 +777,15 @@ export class esologPuzzle extends plugin {
     }
     const page = await puppeteer.browser.newPage()
     try {
-      //logger.info('----waitForWebLoad----')
-      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+      // 等待页面加载，如果超时则继续执行
+      try {
+        await page.goto(url, { waitUntil: 'load', timeout: PAGE_TIMEOUT });
+      } catch (e) {
+        logger.warn(`[ESO:战斗日志] 页面加载超时，继续执行: ${e.message}`);
+      }
 
-      // 设置超时时间为30秒
-      const selector = '#DataTables_Table_0_wrapper';
-      const timeout = 30000; // 30秒
-
-      // 等待页面加载完成，确保元素可访问
-      //logger.info('----waitForSelector----')
-      await page.waitForSelector('.character-details-contents');
-      //await page.waitForSelector('#DataTables_Table_0_wrapper');
-      //await page.waitForSelector(selector, { timeout: timeout });
+      // 等待元素出现，如果找不到则抛出错误
+      await page.waitForSelector('.character-details-contents', { timeout: PAGE_TIMEOUT });
 
       const data = await page.evaluate(() => {
         // 获取character-details-contents下的所有.roles-table-0表格
@@ -868,12 +866,20 @@ export class esologPuzzle extends plugin {
 
       return gd
     } catch (error) {
+      logger.error(`[ESO:战斗日志] getGroupData 出错: ${error.message}`);
       let virtual = 1
       let gd = {
         virtual,
       };
       return gd
     } finally {
+      try {
+        if (!page.isClosed()) {
+          await page.close();
+        }
+      } catch (e) {
+        logger.error(`[ESO:战斗日志] 关闭页面出错: ${e.message}`);
+      }
     }    
   }
 
@@ -933,17 +939,15 @@ export class esologPuzzle extends plugin {
     }
     const page = await puppeteer.browser.newPage()
     try {
-      //logger.info('----waitForWebLoad----')
-      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+      // 等待页面加载，如果超时则继续执行
+      try {
+        await page.goto(url, { waitUntil: 'load', timeout: PAGE_TIMEOUT });
+      } catch (e) {
+        logger.warn(`[ESO:战斗日志] 页面加载超时，继续执行: ${e.message}`);
+      }
 
-      // 设置超时时间为30秒
-      const selector = '#DataTables_Table_0_wrapper';
-      const timeout = 30000; // 30秒
-
-      // 等待页面加载完成，确保元素可访问
-      //logger.info('----waitForSelector----')
-      await page.waitForSelector('#DataTables_Table_0_wrapper');
-      //await page.waitForSelector(selector, { timeout: timeout });
+      // 等待元素出现，如果找不到则抛出错误
+      await page.waitForSelector('#DataTables_Table_0_wrapper', { timeout: PAGE_TIMEOUT });
 
       const zoneImage = await page.$eval('#zone-image', img => img.src);
       const zoneName = await page.$eval('.zone-name', a => a.textContent);
@@ -1049,6 +1053,7 @@ export class esologPuzzle extends plugin {
 
       return rankTable
     } catch (error) {
+      logger.error(`[ESO:战斗日志] getRankData 出错: ${error.message}`);
       let virtual = 1
       let rankTable = {
         virtual,
@@ -1056,6 +1061,13 @@ export class esologPuzzle extends plugin {
 
       return rankTable
     } finally {
+      try {
+        if (!page.isClosed()) {
+          await page.close();
+        }
+      } catch (e) {
+        logger.error(`[ESO:战斗日志] 关闭页面出错: ${e.message}`);
+      }
     }    
   }
 
