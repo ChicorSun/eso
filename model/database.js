@@ -755,7 +755,7 @@ class database {
     // 计算数据文件的 MD5 值
     if (!currentMD5) {
       currentMD5 = calculateMD5(dataExtractorCNPath)
-      logger.info(`[ESO:图鉴] 数据文件MD5: ${currentMD5}`)
+      //logger.info(`[ESO:数据库] 数据文件MD5: ${currentMD5}`)
     }
 
     await this.init_databaseEN()

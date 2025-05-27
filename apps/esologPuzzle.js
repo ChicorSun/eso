@@ -7,10 +7,6 @@ import md5 from 'md5'
 //快速模式开关
 let fast_mode = 0
 
-//Build结构体变量
-let buildData = {
-}
-
 //Buffs结构体变量
 let buffsData = {
 }
@@ -172,7 +168,18 @@ export class esologPuzzle extends plugin {
               }
               index++
 
-              let msg = await this.getOneManLog(reportsID, fightIndex, sourceIndex, false)
+              let msg = {}
+              let BD = await this.getOneManLog(reportsID, fightIndex, sourceIndex, false)
+              if(BD.virtual)
+              {
+                msg = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
+              }
+              else
+              {
+                //更新Build变量
+                let buildData = JSON.parse(JSON.stringify(await database.updateData(BD, 3)))
+                msg = await puppeteer.screenshot('eso', buildData)
+              }
               fakeMsg.push(msg)
             }
             await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true))
@@ -184,16 +191,27 @@ export class esologPuzzle extends plugin {
       } else {
         //查询单人的信息
         await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
-        let msg = await this.getOneManLog(reportsID, fightIndex, sourceIndex, true)
-        await this.reply(msg)
+        let BD = await this.getOneManLog(reportsID, fightIndex, sourceIndex, true)
+        if(BD.virtual)
+        {
+          let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
+          return text
+        }
+        else
+        {
+          //更新Build变量
+          let buildData = JSON.parse(JSON.stringify(await database.updateData(BD, 3)))
+          let msg = await puppeteer.screenshot('eso', buildData)
+          await this.reply(msg)
+        }       
       }
     }
   }
 
   async getGroupLog (reportsID, fightIndex) {
-    let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&type=summary&translate=true`
+    let groupURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&type=summary&translate=true`
 
-    let GD = await this.getGroupData(summaryURL)
+    let GD = JSON.parse(JSON.stringify(await this.getWebData(groupURL, 'group')))
     if(!GD.virtual)
     {
       let groupData = {
@@ -284,10 +302,10 @@ export class esologPuzzle extends plugin {
     let buffsURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&target=${sourceIndex}&type=auras&translate=true`
     let buffInfo = ''
     //logger.info('summaryURL:' + summaryURL)
-    logger.info('buffsURL:' + buffsURL)
+    //logger.info('buffsURL:' + buffsURL)
 
-    let BD = await this.getSummaryLog(summaryURL)
-    let SD = await this.getBuffsLog(buffsURL)
+    let BD = JSON.parse(JSON.stringify(await this.getWebData(summaryURL, 'summary')))
+    let SD = JSON.parse(JSON.stringify(await this.getWebData(buffsURL, 'buffs')))
 
     if(SD.virtual)
     {
@@ -307,8 +325,8 @@ export class esologPuzzle extends plugin {
 
     if(BD.virtual)
     {
-      let text = `抱歉，不支持解析该目标\n`+`请发送包含装备以及技能信息的esologs地址`
-      return text
+      logger.info('尝试解析失败' + BD.playerName + BD.accountName)
+      return BD
     }
     else
     {
@@ -327,7 +345,7 @@ export class esologPuzzle extends plugin {
         index++
       }
 
-      if((BD.className == '' || BD.roleName == '') && need_group_data && !has_find)
+      if((BD.className == '' || BD.roleName == '' || (!BD.accountName.includes('@'))) && need_group_data && !has_find)
       {
         recordID = await this.getGroupLog(reportsID, fightIndex)
       }
@@ -341,6 +359,7 @@ export class esologPuzzle extends plugin {
             BD.classNameCN = oneMan.classNameCN
             BD.roleName = oneMan.roleName
             BD.roleNameCN = oneMan.roleNameCN
+            BD.accountName = oneMan.accountName
             break
           }
         }
@@ -355,15 +374,33 @@ export class esologPuzzle extends plugin {
         BD.accountName= ''
       }
 
-      //logger.info('playerName:' + BD.playerName + ', accountName:' + BD.accountName)
+      logger.info('已经完成解析' + BD.playerName + BD.accountName)
       //logger.info(BD)
 
-      //更新Build变量
-      buildData = await database.updateData(BD, 3)
-      //let img = await this.cache(buildData, buildImg)
-      let img = await puppeteer.screenshot('eso', buildData)
-      return img
+      return BD
     }
+  }
+
+  async getWebData (url, type) {
+    let result
+    switch (type) {
+      case 'summary':
+        result = await this.getSummaryLog(url)
+        break
+      case 'buffs':
+        result = await this.getBuffsLog(url)
+        break
+      case 'group':
+        result = await this.getGroupData(url)
+        break
+      case 'rank':
+        result = await this.getRankData(url)
+        break
+      default:
+        result = await this.getSummaryLog(url)
+        break
+    }
+    return result
   }
 
   async getBuffsLog (url) {
@@ -786,9 +823,8 @@ export class esologPuzzle extends plugin {
   }
 
   async getRankLog (url) {
-    let URL = url
-
-    let BuildTable = await this.getRankData(URL)
+    let rankURL = url
+    let BuildTable = JSON.parse(JSON.stringify(await this.getWebData(rankURL, 'rank')))
 
     if(BuildTable.virtual)
     {
