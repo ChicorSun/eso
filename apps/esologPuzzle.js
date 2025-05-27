@@ -471,18 +471,26 @@ export class esologPuzzle extends plugin {
     }
     const page = await puppeteer.browser.newPage()
     try {
-      //logger.info('----waitForWebLoad----')
-      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+      // 设置更短的导航超时时间
+      page.setDefaultNavigationTimeout(30000);
+      
+      try {
+        // 使用 domcontentloaded 而不是 load
+        await Promise.race([
+          page.goto(url, { waitUntil: 'domcontentloaded' }),
+          // 一旦发现目标元素就继续执行
+          page.waitForSelector('.spells-table-wrapper', { timeout: 120000 })
+        ]);
+      } catch (navError) {
+        if (navError.message.includes('Navigating frame was detached')) {
+          logger.debug('[ESO:战斗日志] 页面导航中断，继续处理');
+        } else {
+          throw navError;
+        }
+      }
 
-      // 设置超时时间为30秒
-      const selector = '#summary-gear-0_wrapper';
-      const timeout = 30000; // 30秒
-
-      // 等待页面加载完成，确保元素可访问
-      //logger.info('----waitForSelector----')
-      await page.waitForSelector('.spells-table-wrapper');
-      //await page.waitForSelector(selector, { timeout: timeout });
-      //logger.info('----Get it----')
+      // 只等待必要的元素
+      await page.waitForSelector('.spells-table-wrapper', { timeout: 120000 });
       
       const data = await page.evaluate(() => {
         // 获取所有包含auras-table的表格
@@ -525,9 +533,6 @@ export class esologPuzzle extends plugin {
         virtual,
         data
       };
-      //logger.info(sd.data)
-      //logger.info(sd.data.length)
-
       return sd
     } catch (error) {
       let virtual = 1
@@ -536,28 +541,39 @@ export class esologPuzzle extends plugin {
       };
       return sd
     } finally {
+      if (page) {
+        await page.close().catch(err => logger.error('[ESO:战斗日志] 关闭页面失败:', err));
+      }
     }    
   }
 
   async getSummaryLog (url) {
-    // 启动浏览器
     if (!puppeteer.browser) {
       await puppeteer.browserInit()
     }
     const page = await puppeteer.browser.newPage()
     try {
-      //logger.info('----waitForWebLoad----')
-      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+      // 设置更短的导航超时时间
+      page.setDefaultNavigationTimeout(30000);
+      
+      try {
+        // 使用 domcontentloaded 而不是 load
+        await Promise.race([
+          page.goto(url, { waitUntil: 'domcontentloaded' }),
+          // 一旦发现目标元素就继续执行
+          page.waitForSelector('#summary-gear-0_wrapper', { timeout: 120000 })
+        ]);
+      } catch (navError) {
+        if (navError.message.includes('Navigating frame was detached')) {
+          logger.debug('[ESO:战斗日志] 页面导航中断，继续处理');
+        } else {
+          throw navError;
+        }
+      }
 
-      // 设置超时时间为30秒
-      const selector = '#summary-gear-0_wrapper';
-      const timeout = 30000; // 30秒
-
-      // 等待页面加载完成，确保元素可访问
-      //logger.info('----waitForSelector----')
-      await page.waitForSelector('#summary-gear-0_wrapper');
-      //await page.waitForSelector(selector, { timeout: timeout });
-
+      // 只等待必要的元素
+      await page.waitForSelector('#summary-gear-0_wrapper', { timeout: 120000 });
+      
       const actorName = await page.evaluate(() => {
         const actorElement = document.getElementById('filter-source-text');
         const actorName = actorElement ? actorElement.textContent : 'NONE';
@@ -766,29 +782,39 @@ export class esologPuzzle extends plugin {
       };
       return bd
     } finally {
+      if (page) {
+        await page.close().catch(err => logger.error('[ESO:战斗日志] 关闭页面失败:', err));
+      }
     }    
   }
 
   async getGroupData (url) {
-    // 启动浏览器
     if (!puppeteer.browser) {
       await puppeteer.browserInit()
     }
     const page = await puppeteer.browser.newPage()
     try {
-      //logger.info('----waitForWebLoad----')
-      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+      // 设置更短的导航超时时间
+      page.setDefaultNavigationTimeout(30000);
+      
+      try {
+        // 使用 domcontentloaded 而不是 load
+        await Promise.race([
+          page.goto(url, { waitUntil: 'domcontentloaded' }),
+          // 一旦发现目标元素就继续执行
+          page.waitForSelector('.character-details-contents', { timeout: 120000 })
+        ]);
+      } catch (navError) {
+        if (navError.message.includes('Navigating frame was detached')) {
+          logger.debug('[ESO:战斗日志] 页面导航中断，继续处理');
+        } else {
+          throw navError;
+        }
+      }
 
-      // 设置超时时间为30秒
-      const selector = '#DataTables_Table_0_wrapper';
-      const timeout = 30000; // 30秒
-
-      // 等待页面加载完成，确保元素可访问
-      //logger.info('----waitForSelector----')
-      await page.waitForSelector('.character-details-contents');
-      //await page.waitForSelector('#DataTables_Table_0_wrapper');
-      //await page.waitForSelector(selector, { timeout: timeout });
-
+      // 只等待必要的元素
+      await page.waitForSelector('.character-details-contents', { timeout: 120000 });
+      
       const data = await page.evaluate(() => {
         // 获取character-details-contents下的所有.roles-table-0表格
         const tables = document.querySelectorAll('.character-details-contents .roles-table-0');
@@ -874,6 +900,9 @@ export class esologPuzzle extends plugin {
       };
       return gd
     } finally {
+      if (page) {
+        await page.close().catch(err => logger.error('[ESO:战斗日志] 关闭页面失败:', err));
+      }
     }    
   }
 
@@ -927,24 +956,32 @@ export class esologPuzzle extends plugin {
   }
 
   async getRankData (url) {
-    // 启动浏览器
     if (!puppeteer.browser) {
       await puppeteer.browserInit()
     }
     const page = await puppeteer.browser.newPage()
     try {
-      //logger.info('----waitForWebLoad----')
-      page.goto(url, { waitUntil: 'load', timeout: 120000 });
+      // 设置更短的导航超时时间
+      page.setDefaultNavigationTimeout(30000);
+      
+      try {
+        // 使用 domcontentloaded 而不是 load
+        await Promise.race([
+          page.goto(url, { waitUntil: 'domcontentloaded' }),
+          // 一旦发现目标元素就继续执行
+          page.waitForSelector('#DataTables_Table_0_wrapper', { timeout: 120000 })
+        ]);
+      } catch (navError) {
+        if (navError.message.includes('Navigating frame was detached')) {
+          logger.debug('[ESO:战斗日志] 页面导航中断，继续处理');
+        } else {
+          throw navError;
+        }
+      }
 
-      // 设置超时时间为30秒
-      const selector = '#DataTables_Table_0_wrapper';
-      const timeout = 30000; // 30秒
-
-      // 等待页面加载完成，确保元素可访问
-      //logger.info('----waitForSelector----')
-      await page.waitForSelector('#DataTables_Table_0_wrapper');
-      //await page.waitForSelector(selector, { timeout: timeout });
-
+      // 只等待必要的元素
+      await page.waitForSelector('#DataTables_Table_0_wrapper', { timeout: 120000 });
+      
       const zoneImage = await page.$eval('#zone-image', img => img.src);
       const zoneName = await page.$eval('.zone-name', a => a.textContent);
       const zoneType = await page.$eval('#zone-type', span => span.textContent.trim());
@@ -1056,6 +1093,9 @@ export class esologPuzzle extends plugin {
 
       return rankTable
     } finally {
+      if (page) {
+        await page.close().catch(err => logger.error('[ESO:战斗日志] 关闭页面失败:', err));
+      }
     }    
   }
 
