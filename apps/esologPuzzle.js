@@ -110,7 +110,7 @@ export class esologPuzzle extends plugin {
     let urlText = await this.trimText(e)
     if(urlText.includes("记录")) {
       recordEnable = 1
-      urlText = urlText.replace("记录", "")
+      urlText = urlText.replace("记录角色", "").replace("记录", "")
     } else {
       recordEnable = 0
     }
@@ -1614,12 +1614,22 @@ export class esologPuzzle extends plugin {
     try {
       // 读取用户绑定数据
       if (!fs.existsSync(ACCOUNT_PATH)) {
-        return await this.reply('您还没有绑定任何角色哦~');
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您还没有绑定任何角色哦~\n`},
+          { type: 'text', text: `请先使用 #绑定，绑定你的角色`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
       if (!bindData[userId] || bindData[userId].length === 0) {
-        return await this.reply('您还没有绑定任何角色哦~');
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您还没有绑定任何角色哦~\n`},
+          { type: 'text', text: `请先使用 #绑定，绑定你的角色`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       // 获取所有构建数据
@@ -1648,7 +1658,12 @@ export class esologPuzzle extends plugin {
       }
 
       if (allBuilds.length === 0) {
-        return await this.reply('未找到任何构建记录~');
+        let progressMsg = [
+            { type: 'at', qq: this.e.user_id },
+            { type: 'text', text: `\n未找到任何构建记录~\n`},
+            { type: 'text', text: `请先使用 #记录+esolog网址的格式，记录你的角色`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       // 获取命令中的序号
