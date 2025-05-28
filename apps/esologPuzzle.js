@@ -1385,85 +1385,80 @@ export class esologPuzzle extends plugin {
     let content = e.msg.replace(/^#*绑定/, '').trim();
     
     if (!content) {
-      return await this.reply('请按以下任意一种格式绑定账号：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName');
-    }
-
-    try {
-      // 确保目录存在
-      const accountDir = './plugins/eso/custome_resources/data';
-      if (!fs.existsSync(accountDir)) {
-        fs.mkdirSync(accountDir, { recursive: true });
-      }
-
-      // 读取现有的绑定数据
-      let bindData = {};
-      if (fs.existsSync(ACCOUNT_PATH)) {
-        bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
-      }
-
-      // 初始化用户的绑定列表
-      if (!bindData[userId]) {
-        bindData[userId] = [];
-      }
-
-      // 解析输入内容
-      let playerName = '';
-      let accountName = '';
-
-      if (content.startsWith('@')) {
-        // 格式1: #绑定@AccountName
-        accountName = content.substring(1);
-      } else if (content.includes('@')) {
-        // 格式2: #绑定playerName@AccountName
-        [playerName, accountName] = content.split('@');
-      } else {
-        // 如果输入的内容既不是以@开头，也不包含@，说明格式错误
-        let progressMsg = [
-          { type: 'at', qq: this.e.user_id },
-          { type: 'text', text: `\n绑定角色时必须提供账号名！\n`},
-          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
-        ]
-        return await this.reply(progressMsg, false, { recallMsg: -1 });
-      }
-
-      // 检查是否已经绑定
-      const existingBind = bindData[userId].find(bind => 
-        (accountName && bind.accountName === accountName) || 
-        (playerName && bind.playerName === playerName)
-      );
-
-      if (existingBind) {
-        let progressMsg = [
-          { type: 'at', qq: this.e.user_id },
-          { type: 'text', text: `\n该角色已经绑定过了哦~`}
-        ]
-        return await this.reply(progressMsg, false, { recallMsg: -1 });
-      }
-
-      // 添加新的绑定
-      bindData[userId].push({
-        playerName,
-        accountName,
-        bindTime: new Date().toISOString()
-      });
-
-      // 保存数据
-      fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
-
       let progressMsg = [
         { type: 'at', qq: this.e.user_id },
-        { type: 'text', text: `\n绑定成功！`}
-      ]
-      return await this.reply(progressMsg, false, { recallMsg: -1 });
-
-    } catch (error) {
-      logger.error(`[ESO:账号绑定] 保存绑定数据失败: ${error.message}`);
-      let progressMsg = [
-        { type: 'at', qq: this.e.user_id },
-        { type: 'text', text: `\n绑定失败，请稍后重试`}
+        { type: 'text', text: `\n请按以下任意一种格式绑定账号：\n`},
+        { type: 'text', text: `1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
       ]
       return await this.reply(progressMsg, false, { recallMsg: -1 });
     }
+
+    // 确保目录存在
+    const accountDir = './plugins/eso/custome_resources/data';
+    if (!fs.existsSync(accountDir)) {
+      fs.mkdirSync(accountDir, { recursive: true });
+    }
+
+    // 读取现有的绑定数据
+    let bindData = {};
+    if (fs.existsSync(ACCOUNT_PATH)) {
+      bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+    }
+
+    // 初始化用户的绑定列表
+    if (!bindData[userId]) {
+      bindData[userId] = [];
+    }
+
+    // 解析输入内容
+    let playerName = '';
+    let accountName = '';
+
+    if (content.startsWith('@')) {
+      // 格式1: #绑定@AccountName
+      accountName = content.substring(1);
+    } else if (content.includes('@')) {
+      // 格式2: #绑定playerName@AccountName
+      [playerName, accountName] = content.split('@');
+    } else {
+      // 如果输入的内容既不是以@开头，也不包含@，说明格式错误
+      let progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n绑定角色时必须提供账号名！\n`},
+        { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+      ]
+      return await this.reply(progressMsg, false, { recallMsg: -1 });
+    }
+
+    // 检查是否已经绑定
+    const existingBind = bindData[userId].find(bind => 
+      (accountName && bind.accountName === accountName) || 
+      (playerName && bind.playerName === playerName)
+    );
+
+    if (existingBind) {
+      let progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n该角色已经绑定过了哦~`}
+      ]
+      return await this.reply(progressMsg, false, { recallMsg: -1 });
+    }
+
+    // 添加新的绑定
+    bindData[userId].push({
+      playerName,
+      accountName,
+      bindTime: new Date().toISOString()
+    });
+
+    // 保存数据
+    fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
+
+    let progressMsg = [
+      { type: 'at', qq: this.e.user_id },
+      { type: 'text', text: `\n绑定成功！`}
+    ]
+    return await this.reply(progressMsg, false, { recallMsg: -1 });
   }
 
   /**
@@ -1485,69 +1480,59 @@ export class esologPuzzle extends plugin {
       return await this.reply(progressMsg, false, { recallMsg: -1 });
     }
 
-    try {
-      // 读取现有的绑定数据
-      if (!fs.existsSync(ACCOUNT_PATH)) {
-        let progressMsg = [
-          { type: 'at', qq: this.e.user_id },
-          { type: 'text', text: `\n您还没有绑定任何角色哦~\n`},
-          { type: 'text', text: `请先使用 #绑定，绑定你的角色`}
-        ]
-        return await this.reply(progressMsg, false, { recallMsg: -1 });
-      }
-
-      let bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
-
-      if (!bindData[userId] || bindData[userId].length === 0) {
-        let progressMsg = [
-          { type: 'at', qq: this.e.user_id },
-          { type: 'text', text: `\n您还没有绑定任何角色哦~\n`},
-          { type: 'text', text: `请先使用 #绑定，绑定你的角色`}
-        ]
-        return await this.reply(progressMsg, false, { recallMsg: -1 });
-      }
-
-      // 查找要解绑的角色
-      const index = bindData[userId].findIndex(bind => 
-        bind.playerName === content || 
-        bind.accountName === content.replace('@', '') ||
-        `${bind.playerName}@${bind.accountName}` === content
-      );
-
-      if (index === -1) {
-        let progressMsg = [
-          { type: 'at', qq: this.e.user_id },
-          { type: 'text', text: `\n未找到该绑定角色\n`},
-          { type: 'text', text: `可使用 #查询绑定 命令查看已绑定的角色`}
-        ]
-        return await this.reply(progressMsg, false, { recallMsg: -1 });
-      }
-
-      // 移除绑定
-      bindData[userId].splice(index, 1);
-
-      // 如果用户没有任何绑定了，删除该用户的键
-      if (bindData[userId].length === 0) {
-        delete bindData[userId];
-      }
-
-      // 保存数据
-      fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
-
+    // 读取现有的绑定数据
+    if (!fs.existsSync(ACCOUNT_PATH)) {
       let progressMsg = [
         { type: 'at', qq: this.e.user_id },
-        { type: 'text', text: `\n解绑成功！`}
-      ]
-      return await this.reply(progressMsg, false, { recallMsg: -1 });
-
-    } catch (error) {
-      logger.error(`[ESO:账号解绑] 解绑失败: ${error.message}`);
-      let progressMsg = [
-        { type: 'at', qq: this.e.user_id },
-        { type: 'text', text: `\n解绑失败，请稍后重试`}
+        { type: 'text', text: `\n您还没有绑定任何角色哦~\n`},
+        { type: 'text', text: `请先使用 #绑定，绑定你的角色`}
       ]
       return await this.reply(progressMsg, false, { recallMsg: -1 });
     }
+
+    let bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+
+    if (!bindData[userId] || bindData[userId].length === 0) {
+      let progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n您还没有绑定任何角色哦~\n`},
+        { type: 'text', text: `请先使用 #绑定，绑定你的角色`}
+      ]
+      return await this.reply(progressMsg, false, { recallMsg: -1 });
+    }
+
+    // 查找要解绑的角色
+    const index = bindData[userId].findIndex(bind => 
+      bind.playerName === content || 
+      bind.accountName === content.replace('@', '') ||
+      `${bind.playerName}@${bind.accountName}` === content
+    );
+
+    if (index === -1) {
+      let progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n未找到该绑定角色\n`},
+        { type: 'text', text: `可使用 #查询绑定 命令查看已绑定的角色`}
+      ]
+      return await this.reply(progressMsg, false, { recallMsg: -1 });
+    }
+
+    // 移除绑定
+    bindData[userId].splice(index, 1);
+
+    // 如果用户没有任何绑定了，删除该用户的键
+    if (bindData[userId].length === 0) {
+      delete bindData[userId];
+    }
+
+    // 保存数据
+    fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
+
+    let progressMsg = [
+      { type: 'at', qq: this.e.user_id },
+      { type: 'text', text: `\n解绑成功！`}
+    ]
+    return await this.reply(progressMsg, false, { recallMsg: -1 });
   }
 
   /**
