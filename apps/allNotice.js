@@ -40,7 +40,7 @@ export class allNotice extends plugin {
 
   /** 复读 */
   async sendAllNotice (e) {
-    let personID = e.user_id
+    let personID = e.user_id.toString() // 转换为字符串处理
 
     await this.loadBlackList()
 
@@ -101,7 +101,7 @@ export class allNotice extends plugin {
       if (fs.existsSync(CONFIG_PATH)) {
         const data = fs.readFileSync(CONFIG_PATH, 'utf8')
         const list = JSON.parse(data)
-        return list.includes(personID)
+        return list.includes(personID.toString()) // 转换为字符串比较
       }
       return false
     } catch (error) {
@@ -153,6 +153,9 @@ export class allNotice extends plugin {
       return e.reply('无事发生，请@目标群友', true)
     }
 
+    // 确保personID是字符串
+    personID = personID.toString()
+
     await this.loadBlackList()
     
     if (blackList.includes(personID)) {
@@ -174,6 +177,9 @@ export class allNotice extends plugin {
     if (!personID || personID == e.user_id) {
       return e.reply('无事发生，请@目标群友', true)
     }
+
+    // 确保personID是字符串
+    personID = personID.toString()
 
     await this.loadBlackList()
     
