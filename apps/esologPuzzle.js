@@ -7,6 +7,8 @@ import fs from 'node:fs'
 
 // 配置文件路径
 const CONFIG_PATH = './plugins/eso/custome_resources/config/esologcfg.json'
+const ACCOUNT_PATH = './plugins/eso/custome_resources/data/account_data.json'
+const BUILD_PATH = './plugins/eso/custome_resources/data/builds/'
 let configLoaded = false
 
 // 最大并发数
@@ -56,6 +58,36 @@ export class esologPuzzle extends plugin {
           fnc: 'fastPuzzle_disable'
         },
         {
+          /** 命令正则匹配 */
+          reg: '^#*绑定.*$',
+          /** 执行方法 */
+          fnc: 'bindAccount'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(解绑|解除绑定).*$',
+          /** 执行方法 */
+          fnc: 'unbindAccount'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(角色|查看角色).*$',
+          /** 执行方法 */
+          fnc: 'queryRole'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(删除角色).*$',
+          /** 执行方法 */
+          fnc: 'deleteRole'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(查询绑定|查看绑定|绑定查询|已绑定|查绑定)$',
+          /** 执行方法 */
+          fnc: 'queryBindings'
+        },
+        {
           reg: '^#*设置解析速度.*$',
           fnc: 'setMaxWebNum'
         },
@@ -74,7 +106,14 @@ export class esologPuzzle extends plugin {
   async logPuzzle (e) {
     //解析url
     let tmpComPuzzleEnable = 0
+    let recordEnable = 0
     let urlText = await this.trimText(e)
+    if(urlText.includes("记录")) {
+      recordEnable = 1
+      urlText = urlText.replace("记录", "")
+    } else {
+      recordEnable = 0
+    }
     if(urlText.includes("完整") || !fast_mode) {
       tmpComPuzzleEnable = 1
     } else {
@@ -125,10 +164,10 @@ export class esologPuzzle extends plugin {
       {
         return await this.reply('请发送详细的某次战斗的地址', true)
       }
-      else if(sourceIndex == '')
+      else if(sourceIndex == '' || recordEnable)
       {
         //查询团队信息
-        await this.reply('正在为您查询...', true)
+        await this.reply('正在为您解析...', true)
         let has_find = false
         let recordID = -1
         let index = 0
@@ -159,18 +198,73 @@ export class esologPuzzle extends plugin {
         }
         else
         {
-          if(tmpComPuzzleEnable)
+          if(tmpComPuzzleEnable || recordEnable)
           {
             let maxNum = groupsData[recordID].memberData.length
-            await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true)
+            if(!recordEnable)
+            {
+              await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true)
+            }
+            else
+            {
+              await this.reply('正在记录模式解析您的信息，请稍后...', true)
+            }
             
-            // 创建计数器用于进度提示
-            let completedCount = 0
+            let completedCount = 0;
+            let targetIndices = [];  // 移到外层作用域
+            
+            if(recordEnable) {
+              let userId = String(e.user_id);
+              
+              // 读取用户绑定数据
+              try {
+                if (fs.existsSync(ACCOUNT_PATH)) {
+                  const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+                  if (bindData[userId] && bindData[userId].length > 0) {
+                    // 遍历团队成员
+                    groupsData[recordID].memberData.forEach((oneMan, index) => {
+                      // 遍历用户绑定的角色
+                      for (const binding of bindData[userId]) {
+                        // 如果绑定了playerName，需要精确匹配角色名
+                        if (binding.playerName) {
+                          if (oneMan.playerName === binding.playerName) {
+                            targetIndices.push(index);
+                            break;
+                          }
+                        } 
+                        // 如果只绑定了accountName，只需匹配账号
+                        else if (binding.accountName)
+                        {
+                          let accountName = '@' + binding.accountName
+                          if(oneMan.accountName == accountName)
+                          {
+                            targetIndices.push(index);
+                            break
+                          }
+                        }
+                      }
+                    });
+                  }
+                }
+
+                if (targetIndices.length === 0) {
+                  return await this.reply('未在团队中找到您绑定的角色，请先使用#绑定命令绑定您的角色。');
+                }
+              } catch (error) {
+                logger.error(`[ESO:战斗日志] 读取绑定数据失败: ${error.message}`);
+                return await this.reply('读取绑定数据失败，请稍后重试');
+              }
+            }
             
             // 第一阶段：并发获取所有成员的日志和构建数据
             const memberPromises = groupsData[recordID].memberData.map(async (oneMan, index) => {
-              const sourceIndex = oneMan.sourceIndex
-              let BD = await this.getOneManLog(reportsID, fightIndex, sourceIndex, false)
+              // 如果是记录模式且不在目标索引中，跳过处理
+              if (recordEnable && !targetIndices.includes(index)) {
+                return null;
+              }
+
+              const sourceIndex = oneMan.sourceIndex;
+              let BD = await this.getOneManLog(reportsID, fightIndex, sourceIndex, false);
               
               let result;
               if(BD.virtual) {
@@ -180,8 +274,64 @@ export class esologPuzzle extends plugin {
                   data: `抱歉，不支持解析该目标\n请发送包含装备以及技能信息的esologs地址`
                 }
               } else {
-                //更新Build变量
-                let buildData = JSON.parse(JSON.stringify(await database.updateData(BD, 3)))
+                if(recordEnable) {
+                  try {
+                    // 确保目录存在
+                    if (!fs.existsSync(BUILD_PATH)) {
+                      fs.mkdirSync(BUILD_PATH, { recursive: true });
+                    }
+
+                    // 构建文件路径
+                    const accountFileName = `${BUILD_PATH}${BD.accountName.replace('@', '')}.json`;
+                    
+                    // 读取现有数据或创建新的数据结构
+                    let accountData = {};
+                    if (fs.existsSync(accountFileName)) {
+                      accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+                    }
+
+                    // 初始化玩家数据结构
+                    if (!accountData[BD.playerName]) {
+                      accountData[BD.playerName] = {
+                        builds: []
+                      };
+                    }
+
+                    // 检查是否存在完全相同的记录
+                    const existingRecord = accountData[BD.playerName].builds.find(build => 
+                      build.reportsID === reportsID &&
+                      build.fightIndex === fightIndex &&
+                      build.sourceIndex === sourceIndex
+                    );
+
+                    if (existingRecord) {
+                      logger.info(`[ESO:战斗日志] 跳过重复记录: ${BD.accountName}/${BD.playerName}`);
+                      await this.reply([
+                        { type: 'at', qq: this.e.user_id },
+                        { type: 'text', text: '该构建数据已经记录过了，跳过重复记录。' }
+                      ], false, { recallMsg: 5 });
+                    } else {
+                      // 创建新的构建记录
+                      const buildRecord = {
+                        timestamp: new Date().toISOString(),
+                        reportsID,
+                        fightIndex,
+                        sourceIndex,
+                        buildData: BD
+                      };
+
+                      // 添加新的构建记录
+                      accountData[BD.playerName].builds.push(buildRecord);
+
+                      // 保存数据
+                      fs.writeFileSync(accountFileName, JSON.stringify(accountData, null, 2));
+                      logger.info(`[ESO:战斗日志] 已保存构建数据: ${BD.accountName}/${BD.playerName}`);
+                    }
+                  } catch (error) {
+                    logger.error(`[ESO:战斗日志] 保存构建数据失败: ${error.message}`);
+                  }
+                }
+                let buildData = JSON.parse(JSON.stringify(await database.updateData(BD, 3)));
                 result = {
                   index,
                   isError: false,
@@ -190,29 +340,30 @@ export class esologPuzzle extends plugin {
               }
 
               // 更新完成计数并发送进度
-              completedCount++
-              if(completedCount % 5 === 0 || completedCount === maxNum) {
+              completedCount++;
+              const totalCount = recordEnable ? targetIndices.length : groupsData[recordID].memberData.length;
+              if(completedCount % 5 === 0 || completedCount === totalCount) {
                 let progressMsg = [
                   { type: 'at', qq: this.e.user_id },
-                  { type: 'text', text: `已获取 ${completedCount}/${maxNum} 人的数据` }
+                  { type: 'text', text: `已获取 ${completedCount}/${totalCount} 人的数据` }
                 ]
-                await this.reply(progressMsg, false, { recallMsg: -1 })
+                await this.reply(progressMsg, false, { recallMsg: -1 });
               }
 
-              return result
-            })
+              return result;
+            });
 
             // 等待所有数据获取完成
-            const results = await Promise.all(memberPromises)
+            const results = await Promise.all(memberPromises);
             
-            // 按原始索引排序
-            const sortedResults = results.sort((a, b) => a.index - b.index)
+            // 过滤掉null结果并按原始索引排序
+            const filteredResults = results.filter(result => result !== null).sort((a, b) => a.index - b.index);
 
             // 第二阶段：生成截图
             await this.reply('所有数据获取完成，正在生成图片...', true)
             
             const fakeMsg = []
-            for (const result of sortedResults) {
+            for (const result of filteredResults) {
               let msg
               if (result.isError) {
                 msg = result.data // 错误消息
@@ -231,7 +382,7 @@ export class esologPuzzle extends plugin {
         }      
       } else {
         //查询单人的信息
-        await this.reply('正在为您查询，请稍后...(大概需要15s)', true)
+        await this.reply('正在为您分析，请稍后...(大概需要15s)', true)
         let BD = await this.getOneManLog(reportsID, fightIndex, sourceIndex, true)
         if(BD.virtual)
         {
@@ -244,7 +395,7 @@ export class esologPuzzle extends plugin {
           let buildData = JSON.parse(JSON.stringify(await database.updateData(BD, 3)))
           let msg = await puppeteer.screenshot('eso', buildData)
           await this.reply(msg)
-        }       
+        }
       }
     }
   }
@@ -1220,6 +1371,183 @@ export class esologPuzzle extends plugin {
     }
   }
 
+  
+  /**
+   * 绑定账号
+   * @param {*} e 消息对象
+   * @returns 
+   */
+  async bindAccount(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    // 获取命令内容
+    let content = e.msg.replace(/^#*绑定/, '').trim();
+    
+    if (!content) {
+      return await this.reply('请按以下任意一种格式绑定账号：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName');
+    }
+
+    try {
+      // 确保目录存在
+      const accountDir = './plugins/eso/custome_resources/data';
+      if (!fs.existsSync(accountDir)) {
+        fs.mkdirSync(accountDir, { recursive: true });
+      }
+
+      // 读取现有的绑定数据
+      let bindData = {};
+      if (fs.existsSync(ACCOUNT_PATH)) {
+        bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      }
+
+      // 初始化用户的绑定列表
+      if (!bindData[userId]) {
+        bindData[userId] = [];
+      }
+
+      // 解析输入内容
+      let playerName = '';
+      let accountName = '';
+
+      if (content.startsWith('@')) {
+        // 格式1: #绑定@AccountName
+        accountName = content.substring(1);
+      } else if (content.includes('@')) {
+        // 格式2: #绑定playerName@AccountName
+        [playerName, accountName] = content.split('@');
+      } else {
+        // 如果只提供了playerName，提醒用户必须同时提供AccountName
+        return await this.reply('绑定角色时必须同时提供账号名！\n请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName');
+      }
+
+      // 检查是否已经绑定
+      const existingBind = bindData[userId].find(bind => 
+        (accountName && bind.accountName === accountName) || 
+        (playerName && bind.playerName === playerName)
+      );
+
+      if (existingBind) {
+        return await this.reply('该角色已经绑定过了哦~');
+      }
+
+      // 添加新的绑定
+      bindData[userId].push({
+        playerName,
+        accountName,
+        bindTime: new Date().toISOString()
+      });
+
+      // 保存数据
+      fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
+
+      return await this.reply('绑定成功！');
+
+    } catch (error) {
+      logger.error(`[ESO:账号绑定] 保存绑定数据失败: ${error.message}`);
+      return await this.reply('绑定失败，请稍后重试');
+    }
+  }
+
+  /**
+   * 解绑账号
+   * @param {*} e 消息对象
+   * @returns 
+   */
+  async unbindAccount(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+    let content = e.msg.replace(/^#*(解绑|解除绑定)/, '').trim();
+
+    if (!content) {
+      return await this.reply('请指定要解绑的角色名或账号名');
+    }
+
+    try {
+      // 读取现有的绑定数据
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      let bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      // 查找要解绑的角色
+      const index = bindData[userId].findIndex(bind => 
+        bind.playerName === content || 
+        bind.accountName === content.replace('@', '') ||
+        `${bind.playerName}@${bind.accountName}` === content
+      );
+
+      if (index === -1) {
+        return await this.reply('未找到该绑定角色');
+      }
+
+      // 移除绑定
+      bindData[userId].splice(index, 1);
+
+      // 如果用户没有任何绑定了，删除该用户的键
+      if (bindData[userId].length === 0) {
+        delete bindData[userId];
+      }
+
+      // 保存数据
+      fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
+
+      return await this.reply('解绑成功！');
+
+    } catch (error) {
+      logger.error(`[ESO:账号解绑] 解绑失败: ${error.message}`);
+      return await this.reply('解绑失败，请稍后重试');
+    }
+  }
+
+  /**
+   * 查询绑定
+   * @param {*} e 消息对象
+   * @returns 
+   */
+  async queryBindings(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 读取绑定数据
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      let bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      // 构建回复消息
+      let reply = '您当前绑定的角色有：\n';
+      bindData[userId].forEach((bind, index) => {
+        reply += `${index + 1}. `;
+        if (bind.playerName && bind.accountName) {
+          reply += `${bind.playerName}@${bind.accountName}`;
+        } else if (bind.playerName) {
+          reply += bind.playerName;
+        } else if (bind.accountName) {
+          reply += `@${bind.accountName}`;
+        }
+        reply += '\n';
+      });
+
+      return await this.reply(reply.trim());
+
+    } catch (error) {
+      logger.error(`[ESO:账号查询] 查询失败: ${error.message}`);
+      return await this.reply('查询失败，请稍后重试');
+    }
+  }
+
   // 修改最大并发数
   async setMaxWebNum(e) {
     if (!e.isMaster) {
@@ -1272,5 +1600,175 @@ export class esologPuzzle extends plugin {
     fast_mode = 0
     this.saveConfig()
     return e.reply('已关闭快速模式', true)
+  }
+
+  /**
+   * 查询角色构建数据
+   * @param {*} e 消息对象
+   * @returns 
+   */
+  async queryRole(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 读取用户绑定数据
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      // 获取所有构建数据
+      let allBuilds = [];
+      for (const binding of bindData[userId]) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach((build, index) => {
+                  allBuilds.push({
+                    index: allBuilds.length + 1,
+                    playerName,
+                    accountName: binding.accountName,
+                    buildData: build
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        return await this.reply('未找到任何构建记录~');
+      }
+
+      // 获取命令中的序号
+      const match = e.msg.match(/^#*角色(\d+)$/);
+      if (match) {
+        // 查询特定序号的构建
+        const index = parseInt(match[1]);
+        if (index < 1 || index > allBuilds.length) {
+          return await this.reply(`序号范围应为1-${allBuilds.length}`);
+        }
+
+        const build = allBuilds[index - 1];
+        let buildData = JSON.parse(JSON.stringify(await database.updateData(build.buildData.buildData, 3)));
+        let msg = await puppeteer.screenshot('eso', buildData);
+        await this.reply(msg);
+      } else {
+        // 输出所有构建的表格
+        let reply = '您的角色构建记录如下：\n';
+        reply += '序号  角色@账号  种族  职责  职业\n';
+        reply += '━━━━━━━━━━━━━━━━━━━━━━\n';
+        
+        allBuilds.forEach(build => {
+          const bd = build.buildData.buildData;
+          reply += `${build.index}.  ${build.playerName}@${build.accountName}  ${bd.raceInfo?.[0]?.name_cn || '未知'}  ${bd.roleNameCN || '未知'}  ${bd.classNameCN || '未知'}\n`;
+        });
+
+        await this.reply(reply);
+      }
+    } catch (error) {
+      logger.error(`[ESO:角色查询] 查询失败: ${error.message}`);
+      return await this.reply('查询失败，请稍后重试');
+    }
+  }
+
+  /**
+   * 删除角色构建数据
+   * @param {*} e 消息对象
+   * @returns 
+   */
+  async deleteRole(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 读取用户绑定数据
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      // 获取所有构建数据
+      let allBuilds = [];
+      for (const binding of bindData[userId]) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach((build, index) => {
+                  allBuilds.push({
+                    index: allBuilds.length + 1,
+                    playerName,
+                    accountName: binding.accountName,
+                    accountFileName,
+                    buildIndex: index,
+                    accountData
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        return await this.reply('未找到任何构建记录~');
+      }
+
+      // 获取命令中的序号
+      const match = e.msg.match(/^#*删除角色(\d+)$/);
+      if (!match) {
+        return await this.reply('请使用正确的格式：#删除角色序号');
+      }
+
+      const index = parseInt(match[1]);
+      if (index < 1 || index > allBuilds.length) {
+        return await this.reply(`序号范围应为1-${allBuilds.length}`);
+      }
+
+      const build = allBuilds[index - 1];
+      
+      // 从文件中删除对应的构建记录
+      const accountData = build.accountData;
+      accountData[build.playerName].builds.splice(build.buildIndex, 1);
+
+      // 如果该角色没有构建记录了，删除该角色
+      if (accountData[build.playerName].builds.length === 0) {
+        delete accountData[build.playerName];
+      }
+
+      // 如果该账号没有任何角色了，删除该账号的文件
+      if (Object.keys(accountData).length === 0) {
+        fs.unlinkSync(build.accountFileName);
+      } else {
+        // 否则更新文件
+        fs.writeFileSync(build.accountFileName, JSON.stringify(accountData, null, 2));
+      }
+
+      return await this.reply('删除成功！');
+
+    } catch (error) {
+      logger.error(`[ESO:角色删除] 删除失败: ${error.message}`);
+      return await this.reply('删除失败，请稍后重试');
+    }
   }
 }
