@@ -80,8 +80,7 @@ export class allNotice extends plugin {
                           { type: 'text', text: '，通知大家：' },
                         { type: 'text', text: myMss }
                         ]
-        //await this.reply(message, false, { recallMsg: -1 })
-        await this.reply(personID)
+        await this.reply(message, false, { recallMsg: -1 })
       }
     }
     else
@@ -90,7 +89,6 @@ export class allNotice extends plugin {
                       { type: 'at', qq: this.e.user_id},
                       { type: 'text', text: '\n抱歉！你无权使用该功能！\n' }
                     ]
-      await this.reply(personID)
       await this.reply(message, false, { recallMsg: -1 })
     }
   }
