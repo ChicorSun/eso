@@ -3,11 +3,16 @@ import common from "../../../lib/common/common.js"
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
 import md5 from 'md5'
+import fs from 'node:fs'
+
+// 配置文件路径
+const CONFIG_PATH = './plugins/eso/custome_resources/config/esologcfg.json'
+let configLoaded = false
 
 // 最大并发数
-const MAX_WEB_NUM = 6
+let MAX_WEB_NUM = 6
 // 最大等待时间（毫秒）
-const MAX_WAIT_TIME = 60000
+let MAX_WAIT_TIME = 60000
 // 日志打印间隔（毫秒）
 const LOG_INTERVAL = 5000
 // 当前运行的页面数
@@ -49,6 +54,14 @@ export class esologPuzzle extends plugin {
         {
           reg: '^#*(快速分析关|快速分析关闭|关闭快速分析|关快速分析|快速解析关|快速解析关闭|关闭快速解析|关快速解析)$',
           fnc: 'fastPuzzle_disable'
+        },
+        {
+          reg: '^#*设置解析速度.*$',
+          fnc: 'setMaxWebNum'
+        },
+        {
+          reg: '^#*设置等待时间.*$',
+          fnc: 'setMaxWaitTime'
         }
       ]
     })
@@ -1149,29 +1162,115 @@ export class esologPuzzle extends plugin {
     let tmp = md5(JSON.stringify(data))
     if (cachedata.md5 == tmp) return cachedata.img
 
-    //cachedata.img = 0
-    cachedata.img = await puppeteer.screenshot('eso', data) /*html file saved in folder data/html/eso/ */
+    cachedata.img = await puppeteer.screenshot('eso', data)
     cachedata.md5 = tmp
 
     return cachedata.img
   }
 
-  async fastPuzzle_enable(e) {
-    if(fast_mode == 1) return e.reply('本就开着啊', true)
-    let userinfo = await Bot.pickMember(e.group_id, e.user_id).getSimpleInfo()
-    userinfo.is_owner = await Bot.pickMember(e.group_id, e.user_id).is_owner
-    userinfo.is_admin = await Bot.pickMember(e.group_id, e.user_id).is_admin
-    if (!userinfo.is_owner && !userinfo.is_admin) return e.reply('请联系管理员才能开启快速分析', true)
-    fast_mode = 1
-    await this.e.reply('快速分析ESOLOG功能已开启')
+  // 加载配置
+  async loadConfig() {
+    if (configLoaded) return
+    try {
+      const configFile = CONFIG_PATH
+      if (fs.existsSync(configFile)) {
+        const config = JSON.parse(fs.readFileSync(configFile, 'utf8'))
+        MAX_WEB_NUM = config.MAX_WEB_NUM ?? MAX_WEB_NUM
+        MAX_WAIT_TIME = config.MAX_WAIT_TIME ?? MAX_WAIT_TIME
+        fast_mode = config.fast_mode ?? fast_mode
+      } else {
+        // 如果配置文件不存在，创建默认配置
+        const defaultConfig = {
+          MAX_WEB_NUM,
+          MAX_WAIT_TIME,
+          fast_mode
+        }
+        // 确保目录存在
+        const configDir = './plugins/eso/custome_resources/config'
+        if (!fs.existsSync(configDir)) {
+          fs.mkdirSync(configDir, { recursive: true })
+        }
+        // 写入默认配置
+        fs.writeFileSync(configFile, JSON.stringify(defaultConfig, null, 4))
+        logger.info(`[ESO:战斗日志] 已创建默认配置文件: ${configFile}`)
+      }
+    } catch (error) {
+      logger.error(`[ESO:战斗日志] 加载配置文件失败: ${error.message}`)
+    }
+    configLoaded = true
   }
+
+  // 保存配置
+  async saveConfig() {
+    try {
+      const configFile = CONFIG_PATH
+      const config = {
+        MAX_WEB_NUM,
+        MAX_WAIT_TIME,
+        fast_mode
+      }
+      // 确保目录存在
+      const configDir = './plugins/eso/custome_resources/config'
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true })
+      }
+      fs.writeFileSync(configFile, JSON.stringify(config, null, 4))
+    } catch (error) {
+      logger.error(`[ESO:战斗日志] 保存配置文件失败: ${error.message}`)
+    }
+  }
+
+  // 修改最大并发数
+  async setMaxWebNum(e) {
+    if (!e.isMaster) {
+      return e.reply('权限不足', true)
+    }
+    this.loadConfig()
+    const num = parseInt(e.msg.replace(/[^0-9]/g, ''))
+    if (isNaN(num) || num < 1 || num > 20) {
+      return e.reply('请输入1-20之间的数字', true)
+    }
+    MAX_WEB_NUM = num
+    this.saveConfig()
+    return e.reply(`已设置最大并发数为${num}`, true)
+  }
+
+  // 修改最大等待时间
+  async setMaxWaitTime(e) {
+    if (!e.isMaster) {
+      return e.reply('权限不足', true)
+    }
+    this.loadConfig()
+    const time = parseInt(e.msg.replace(/[^0-9]/g, ''))
+    if (isNaN(time) || time < 10000 || time > 300000) {
+      return e.reply('请输入10000-300000之间的数字（单位：毫秒）', true)
+    }
+    MAX_WAIT_TIME = time
+    this.saveConfig()
+    return e.reply(`已设置最大等待时间为${time}毫秒`, true)
+  }
+
+  // 启用快速模式
+  async fastPuzzle_enable(e) {
+    if (!e.isMaster) {
+      return e.reply('权限不足', true)
+    }
+    this.loadConfig()
+    if(fast_mode == 1) return e.reply('本就开着啊', true)
+    fast_mode = 1
+    this.saveConfig()
+    return e.reply('已开启快速模式', true)
+  }
+
+  // 禁用快速模式
   async fastPuzzle_disable(e) {
+    if (!e.isMaster) {
+      return e.reply('权限不足', true)
+    }
+    this.loadConfig()
     if(fast_mode == 0) return e.reply('本就关着啊', true)
-    let userinfo = await Bot.pickMember(e.group_id, e.user_id).getSimpleInfo()
-    userinfo.is_owner = await Bot.pickMember(e.group_id, e.user_id).is_owner
-    userinfo.is_admin = await Bot.pickMember(e.group_id, e.user_id).is_admin
-    if (!userinfo.is_owner && !userinfo.is_admin) return e.reply('请联系管理员才能关闭快速分析', true)
     fast_mode = 0
-    await this.e.reply('快速分析ESOLOG功能已关闭')
+    this.saveConfig()
+    return e.reply('已关闭快速模式', true)
   }
 }
