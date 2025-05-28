@@ -1416,13 +1416,13 @@ export class esologPuzzle extends plugin {
       let accountName = '';
 
       // 检查冷却
-      const lastTime = userCooldowns.get(userId);
-      const now = Date.now();
+      const lastTime = await userCooldowns.get(userId);
+      const now = await Date.now();
       if (lastTime && now - lastTime < COOLDOWN_TIME) {
         return;
       }
       // 更新最后操作时间
-      userCooldowns.set(userId, now);
+      await userCooldowns.set(userId, now);
 
       if (content.startsWith('@')) {
         // 格式1: #绑定@AccountName
@@ -1502,13 +1502,13 @@ export class esologPuzzle extends plugin {
 
     try {
       // 检查冷却
-      const lastTime = userCooldowns.get(userId);
-      const now = Date.now();
+      const lastTime = await userCooldowns.get(userId);
+      const now = await Date.now();
       if (lastTime && now - lastTime < COOLDOWN_TIME) {
         return;
       }
       // 更新最后操作时间
-      userCooldowns.set(userId, now);
+      await userCooldowns.set(userId, now);
 
       // 读取现有的绑定数据
       if (!fs.existsSync(ACCOUNT_PATH)) {
