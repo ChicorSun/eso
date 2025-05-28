@@ -1417,8 +1417,13 @@ export class esologPuzzle extends plugin {
         // 格式2: #绑定playerName@AccountName
         [playerName, accountName] = content.split('@');
       } else {
-        // 如果只提供了playerName，提醒用户必须同时提供AccountName
-        return await this.reply('绑定角色时必须同时提供账号名！\n请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName');
+        // 如果输入的内容既不是以@开头，也不包含@，说明格式错误
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n绑定角色时必须提供账号名！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       // 检查是否已经绑定
@@ -1428,7 +1433,11 @@ export class esologPuzzle extends plugin {
       );
 
       if (existingBind) {
-        return await this.reply('该角色已经绑定过了哦~');
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n该角色已经绑定过了哦~`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       // 添加新的绑定
@@ -1441,11 +1450,19 @@ export class esologPuzzle extends plugin {
       // 保存数据
       fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
 
-      return await this.reply('绑定成功！');
+      let progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n绑定成功！`}
+      ]
+      return await this.reply(progressMsg, false, { recallMsg: -1 });
 
     } catch (error) {
       logger.error(`[ESO:账号绑定] 保存绑定数据失败: ${error.message}`);
-      return await this.reply('绑定失败，请稍后重试');
+      let progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n绑定失败，请稍后重试`}
+      ]
+      return await this.reply(progressMsg, false, { recallMsg: -1 });
     }
   }
 
@@ -1460,19 +1477,34 @@ export class esologPuzzle extends plugin {
     let content = e.msg.replace(/^#*(解绑|解除绑定)/, '').trim();
 
     if (!content) {
-      return await this.reply('请指定要解绑的角色名或账号名');
+      let progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n请指定要解绑的角色名或账号名\n`},
+        { type: 'text', text: `格式：\n1. #解绑@AccountName\n2. #解绑playerName@AccountName\n3. #解绑playerName`}
+      ]
+      return await this.reply(progressMsg, false, { recallMsg: -1 });
     }
 
     try {
       // 读取现有的绑定数据
       if (!fs.existsSync(ACCOUNT_PATH)) {
-        return await this.reply('您还没有绑定任何角色哦~');
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您还没有绑定任何角色哦~\n`},
+          { type: 'text', text: `请先使用 #绑定，绑定你的角色`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       let bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
 
       if (!bindData[userId] || bindData[userId].length === 0) {
-        return await this.reply('您还没有绑定任何角色哦~');
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您还没有绑定任何角色哦~\n`},
+          { type: 'text', text: `请先使用 #绑定，绑定你的角色`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       // 查找要解绑的角色
@@ -1483,7 +1515,12 @@ export class esologPuzzle extends plugin {
       );
 
       if (index === -1) {
-        return await this.reply('未找到该绑定角色');
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n未找到该绑定角色\n`},
+          { type: 'text', text: `可使用 #查询绑定 命令查看已绑定的角色`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       // 移除绑定
@@ -1497,11 +1534,19 @@ export class esologPuzzle extends plugin {
       // 保存数据
       fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
 
-      return await this.reply('解绑成功！');
+      let progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n解绑成功！`}
+      ]
+      return await this.reply(progressMsg, false, { recallMsg: -1 });
 
     } catch (error) {
       logger.error(`[ESO:账号解绑] 解绑失败: ${error.message}`);
-      return await this.reply('解绑失败，请稍后重试');
+      let progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n解绑失败，请稍后重试`}
+      ]
+      return await this.reply(progressMsg, false, { recallMsg: -1 });
     }
   }
 
