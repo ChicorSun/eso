@@ -1386,15 +1386,6 @@ export class esologPuzzle extends plugin {
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
 
-    // 检查冷却
-    const lastTime = userCooldowns.get(userId);
-    const now = Date.now();
-    if (lastTime && now - lastTime < COOLDOWN_TIME) {
-      return;
-    }
-    // 更新最后操作时间
-    userCooldowns.set(userId, now);
-
     // 获取命令内容
     let content = e.msg.replace(/^#*绑定/, '').trim();
     
@@ -1423,6 +1414,15 @@ export class esologPuzzle extends plugin {
       // 解析输入内容
       let playerName = '';
       let accountName = '';
+
+      // 检查冷却
+      const lastTime = userCooldowns.get(userId);
+      const now = Date.now();
+      if (lastTime && now - lastTime < COOLDOWN_TIME) {
+        return;
+      }
+      // 更新最后操作时间
+      userCooldowns.set(userId, now);
 
       if (content.startsWith('@')) {
         // 格式1: #绑定@AccountName
@@ -1489,15 +1489,6 @@ export class esologPuzzle extends plugin {
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
 
-    // 检查冷却
-    const lastTime = userCooldowns.get(userId);
-    const now = Date.now();
-    if (lastTime && now - lastTime < COOLDOWN_TIME) {
-      return;
-    }
-    // 更新最后操作时间
-    userCooldowns.set(userId, now);
-
     let content = e.msg.replace(/^#*(解绑|解除绑定)/, '').trim();
 
     if (!content) {
@@ -1510,6 +1501,15 @@ export class esologPuzzle extends plugin {
     }
 
     try {
+      // 检查冷却
+      const lastTime = userCooldowns.get(userId);
+      const now = Date.now();
+      if (lastTime && now - lastTime < COOLDOWN_TIME) {
+        return;
+      }
+      // 更新最后操作时间
+      userCooldowns.set(userId, now);
+
       // 读取现有的绑定数据
       if (!fs.existsSync(ACCOUNT_PATH)) {
         let progressMsg = [
