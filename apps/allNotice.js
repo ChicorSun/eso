@@ -87,7 +87,7 @@ export class allNotice extends plugin {
     {
       let message = [
                       { type: 'at', qq: this.e.user_id},
-                      { type: 'text', text: '\n抱歉！你无权使用该功能！\n' }
+                      { type: 'text', text: '\n抱歉！你无权使用该功能！' }
                     ]
       await this.reply(message, false, { recallMsg: -1 })
     }
