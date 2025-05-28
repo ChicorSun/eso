@@ -1386,6 +1386,7 @@ export class esologPuzzle extends plugin {
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
 
+    await this.reply('你是' + userId);
     // 获取命令内容
     let content = e.msg.replace(/^#*绑定/, '').trim();
     
