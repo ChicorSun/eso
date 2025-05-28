@@ -40,9 +40,11 @@ export class allNotice extends plugin {
 
   /** 复读 */
   async sendAllNotice (e) {
+    let personID = e.user_id
+
     await this.loadBlackList()
 
-    if (!blackList.includes(this.e.user_id)) {
+    if (!blackList.includes(personID)) {
       let now = new Date().getTime()
       let hour = moment(now).format('H')
       let minute = moment(now).format('m')
@@ -78,7 +80,8 @@ export class allNotice extends plugin {
                           { type: 'text', text: '，通知大家：' },
                         { type: 'text', text: myMss }
                         ]
-        await this.reply(message, false, { recallMsg: -1 })
+        //await this.reply(message, false, { recallMsg: -1 })
+        await this.reply(personID)
       }
     }
     else
@@ -87,6 +90,7 @@ export class allNotice extends plugin {
                       { type: 'at', qq: this.e.user_id},
                       { type: 'text', text: '\n抱歉！你无权使用该功能！\n' }
                     ]
+      await this.reply(personID)
       await this.reply(message, false, { recallMsg: -1 })
     }
   }
