@@ -1,5 +1,11 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import moment from 'moment'
+import fs from 'node:fs'
+
+// 配置文件路径
+const CONFIG_PATH = './plugins/eso/custome_resources/config/allNoticecfg.json'
+
+let blackList = []
 
 export class allNotice extends plugin {
   constructor (e) {
@@ -15,16 +21,28 @@ export class allNotice extends plugin {
           reg: '^#*(全体成员)',
           /** 执行方法 */
           fnc: 'sendAllNotice'
-        }
+        },
+        {
+          reg: '^#*(禁止全体功能|禁用全体功能|禁止使用全体功能)$',
+          fnc: 'addIntoBlackList'
+        },
+        {
+          reg: '^#*允许使用全体功能$',
+          fnc: 'removeFromBlackList'
+        },
+        {
+          reg: '^#*查看全体功能黑名单$',
+          fnc: 'showBlackList'
+        },
       ]
     })
   }
 
   /** 复读 */
   async sendAllNotice (e) {
-    let addTime = await this.calAddTime(e)
+    let blackMember = await this.inBlackList(e.user_id)
 
-    if((addTime > 30) || (addTime == -1))
+    if(!blackMember)
     {
       let now = new Date().getTime()
       let hour = moment(now).format('H')
@@ -68,37 +86,121 @@ export class allNotice extends plugin {
     {
       let message = [
                       { type: 'at', qq: this.e.user_id},
-                      { type: 'text', text: '\n抱歉！加群时间少于一个月尚未解锁该功能\n目前进度：'+addTime+'/30' }
+                      { type: 'text', text: '\n抱歉！你无权使用该功能！\n' }
                     ]
       await this.reply(message, false, { recallMsg: -1 })
     }
   }
 
   //计算是否有权限
-  async calAddTime (e) {
-    let time = 0
-
-    //读取群昵称并判断是否合规
-    let userinfo = await Bot.pickMember(e.group_id, e.user_id).getSimpleInfo()
-    userinfo.group_info = await Bot.pickMember(e.group_id, e.user_id).info
-    userinfo.is_owner = await Bot.pickMember(e.group_id, e.user_id).is_owner
-    userinfo.is_admin = await Bot.pickMember(e.group_id, e.user_id).is_admin
-
-    if(typeof(userinfo.group_info) != "undefined")
-    {
-      let passSeconds = new Date().getTime()
-      let join_time = 1000*userinfo.group_info.join_time
-      passSeconds = passSeconds-join_time
-      let passDays = (passSeconds-(passSeconds%86400000))/86400000
-      time = passDays
+  async inBlackList(personID) {
+    try {
+      if (fs.existsSync(CONFIG_PATH)) {
+        const data = fs.readFileSync(CONFIG_PATH, 'utf8')
+        const list = JSON.parse(data)
+        return list.includes(personID)
+      }
+      return false
+    } catch (error) {
+      logger.error(`[ESO:全体通知] 检查黑名单失败: ${error.message}`)
+      return false
     }
-    else
-    {
-      logger.error("取群成员资料失败！")
-      time = -1
+  }
+
+  // 保存黑名单到文件
+  async saveBlackList() {
+    try {
+      const configDir = './plugins/eso/custome_resources/config'
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true })
+      }
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(blackList, null, 4))
+    } catch (error) {
+      logger.error(`[ESO:全体通知] 保存黑名单失败: ${error.message}`)
+    }
+  }
+
+  // 从文件加载黑名单
+  async loadBlackList() {
+    try {
+      if (fs.existsSync(CONFIG_PATH)) {
+        const data = fs.readFileSync(CONFIG_PATH, 'utf8')
+        blackList = JSON.parse(data)
+      } else {
+        // 如果文件不存在，创建空黑名单
+        const configDir = './plugins/eso/custome_resources/config'
+        if (!fs.existsSync(configDir)) {
+          fs.mkdirSync(configDir, { recursive: true })
+        }
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(blackList, null, 4))
+      }
+    } catch (error) {
+      logger.error(`[ESO:全体通知] 加载黑名单失败: ${error.message}`)
+    }
+  }
+
+  //写入黑名单
+  async addIntoBlackList(e) {
+    if (!e.isMaster) {
+      return e.reply('权限不足', true)
     }
 
-    return time
+    let personID = e.at
+    if (!personID || personID == e.user_id) {
+      return e.reply('无事发生，请@目标群友', true)
+    }
+
+    await this.loadBlackList()
+    
+    if (blackList.includes(personID)) {
+      return e.reply('他原本就无法使用该功能，无需再次禁用', false)
+    } else {
+      blackList.push(personID)
+      await this.saveBlackList()
+      return e.reply(`成功将${personID}添加进黑名单！`, false)
+    }
+  }
+
+  //从黑名单移除
+  async removeFromBlackList(e) {
+    if (!e.isMaster) {
+      return e.reply('权限不足', true)
+    }
+
+    let personID = e.at
+    if (!personID || personID == e.user_id) {
+      return e.reply('无事发生，请@目标群友', true)
+    }
+
+    await this.loadBlackList()
+    
+    if (!blackList.includes(personID)) {
+      return e.reply('该用户未在黑名单中', false)
+    } else {
+      blackList = blackList.filter(id => id !== personID)
+      await this.saveBlackList()
+      return e.reply(`已将${personID}从黑名单中移除`, false)
+    }
+  }
+
+  //显示黑名单
+  async showBlackList(e) {
+    if (!e.isMaster) {
+      return e.reply('权限不足', true)
+    }
+
+    await this.loadBlackList()
+
+    if (blackList.length === 0) {
+      return e.reply('黑名单为空', true)
+    }
+
+    const message = ['当前黑名单：']
+    for (const qq of blackList) {
+      message.push(`\n${qq}`)
+    }
+
+    return e.reply(message.join(''), true)
   }
 
   async trimText(e) {
