@@ -40,10 +40,9 @@ export class allNotice extends plugin {
 
   /** 复读 */
   async sendAllNotice (e) {
-    let blackMember = await this.inBlackList(e.user_id)
+    await this.loadBlackList()
 
-    if(!blackMember)
-    {
+    if (!blackList.includes(this.e.user_id)) {
       let now = new Date().getTime()
       let hour = moment(now).format('H')
       let minute = moment(now).format('m')
