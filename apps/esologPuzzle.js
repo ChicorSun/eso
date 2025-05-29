@@ -1936,23 +1936,15 @@ export class esologPuzzle extends plugin {
         };
       }
 
-      // 2. 检查是否包含中文字符或中文符号
-      if (/[\u4e00-\u9fa5\u3000-\u303F]/.test(accountName)) {
+      // 2. 必须以字母开头
+      if (!/^[a-zA-Z]/.test(accountName)) {
         return {
           isValid: false,
-          reason: '账号名称不能包含中文字符或中文符号'
+          reason: '账号名称必须以字母开头'
         };
       }
 
-      // 3. 首字母必须大写
-      if (!/^[A-Z]/.test(accountName)) {
-        return {
-          isValid: false,
-          reason: '账号名称必须以大写字母开头'
-        };
-      }
-
-      // 4. 检查是否包含空格
+      // 3. 检查是否包含空格
       if (/\s/.test(accountName)) {
         return {
           isValid: false,
@@ -1960,15 +1952,7 @@ export class esologPuzzle extends plugin {
         };
       }
 
-      // 5. 检查是否包含非法字符(只允许字母、数字和特定符号)
-      if (!/^[A-Za-z0-9._'-]+$/.test(accountName)) {
-        return {
-          isValid: false,
-          reason: '账号名称只能包含字母、数字和单个句号、连字符、撇号、下划线'
-        };
-      }
-
-      // 6. 检查开头和结尾是否为符号
+      // 4. 检查是否以符号开头或结尾
       if (/^[._'-]|[._'-]$/.test(accountName)) {
         return {
           isValid: false,
@@ -1976,31 +1960,52 @@ export class esologPuzzle extends plugin {
         };
       }
 
-      // 7. 检查是否包含大小写字母
-      if (!/[A-Z]/.test(accountName) || !/[a-z]/.test(accountName)) {
+      // 5. 检查是否只包含允许的字符（字母、数字和单个的点、连字符、撇号、下划线）
+      if (!/^[a-zA-Z0-9._'-]+$/.test(accountName)) {
         return {
           isValid: false,
-          reason: '账号名称必须包含大小写字母'
+          reason: '账号名称只能包含字母、数字和单个的点、连字符、撇号、下划线'
         };
       }
 
-      // 8. 检查字符重复次数
-      const charCount = {};
-      for (const char of accountName) {
-        charCount[char] = (charCount[char] || 0) + 1;
-        if (charCount[char] > 3) {
+      // 6. 检查字符重复次数（不超过3次连续）
+      // 对于字母，忽略大小写进行检查
+      for (let i = 0; i < accountName.length - 3; i++) {
+        const current = accountName[i];
+        const next1 = accountName[i + 1];
+        const next2 = accountName[i + 2];
+        const next3 = accountName[i + 3];
+
+        // 如果是字母，忽略大小写比较
+        if (/[a-zA-Z]/.test(current)) {
+          if (current.toLowerCase() === next1.toLowerCase() && 
+              current.toLowerCase() === next2.toLowerCase() && 
+              current.toLowerCase() === next3.toLowerCase()) {
+            return {
+              isValid: false,
+              reason: '账号名称中每个字母（忽略大小写）不能连续重复超过3次'
+            };
+          }
+        }
+        // 如果是数字或其他字符，直接比较
+        else if (current === next1 && current === next2 && current === next3) {
           return {
             isValid: false,
-            reason: '账号名称中每个字符不能重复出现超过3次'
+            reason: '账号名称中每个字符不能连续重复超过3次'
           };
         }
       }
 
-      // 9. 检查符号使用是否合法（不能连续使用符号）
-      if (/[._'-]{2,}/.test(accountName)) {
+      // 7. 检查特殊字符是否只出现一次（点、连字符、撇号、下划线）
+      const periods = (accountName.match(/\./g) || []).length;
+      const hyphens = (accountName.match(/-/g) || []).length;
+      const apostrophes = (accountName.match(/'/g) || []).length;
+      const underscores = (accountName.match(/_/g) || []).length;
+
+      if (periods > 1 || hyphens > 1 || apostrophes > 1 || underscores > 1) {
         return {
           isValid: false,
-          reason: '账号名称中的符号不能连续使用'
+          reason: '账号名称中的点、连字符、撇号和下划线只能出现一次'
         };
       }
 
@@ -2027,20 +2032,107 @@ export class esologPuzzle extends plugin {
         };
       }
 
-      // 检查长度是否超过25个字符
-      if (playerName.length > 25) {
+      // 1. 检查长度（3-25个字符）
+      if (playerName.length < 3 || playerName.length > 25) {
         return {
           isValid: false,
-          reason: '角色名称不能超过25个字符'
+          reason: '角色名称长度必须在3-25个字符之间'
         };
       }
 
-      // 检查是否包含中文字符或中文符号
-      if (/[\u4e00-\u9fa5\u3000-\u303F]/.test(playerName)) {
+      // 2. 检查是否以空格开头
+      if (playerName.startsWith(' ')) {
         return {
           isValid: false,
-          reason: '角色名称不能包含中文字符或中文符号'
+          reason: '角色名称不能以空格开头'
         };
+      }
+
+      // 3. 检查是否以字母结尾
+      if (!/[a-zA-Z]$/.test(playerName)) {
+        return {
+          isValid: false,
+          reason: '角色名称必须以字母结尾'
+        };
+      }
+
+      // 4. 检查连续字母（忽略大小写）
+      const lowerName = playerName.toLowerCase();
+      for (let i = 0; i < lowerName.length - 2; i++) {
+        if (lowerName[i] === lowerName[i + 1] && lowerName[i] === lowerName[i + 2] && /[a-z]/.test(lowerName[i])) {
+          return {
+            isValid: false,
+            reason: '角色名称中同一字母（忽略大小写）不能连续出现超过两个'
+          };
+        }
+      }
+
+      // 5. 检查是否包含数字
+      if (/\d/.test(playerName)) {
+        return {
+          isValid: false,
+          reason: '角色名称不能包含数字'
+        };
+      }
+
+      // 6. 检查相邻的标点符号
+      if (/['-\s]{2}/.test(playerName)) {
+        return {
+          isValid: false,
+          reason: '角色名称不能包含相邻的标点符号'
+        };
+      }
+
+      // 7. 检查连字符、撇号和空格的总数
+      const specialChars = (playerName.match(/[-'\s]/g) || []).length;
+      if (specialChars > 4) {
+        return {
+          isValid: false,
+          reason: '角色名称最多可以包含四个连字符、撇号或空格'
+        };
+      }
+
+      // 8. 检查无效字符（只允许字母、连字符、撇号和空格）
+      if (!/^[a-zA-Z'-\s]+$/.test(playerName)) {
+        return {
+          isValid: false,
+          reason: '角色名称包含无效字符'
+        };
+      }
+
+      // 9. 检查是否包含汉字
+      if (/[\u4e00-\u9fa5]/.test(playerName)) {
+        return {
+          isValid: false,
+          reason: '角色名称不能包含汉字'
+        };
+      }
+
+      // 10. 检查大写字母的位置
+      const words = playerName.split(/[-'\s]/);
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        if (word.length === 0) continue;
+        
+        // 检查每个单词
+        // 第一个单词可以首字母大写
+        if (i === 0) {
+          // 除了首字母外的其他字母必须小写
+          if (!/^[A-Z]?[a-z]*$/.test(word)) {
+            return {
+              isValid: false,
+              reason: '角色名称只有开头的字母以及符号后面那一个字母允许大写'
+            };
+          }
+        } else {
+          // 其他单词可以首字母大写，但其余必须小写
+          if (!/^[A-Z]?[a-z]*$/.test(word)) {
+            return {
+              isValid: false,
+              reason: '角色名称只有开头的字母以及符号后面那一个字母允许大写'
+            };
+          }
+        }
       }
 
       return {
