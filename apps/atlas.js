@@ -162,10 +162,10 @@ export class atlas extends plugin {
       }
       msgList += `\n`+'图片太多，不再一一列出'
       await this.reply(msgList)
-      //logger.info(objSets)
+      //logger.info(name)
       for (let setKey of objSets) {
         setData = await database.updateData(setKey, 1)
-      	if(setData.atlasData[1].name == name)
+      	if(('#' + setData.atlasData[1].name) == name)
       	{
       		await this.showSetsInfo([setKey], showEnglish)
       		break
@@ -183,6 +183,14 @@ export class atlas extends plugin {
         msgList += `\n#`+setData.atlasData[1].name+'图鉴'
       }
       await this.reply(msgList)
+    }
+
+    if(setNum == 1)
+    {
+      for (let setKey of objSets) {
+        setData = await database.updateData(setKey, 1)
+        logger.info(setData.atlasData[1].name)
+      }
     }
 
     if(setNum >= 21 && noMaxLimit==0)
@@ -249,7 +257,7 @@ export class atlas extends plugin {
       await this.reply(msgList)
       for (let skillKey of objSkills) {
         skillData = await database.updateData(skillKey, 2)
-        if(skillData.atlasData[1].new_cn_name == name)
+        if(('*' + skillData.atlasData[1].new_cn_name) == name)
         {
           await this.showSkillsInfo([skillKey], showEnglish)
           break
@@ -333,7 +341,7 @@ export class atlas extends plugin {
       await this.reply(msgList)
       for (let foodKey of objFoods) {
         foodData = await database.updateData(foodKey, 6)
-        if(foodData.atlasData[1].new_cn_name == name)
+        if(('%' + foodData.atlasData[1].new_cn_name) == name)
         {
           await this.showFoodsInfo([foodKey], showEnglish)
           break
