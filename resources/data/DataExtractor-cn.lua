@@ -453220,7 +453220,7 @@ DataExtractorSavedVariables =
                                 [212735] = 1,
                             },
                             ["name"] = "范多拉伦的共鸣",
-                            ["place"] = "西威尔德",
+                            ["place"] = "流亡哨站",
                             ["id"] = 794,
                             ["styles"] = 
                             {
@@ -453576,7 +453576,7 @@ DataExtractorSavedVariables =
                                 [212952] = 1,
                             },
                             ["name"] = "耶伦希刀锋风暴",
-                            ["place"] = "西威尔德",
+                            ["place"] = "流亡哨站",
                             ["id"] = 795,
                             ["styles"] = 
                             {
@@ -453932,7 +453932,7 @@ DataExtractorSavedVariables =
                                 [212991] = 1,
                             },
                             ["name"] = "卢西娜的风盾",
-                            ["place"] = "西威尔德",
+                            ["place"] = "流亡哨站",
                             ["id"] = 796,
                             ["styles"] = 
                             {
@@ -454174,7 +454174,7 @@ DataExtractorSavedVariables =
                                 [213169] = 1,
                             },
                             ["name"] = "惩罚之飑",
-                            ["place"] = "西威尔德",
+                            ["place"] = "流亡哨站",
                             ["id"] = 797,
                             ["styles"] = 
                             {
@@ -454399,7 +454399,7 @@ DataExtractorSavedVariables =
                                 [213247] = 1,
                             },
                             ["name"] = "英勇团结",
-                            ["place"] = "修之克星",
+                            ["place"] = "秀跃隐修院",
                             ["id"] = 798,
                             ["styles"] = 
                             {
@@ -454763,7 +454763,7 @@ DataExtractorSavedVariables =
                                 [213503] = 1,
                             },
                             ["name"] = "幼雏巢穴",
-                            ["place"] = "修之克星",
+                            ["place"] = "秀跃隐修院",
                             ["id"] = 799,
                             ["styles"] = 
                             {
@@ -455119,7 +455119,7 @@ DataExtractorSavedVariables =
                                 [213676] = 1,
                             },
                             ["name"] = "剧毒巨石",
-                            ["place"] = "修之克星",
+                            ["place"] = "秀跃隐修院",
                             ["id"] = 800,
                             ["styles"] = 
                             {
@@ -455361,7 +455361,7 @@ DataExtractorSavedVariables =
                                 [213695] = 1,
                             },
                             ["name"] = "战术家奥腓翁",
-                            ["place"] = "修之克星",
+                            ["place"] = "秀跃隐修院",
                             ["id"] = 801,
                             ["styles"] = 
                             {
@@ -459532,8 +459532,103 @@ DataExtractorSavedVariables =
                         },
                         [811] = 
                         {
+                            ["bonuses"] = 
+                            {
+                                [2] = "（1件套）战斗中，翻滚闪避可产生随机效果。该效果每3秒可发生一次，效果如下：",
+                                [3] = " ",
+                                [4] = " - 在15米范围内的一名敌人下方产生一个奶酪轮，1秒后，对3米内的敌人造成7596魔法伤害。​",
+                                [5] = " - 1.5秒后，对面前的敌人造成6368物理伤害。​",
+                                [6] = " - 对距离最近的敌人造成8479魔法伤害。​",
+                                [7] = " - 获得高级迅敏，持续4.5秒。​",
+                                [8] = " - 恢复1172耐力。​",
+                                [9] = " - 下一次非终极技能的消耗降低14%。​",
+                                [10] = " - 获得7个终极点。​",
+                            },
                             ["id"] = 811,
                             ["name"] = "疯神的舞鞋",
+                            ["itemIDs"] = 
+                            {
+                                [216235] = 1,
+                            },
+                            ["styles"] = 
+                            {
+                                ["护甲"] = 
+                                {
+                                    ["足部"] = 
+                                    {
+                                        ["轻型"] = 
+                                        {
+                                            ["icon"] = "/esoui/art/icons/gear_perniciouspoulaines_feet_a.dds",
+                                            ["style"] = "",
+                                            ["styleId"] = 0,
+                                        },
+                                    },
+                                },
+                            },
+                            ["place"] = "至日岛",
+                            ["type"] = 12,
+                        },
+                        [812] = 
+                        {
+                            ["itemIDs"] = 
+                            {
+                                [216236] = 1,
+                            },
+                            ["name"] = "拉卡特的虚无斗篷",
+                            ["place"] = "至日岛",
+                            ["id"] = 812,
+                            ["styles"] = 
+                            {
+                                ["护甲"] = 
+                                {
+                                    ["肩部"] = 
+                                    {
+                                        ["中型"] = 
+                                        {
+                                            ["style"] = "",
+                                            ["styleId"] = 0,
+                                            ["icon"] = "/esoui/art/icons/gear_rakkat_shoulder_a.dds",
+                                        },
+                                    },
+                                },
+                            },
+                            ["bonuses"] = 
+                            {
+                                [2] = "（1件套）你的轻攻击伤害降低50%. 使用轻攻击造成伤害时，根据你装备的武器类型恢复431魔力或耐力。对失衡敌人造成伤害时，额外获得资源; 对格挡的敌人造成伤害时，获得的资源会减少。",
+                                [3] = "你的重攻击伤害提高50%. 重攻击不再恢复资源。",
+                            },
+                            ["type"] = 12,
+                        },
+                        [813] = 
+                        {
+                            ["itemIDs"] = 
+                            {
+                                [216237] = 1,
+                            },
+                            ["name"] = "重铸英雄之旅",
+                            ["place"] = "至日岛",
+                            ["id"] = 813,
+                            ["styles"] = 
+                            {
+                                ["护甲"] = 
+                                {
+                                    ["戒指"] = 
+                                    {
+                                        ["无"] = 
+                                        {
+                                            ["style"] = "",
+                                            ["styleId"] = 0,
+                                            ["icon"] = "/esoui/art/icons/quest_u46_item_mythic_ring.dds",
+                                        },
+                                    },
+                                },
+                            },
+                            ["bonuses"] = 
+                            {
+                                [2] = "（1件套）在战斗中且使用主武器时，获得 高级力量、次级狂怒 和 次级脆弱。",
+                                [3] = "在战斗中且使用副武器时，获得 高级守护、次级活力 和 次级胆怯。",
+                            },
+                            ["type"] = 12,
                         },
                         [814] = 
                         {
@@ -460192,7 +460287,7 @@ DataExtractorSavedVariables =
                                 [2] = "（2件套）增加129武器伤害和法术伤害",
                                 [3] = "（3件套）永久获得次级杀戮，使你对地下城、试炼、竞技场怪物造成的伤害提高|cffffff5|r%。",
                                 [4] = "（4件套）增加1487攻击穿透",
-                                [5] = "（5件套）On dealing area direct damage, place a Sword above an enemy, up to once every |cffffff1|r秒. You cannot place a Sword on an enemy who already has one from you. After |cffffff6|r秒, the Sword falls, dealing |cffffff3275|r物理伤害. This damage scales off the higher of your Weapon or Spell Damage. \r\n\r\nEach Sword active increases your damage done by |cffffff2|r%.",
+                                [5] = "（5件套）造成范围效果直接伤害时，会在敌人头顶放置一把剑，每|cffffff1|r秒最多触发一次。你无法对已经头顶有剑的敌人再次放置剑。|cffffff6|r秒后，剑会落下，对敌人造成|cffffff3275|r点物理伤害。该伤害受武器伤害或法术伤害中较高的数值影响。\r\n\r\n每有一把剑处于激活状态，你的伤害提高|cffffff2|r%。",
                             },
                             ["type"] = 11,
                         },
@@ -461950,7 +462045,7 @@ DataExtractorSavedVariables =
                                 [3] = "（3件套）永久获得次级杀戮，使你对地下城、试炼、竞技场怪物造成的伤害提高|cffffff5|r%。",
                                 [4] = "（4件套）增加34攻击穿透",
                                 [5] = "（5件完美套）增加3武器伤害和法术伤害",
-                                [6] = "（5件套）On dealing area direct damage, place a Sword above an enemy, up to once every |cffffff1|r秒. You cannot place a Sword on an enemy who already has one from you. After |cffffff6|r秒, the Sword falls, dealing |cffffff3275|r物理伤害. This damage scales off the higher of your Weapon or Spell Damage. \r\n\r\nEach Sword active increases your damage done by |cffffff2|r%.",
+                                [6] = "（5件套）造成范围效果直接伤害时，会在敌人头顶放置一把剑，每|cffffff1|r秒最多触发一次。你无法对已经头顶有剑的敌人再次放置剑。|cffffff6|r秒后，剑会落下，对敌人造成|cffffff3275|r点物理伤害。该伤害受武器伤害或法术伤害中较高的数值影响。\r\n\r\n每有一把剑处于激活状态，你的伤害提高|cffffff2|r%。",
                             },
                             ["type"] = 11,
                         },

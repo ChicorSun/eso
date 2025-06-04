@@ -372805,7 +372805,7 @@ DataExtractorSavedVariables =
                                     },
                                 },
                             },
-                            ["place"] = "West Weald",
+                            ["place"] = "Exiled Redoubt",
                             ["type"] = 6,
                         },
                         [795] = 
@@ -373161,7 +373161,7 @@ DataExtractorSavedVariables =
                                     },
                                 },
                             },
-                            ["place"] = "West Weald",
+                            ["place"] = "Exiled Redoubt",
                             ["type"] = 6,
                         },
                         [796] = 
@@ -373517,7 +373517,7 @@ DataExtractorSavedVariables =
                                     },
                                 },
                             },
-                            ["place"] = "West Weald",
+                            ["place"] = "Exiled Redoubt",
                             ["type"] = 6,
                         },
                         [797] = 
@@ -373628,7 +373628,7 @@ DataExtractorSavedVariables =
                                     },
                                 },
                             },
-                            ["place"] = "West Weald",
+                            ["place"] = "Exiled Redoubt",
                             ["type"] = 8,
                         },
                         [798] = 
@@ -373984,7 +373984,7 @@ DataExtractorSavedVariables =
                                     },
                                 },
                             },
-                            ["place"] = "Hew's Bane",
+                            ["place"] = "Lep Seclusa",
                             ["type"] = 6,
                         },
                         [799] = 
@@ -374348,7 +374348,7 @@ DataExtractorSavedVariables =
                                     },
                                 },
                             },
-                            ["place"] = "Hew's Bane",
+                            ["place"] = "Lep Seclusa",
                             ["type"] = 6,
                         },
                         [800] = 
@@ -374704,7 +374704,7 @@ DataExtractorSavedVariables =
                                     },
                                 },
                             },
-                            ["place"] = "Hew's Bane",
+                            ["place"] = "Lep Seclusa",
                             ["type"] = 6,
                         },
                         [801] = 
@@ -374815,7 +374815,7 @@ DataExtractorSavedVariables =
                                     },
                                 },
                             },
-                            ["place"] = "Hew's Bane",
+                            ["place"] = "Lep Seclusa",
                             ["type"] = 8,
                         },
                         [802] = 
@@ -378932,8 +378932,103 @@ DataExtractorSavedVariables =
                         },
                         [811] = 
                         {
-                            ["name"] = "Mad God's Dancing Shoes",
+                            ["bonuses"] = 
+                            {
+                                [2] = "(1 item) While in combat, roll dodging creates a random effect. This effect can occur once every 3 seconds. Effects:",
+                                [3] = " ",
+                                [4] = " - Create a cheese wheel under an enemy within 15 meters that deals 7596 Magic damage to enemies in 3 meters after 1 second.",
+                                [5] = " - Deal 6368 Physical damage to enemies facing you after 1.5 seconds.",
+                                [6] = " - Deal 8479 Magic damage to the nearest enemy.",
+                                [7] = " - Gain Major Expedition for 4.5 seconds.",
+                                [8] = " - Restore 1172 Stamina.",
+                                [9] = " - Reduce the cost of your next non-Ultimate ability by 14%.",
+                                [10] = " - Gain 7 Ultimate.",
+                            },
                             ["id"] = 811,
+                            ["name"] = "Mad God's Dancing Shoes",
+                            ["itemIDs"] = 
+                            {
+                                [216235] = 1,
+                            },
+                            ["styles"] = 
+                            {
+                                ["Apparel"] = 
+                                {
+                                    ["Feet"] = 
+                                    {
+                                        ["Light"] = 
+                                        {
+                                            ["icon"] = "/esoui/art/icons/gear_perniciouspoulaines_feet_a.dds",
+                                            ["style"] = "",
+                                            ["styleId"] = 0,
+                                        },
+                                    },
+                                },
+                            },
+                            ["place"] = "Solstice",
+                            ["type"] = 12,
+                        },
+                        [812] = 
+                        {
+                            ["bonuses"] = 
+                            {
+                                [2] = "(1 item) Reduce the damage of your Light Attacks by 50%. Dealing damage with a Light Attack restores 431 Magicka or Stamina, depending on your equipped weapon type. Gain additional resources when damaging an Off Balanced enemy and less resources when damaging a blocking enemy.",
+                                [3] = "Increase the damage of your Heavy Attacks by 50%. Heavy Attacks no longer restore resources.",
+                            },
+                            ["id"] = 812,
+                            ["name"] = "Rakkhat's Voidmantle",
+                            ["itemIDs"] = 
+                            {
+                                [216236] = 1,
+                            },
+                            ["styles"] = 
+                            {
+                                ["Apparel"] = 
+                                {
+                                    ["Shoulders"] = 
+                                    {
+                                        ["Medium"] = 
+                                        {
+                                            ["icon"] = "/esoui/art/icons/gear_rakkat_shoulder_a.dds",
+                                            ["style"] = "",
+                                            ["styleId"] = 0,
+                                        },
+                                    },
+                                },
+                            },
+                            ["place"] = "Solstice",
+                            ["type"] = 12,
+                        },
+                        [813] = 
+                        {
+                            ["itemIDs"] = 
+                            {
+                                [216237] = 1,
+                            },
+                            ["name"] = "重铸英雄之旅",
+                            ["place"] = "至日岛",
+                            ["id"] = 813,
+                            ["styles"] = 
+                            {
+                                ["Apparel"] = 
+                                {
+                                    ["Ring"] = 
+                                    {
+                                        ["None"] = 
+                                        {
+                                            ["icon"] = "/esoui/art/icons/quest_u46_item_mythic_ring.dds",
+                                            ["style"] = "",
+                                            ["styleId"] = 0,
+                                        },
+                                    },
+                                },
+                            },
+                            ["bonuses"] = 
+                            {
+                                [2] = "(1 item) While in combat and on your Primary Weapon gain Major Force, Minor Berserk, and Minor Vulnerability.",
+                                [3] = "While in combat and on your Secondary Weapon gain Major Protection, Minor Vitality, and Minor Timidity.",
+                            },
+                            ["type"] = 12,
                         },
                         [814] = 
                         {
