@@ -515010,10 +515010,10 @@ DataExtractorSavedVariables =
                             ["name"] = "Perfected Kazpian's Cruel Signet",
                             ["bonuses"] = 
                             {
-                                [2] = "(2 items) Adds 3 Weapon and Spell Damage",
+                                [2] = "(2 items) Adds 129 Weapon and Spell Damage",
                                 [3] = "(3 items) Gain Minor Slayer at all times, increasing your damage done to Dungeon, Trial, and Arena Monsters by |cffffff5|r%.",
-                                [4] = "(4 items) Adds 34 Offensive Penetration",
-                                [5] = "(5 perfected items) Adds 3 Weapon and Spell Damage",
+                                [4] = "(4 items) Adds 1487 Offensive Penetration",
+                                [5] = "(5 perfected items) Adds 129 Weapon and Spell Damage",
                                 [6] = "(5 items) On dealing area direct damage, place a Sword above an enemy, up to once every |cffffff1|r second. You cannot place a Sword on an enemy who already has one from you. After |cffffff6|r seconds, the Sword falls, dealing |cffffff514|r Physical Damage. This damage scales off the higher of your Weapon or Spell Damage. \n\nEach Sword active increases your damage done by |cffffff2|r%.",
                             },
                             ["place"] = "Ossein Cage",
