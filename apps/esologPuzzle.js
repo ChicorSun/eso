@@ -110,6 +110,7 @@ export class esologPuzzle extends plugin {
     //解析url
     let tmpComPuzzleEnable = 0
     let recordEnable = 0
+    let anonymousEnable = 1
     let urlText = await this.trimText(e)
     if(urlText.includes("记录")) {
       recordEnable = 1
@@ -127,7 +128,12 @@ export class esologPuzzle extends plugin {
     } else {
       tmpComPuzzleEnable = 1
     }
-    urlText = urlText.replace("完整分析", "").replace("快速分析", "").replace("完整解析", "").replace("快速解析", "").replace("完整", "").replace("快速", "")
+    if(urlText.includes("不匿名") || urlText.includes("去匿名") || urlText.includes("去除匿名")) {
+      anonymousEnable = 0
+    } else {
+      anonymousEnable = 1
+    }
+    urlText = urlText.replace("不匿名", "").replace("去匿名", "").replace("去除匿名", "").replace("完整分析", "").replace("快速分析", "").replace("完整解析", "").replace("快速解析", "").replace("完整", "").replace("快速", "")
 
     let urlTemp = urlText.split('esologs.com')
     if(urlTemp.length < 2)
@@ -274,6 +280,12 @@ export class esologPuzzle extends plugin {
                 const { BD, recordStatus } = await this.getOneManLog(reportsID, fightIndex, oneMan.sourceIndex, false, shouldRecord);
                 
                 if (!BD.virtual) {
+                  if (anonymousEnable) {
+                    BD.playerName = 'Anonymous ' + oneMan.sourceIndex
+                    BD.accountName = BD.accountName.startsWith('@') ? 
+                      '@' + BD.accountName.charAt(1) + 'xxxxx' + BD.accountName.charAt(BD.accountName.length - 1) :
+                      BD.accountName
+                  }
                   let buildData = JSON.parse(JSON.stringify(await database.updateData(BD, 3)));
                   recordResults.set(index, {
                     success: recordStatus,
@@ -332,6 +344,12 @@ export class esologPuzzle extends plugin {
                 const { BD, recordStatus } = await this.getOneManLog(reportsID, fightIndex, oneMan.sourceIndex, false, true);
                 
                 if (!BD.virtual) {
+                  if (anonymousEnable) {
+                    BD.playerName = 'Anonymous ' + oneMan.sourceIndex
+                    BD.accountName = BD.accountName.startsWith('@') ? 
+                      '@' + BD.accountName.charAt(1) + 'xxxxx' + BD.accountName.charAt(BD.accountName.length - 1) :
+                      BD.accountName
+                  }
                   recordResults.set(index, {
                     success: recordStatus,
                     name: `${BD.playerName}@${BD.accountName.substring(1)}`
@@ -373,10 +391,12 @@ export class esologPuzzle extends plugin {
                 reportMsg.push(`\n未绑定的角色（跳过记录）：\n${skippedRecords.join('\n')}`);
               }
 
-              await this.reply([
-                { type: 'at', qq: e.user_id },
-                { type: 'text', text: reportMsg.join('') }
-              ], false, { recallMsg: -1 });
+              if (successRecords.length > 0 || existingRecords.length > 0 || failedRecords.length > 0 || (skippedRecords.length > 0 && recordEnable)) {
+                await this.reply([
+                  { type: 'at', qq: e.user_id },
+                  { type: 'text', text: reportMsg.join('') }
+                ], false, { recallMsg: -1 });
+              }
             }
           } else {
             await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
