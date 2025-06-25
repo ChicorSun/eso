@@ -1896,6 +1896,12 @@ export class esologPuzzle extends plugin {
         let msg = await puppeteer.screenshot('eso', buildData);
         await this.reply(msg);
       } else {
+        // 获取用户的名片数据
+        let cardData = {};
+        if (fs.existsSync(CARD_PATH)) {
+          cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+        }
+
         // 输出所有构建的表格
         let reply = '您的角色构建记录如下：\n';
         reply += '序号  角色@账号  种族  职责  职业\n';
@@ -1903,7 +1909,20 @@ export class esologPuzzle extends plugin {
         
         allBuilds.forEach(build => {
           const bd = build.buildData.buildData;
-          reply += `${build.index}.  ${build.playerName}@${build.accountName}  ${bd.raceInfo?.[0]?.name_cn || '未知'}  ${bd.roleNameCN || '未知'}  ${bd.classNameCN || '未知'}\n`;
+          
+          // 检查是否为名片
+          let isCard = false;
+          if (cardData[userId] && cardData[userId].cards_info) {
+            isCard = cardData[userId].cards_info.some(card => 
+              card.accountName === build.accountName &&
+              card.playerName === build.playerName &&
+              card.reportsID === build.buildData.reportsID &&
+              card.fightIndex === build.buildData.fightIndex &&
+              card.sourceIndex === build.buildData.sourceIndex
+            );
+          }
+          
+          reply += `${isCard ? '[√]' : '[×]'}${build.index}.  ${build.playerName}@${build.accountName}  ${bd.raceInfo?.[0]?.name_cn || '未知'}  ${bd.roleNameCN || '未知'}  ${bd.classNameCN || '未知'}\n`;
         });
 
         await this.reply(reply);
@@ -1976,7 +1995,26 @@ export class esologPuzzle extends plugin {
         return await this.reply(`序号范围应为1-${allBuilds.length}`);
       }
 
-      const build = allBuilds[index - 1];
+            const build = allBuilds[index - 1];
+
+      // 检查是否被设置为名片
+      let cardIndex = -1;
+      if (fs.existsSync(CARD_PATH)) {
+        const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+        if (cardData[userId] && cardData[userId].cards_info) {
+          cardIndex = cardData[userId].cards_info.findIndex(card => 
+            card.accountName === build.accountName &&
+            card.playerName === build.playerName &&
+            card.reportsID === build.accountData[build.playerName].builds[build.buildIndex].reportsID &&
+            card.fightIndex === build.accountData[build.playerName].builds[build.buildIndex].fightIndex &&
+            card.sourceIndex === build.accountData[build.playerName].builds[build.buildIndex].sourceIndex
+          );
+          
+          if (cardIndex != -1) {
+            return await this.reply(`角色${index} 已被 名片${cardData[userId].cards_info[cardIndex].index} 绑定，请先使用 #删除名片${cardData[userId].cards_info[cardIndex].index}`);
+          }
+        }
+      }
       
       // 从文件中删除对应的构建记录
       const accountData = build.accountData;
