@@ -8,6 +8,7 @@ import fs from 'node:fs'
 // 配置文件路径
 const CONFIG_PATH = './plugins/eso/custome_resources/config/esologcfg.json'
 const ACCOUNT_PATH = './plugins/eso/custome_resources/data/account_data.json'
+const CARD_PATH = './plugins/eso/custome_resources/data/card_data.json'
 const BUILD_PATH = './plugins/eso/custome_resources/data/builds/'
 const RECORD_PATH = './plugins/eso/custome_resources/data/record_data.json'
 let configLoaded = false
@@ -81,6 +82,66 @@ export class esologPuzzle extends plugin {
           reg: '^#(删除角色).*$',
           /** 执行方法 */
           fnc: 'deleteRole'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(编辑角色|修改角色).*$',
+          /** 执行方法 */
+          fnc: 'editBuild'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(设置职业).*$',
+          /** 执行方法 */
+          fnc: 'setClass'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(设置定位).*$',
+          /** 执行方法 */
+          fnc: 'setRole'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(设置标题).*$',
+          /** 执行方法 */
+          fnc: 'setTitle'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(添加标签).*$',
+          /** 执行方法 */
+          fnc: 'addTag'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(查看标签).*$',
+          /** 执行方法 */
+          fnc: 'queryTag'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(删除标签).*$',
+          /** 执行方法 */
+          fnc: 'deleteTag'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(名片化).*$',
+          /** 执行方法 */
+          fnc: 'addCard'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(查看名片|名片).*$',
+          /** 执行方法 */
+          fnc: 'queryCard'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(删除名片).*$',
+          /** 执行方法 */
+          fnc: 'deleteCard'
         },
         {
           /** 命令正则匹配 */
@@ -1942,6 +2003,531 @@ export class esologPuzzle extends plugin {
     }
   }
 
+  async editBuild(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 读取用户绑定数据
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      // 获取该用户绑定的所有账号和角色的组合
+      const userBindings = bindData[userId];
+      
+      // 获取所有构建数据
+      let allBuilds = [];
+      for (const binding of userBindings) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach((build, index) => {
+                  allBuilds.push({
+                    index: allBuilds.length + 1,
+                    playerName,
+                    accountName: binding.accountName,
+                    buildData: build
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        return await this.reply('未找到任何构建记录~');
+      }
+
+      // 获取命令中的序号
+      const match = e.msg.match(/^#*(编辑角色|修改角色)(\d+)$/);
+      if (!match) {
+        return await this.reply('请使用正确的格式：#编辑角色序号');
+      }
+
+      const index = parseInt(match[2]);
+      if (index < 1 || index > allBuilds.length) {
+        return await this.reply(`序号范围应为1-${allBuilds.length}`);
+      }
+
+      // 获取选中的构建数据
+      const selectedBuild = allBuilds[index - 1];
+      const buildData = selectedBuild.buildData;
+
+      // 读取或创建名片数据文件
+      let cardData = {};
+      if (fs.existsSync(CARD_PATH)) {
+        cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      }
+
+      // 初始化用户的名片数据结构
+      if (!cardData[userId]) {
+        cardData[userId] = {
+          edit_index: {},
+          cards_info: []
+        };
+      }
+
+      // 更新edit_index数据
+      cardData[userId].edit_index = {
+        accountName: selectedBuild.accountName,
+        playerName: selectedBuild.playerName,
+        reportsID: buildData.reportsID,
+        fightIndex: buildData.fightIndex,
+        sourceIndex: buildData.sourceIndex
+      };
+
+      // 保存名片数据
+      fs.writeFileSync(CARD_PATH, JSON.stringify(cardData, null, 2));
+
+      return await this.reply('编辑标记设置成功！');
+
+    } catch (error) {
+      logger.error(`[ESO:角色编辑] 编辑失败: ${error.message}`);
+      return await this.reply('编辑失败，请稍后重试');
+    }
+  }
+
+  async setRole(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 1. 检查用户是否绑定角色
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 2. 获取用户绑定的所有构建数据
+      const userBindings = bindData[userId];
+      let allBuilds = [];
+      
+      for (const binding of userBindings) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach(build => {
+                  allBuilds.push({
+                    playerName,
+                    accountName: binding.accountName,
+                    accountFileName,
+                    buildData: build
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未记录战斗！\n`},
+          { type: 'text', text: `请发送包含您战斗的esolog网址，网址内必须包含fight的字样`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 3. 从CARD_PATH获取edit_index
+      if (!fs.existsSync(CARD_PATH)) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      if (!cardData[userId] || !cardData[userId].edit_index) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const editIndex = cardData[userId].edit_index;
+
+      // 4. 找到匹配的构建
+      const targetBuild = allBuilds.find(build => 
+        build.buildData.reportsID === editIndex.reportsID &&
+        build.buildData.fightIndex === editIndex.fightIndex &&
+        build.buildData.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (!targetBuild) {
+        return await this.reply('未找到对应的构建数据，请使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      // 5. 解析定位设置命令
+      const roleName = e.msg.replace(/^#设置定位/, '').trim();
+      let newRoleName = '';
+      let newRoleNameCN = '';
+
+      // 根据输入设置对应的定位名称
+      if (roleName === '耐系' || roleName === '耐力输出') {
+        newRoleName = 'StaminaDPS';
+        newRoleNameCN = '耐系';
+      } else if (roleName === '法系' || roleName === '魔法输出') {
+        newRoleName = 'MagickaDPS';
+        newRoleNameCN = '法系';
+      } else if (roleName === '奶妈' || roleName === '治疗' || roleName === '治疗者') {
+        newRoleName = 'Healer';
+        newRoleNameCN = '奶妈';
+      } else if (roleName === '坦克' || roleName === '坦克手') {
+        newRoleName = 'Tank';
+        newRoleNameCN = '坦克';
+      } else {
+        return await this.reply('无效的定位名称，可选值：耐系、法系、奶妈、坦克');
+      }
+
+      // 6. 更新构建数据
+      targetBuild.buildData.buildData.roleName = newRoleName;
+      targetBuild.buildData.buildData.roleNameCN = newRoleNameCN;
+
+      // 7. 保存更新后的数据
+      const accountData = JSON.parse(fs.readFileSync(targetBuild.accountFileName, 'utf8'));
+      const playerBuilds = accountData[targetBuild.playerName].builds;
+      
+      // 找到并更新对应的构建
+      const buildIndex = playerBuilds.findIndex(build => 
+        build.reportsID === editIndex.reportsID &&
+        build.fightIndex === editIndex.fightIndex &&
+        build.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (buildIndex !== -1) {
+        // 找到当前编辑的角色在allBuilds中的索引
+        const roleIndex = allBuilds.findIndex(build => 
+          build.buildData.reportsID === editIndex.reportsID &&
+          build.buildData.fightIndex === editIndex.fightIndex &&
+          build.buildData.sourceIndex === editIndex.sourceIndex
+        ) + 1;
+        playerBuilds[buildIndex] = targetBuild.buildData;
+        fs.writeFileSync(targetBuild.accountFileName, JSON.stringify(accountData, null, 2));
+        return await this.reply(`角色${roleIndex}的定位设置成功！`);
+      } else {
+        return await this.reply('保存失败，未找到对应的构建数据');
+      }
+
+    } catch (error) {
+      logger.error(`[ESO:定位设置] 设置失败: ${error.message}`);
+      return await this.reply('设置失败，请稍后重试');
+    }
+  }
+
+  async setClass(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 1. 检查用户是否绑定角色
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 2. 获取用户绑定的所有构建数据
+      const userBindings = bindData[userId];
+      let allBuilds = [];
+      
+      for (const binding of userBindings) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach(build => {
+                  allBuilds.push({
+                    playerName,
+                    accountName: binding.accountName,
+                    accountFileName,
+                    buildData: build
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未记录战斗！\n`},
+          { type: 'text', text: `请发送包含您战斗的esolog网址，网址内必须包含fight的字样`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 3. 从CARD_PATH获取edit_index
+      if (!fs.existsSync(CARD_PATH)) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      if (!cardData[userId] || !cardData[userId].edit_index) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const editIndex = cardData[userId].edit_index;
+
+      // 4. 找到匹配的构建
+      const targetBuild = allBuilds.find(build => 
+        build.buildData.reportsID === editIndex.reportsID &&
+        build.buildData.fightIndex === editIndex.fightIndex &&
+        build.buildData.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (!targetBuild) {
+        return await this.reply('未找到对应的构建数据，请使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      // 5. 解析职业设置命令
+      const className = e.msg.replace(/^#设置职业/, '').trim();
+      let newClassName = '';
+      let newClassNameCN = '';
+
+      // 根据输入设置对应的职业名称
+      if (className === '奥术' || className === '奥术师') {
+        newClassName = 'Arcanist';
+        newClassNameCN = '奥术';
+      } else if (className === '龙骑' || className === '龙骑士') {
+        newClassName = 'Dragonknight';
+        newClassNameCN = '龙骑';
+      } else if (className === '死灵' || className === '死灵法师') {
+        newClassName = 'Necromancer';
+        newClassNameCN = '死灵';
+      } else if (className === '夜刃' || className === '夜刃刺客') {
+        newClassName = 'Nightblade';
+        newClassNameCN = '夜刃';
+      } else if (className === '巫师' || className === '术士' || className === '巫术师' || className === '法法' || className === '法师') {
+        newClassName = 'Sorcerer';
+        newClassNameCN = '巫师';
+      } else if (className === '圣骑' || className === '圣骑士' || className === '圣殿' || className === '圣殿骑士') {
+        newClassName = 'Templar';
+        newClassNameCN = '圣骑';
+      } else if (className === '窝登' || className === '守望' || className === '守望者') {
+        newClassName = 'Warden';
+        newClassNameCN = '窝登';
+      } else {
+        return await this.reply('无效的职业名称，可选值：奥术、龙骑、死灵、夜刃、巫师、圣骑、窝登');
+      }
+
+      // 6. 更新构建数据
+      targetBuild.buildData.buildData.className = newClassName;
+      targetBuild.buildData.buildData.classNameCN = newClassNameCN;
+
+      // 7. 保存更新后的数据
+      const accountData = JSON.parse(fs.readFileSync(targetBuild.accountFileName, 'utf8'));
+      const playerBuilds = accountData[targetBuild.playerName].builds;
+      
+      // 找到并更新对应的构建
+      const buildIndex = playerBuilds.findIndex(build => 
+        build.reportsID === editIndex.reportsID &&
+        build.fightIndex === editIndex.fightIndex &&
+        build.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (buildIndex !== -1) {
+        // 找到当前编辑的角色在allBuilds中的索引
+        const roleIndex = allBuilds.findIndex(build => 
+          build.buildData.reportsID === editIndex.reportsID &&
+          build.buildData.fightIndex === editIndex.fightIndex &&
+          build.buildData.sourceIndex === editIndex.sourceIndex
+        ) + 1;
+        playerBuilds[buildIndex] = targetBuild.buildData;
+        fs.writeFileSync(targetBuild.accountFileName, JSON.stringify(accountData, null, 2));
+        return await this.reply(`角色${roleIndex}的职业设置成功！`);
+      } else {
+        return await this.reply('保存失败，未找到对应的构建数据');
+      }
+
+    } catch (error) {
+      logger.error(`[ESO:职业设置] 设置失败: ${error.message}`);
+      return await this.reply('设置失败，请稍后重试');
+    }
+  }
+
+  async setTitle(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 1. 检查用户是否绑定角色
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 2. 获取用户绑定的所有构建数据
+      const userBindings = bindData[userId];
+      let allBuilds = [];
+      
+      for (const binding of userBindings) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach(build => {
+                  allBuilds.push({
+                    playerName,
+                    accountName: binding.accountName,
+                    accountFileName,
+                    buildData: build
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未记录战斗！\n`},
+          { type: 'text', text: `请发送包含您战斗的esolog网址，网址内必须包含fight的字样`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 3. 从CARD_PATH获取edit_index
+      if (!fs.existsSync(CARD_PATH)) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      if (!cardData[userId] || !cardData[userId].edit_index) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const editIndex = cardData[userId].edit_index;
+
+      // 4. 找到匹配的构建
+      const targetBuild = allBuilds.find(build => 
+        build.buildData.reportsID === editIndex.reportsID &&
+        build.buildData.fightIndex === editIndex.fightIndex &&
+        build.buildData.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (!targetBuild) {
+        return await this.reply('未找到对应的构建数据，请使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      // 5. 解析标题设置命令
+      const title = e.msg.replace(/^#设置标题\s*/, '').trim();
+      
+      // 如果标题为空
+      if (!title) {
+        return await this.reply('请输入要设置的标题');
+      }
+      
+      // 检查标题长度
+      if (title.length > 25) {
+        return await this.reply('标题长度不能超过25个字符，请重新设置');
+      }
+
+      // 6. 更新构建数据
+      if (!targetBuild.buildData.buildData) {
+        targetBuild.buildData.buildData = {};
+      }
+      targetBuild.buildData.buildData.title = title;
+
+      // 7. 保存更新后的数据
+      const accountData = JSON.parse(fs.readFileSync(targetBuild.accountFileName, 'utf8'));
+      const playerBuilds = accountData[targetBuild.playerName].builds;
+      
+      // 找到并更新对应的构建
+      const buildIndex = playerBuilds.findIndex(build => 
+        build.reportsID === editIndex.reportsID &&
+        build.fightIndex === editIndex.fightIndex &&
+        build.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (buildIndex !== -1) {
+        // 找到当前编辑的角色在allBuilds中的索引
+        const roleIndex = allBuilds.findIndex(build => 
+          build.buildData.reportsID === editIndex.reportsID &&
+          build.buildData.fightIndex === editIndex.fightIndex &&
+          build.buildData.sourceIndex === editIndex.sourceIndex
+        ) + 1;
+        playerBuilds[buildIndex] = targetBuild.buildData;
+        fs.writeFileSync(targetBuild.accountFileName, JSON.stringify(accountData, null, 2));
+        return await this.reply(`角色${roleIndex}的标题设置成功！`);
+      } else {
+        return await this.reply('保存失败，未找到对应的构建数据');
+      }
+
+    } catch (error) {
+      logger.error(`[ESO:标题设置] 设置失败: ${error.message}`);
+      return await this.reply('设置失败，请稍后重试');
+    }
+  }
+
   // 验证AccountName是否合法
   validateAccountName(accountName) {
     try {
@@ -2234,6 +2820,663 @@ export class esologPuzzle extends plugin {
       }
     } catch (error) {
       logger.error(`[ESO:账号清理] 清理失败: ${error.message}`);
+    }
+  }
+
+  async addTag(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 1. 检查用户是否绑定角色
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 2. 获取用户绑定的所有构建数据
+      const userBindings = bindData[userId];
+      let allBuilds = [];
+      
+      for (const binding of userBindings) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach(build => {
+                  allBuilds.push({
+                    playerName,
+                    accountName: binding.accountName,
+                    accountFileName,
+                    buildData: build
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未记录战斗！\n`},
+          { type: 'text', text: `请发送包含您战斗的esolog网址，网址内必须包含fight的字样`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 3. 从CARD_PATH获取edit_index
+      if (!fs.existsSync(CARD_PATH)) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      if (!cardData[userId] || !cardData[userId].edit_index) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const editIndex = cardData[userId].edit_index;
+
+      // 4. 找到匹配的构建
+      const targetBuild = allBuilds.find(build => 
+        build.buildData.reportsID === editIndex.reportsID &&
+        build.buildData.fightIndex === editIndex.fightIndex &&
+        build.buildData.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (!targetBuild) {
+        return await this.reply('未找到对应的构建数据，请使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      // 5. 解析标签添加命令
+      const tag = e.msg.replace(/^#添加标签\s*/, '').trim();
+      
+      // 如果标签为空
+      if (!tag) {
+        return await this.reply('请输入要添加的标签');
+      }
+      
+      // 检查标签长度
+      if (tag.length > 8) {
+        return await this.reply('标签长度不能超过8个字符，请重新设置');
+      }
+
+      // 6. 更新构建数据
+      if (!targetBuild.buildData.buildData) {
+        targetBuild.buildData.buildData = {};
+      }
+      if (!targetBuild.buildData.buildData.tags) {
+        targetBuild.buildData.buildData.tags = [];
+      }
+
+      // 检查标签是否已存在
+      if (targetBuild.buildData.buildData.tags.includes(tag)) {
+        return await this.reply('该标签已存在！');
+      }
+
+      // 检查标签数量
+      if (targetBuild.buildData.buildData.tags.length >= 6) {
+        return await this.reply('每个构建最多只能添加6个标签！');
+      }
+
+      // 添加新标签
+      targetBuild.buildData.buildData.tags.push(tag);
+
+      // 7. 保存更新后的数据
+      const accountData = JSON.parse(fs.readFileSync(targetBuild.accountFileName, 'utf8'));
+      const playerBuilds = accountData[targetBuild.playerName].builds;
+      
+      // 找到并更新对应的构建
+      const buildIndex = playerBuilds.findIndex(build => 
+        build.reportsID === editIndex.reportsID &&
+        build.fightIndex === editIndex.fightIndex &&
+        build.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (buildIndex !== -1) {
+        // 找到当前编辑的角色在allBuilds中的索引
+        const roleIndex = allBuilds.findIndex(build => 
+          build.buildData.reportsID === editIndex.reportsID &&
+          build.buildData.fightIndex === editIndex.fightIndex &&
+          build.buildData.sourceIndex === editIndex.sourceIndex
+        ) + 1;
+        playerBuilds[buildIndex] = targetBuild.buildData;
+        fs.writeFileSync(targetBuild.accountFileName, JSON.stringify(accountData, null, 2));
+        return await this.reply(`角色${roleIndex}添加标签"${tag}"成功！`);
+      } else {
+        return await this.reply('保存失败，未找到对应的构建数据');
+      }
+
+    } catch (error) {
+      logger.error(`[ESO:标签添加] 添加失败: ${error.message}`);
+      return await this.reply('添加失败，请稍后重试');
+    }
+  }
+
+  async queryTag(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 1. 检查用户是否绑定角色
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 2. 获取用户绑定的所有构建数据
+      const userBindings = bindData[userId];
+      let allBuilds = [];
+      
+      for (const binding of userBindings) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach(build => {
+                  allBuilds.push({
+                    playerName,
+                    accountName: binding.accountName,
+                    accountFileName,
+                    buildData: build
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未记录战斗！\n`},
+          { type: 'text', text: `请发送包含您战斗的esolog网址，网址内必须包含fight的字样`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 3. 从CARD_PATH获取edit_index
+      if (!fs.existsSync(CARD_PATH)) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      if (!cardData[userId] || !cardData[userId].edit_index) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const editIndex = cardData[userId].edit_index;
+
+      // 4. 找到匹配的构建
+      const targetBuild = allBuilds.find(build => 
+        build.buildData.reportsID === editIndex.reportsID &&
+        build.buildData.fightIndex === editIndex.fightIndex &&
+        build.buildData.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (!targetBuild) {
+        return await this.reply('未找到对应的构建数据，请使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      // 5. 检查标签是否存在
+      if (!targetBuild.buildData.buildData || !targetBuild.buildData.buildData.tags || targetBuild.buildData.buildData.tags.length === 0) {
+        return await this.reply('当前构建还没有添加任何标签');
+      }
+
+      // 6. 构建标签表格
+      const roleIndex = allBuilds.findIndex(build => 
+        build.buildData.reportsID === editIndex.reportsID &&
+        build.buildData.fightIndex === editIndex.fightIndex &&
+        build.buildData.sourceIndex === editIndex.sourceIndex
+      ) + 1;
+
+      let reply = `角色${roleIndex}的标签列表：\n`;
+      reply += '序号  标签内容\n';
+      reply += '━━━━━━━━━━\n';
+      
+      targetBuild.buildData.buildData.tags.forEach((tag, index) => {
+        reply += `${index + 1}.    ${tag}\n`;
+      });
+
+      return await this.reply(reply);
+
+    } catch (error) {
+      logger.error(`[ESO:标签查询] 查询失败: ${error.message}`);
+      return await this.reply('查询失败，请稍后重试');
+    }
+  }
+
+  async deleteTag(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 1. 检查用户是否绑定角色
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 2. 获取用户绑定的所有构建数据
+      const userBindings = bindData[userId];
+      let allBuilds = [];
+      
+      for (const binding of userBindings) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach(build => {
+                  allBuilds.push({
+                    playerName,
+                    accountName: binding.accountName,
+                    accountFileName,
+                    buildData: build
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未记录战斗！\n`},
+          { type: 'text', text: `请发送包含您战斗的esolog网址，网址内必须包含fight的字样`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 3. 从CARD_PATH获取edit_index
+      if (!fs.existsSync(CARD_PATH)) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      if (!cardData[userId] || !cardData[userId].edit_index) {
+        return await this.reply('请先使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      const editIndex = cardData[userId].edit_index;
+
+      // 4. 找到匹配的构建
+      const targetBuild = allBuilds.find(build => 
+        build.buildData.reportsID === editIndex.reportsID &&
+        build.buildData.fightIndex === editIndex.fightIndex &&
+        build.buildData.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (!targetBuild) {
+        return await this.reply('未找到对应的构建数据，请使用 #编辑角色1 #编辑角色2 选择要编辑的角色');
+      }
+
+      // 5. 检查标签是否存在
+      if (!targetBuild.buildData.buildData || !targetBuild.buildData.buildData.tags || targetBuild.buildData.buildData.tags.length === 0) {
+        return await this.reply('当前构建还没有添加任何标签');
+      }
+
+      // 6. 解析要删除的标签序号
+      const tagIndex = parseInt(e.msg.replace(/^#删除标签/, '').trim()) - 1;
+      const maxTagIndex = targetBuild.buildData.buildData.tags.length;
+      
+      // 检查序号是否合法
+      if (isNaN(tagIndex) || tagIndex < 0 || tagIndex >= maxTagIndex) {
+        return await this.reply(`标签序号必须在1到${maxTagIndex}之间`);
+      }
+
+      // 7. 删除标签
+      const deletedTag = targetBuild.buildData.buildData.tags[tagIndex];
+      targetBuild.buildData.buildData.tags.splice(tagIndex, 1);
+
+      // 8. 保存更新后的数据
+      const accountData = JSON.parse(fs.readFileSync(targetBuild.accountFileName, 'utf8'));
+      const playerBuilds = accountData[targetBuild.playerName].builds;
+      
+      // 找到并更新对应的构建
+      const buildIndex = playerBuilds.findIndex(build => 
+        build.reportsID === editIndex.reportsID &&
+        build.fightIndex === editIndex.fightIndex &&
+        build.sourceIndex === editIndex.sourceIndex
+      );
+
+      if (buildIndex !== -1) {
+        // 找到当前编辑的角色在allBuilds中的索引
+        const roleIndex = allBuilds.findIndex(build => 
+          build.buildData.reportsID === editIndex.reportsID &&
+          build.buildData.fightIndex === editIndex.fightIndex &&
+          build.buildData.sourceIndex === editIndex.sourceIndex
+        ) + 1;
+        playerBuilds[buildIndex] = targetBuild.buildData;
+        fs.writeFileSync(targetBuild.accountFileName, JSON.stringify(accountData, null, 2));
+        return await this.reply(`角色${roleIndex}删除标签${tagIndex + 1}："${deletedTag}"成功！`);
+      } else {
+        return await this.reply('保存失败，未找到对应的构建数据');
+      }
+
+    } catch (error) {
+      logger.error(`[ESO:标签删除] 删除失败: ${error.message}`);
+      return await this.reply('删除失败，请稍后重试');
+    }
+  }
+
+  async addCard(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 1. 检查用户是否绑定角色
+      if (!fs.existsSync(ACCOUNT_PATH)) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      const bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      if (!bindData[userId] || bindData[userId].length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未绑定角色！\n`},
+          { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 2. 获取用户绑定的所有构建数据
+      const userBindings = bindData[userId];
+      let allBuilds = [];
+      
+      for (const binding of userBindings) {
+        if (binding.accountName) {
+          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+          if (fs.existsSync(accountFileName)) {
+            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+            
+            // 遍历该账号下的所有角色
+            for (const [playerName, playerData] of Object.entries(accountData)) {
+              // 如果绑定指定了角色名，只收集匹配的角色数据
+              if (!binding.playerName || binding.playerName === playerName) {
+                playerData.builds.forEach(build => {
+                  allBuilds.push({
+                    playerName,
+                    accountName: binding.accountName,
+                    accountFileName,
+                    buildData: build
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (allBuilds.length === 0) {
+        let progressMsg = [
+          { type: 'at', qq: this.e.user_id },
+          { type: 'text', text: `\n您尚未记录战斗！\n`},
+          { type: 'text', text: `请发送包含您战斗的esolog网址，网址内必须包含fight的字样`}
+        ]
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      }
+
+      // 3. 解析要名片化的构建序号
+      const buildNumStr = e.msg.replace(/^#名片化\s*(?:角色)?/, '').trim();
+      const buildNum = parseInt(buildNumStr);
+
+      if (isNaN(buildNum) || buildNum <= 0 || buildNum > allBuilds.length) {
+        return await this.reply(`请输入正确的构建序号（1-${allBuilds.length}）`);
+      }
+
+      // 4. 获取对应的构建数据
+      const targetBuild = allBuilds[buildNum - 1];
+
+      // 5. 检查并更新CARD_PATH
+      let cardData = {};
+      if (fs.existsSync(CARD_PATH)) {
+        cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      }
+
+      // 初始化用户的卡片数据
+      if (!cardData[userId]) {
+        cardData[userId] = {
+          cards_info: []
+        };
+      }
+
+      // 检查卡片数量限制
+      if (cardData[userId].cards_info.length >= 5) {
+        return await this.reply('你最多可以设置5个名片，槽位已满。请使用 #删除名片1 #删除名片2 等，来清理出空位');
+      }
+
+      // 6. 创建新的卡片数据
+      const newCard = {
+        index: cardData[userId].cards_info.length + 1,
+        accountName: targetBuild.accountName,
+        playerName: targetBuild.playerName,
+        reportsID: targetBuild.buildData.reportsID,
+        fightIndex: targetBuild.buildData.fightIndex,
+        sourceIndex: targetBuild.buildData.sourceIndex
+      };
+
+      // 7. 添加新卡片并保存
+      cardData[userId].cards_info.push(newCard);
+      fs.writeFileSync(CARD_PATH, JSON.stringify(cardData, null, 2));
+
+      return await this.reply(`角色${buildNum}已成功添加为名片${newCard.index}`);
+
+    } catch (error) {
+      logger.error(`[ESO:名片化] 添加名片失败: ${error.message}`);
+      return await this.reply('添加名片失败，请稍后重试');
+    }
+  }
+
+  async queryCard(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    let userId = String(e.user_id);
+    let personID = e.at
+
+    if (typeof personID != "undefined")
+    {
+      userId = String(personID);
+    }
+
+    try {
+      // 1. 检查CARD_PATH是否存在
+      if (!fs.existsSync(CARD_PATH)) {
+        return await this.reply('未设置任何名片');
+      }
+
+      // 2. 读取卡片数据
+      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      if (!cardData[userId] || !cardData[userId].cards_info || cardData[userId].cards_info.length === 0) {
+        return await this.reply('未设置任何名片');
+      }
+
+      // 3. 解析命令中的序号
+      const cardNumStr = e.msg.replace(/^#(?:查看名片|名片)\s*/, '').trim();
+      const cardNum = parseInt(cardNumStr);
+
+      // 4. 获取所有名片对应的构建数据
+      const allCards = [];
+      for (const card of cardData[userId].cards_info) {
+        const accountFileName = `${BUILD_PATH}${card.accountName}.json`;
+        if (fs.existsSync(accountFileName)) {
+          const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+          if (accountData[card.playerName]) {
+            const build = accountData[card.playerName].builds.find(b => 
+              b.reportsID === card.reportsID &&
+              b.fightIndex === card.fightIndex &&
+              b.sourceIndex === card.sourceIndex
+            );
+            if (build) {
+              allCards.push({
+                index: card.index,
+                accountName: card.accountName,
+                playerName: card.playerName,
+                buildData: build
+              });
+            }
+          }
+        }
+      }
+
+      // 5. 如果没有找到任何有效的名片数据
+      if (allCards.length === 0) {
+        return await this.reply('未找到有效的名片数据');
+      }
+
+      // 6. 处理不同的显示情况
+      if (isNaN(cardNum)) {
+        // 显示名片列表
+        let reply = '查询到如下名片：\n';
+        reply += '序号  角色@账号  种族  职责  职业\n';
+        reply += '━━━━━━━━━━━━━━━━━━━━━━\n';
+        
+        allCards.forEach(card => {
+          const buildData = card.buildData.buildData || {};
+          const role = buildData.roleNameCN || '未知';
+          const race = buildData.raceInfo?.[0]?.name_cn || '未知';
+          const className = buildData.classNameCN || '未知';
+          
+          reply += `${card.index}.    ${card.playerName}@${card.accountName}  ${race}  ${role}  ${className}\n`;
+        });
+
+        return await this.reply(reply);
+      } else {
+        // 显示指定名片的图片
+        if (cardNum <= 0 || cardNum > allCards.length) {
+          return await this.reply(`请输入正确的名片序号（1-${allCards.length}）`);
+        }
+
+        const targetCard = allCards.find(card => card.index === cardNum);
+        if (!targetCard) {
+          return await this.reply('未找到对应的名片数据');
+        }
+
+        // 生成并发送图片
+        let cardData = JSON.parse(JSON.stringify(await database.updateData(targetCard.buildData.buildData, 3)));
+        let msg = await puppeteer.screenshot('eso', cardData);
+        return await this.reply(msg);
+      }
+
+    } catch (error) {
+      logger.error(`[ESO:查看名片] 查询失败: ${error.message}`);
+      return await this.reply('查询名片失败，请稍后重试');
+    }
+  }
+
+  async deleteCard(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    try {
+      // 1. 检查CARD_PATH是否存在
+      if (!fs.existsSync(CARD_PATH)) {
+        return await this.reply('未设置任何名片');
+      }
+
+      // 2. 读取卡片数据
+      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      if (!cardData[userId] || !cardData[userId].cards_info || cardData[userId].cards_info.length === 0) {
+        return await this.reply('未设置任何名片');
+      }
+
+      // 3. 解析要删除的名片序号
+      const cardNumStr = e.msg.replace(/^#删除名片/, '').trim();
+      const cardNum = parseInt(cardNumStr);
+
+      if (isNaN(cardNum) || cardNum <= 0 || cardNum > cardData[userId].cards_info.length) {
+        return await this.reply(`请输入正确的名片序号（1-${cardData[userId].cards_info.length}）`);
+      }
+
+      // 4. 找到并删除对应的名片
+      const targetCardIndex = cardData[userId].cards_info.findIndex(card => card.index === cardNum);
+      if (targetCardIndex === -1) {
+        return await this.reply('未找到对应的名片');
+      }
+
+      // 保存被删除的名片信息用于提示
+      const deletedCard = cardData[userId].cards_info[targetCardIndex];
+      
+      // 删除名片
+      cardData[userId].cards_info.splice(targetCardIndex, 1);
+
+      // 5. 更新剩余名片的序号
+      for (let i = targetCardIndex; i < cardData[userId].cards_info.length; i++) {
+        cardData[userId].cards_info[i].index = i + 1;
+      }
+
+      // 6. 保存更新后的数据
+      fs.writeFileSync(CARD_PATH, JSON.stringify(cardData, null, 2));
+
+      return await this.reply(`名片${cardNum}（${deletedCard.playerName}@${deletedCard.accountName}）已删除`);
+
+    } catch (error) {
+      logger.error(`[ESO:删除名片] 删除失败: ${error.message}`);
+      return await this.reply('删除名片失败，请稍后重试');
     }
   }
 }
