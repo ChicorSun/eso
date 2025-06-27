@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+    <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/cards/cards.css" />
+    <link rel="shortcut icon" href="#" />
+  </head>
+  {{@headStyle}}
+
+  <body>
+    {{each buildsData val index}}
+    {{if index==0}}
+    <!-- 背景图url -->
+    <div
+      class="eso-card"
+      style="
+        background-image: linear-gradient(
+            to bottom right,
+            rgba(0, 0, 0, 0.5),
+            rgba(0, 0, 0, 0.8) 50%,
+            #fff
+          ),
+          url({{pluResPath}}img/background/{{val.pic}}.jpg);
+      "
+    >
+    {{else}}
+      <!-- <div class="card-glass"></div> -->
+      <div class="card-main">
+        <!-- 群友昵称 -->
+        <div class="qq-name">{{val.title}}</div>
+        <!-- 账户信息  -->
+        <div class="player-msg">
+          <div class="player-text">
+            <!-- 坦克/输出/奶妈 标志 -->
+            <img src="{{pluResPath}}img/roles/{{val.role_name_en}}.png" alt="" />
+            <!-- 职业名称 -->
+            <span>{{val.role_name_cn}}{{val.class_name_cn}}</span>
+          </div>
+          <div class="player-icon">
+            <!-- qq头像 -->
+            <div class="icon-qq">
+              <img
+                src="{{pluResPath}}img/avatar/{{val.userPic}}.png"
+                alt=""
+              />
+            </div>
+            <!-- 职业标志 -->
+            <div class="icon-class">
+              <img src="{{pluResPath}}img/classes/{{val.class}}.png" alt="" />
+            </div>
+            <!-- 头部挂件 -->
+            <div class="icon-pendant">
+              <img src="{{pluResPath}}img/avatarframe/{{val.avatarFrame}}.png" alt="" />
+            </div>
+          </div>
+          <!-- 账号/角色ID -->
+          <div class="player-name" style="color: rgb(255, 230, 45)">{{val.accountName}}</div>
+          <div class="player-cname">
+            <!-- <img class="level_icon" src="./img/icon/champion.png" alt="" />
+            <span>3600</span> -->
+            {{val.playerName}}
+          </div>
+        </div>
+        <!-- 装备信息 -->
+        <div class="gears-list">
+          <ul class="gears-left">
+            {{each val.gear item index}}
+            {{if ((index >= 2 && index <= 6) || (index >= 10 && index <= 11))}}
+            <li style="margin-right: {{item.margin}}">
+              <span class="gears-img" style="border: 2px solid {{item.type_color}};">
+                <img src="{{pluResPath}}img/sets/{{item.icon}}.png" alt="" />
+              </span>
+              <span class="gears-text">
+                <span class="gears-top" style="border-bottom: 2px solid {{item.type_color}};">
+                  <span class="gears-name" style="color: {{item.color}}">
+                    {{item.name_cn}}<span class="english_name">{{item.name_en}}</span>
+                  </span>
+                </span>
+                <span class="gears-bottom">
+                  <span class="gears-traits"> {{item.trait}} </span>
+                  <span class="gears-enchant" style="color: {{item.enchantColor}}">
+                    {{item.enchant}}
+                  </span>
+                </span>
+              </span>
+            </li>
+            {{/if}}
+            {{/each}}           
+          </ul>
+          <ul class="gears-right">
+            {{each val.gear item index}}
+            {{if ((index >= 0 && index <= 1) || (index >= 7 && index <= 9) || (index >= 12 && index <= 13))}}
+            <li style="margin-left: {{item.margin}}">
+              <span class="gears-img" style="border: 2px solid {{item.type_color}};">
+                <img src="{{pluResPath}}img/sets/{{item.icon}}.png" alt="" />
+              </span>
+              <span class="gears-text">
+                <span class="gears-top" style="border-bottom: 2px solid {{item.type_color}};">
+                  <span class="gears-name" style="color: {{item.color}}">
+                    {{item.name_cn}}<span class="english_name">{{item.name_en}}</span>
+                  </span>
+                </span>
+                <span class="gears-bottom">
+                  <span class="gears-traits"> {{item.trait}} </span>
+                  <span class="gears-enchant" style="color: {{item.enchantColor}}">
+                    {{item.enchant}}
+                  </span>
+                </span>
+              </span>
+            </li>
+            {{/if}}
+            {{/each}}
+          </ul>
+        </div>
+        <!-- 技能列表 -->
+        <div class="skills-list">
+          <ul class="skills-list-left">
+            {{each val.spell spell index}}
+            {{if index === 0}}
+            {{each spell.bar bar index}}
+            {{if bar.icon != "empty"}}
+            <li>
+              <span
+                ><img src="{{pluResPath}}img/skills/{{bar.icon}}.png" alt=""
+              /></span>
+              <span style="color: {{bar.color}};">{{bar.name}}</span>
+              <span style="color: {{bar.color}};">{{bar.address}}</span>
+            </li>
+            {{/if}}
+            {{/each}}
+            {{/if}}
+            {{/each}}
+          </ul>
+          <!-- 分割线 如果是单bar则取消分割线与右侧技能栏 -->
+          <span class="skills-list-line"></span>
+          <ul class="skills-list-right">
+            {{each val.spell spell index}}
+            {{if index === 1}}
+            {{each spell.bar bar index}}
+            {{if bar.icon != "empty"}}
+            <li>
+              <span
+                ><img src="{{pluResPath}}img/skills/{{bar.icon}}.png" alt=""
+              /></span>
+              <span style="color: {{bar.color}};">{{bar.name}}</span>
+              <span style="color: {{bar.color}};">{{bar.address}}</span>
+            </li>
+            {{/if}}
+            {{/each}}
+            {{/if}}
+            {{/each}}
+          </ul>
+        </div>
+        <!-- 标签列表 试炼名称 -->
+        <div class="tag-list">
+          <ul>
+            {{each val.tags tag index}}
+            <li style="background-color: {{tag.color}}">{{tag.msg}}</li>
+            {{/each}}
+          </ul>
+          <!-- 试炼名称 -->
+          <div class="trials-name" style="color: aqua">{{val.userName}}</div>
+        </div>
+      </div>
+      <!-- 赐福 食物 技能线名称等 -->
+      <div class="card-tips">
+        <!-- 左侧放置 技能线 篆刻脚本 装备轻重甲 -->
+        <ul class="tips-left">
+          {{each val.line item}}
+          <li>
+            <img src="{{pluResPath}}img/classes/{{item.img}}.png" alt="" />
+            <span>{{item.line_name}}</span>
+          </li>
+          {{/each}}
+        </ul>
+        <!-- 右侧放置 食物 赐福 药水 毒药 -->
+        <ul class="tips-right">
+          <!-- 
+          <li>
+            <img src="./img/icon/crowns.png" alt="" />
+            <span>
+               <span style="color: #2fd50e;">0</span>/ 
+               <span style="color: #3a92fe;">5</span>/ 
+               <span style="color: brown;">2</span>
+              </span>
+          </li>
+          -->
+          <li>
+            <img src="{{pluResPath}}img/stones/{{val.race_img}}.png" alt="" />
+            <span>{{val.race_name_cn}}</span>
+          </li>
+          {{each val.stone item}}
+          <li>
+            <img src="{{pluResPath}}img/stones/{{item.img}}" alt="" />
+            <span>{{item.name_cn}}</span>
+          </li>
+          {{/each}}
+
+          {{each val.food item}}
+          <li>
+            <img src="{{pluResPath}}img/foods/{{item.img}}.png" alt="" />
+            <span>{{item.name_cn}}</span>
+          </li>
+          {{/each}}
+        </ul>
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+  </body>
+</html>

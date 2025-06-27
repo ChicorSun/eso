@@ -3,6 +3,7 @@ import Atlas from './atlas.js'
 import Skills from './skills.js'
 import Foods from './foods.js'
 import Builds from './builds.js'
+import Cards from './cards.js'
 import RankTable from './rank.js'
 import fetch from 'node-fetch'
 import getimgs from './getimgs.js'
@@ -401,6 +402,16 @@ let gearColor = [
   "rgb(26, 188, 156)",
   "rgb(243, 156, 18))"
 ]
+let tagColor = [
+  "rgb(236, 240, 241)", // 浅灰色，柔和且舒适
+  "rgb(231, 76, 60)",   // 橙红色，活泼且鲜明
+  "rgb(46, 204, 113)",  // 青绿色，清新自然
+  "rgb(155, 89, 182)",  // 紫罗兰色，优雅且柔和
+  "rgb(52, 152, 219)",  // 天蓝色，明亮且柔和
+  "rgb(241, 196, 15)",  // 柠檬黄，活泼且温暖
+  "rgb(189, 195, 199)", // 深灰色，低调且稳重
+  "rgb(26, 188, 156)"   // 浅绿色，清新且舒适
+];
 
 let setType = [
   "竞技场",
@@ -2663,7 +2674,7 @@ class database {
     return foodData
   }
 
-  async updateBuildData (BD) {
+  async updateBuildData (BD, cardMode) {
     let buildData = {
       init: 'none',
       buildsData: [{}, {
@@ -2675,7 +2686,15 @@ class database {
     }
     if('done' != buildData.init)
     {
-      let data = await Builds.get(this.e, 'builds', 'build', 'builds')
+      let data = {}
+      if(cardMode == 0)
+      {
+        data = await Builds.get(this.e, 'builds', 'build', 'builds')
+      }
+      else
+      {
+        data = await Cards.get(this.e, 'builds', 'build', 'cards')
+      }
       if (!data)
       {
         logger.error('[ESO:图鉴] 初始化结构体失败')
@@ -2684,11 +2703,32 @@ class database {
       buildData = JSON.parse(JSON.stringify(data))
     }
 
+    let tags = []
     buildData.buildsData[1].head_title = "Build Info from www.esolog.com created by " + BD.playerName + BD.accountName
     buildData.buildsData[1].accountName = BD.accountName
     buildData.buildsData[1].playerName = BD.playerName
     buildData.buildsData[1].stone = BD.stoneInfo
     buildData.buildsData[1].food = BD.foodInfo
+
+    if(cardMode == 1)
+    {
+      buildData.buildsData[1].userName = 'QQ' + BD.userId
+      let imgPath = await getimgs.realpath(BD.userId, "avatar")
+      buildData.buildsData[1].userPic = `../../../../../` + imgPath
+      buildData.buildsData[1].tags = []
+      if(BD.tags !== undefined)
+      {
+        let index = 0
+        for (let tag of BD.tags) {
+          tags.push({
+            msg: tag,
+            color: tagColor[index],
+          });
+          index++
+        }
+        buildData.buildsData[1].tags = tags
+      }
+    }
 
     if(BD.raceInfo[0] != undefined)
     {
@@ -2729,6 +2769,21 @@ class database {
     buildData.buildsData[1].gear[11].slot = '副手'
     buildData.buildsData[1].gear[12].slot = '备用主手'
     buildData.buildsData[1].gear[13].slot = '备用副手'
+
+    buildData.buildsData[1].gear[0].margin = '52px'
+    buildData.buildsData[1].gear[1].margin = '78px'
+    buildData.buildsData[1].gear[2].margin = '52px'
+    buildData.buildsData[1].gear[3].margin = '78px'
+    buildData.buildsData[1].gear[4].margin = '108px'
+    buildData.buildsData[1].gear[5].margin = '126px'
+    buildData.buildsData[1].gear[6].margin = '114px'
+    buildData.buildsData[1].gear[7].margin = '108px'
+    buildData.buildsData[1].gear[8].margin = '126px'
+    buildData.buildsData[1].gear[9].margin = '114px'
+    buildData.buildsData[1].gear[10].margin = '100px'
+    buildData.buildsData[1].gear[11].margin = '52px'
+    buildData.buildsData[1].gear[12].margin = '100px'
+    buildData.buildsData[1].gear[13].margin = '52px'
 
     for (let i = 0; i < 2; i++) {
       for (let m = 0; m < 6; m++) {
@@ -2975,7 +3030,18 @@ class database {
             {
               buildData.buildsData[1].spell[i].bar[talentIndex].icon = skillData.atlasData[1].new_icon
               buildData.buildsData[1].spell[i].bar[talentIndex].color = oneTalent['color']
-              buildData.buildsData[1].spell[i].bar[talentIndex].name = skillData.atlasData[1].new_cn_name
+              if(cardMode == 1)
+              {
+                if (skillData.atlasData[1].new_cn_name.length > 5) {
+                  buildData.buildsData[1].spell[i].bar[talentIndex].name = skillData.atlasData[1].new_cn_name.slice(0, 4) + '...';
+                } else {
+                  buildData.buildsData[1].spell[i].bar[talentIndex].name = skillData.atlasData[1].new_cn_name;
+                }
+              }
+              else
+              {
+                buildData.buildsData[1].spell[i].bar[talentIndex].name = skillData.atlasData[1].new_cn_name
+              }
               buildData.buildsData[1].spell[i].bar[talentIndex].address = skillData.atlasData[1].place_cn.replace("大招", "大")
               error_skill = 0;
               break;
@@ -2987,8 +3053,19 @@ class database {
         {
           buildData.buildsData[1].spell[i].bar[talentIndex].icon = oneTalent['icon'].split('/eso/abilities/')[1].split('.')[0]
           buildData.buildsData[1].spell[i].bar[talentIndex].color = oneTalent['color']
-          buildData.buildsData[1].spell[i].bar[talentIndex].name = oneTalent['text']
-          buildData.buildsData[1].spell[i].bar[talentIndex].address = '变种技能'
+          if(cardMode == 1)
+          {
+            if (oneTalent['text'].length > 5) {
+              buildData.buildsData[1].spell[i].bar[talentIndex].name = oneTalent['text'].slice(0, 4) + '...';
+            } else {
+              buildData.buildsData[1].spell[i].bar[talentIndex].name = oneTalent['text'];
+            }
+          }
+          else
+          {
+            buildData.buildsData[1].spell[i].bar[talentIndex].name = oneTalent['text']
+          }
+          buildData.buildsData[1].spell[i].bar[talentIndex].address = '篆刻'
           let imgPath = await getimgs.realpath(buildData.buildsData[1].spell[i].bar[talentIndex].icon, "skills")
           buildData.buildsData[1].spell[i].bar[talentIndex].icon = `../../../../../` + imgPath
         }
@@ -3016,6 +3093,28 @@ class database {
     {
       classIcon = BD.className + '_' + BD.roleName
       classStr = BD.roleNameCN + BD.classNameCN
+    }
+
+    if(BD.className != '')
+    {
+      buildData.buildsData[1].class_name_en = BD.className
+      buildData.buildsData[1].class_name_cn = BD.classNameCN
+    }
+    else
+    {
+      buildData.buildsData[1].class_name_en = ''
+      buildData.buildsData[1].class_name_cn = ''
+    }
+
+    if(BD.roleName != '')
+    {
+      buildData.buildsData[1].role_name_en = BD.roleName
+      buildData.buildsData[1].role_name_cn = BD.roleNameCN
+    }
+    else
+    {
+      buildData.buildsData[1].role_name_en = 'supporter'
+      buildData.buildsData[1].role_name_cn = ''
     }
 
     if(BD.className != '' && BD.roleName == '')
@@ -3059,6 +3158,17 @@ class database {
     buildData.buildsData[1].title = classStr
     buildData.buildsData[1].class = classIcon
     //logger.info(buildData.buildsData[1])
+    if(BD.title !== undefined)
+    {
+      buildData.buildsData[1].title = BD.title
+    }
+    else
+    {
+      if(cardMode == 1)
+      {
+        buildData.buildsData[1].title = '请使用 #设置标题 xxxxx'
+      }
+    }
 
     return buildData
   }
@@ -3394,7 +3504,7 @@ class database {
     }
     if(type == 3) //this is name for builds
     {
-      return await this.updateBuildData(setKey)
+      return await this.updateBuildData(setKey, 0)
     }
     if(type == 4) //this is name for rank
     {
@@ -3407,6 +3517,10 @@ class database {
     if(type == 6) //this is name for foods
     {
       return await this.updateFoodData(setKey, 0)
+    }
+    if(type == 7) //this is name for cards
+    {
+      return await this.updateBuildData(setKey, 1)
     }
 
     if(type == 11) //this is name for sets-english

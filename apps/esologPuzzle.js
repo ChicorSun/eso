@@ -3455,7 +3455,8 @@ export class esologPuzzle extends plugin {
         }
 
         // 生成并发送图片
-        let cardData = JSON.parse(JSON.stringify(await database.updateData(targetCard.buildData.buildData, 3)));
+        targetCard.buildData.buildData.userId = userId
+        let cardData = JSON.parse(JSON.stringify(await database.updateData(targetCard.buildData.buildData, 7)));
         let msg = await puppeteer.screenshot('eso', cardData);
         return await this.reply(msg);
       }

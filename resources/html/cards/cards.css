@@ -1,0 +1,377 @@
+@font-face {
+  font-family: "tttgbnumber";
+  src: url("../../../../../resources/font/tttgbnumber.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+ul {
+  list-style-type: none;
+}
+
+body {
+  width: 1080px;
+  height: 648px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f5f6fb;
+}
+
+/* 卡片背景 */
+.eso-card {
+  width: 1080px;
+  height: 648px;
+  border-radius: 15px;
+  overflow: hidden;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: multiply;
+}
+
+/* .card-glass {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(1px); 
+  background: rgba(255, 255, 255, 0.15); 
+  -webkit-backdrop-filter: blur(8px); 
+  backdrop-filter: blur(2px) saturate(180%);
+  z-index: 1;
+} */
+
+.card-main {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 群友昵称 */
+.card-main .qq-name {
+  height: 42px;
+  font-size: 26px;
+  text-align: left;
+  padding-left: 36px;
+  line-height: 42px;
+  color: #ccc;
+}
+/* 游戏角色信息 居中定位 */
+.card-main .player-msg {
+  color: #ccc;
+  position: absolute;
+  left: 50%;
+  top: 108px;
+  margin-left: -98px;
+}
+
+.player-msg .player-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-msg .player-text span {
+  font-size: 20px;
+  padding-bottom: 4px;
+}
+
+.player-msg .player-text img {
+  width: 36px;
+  height: 36px;
+  margin-right: 5px;
+}
+
+.player-msg .player-icon {
+  margin: 10px 0 2px;
+  width: 196px;
+  height: 196px;
+  position: relative;
+}
+
+.player-msg .player-icon .icon-qq {
+  width: 100%;
+  height: 100%;
+  border: 3px pink solid;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.player-msg .player-icon .icon-qq img {
+  width: 100%;
+  height: 100%;
+}
+
+.player-msg .player-icon .icon-class {
+  position: absolute;
+  right: 2px;
+  bottom: -12px;
+  z-index: 1;
+  width: 70px;
+  height: 70px;
+}
+.player-msg .player-icon .icon-class img {
+  width: 100%;
+  height: 100%;
+}
+
+.player-msg .player-icon .icon-pendant {
+  position: absolute;
+  z-index: 1;
+  width: 72px;
+  height: 72px;
+  top: -10px;
+  left: 12px;
+}
+
+.player-msg .player-img img {
+  width: 100%;
+  height: 100%;
+}
+.player-msg .player-name {
+  font-size: 32px;
+  width: 100%;
+  text-align: center;
+}
+
+.player-msg .player-cname {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* .player-msg .player-level span {
+  font-size: 20px;
+  padding-bottom: 4px;
+} */
+
+/* .player-msg .player-level img {
+  width: 24px;
+  height: 24px;
+  margin-right: 5px;
+} */
+
+/* 装备信息 */
+.card-main .gears-list {
+  display: flex;
+  width: 100%;
+  flex: 1;
+}
+
+.gears-list ul {
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.gears-list ul li {
+  height: 56px;
+  margin: 4px 0;
+  display: flex;
+}
+
+.gears-list ul li .gears-img {
+  width: 56px;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.gears-list ul li .gears-img img {
+  width: 100%;
+  height: 100%;
+}
+
+.gears-list ul li .gears-text {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.gears-list .gears-top {
+  flex: 1;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.gears-list .gears-top .english_name {
+  font-size: 12px;
+}
+
+
+.gears-list .gears-bottom {
+  flex: 1;
+  padding: 0 6px;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 2px;
+  white-space: nowrap;
+}
+
+.gears-list .gears-bottom span {
+  margin: 0 5px;
+}
+
+.gears-list .gears-left {
+  align-items: flex-end;
+}
+
+.gears-list .gears-right {
+  align-items: flex-start;
+}
+
+.gears-left li {
+  flex-direction: row-reverse;
+  color: white;
+}
+
+.gears-right li {
+  flex-direction: row;
+  color: white;
+}
+
+.gears-list .gears-left .gears-top {
+  justify-content: flex-end;
+}
+.gears-list .gears-left .gears-bottom {
+  flex-direction: row-reverse;
+}
+
+.gears-list .gears-right .gears-top {
+  justify-content: flex-start;
+}
+.gears-list .gears-right .gears-bottom {
+  flex-direction: row;
+}
+
+.gears-list .gears-traits {
+  color: #ccc;
+  font-size: 14px;
+}
+.gears-list .gears-enchant {
+  font-size: 12px;
+}
+
+.skills-list {
+  width: 100%;
+  margin: 12px 0;
+  display: flex;
+  color: #cccccc;
+  justify-content: center;
+}
+
+.skills-list-line {
+  width: none;
+  height: 70%;
+  border: 0.5px solid rgba(255, 255, 255, 0.5);
+  margin: 0 4px;
+}
+
+.skills-list ul {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.skills-list ul li {
+  margin: 0 1px;
+  display: flex;
+  flex-direction: column;
+}
+
+.skills-list ul li span {
+  width: 70px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.skills-list ul li span img {
+  width: 70px;
+  height: 70x;
+  border-radius: 3px;
+}
+
+.tag-list {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.tag-list ul {
+  display: flex;
+}
+.tag-list ul li {
+  width: auto;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 10px;
+  /* box-shadow: 2px 5px 5px rgba(255, 255, 255, 0.5); */
+  margin: 0 3px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tag-list ul li::before {
+  display: block;
+  margin-right: 6px;
+  content: "";
+  height: 8px;
+  width: 8px;
+  background-color: #131014;
+  border-radius: 50%;
+}
+
+.tag-list .trials-name {
+  flex: 1;
+  text-align: right;
+}
+
+.card-tips {
+  width: 100%;
+  position: absolute;
+  bottom: 24%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  color: #ccc;
+  z-index: 3;
+  font-size: 12px;
+  padding: 0 6px;
+}
+
+.card-tips ul {
+  display: flex;
+  flex-direction: column;
+}
+.card-tips ul li {
+  display: flex;
+  align-items: center;
+}
+
+.card-tips img {
+  width: 20px;
+  height: 20px;
+  margin-right: 2px;
+}
