@@ -2794,6 +2794,8 @@ class database {
       }
     }
 
+    let left_weapon = "empty"
+    let right_weapon = "empty"
     for (let GI of BD.gearData) {
       let index = -1;
       let error_set = 0;
@@ -2897,6 +2899,119 @@ class database {
             buildData.buildsData[1].gear[index].enchant = await this.enchant2str(GI.enchant['text'], set_type)
             buildData.buildsData[1].gear[index].enchantColor = GI.enchant['color']
             error_set = 0;
+
+            if(index == 10)
+            {
+              if(GI.type == 'Fire Staff')
+              {
+                left_weapon = 'Destruction_Staff_Fire'
+              }
+              else if(GI.type == 'Frost Staff')
+              {
+                left_weapon = 'Destruction_Staff_Ice'
+              }
+              else if(GI.type == 'Lightning Staff')
+              {
+                left_weapon = 'Destruction_Staff_Lightning'
+              }
+              else if(GI.type == 'Healing Staff')
+              {
+                left_weapon = 'Restoration_Staff'
+              }
+              else if(GI.type == 'Bow')
+              {
+                left_weapon = 'Bow'
+              }
+              else
+              {
+                left_weapon = 'Two_Handed'
+              }
+            }
+
+            if(index == 11)
+            {
+              if(GI.type == 'Shield')
+              {
+                left_weapon = 'One_Hand_and_Shield'
+              }
+              else if(GI.type == 'Dagger')
+              {
+                left_weapon = 'Dual_Wield'
+              }
+              else if(GI.type == 'Hammer')
+              {
+                left_weapon = 'Dual_Wield'
+              }
+              else if(GI.type == 'Sword')
+              {
+                left_weapon = 'Dual_Wield'
+              }
+              else if(GI.type == 'Axe')
+              {
+                left_weapon = 'Dual_Wield'
+              }
+              else if(GI.type == 'Mace')
+              {
+                left_weapon = 'Dual_Wield'
+              }  
+            }
+
+            if(index == 12)
+            {
+              if(GI.type == 'Fire Staff')
+              {
+                right_weapon = 'Destruction_Staff_Fire'
+              }
+              else if(GI.type == 'Frost Staff')
+              {
+                right_weapon = 'Destruction_Staff_Ice'
+              }
+              else if(GI.type == 'Lightning Staff')
+              {
+                right_weapon = 'Destruction_Staff_Lightning'
+              }
+              else if(GI.type == 'Healing Staff')
+              {
+                right_weapon = 'Restoration_Staff'
+              }
+              else if(GI.type == 'Bow')
+              {
+                right_weapon = 'Bow'
+              }
+              else
+              {
+                right_weapon = 'Two_Handed'
+              }
+            }
+  
+            if(index == 13)
+            {
+              if(GI.type == 'Shield')
+              {
+                right_weapon = 'One_Hand_and_Shield'
+              }
+              else if(GI.type == 'Dagger')
+              {
+                right_weapon = 'Dual_Wield'
+              }
+              else if(GI.type == 'Hammer')
+              {
+                right_weapon = 'Dual_Wield'
+              }
+              else if(GI.type == 'Sword')
+              {
+                right_weapon = 'Dual_Wield'
+              }
+              else if(GI.type == 'Axe')
+              {
+                right_weapon = 'Dual_Wield'
+              }
+              else if(GI.type == 'Mace')
+              {
+                right_weapon = 'Dual_Wield'
+              }
+            }
+
             break
           }
         }
@@ -3182,6 +3297,19 @@ class database {
         buildData.buildsData[1].title = '请使用 #设置标题 xxxxx'
       }
     }
+
+    if(buildData.buildsData[1].gear[10].name_cn == 'N/A')
+    {
+      left_weapon = 'empty'
+    }
+    if(buildData.buildsData[1].gear[12].name_cn == 'N/A')
+    {
+      right_weapon = 'empty'
+    }
+
+    buildData.buildsData[1].spell_weapon_left = left_weapon
+    buildData.buildsData[1].spell_weapon_right = right_weapon
+
 
     return buildData
   }

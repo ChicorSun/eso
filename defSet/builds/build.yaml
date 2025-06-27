@@ -17,6 +17,8 @@
   race_name_en: "Altmer"
   race_name_cn: "高精灵"
   race_img: ON-icon-mundusstone-Thief.png
+  spell_weapon_left: Dual_Wield
+  spell_weapon_right: Dual_Wield
   mp: "?"
   hp: "?"
   sp: "?"

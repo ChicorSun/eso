@@ -306,6 +306,16 @@ body {
   width: 70px;
   height: 70x;
   border-radius: 3px;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.skills-list .skills-weapon {
+  margin-top: -17px
+}
+
+.skills-list .skills-weapon img {
+  width: 70px;
+  height: 70x;
 }
 
 .tag-list {

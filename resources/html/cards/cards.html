@@ -115,6 +115,9 @@
         <!-- 技能列表 -->
         <div class="skills-list">
           <ul class="skills-list-left">
+            {{if val.spell_weapon_left != "empty"}}
+            <span class="skills-weapon"><img src="{{pluResPath}}img/weapons/{{val.spell_weapon_left}}.png" alt=""/></span>
+            {{/if}}
             {{each val.spell spell index}}
             {{if index === 0}}
             {{each spell.bar bar index}}
@@ -126,14 +129,27 @@
               <span style="color: {{bar.color}};">{{bar.name}}</span>
               <span style="color: {{bar.color}};">{{bar.address}}</span>
             </li>
+            {{if index === 4}}
+            <span>&nbsp;&nbsp;</span>
+            {{/if}}
             {{/if}}
             {{/each}}
             {{/if}}
             {{/each}}
           </ul>
+
+          {{if val.spell_weapon_right != "empty"}}
+          <span>&nbsp;&nbsp;</span>
+          {{/if}}
           <!-- 分割线 如果是单bar则取消分割线与右侧技能栏 -->
+          <!-- 
           <span class="skills-list-line"></span>
+          <span>&nbsp;&nbsp;</span>
+          -->
           <ul class="skills-list-right">
+            {{if val.spell_weapon_right != "empty"}}
+            <span class="skills-weapon"><img src="{{pluResPath}}img/weapons/{{val.spell_weapon_right}}.png" alt=""/></span>
+            {{/if}}
             {{each val.spell spell index}}
             {{if index === 1}}
             {{each spell.bar bar index}}
@@ -145,6 +161,9 @@
               <span style="color: {{bar.color}};">{{bar.name}}</span>
               <span style="color: {{bar.color}};">{{bar.address}}</span>
             </li>
+            {{if index === 4}}
+            <span>&nbsp;&nbsp;</span>
+            {{/if}}
             {{/if}}
             {{/each}}
             {{/if}}
