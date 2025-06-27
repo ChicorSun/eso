@@ -358,23 +358,39 @@ body {
   text-align: right;
 }
 
+
 .card-tips {
   width: 100%;
-  position: absolute;
-  bottom: 24%;
+  height: 100%;
+  position: relative; /* 确保父级是相对定位 */
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   justify-content: space-between;
+  align-items: flex-end;
   color: #ccc;
   z-index: 3;
-  font-size: 12px;
+  font-size: 14px;
   padding: 0 6px;
+  font-weight: bold;
+}
+
+.tips-right-top{
+  position: absolute; /* 设置为绝对定位 */
+  right: 12px; /* 根据父级的 padding 右侧对齐 */
+}
+
+.tips-right-bottom {
+  position: absolute; /* 设置为绝对定位 */
+  bottom: 3px; /* 贴着底部 */
+  right: 12px; /* 根据父级的 padding 右侧对齐 */
 }
 
 .card-tips ul {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  gap: 6px;
 }
+
 .card-tips ul li {
   display: flex;
   align-items: center;
@@ -384,4 +400,16 @@ body {
   width: 20px;
   height: 20px;
   margin-right: 2px;
+}
+
+.frosted-glass {
+    padding: 2px;
+    border-radius: 7px;
+    backdrop-filter: blur(10px); /* 模糊效果 */
+    background: rgba(255, 255, 255, 0.05); /* 半透明背景 */
+    border: 1px solid rgba(255, 255, 255, 0.05); /* 边框 */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); /* 阴影效果 */
+    text-align: center;
+    color: white;
+    font-weight: bold;
 }

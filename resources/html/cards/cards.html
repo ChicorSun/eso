@@ -178,13 +178,14 @@
             {{/each}}
           </ul>
           <!-- 试炼名称 -->
-          <div class="trials-name" style="color: aqua">{{val.userName}}</div>
+          <div class="trials-name">
+          </div>
         </div>
       </div>
       <!-- 赐福 食物 技能线名称等 -->
       <div class="card-tips">
         <!-- 左侧放置 技能线 篆刻脚本 装备轻重甲 -->
-        <ul class="tips-left">
+        <ul class="tips-right-top frosted-glass">
           {{each val.line item}}
           <li>
             <img src="{{pluResPath}}img/classes/{{item.img}}.png" alt="" />
@@ -192,22 +193,23 @@
           </li>
           {{/each}}
         </ul>
-        <!-- 右侧放置 食物 赐福 药水 毒药 -->
-        <ul class="tips-right">
+        <!-- 右下角放置 食物 赐福 药水 毒药 -->
+        <ul class="tips-right-bottom frosted-glass">
           <!-- 
           <li>
             <img src="./img/icon/crowns.png" alt="" />
             <span>
-               <span style="color: #2fd50e;">0</span>/ 
-               <span style="color: #3a92fe;">5</span>/ 
-               <span style="color: brown;">2</span>
-              </span>
+              <span style="color: #2fd50e;">0</span>/ 
+              <span style="color: #3a92fe;">5</span>/ 
+              <span style="color: brown;">2</span>
+            </span>
           </li>
           -->
           <li>
             <img src="{{pluResPath}}img/stones/{{val.race_img}}.png" alt="" />
             <span>{{val.race_name_cn}}</span>
           </li>
+
           {{each val.stone item}}
           <li>
             <img src="{{pluResPath}}img/stones/{{item.img}}" alt="" />
