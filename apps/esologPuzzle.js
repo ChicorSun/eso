@@ -85,7 +85,7 @@ export class esologPuzzle extends plugin {
         },
         {
           /** 命令正则匹配 */
-          reg: '^#(编辑角色|修改角色).*$',
+          reg: '^#(编辑角色|修改角色|编辑名片|修改名片).*$',
           /** 执行方法 */
           fnc: 'editBuild'
         },
@@ -136,6 +136,12 @@ export class esologPuzzle extends plugin {
           reg: '^#(查看名片|名片).*$',
           /** 执行方法 */
           fnc: 'queryCard'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(查看群友名片|群友名片|群名片|查看群名片).*$',
+          /** 执行方法 */
+          fnc: 'queryGroupMemberCard'
         },
         {
           /** 命令正则匹配 */
@@ -2056,81 +2062,123 @@ export class esologPuzzle extends plugin {
         return await this.reply('您还没有绑定任何角色哦~');
       }
 
-      // 获取该用户绑定的所有账号和角色的组合
-      const userBindings = bindData[userId];
-      
-      // 获取所有构建数据
-      let allBuilds = [];
-      for (const binding of userBindings) {
-        if (binding.accountName) {
-          const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
-          if (fs.existsSync(accountFileName)) {
-            const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
-            
-            // 遍历该账号下的所有角色
-            for (const [playerName, playerData] of Object.entries(accountData)) {
-              // 如果绑定指定了角色名，只收集匹配的角色数据
-              if (!binding.playerName || binding.playerName === playerName) {
-                playerData.builds.forEach((build, index) => {
-                  allBuilds.push({
-                    index: allBuilds.length + 1,
-                    playerName,
-                    accountName: binding.accountName,
-                    buildData: build
+      // 获取命令中的序号和类型
+      const match = e.msg.match(/^#*(编辑角色|修改角色|编辑名片|修改名片)(\d+)$/);
+      if (!match) {
+        return await this.reply('请使用正确的格式：#编辑角色序号 或 #编辑名片序号');
+      }
+
+      const cmdType = match[1];
+      const index = parseInt(match[2]);
+
+      // 根据命令类型处理不同的编辑逻辑
+      if (cmdType === '编辑角色' || cmdType === '修改角色') {
+        // 获取该用户绑定的所有账号和角色的组合
+        const userBindings = bindData[userId];
+        
+        // 获取所有构建数据
+        let allBuilds = [];
+        for (const binding of userBindings) {
+          if (binding.accountName) {
+            const accountFileName = `${BUILD_PATH}${binding.accountName}.json`;
+            if (fs.existsSync(accountFileName)) {
+              const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+              
+              // 遍历该账号下的所有角色
+              for (const [playerName, playerData] of Object.entries(accountData)) {
+                // 如果绑定指定了角色名，只收集匹配的角色数据
+                if (!binding.playerName || binding.playerName === playerName) {
+                  playerData.builds.forEach((build, index) => {
+                    allBuilds.push({
+                      index: allBuilds.length + 1,
+                      playerName,
+                      accountName: binding.accountName,
+                      buildData: build
+                    });
                   });
-                });
+                }
               }
             }
           }
         }
-      }
 
-      if (allBuilds.length === 0) {
-        return await this.reply('未找到任何构建记录~');
-      }
+        if (allBuilds.length === 0) {
+          return await this.reply('未找到任何构建记录~');
+        }
 
-      // 获取命令中的序号
-      const match = e.msg.match(/^#*(编辑角色|修改角色)(\d+)$/);
-      if (!match) {
-        return await this.reply('请使用正确的格式：#编辑角色序号');
-      }
+        if (index < 1 || index > allBuilds.length) {
+          return await this.reply(`序号范围应为1-${allBuilds.length}`);
+        }
 
-      const index = parseInt(match[2]);
-      if (index < 1 || index > allBuilds.length) {
-        return await this.reply(`序号范围应为1-${allBuilds.length}`);
-      }
+        // 获取选中的构建数据
+        const selectedBuild = allBuilds[index - 1];
+        const buildData = selectedBuild.buildData;
 
-      // 获取选中的构建数据
-      const selectedBuild = allBuilds[index - 1];
-      const buildData = selectedBuild.buildData;
+        // 读取或创建名片数据文件
+        let cardData = {};
+        if (fs.existsSync(CARD_PATH)) {
+          cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+        }
 
-      // 读取或创建名片数据文件
-      let cardData = {};
-      if (fs.existsSync(CARD_PATH)) {
-        cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
-      }
+        // 初始化用户的名片数据结构
+        if (!cardData[userId]) {
+          cardData[userId] = {
+            edit_index: {},
+            cards_info: []
+          };
+        }
 
-      // 初始化用户的名片数据结构
-      if (!cardData[userId]) {
-        cardData[userId] = {
-          edit_index: {},
-          cards_info: []
+        // 更新edit_index数据
+        cardData[userId].edit_index = {
+          accountName: selectedBuild.accountName,
+          playerName: selectedBuild.playerName,
+          reportsID: buildData.reportsID,
+          fightIndex: buildData.fightIndex,
+          sourceIndex: buildData.sourceIndex
         };
+
+        // 保存名片数据
+        fs.writeFileSync(CARD_PATH, JSON.stringify(cardData, null, 2));
+
+        return await this.reply('编辑标记设置成功！');
+      } else {
+        // 处理名片编辑逻辑
+        if (!fs.existsSync(CARD_PATH)) {
+          return await this.reply('未设置任何名片');
+        }
+
+        const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+        if (!cardData[userId] || !cardData[userId].cards_info || cardData[userId].cards_info.length === 0) {
+          return await this.reply('未设置任何名片');
+        }
+
+        // 获取所有名片对应的构建数据
+        const allCards = cardData[userId].cards_info;
+
+        if (index < 1 || index > allCards.length) {
+          return await this.reply(`序号范围应为1-${allCards.length}`);
+        }
+
+        // 获取选中的名片数据
+        const selectedCard = allCards.find(card => card.index === index);
+        if (!selectedCard) {
+          return await this.reply('未找到对应的名片数据');
+        }
+
+        // 更新edit_index数据
+        cardData[userId].edit_index = {
+          accountName: selectedCard.accountName,
+          playerName: selectedCard.playerName,
+          reportsID: selectedCard.reportsID,
+          fightIndex: selectedCard.fightIndex,
+          sourceIndex: selectedCard.sourceIndex
+        };
+
+        // 保存名片数据
+        fs.writeFileSync(CARD_PATH, JSON.stringify(cardData, null, 2));
+
+        return await this.reply('编辑标记设置成功！');
       }
-
-      // 更新edit_index数据
-      cardData[userId].edit_index = {
-        accountName: selectedBuild.accountName,
-        playerName: selectedBuild.playerName,
-        reportsID: buildData.reportsID,
-        fightIndex: buildData.fightIndex,
-        sourceIndex: buildData.sourceIndex
-      };
-
-      // 保存名片数据
-      fs.writeFileSync(CARD_PATH, JSON.stringify(cardData, null, 2));
-
-      return await this.reply('编辑标记设置成功！');
 
     } catch (error) {
       logger.error(`[ESO:角色编辑] 编辑失败: ${error.message}`);
@@ -2955,8 +3003,8 @@ export class esologPuzzle extends plugin {
       }
       
       // 检查标签长度
-      if (tag.length > 16) {
-        return await this.reply('标签长度不能超过16个字符，请重新设置');
+      if (tag.length > 20) {
+        return await this.reply('标签长度不能超过20个字符，请重新设置');
       }
 
       // 6. 更新构建数据
@@ -3430,7 +3478,7 @@ export class esologPuzzle extends plugin {
       if (isNaN(cardNum)) {
         // 显示名片列表
         let reply = '查询到如下名片：\n';
-        reply += '序号  角色@账号  种族  职责  职业\n';
+        reply += '序号  角色@账号  种族  职责  职业  标题\n';
         reply += '━━━━━━━━━━━━━━━━━━━━━━\n';
         
         allCards.forEach(card => {
@@ -3438,8 +3486,9 @@ export class esologPuzzle extends plugin {
           const role = buildData.roleNameCN || '未知';
           const race = buildData.raceInfo?.[0]?.name_cn || '未知';
           const className = buildData.classNameCN || '未知';
+          const title = buildData.title || '';
           
-          reply += `${card.index}.    ${card.playerName}@${card.accountName}  ${race}  ${role}  ${className}\n`;
+          reply += `${card.index}.    ${card.playerName}@${card.accountName}  ${race}  ${role}  ${className}  ${title}\n`;
         });
 
         return await this.reply(reply);
@@ -3464,6 +3513,96 @@ export class esologPuzzle extends plugin {
     } catch (error) {
       logger.error(`[ESO:查看名片] 查询失败: ${error.message}`);
       return await this.reply('查询名片失败，请稍后重试');
+    }
+  }
+
+  async queryGroupMemberCard(e) {
+    try {
+      // 1. 检查CARD_PATH是否存在
+      if (!fs.existsSync(CARD_PATH)) {
+        return await this.reply('未设置任何名片');
+      }
+
+      // 2. 读取卡片数据
+      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      
+      // 3. 获取所有用户的名片数据
+      const allCards = [];
+      for (const [userId, userData] of Object.entries(cardData)) {
+        if (userData.cards_info && userData.cards_info.length > 0) {
+          for (const card of userData.cards_info) {
+            const accountFileName = `${BUILD_PATH}${card.accountName}.json`;
+            if (fs.existsSync(accountFileName)) {
+              const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
+              if (accountData[card.playerName]) {
+                const build = accountData[card.playerName].builds.find(b => 
+                  b.reportsID === card.reportsID &&
+                  b.fightIndex === card.fightIndex &&
+                  b.sourceIndex === card.sourceIndex
+                );
+                if (build) {
+                  allCards.push({
+                    userId,
+                    index: card.index,
+                    accountName: card.accountName,
+                    playerName: card.playerName,
+                    buildData: build
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 4. 如果没有找到任何有效的名片数据
+      if (allCards.length === 0) {
+        return await this.reply('未找到有效的名片数据');
+      }
+
+      // 5. 解析命令中的序号
+      const cardNumStr = e.msg.replace(/^#(?:查看群友名片|群友名片|群名片|查看群名片)\s*/, '').trim();
+      const cardNum = parseInt(cardNumStr);
+
+      // 6. 处理不同的显示情况
+      if (isNaN(cardNum)) {
+        // 显示名片列表
+        let reply = '查询到如下群成员名片：\n';
+        reply += '序号  角色@账号  种族  职责  职业  标题\n';
+        reply += '━━━━━━━━━━━━━━━━━━━━━━\n';
+        
+        allCards.forEach((card, index) => {
+          const buildData = card.buildData.buildData || {};
+          const role = buildData.roleNameCN || '未知';
+          const race = buildData.raceInfo?.[0]?.name_cn || '未知';
+          const className = buildData.classNameCN || '未知';
+          const title = buildData.title || '';
+          
+          reply += `${index + 1}.    ${card.playerName}@${card.accountName}  ${race}  ${role}  ${className}  ${title}\n`;
+        });
+
+        return await this.reply(reply);
+      } else {
+        // 显示指定名片的图片
+        if (cardNum <= 0 || cardNum > allCards.length) {
+          return await this.reply(`请输入正确的名片序号（1-${allCards.length}）`);
+        }
+
+        const targetCard = allCards[cardNum - 1];
+        if (!targetCard) {
+          return await this.reply('未找到对应的名片数据');
+        }
+
+        // 生成并发送图片
+        targetCard.buildData.buildData.userId = targetCard.userId;
+        let cardData = JSON.parse(JSON.stringify(await database.updateData(targetCard.buildData.buildData, 7)));
+        let msg = await puppeteer.screenshot('eso', cardData);
+        return await this.reply(msg);
+      }
+
+    } catch (error) {
+      logger.error(`[ESO:查看群名片] 查询失败: ${error.message}`);
+      return await this.reply('查询群名片失败，请稍后重试');
     }
   }
 
