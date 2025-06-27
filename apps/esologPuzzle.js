@@ -2955,8 +2955,8 @@ export class esologPuzzle extends plugin {
       }
       
       // 检查标签长度
-      if (tag.length > 8) {
-        return await this.reply('标签长度不能超过8个字符，请重新设置');
+      if (tag.length > 16) {
+        return await this.reply('标签长度不能超过16个字符，请重新设置');
       }
 
       // 6. 更新构建数据
@@ -2973,8 +2973,8 @@ export class esologPuzzle extends plugin {
       }
 
       // 检查标签数量
-      if (targetBuild.buildData.buildData.tags.length >= 6) {
-        return await this.reply('每个构建最多只能添加6个标签！');
+      if (targetBuild.buildData.buildData.tags.length >= 8) {
+        return await this.reply('每个构建最多只能添加8个标签！');
       }
 
       // 添加新标签

@@ -2712,7 +2712,7 @@ class database {
 
     if(cardMode == 1)
     {
-      buildData.buildsData[1].userName = 'QQ' + BD.userId
+      buildData.buildsData[1].userName = ''
       let imgPath = await getimgs.realpath(BD.userId, "avatar")
       buildData.buildsData[1].userPic = `../../../../../` + imgPath
       buildData.buildsData[1].tags = []
@@ -2871,8 +2871,15 @@ class database {
             {
               buildData.buildsData[1].gear[index].type_color = 'rgb(221, 221, 221)'
             }
-            buildData.buildsData[1].gear[index].name_cn = setData.atlasData[1].name + await this.transTypeName(GI.type, index)
-            buildData.buildsData[1].gear[index].name_en = setData.atlasData[1].name_en
+            if(setData.atlasData[1].place == '考古')
+            {
+              buildData.buildsData[1].gear[index].name_cn = setData.atlasData[1].name
+            }
+            else
+            {
+              buildData.buildsData[1].gear[index].name_cn = setData.atlasData[1].name + await this.transTypeName(GI.type, index)
+            }
+            buildData.buildsData[1].gear[index].name_en = setData.atlasData[1].name_en.replace("Perfected ", "")
             buildData.buildsData[1].gear[index].level = GI.level
             buildData.buildsData[1].gear[index].color = GI.name['color']
             if(buildData.buildsData[1].gear[index].color == 'rgb(229, 204, 128)')
@@ -3037,12 +3044,18 @@ class database {
                 } else {
                   buildData.buildsData[1].spell[i].bar[talentIndex].name = skillData.atlasData[1].new_cn_name;
                 }
+
+                if (skillData.atlasData[1].place_cn.replace("单手武器与盾牌", "剑盾").replace("大招", "大").length > 5) {
+                  buildData.buildsData[1].spell[i].bar[talentIndex].address = skillData.atlasData[1].place_cn.replace("单手武器与盾牌", "剑盾").replace("大招", "大").slice(0, 4) + '...';  
+                } else {
+                  buildData.buildsData[1].spell[i].bar[talentIndex].address = skillData.atlasData[1].place_cn.replace("单手武器与盾牌", "剑盾").replace("大招", "大")
+                }
               }
               else
               {
                 buildData.buildsData[1].spell[i].bar[talentIndex].name = skillData.atlasData[1].new_cn_name
+                buildData.buildsData[1].spell[i].bar[talentIndex].address = skillData.atlasData[1].place_cn.replace("大招", "大")
               }
-              buildData.buildsData[1].spell[i].bar[talentIndex].address = skillData.atlasData[1].place_cn.replace("大招", "大")
               error_skill = 0;
               break;
             }
