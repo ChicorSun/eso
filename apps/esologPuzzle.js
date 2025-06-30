@@ -1792,13 +1792,27 @@ export class esologPuzzle extends plugin {
     return e.reply(`已设置最大并发数为${num}`, true)
   }
 
+  async isQQNumber(str) {
+  	const qqRegex = /^[1-9]\d{4,10}$/;
+  	return qqRegex.test(str);
+  }
+
   async updateAvatar(e) {
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
     let customImg = `./plugins/eso/custome_resources/img/avatar/${userId}.png`
+    let imgPath = `./plugins/eso/resources/img/avatar/${userId}.png`
     let url = `https://q1.qlogo.cn/g?b=qq&nk=${userId}&s=160`
     let ret = await Bot.download(url, customImg)
     
+    if(await this.isQQNumber(userId))
+    {
+    	if (fs.existsSync(imgPath)) {
+        	fs.unlinkSync(imgPath);
+        	logger.info(`已删除文件：${imgPath}`);
+      	}
+    }
+
     let progressMsg = []
 
     if(ret)
