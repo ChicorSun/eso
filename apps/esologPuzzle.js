@@ -162,6 +162,12 @@ export class esologPuzzle extends plugin {
         {
           reg: '^#*设置等待时间.*$',
           fnc: 'setMaxWaitTime'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#(更新头像)$',
+          /** 执行方法 */
+          fnc: 'updateAvatar'
         }
       ]
     })
@@ -1555,7 +1561,7 @@ export class esologPuzzle extends plugin {
     const userId = String(e.user_id);
 
     // 获取命令内容
-    let content = e.msg.replace(/^#*绑定/, '').trim();
+    let content = e.msg.replace(/^#*绑定角色/, '').replace(/^#*绑定账号/, '').replace(/^#*绑定账户/, '').replace(/^#*绑定/, '').trim();
     
     if (!content) {
       return await this.reply('请按以下任意一种格式绑定账号：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName');
@@ -1579,7 +1585,8 @@ export class esologPuzzle extends plugin {
           logger.info(`[ESO:账号绑定] 角色名称验证失败: ${playerName}, 原因: ${playerValidation.reason}`);
           let progressMsg = [
             { type: 'at', qq: this.e.user_id },
-            { type: 'text', text: `\n请绑定你自己的角色名！`}
+            { type: 'text', text: `\n请绑定你自己的角色名！`},
+            { type: 'text', text: `请使用以下格式：\n1. #绑定@AccountName\n2. #绑定playerName@AccountName`}
           ]
           return await this.reply(progressMsg, false, { recallMsg: -1 });
         }
@@ -1783,6 +1790,33 @@ export class esologPuzzle extends plugin {
     MAX_WEB_NUM = num
     this.saveConfig()
     return e.reply(`已设置最大并发数为${num}`, true)
+  }
+
+  async updateAvatar(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    //const userId = String(e.user_id);
+    const userId = '2268233763'
+    let customImg = `./plugins/eso/custome_resources/img/avatar/${userId}.png`
+    let url = `https://q1.qlogo.cn/g?b=qq&nk=${userId}&s=160`
+    let ret = await Bot.download(url, customImg)
+    
+    let progressMsg = []
+
+    if(ret)
+    {
+      progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n更新${userId}的头像成功！`}
+      ]
+    }
+    else
+    {
+       progressMsg = [
+        { type: 'at', qq: this.e.user_id },
+        { type: 'text', text: `\n更新${userId}的头像失败。`}
+      ]
+    }
+    return await this.reply(progressMsg, false, { recallMsg: -1 })
   }
 
   // 修改最大等待时间
@@ -3423,22 +3457,60 @@ export class esologPuzzle extends plugin {
     // 获取用户QQ，转为字符串避免大数精度问题
     let userId = String(e.user_id);
     let personID = e.at
+    let isOther = false
 
     if (typeof personID != "undefined")
     {
+      isOther = true
       userId = String(personID);
+    }
+    else
+    {
+      isOther = false
     }
 
     try {
       // 1. 检查CARD_PATH是否存在
       if (!fs.existsSync(CARD_PATH)) {
-        return await this.reply('未设置任何名片');
+      	let progressMsg = []
+      	if(isOther)
+      	{
+      	  progressMsg = [
+      	  	{ type: 'at', qq: this.e.user_id },
+          	{ type: 'text', text: `\n目标尚未设置任何名片！\n`}
+          ]
+      	}
+      	else
+      	{
+      	  progressMsg = [
+      	  	{ type: 'at', qq: this.e.user_id },
+          	{ type: 'text', text: `\n您未设置任何名片！\n`},
+          	{ type: 'text', text: `请使用命令 #名片化角色1 #名片化角色2， 具体序号见命令 #角色 的结果`}
+          ]
+      	}
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       // 2. 读取卡片数据
       const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
       if (!cardData[userId] || !cardData[userId].cards_info || cardData[userId].cards_info.length === 0) {
-        return await this.reply('未设置任何名片');
+        let progressMsg = []
+      	if(isOther)
+      	{
+      	  progressMsg = [
+      	  	{ type: 'at', qq: this.e.user_id },
+          	{ type: 'text', text: `\n目标尚未设置任何名片！\n`}
+          ]
+      	}
+      	else
+      	{
+      	  progressMsg = [
+      	  	{ type: 'at', qq: this.e.user_id },
+          	{ type: 'text', text: `\n您未设置任何名片！\n`},
+          	{ type: 'text', text: `请使用命令 #名片化角色1 #名片化角色2， 具体序号见命令 #角色 的结果`}
+          ]
+      	}
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       // 3. 解析命令中的序号
@@ -3471,7 +3543,23 @@ export class esologPuzzle extends plugin {
 
       // 5. 如果没有找到任何有效的名片数据
       if (allCards.length === 0) {
-        return await this.reply('未找到有效的名片数据');
+        let progressMsg = []
+      	if(isOther)
+      	{
+      	  progressMsg = [
+      	  	{ type: 'at', qq: this.e.user_id },
+          	{ type: 'text', text: `\n未找到有效的名片数据\n`}
+          ]
+      	}
+      	else
+      	{
+      	  progressMsg = [
+      	  	{ type: 'at', qq: this.e.user_id },
+          	{ type: 'text', text: `\n未找到有效的名片数据\n`},
+          	{ type: 'text', text: `请使用命令 #角色 查看您的战斗记录`}
+          ]
+      	}
+        return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
       // 6. 处理不同的显示情况
