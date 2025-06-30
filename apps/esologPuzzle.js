@@ -1794,8 +1794,7 @@ export class esologPuzzle extends plugin {
 
   async updateAvatar(e) {
     // 获取用户QQ，转为字符串避免大数精度问题
-    //const userId = String(e.user_id);
-    const userId = '2268233763'
+    const userId = String(e.user_id);
     let customImg = `./plugins/eso/custome_resources/img/avatar/${userId}.png`
     let url = `https://q1.qlogo.cn/g?b=qq&nk=${userId}&s=160`
     let ret = await Bot.download(url, customImg)
