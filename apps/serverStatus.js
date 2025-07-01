@@ -70,6 +70,25 @@ export class serverStatus extends plugin {
         }
       ]
     })
+    
+    // 初始化定时器ID为null
+    this.checkInterval = null
+  }
+
+  /**
+   * 启动自动检查
+   * @private
+   */
+  async startAutoCheck(e) {
+    // 如果定时器已经存在，先清除它
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval)
+    }
+    
+    // 设置新的定时器，每2分钟执行一次
+    this.checkInterval = setInterval(async () => {
+      await this.getESOStatus(this.e)
+    }, 1 * 60 * 1000) // 1分钟 = 1 * 60 * 1000毫秒
   }
 
   /**
@@ -77,26 +96,12 @@ export class serverStatus extends plugin {
    * @提供服务器状态查询
    */
   async sendStatus (e) {
-  	//判断是否需要更新服务器状态变量并执行
-    let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD'+'_'+'HH'+':'+'mm').replace(/是0/g, "是").replace(/点0/g, "点")
-    if(now != status.time)
-    {
-    	await this.updateESOStatus()
-    	status.time = now
-    	await this.checkStatusChange()
-    	lastStatus.time = status.time
-      if(status.pcNA != 1){lastStatus.pcNA = 0}else{lastStatus.pcNA = 1}
-      if(status.pcEU != 1){lastStatus.pcEU = 0}else{lastStatus.pcEU = 1}
-      if(status.pcPTS != 1){lastStatus.pcPTS = 0}else{lastStatus.pcPTS = 1}
-      if(status.xbNA != 1){lastStatus.xbNA = 0}else{lastStatus.xbNA = 1}
-      if(status.xbEU != 1){lastStatus.xbEU = 0}else{lastStatus.xbEU = 1}
-      if(status.psNA != 1){lastStatus.psNA = 0}else{lastStatus.psNA = 1}
-      if(status.psEU != 1){lastStatus.psEU = 0}else{lastStatus.psEU = 1}
-      lastStatus.msg = []
-      lastStatus.msg += status.msg
-    }
+    await this.getESOStatus(e)
 
-	if('done' != serverData.init)
+    // 在首次执行后启动自动检查
+    await this.startAutoCheck(e)
+
+	  if('done' != serverData.init)
     {
     	let ssData = await ServerStatus.get(this.e, 'eso', 'serverStatus', 'serverStatus')
         if (!ssData)
@@ -141,6 +146,27 @@ export class serverStatus extends plugin {
     //logger.info(serverData.serverData[1])
 	let img = await this.cache(serverData, serverImg)
     await this.e.reply(img)
+  }
+
+  async getESOStatus (e) {
+  	//判断是否需要更新服务器状态变量并执行
+    let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD'+'_'+'HH'+':'+'mm').replace(/是0/g, "是").replace(/点0/g, "点")
+    if(now != status.time)
+    {
+    	await this.updateESOStatus()
+    	status.time = now
+    	await this.checkStatusChange(e)
+    	lastStatus.time = status.time
+      if(status.pcNA != 1){lastStatus.pcNA = 0}else{lastStatus.pcNA = 1}
+      if(status.pcEU != 1){lastStatus.pcEU = 0}else{lastStatus.pcEU = 1}
+      if(status.pcPTS != 1){lastStatus.pcPTS = 0}else{lastStatus.pcPTS = 1}
+      if(status.xbNA != 1){lastStatus.xbNA = 0}else{lastStatus.xbNA = 1}
+      if(status.xbEU != 1){lastStatus.xbEU = 0}else{lastStatus.xbEU = 1}
+      if(status.psNA != 1){lastStatus.psNA = 0}else{lastStatus.psNA = 1}
+      if(status.psEU != 1){lastStatus.psEU = 0}else{lastStatus.psEU = 1}
+      lastStatus.msg = []
+      lastStatus.msg += status.msg
+    }
   }
 
   /**
@@ -222,7 +248,7 @@ export class serverStatus extends plugin {
     if(tempData == "Offline"){status.psEU = 0}else{status.psEU = 1}
 
     tempData = statusData.split('PS4-NA')[1]
-	tempData = tempData.split('<b>')[1]
+	  tempData = tempData.split('<b>')[1]
     tempData = tempData.split('</b>')[0]
     if(tempData == "Offline"){status.psNA = 0}else{status.psNA = 1}
   }
