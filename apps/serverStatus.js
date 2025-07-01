@@ -85,10 +85,10 @@ export class serverStatus extends plugin {
       clearInterval(this.checkInterval)
     }
     
-    // 设置新的定时器，每2分钟执行一次
+    // 设置新的定时器，每隔一段时间执行一次
     this.checkInterval = setInterval(async () => {
       await this.getESOStatus(this.e)
-    }, 1 * 60 * 1000) // 1分钟 = 1 * 60 * 1000毫秒
+    }, 1 * 60 * 1000)
   }
 
   /**
