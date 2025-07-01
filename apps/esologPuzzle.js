@@ -34,16 +34,85 @@ let buildImg = {
   img: ''
 }
 
+// 缓存相关
+class LRUCache {
+  constructor(options = {}) {
+    this.max = options.max || 100
+    this.maxAge = options.maxAge || 1000 * 60 * 60 // 默认1小时
+    this.cache = new Map()
+  }
+
+  get(key) {
+    const item = this.cache.get(key)
+    if (item) {
+      if (Date.now() - item.timestamp > this.maxAge) {
+        this.cache.delete(key)
+        return undefined
+      }
+      return item.value
+    }
+    return undefined
+  }
+
+  set(key, value) {
+    if (this.cache.size >= this.max) {
+      // 删除最早的条目
+      const firstKey = this.cache.keys().next().value
+      this.cache.delete(firstKey)
+    }
+    this.cache.set(key, {
+      value,
+      timestamp: Date.now()
+    })
+  }
+
+  has(key) {
+    return this.cache.has(key)
+  }
+
+  delete(key) {
+    this.cache.delete(key)
+  }
+
+  clear() {
+    this.cache.clear()
+  }
+}
+
+// 全局缓存实例
+const cardCache = new Map()
+const imageCache = new LRUCache({
+  max: 100,
+  maxAge: 1000 * 60 * 60 // 1小时
+})
+
+// 限流相关宏定义
+const RATE_LIMIT = {
+  // 时间窗口大小（毫秒）
+  WINDOW_MS: 60000,      // 1分钟
+  // 单个用户在时间窗口内的最大请求次数
+  MAX_REQUESTS: 10,      // 每分钟最多10次请求
+  // 清理过期记录的间隔（毫秒）
+  CLEANUP_INTERVAL: 300000  // 5分钟清理一次过期记录
+}
+
+// 限流Map
+const rateLimit = new Map()
+
+// 批量保存队列
+const saveQueue = new Set()
+
 export class esologPuzzle extends plugin {
   constructor () {
     super({
       /** 功能名称 */
-      name: 'ESO:配装查询与分析',
+      name: 'ESO日志解析',
       /** 功能描述 */
-      dsc: '查询esolog网站的log',
+      dsc: 'ESO日志解析',
+      /** https://oicqjs.github.io/oicq/#events */
       event: 'message',
       /** 优先级，数字越小等级越高 */
-      priority: 5000,
+      priority: 1000,
       rule: [
         {
           /** 命令正则匹配 */
@@ -171,8 +240,103 @@ export class esologPuzzle extends plugin {
         }
       ]
     })
-    // 初始化时清理非法账号
-    this.cleanInvalidBindings()
+    
+    // 启动定时保存任务
+    setInterval(async () => {
+      if (saveQueue.size > 0) {
+        await this.batchSaveCards(Array.from(saveQueue))
+        saveQueue.clear()
+      }
+    }, 5000)
+
+    // 启动限流记录清理任务
+    setInterval(() => {
+      const now = Date.now()
+      for (const [userId, requests] of rateLimit.entries()) {
+        const validRequests = requests.filter(time => now - time < RATE_LIMIT.WINDOW_MS)
+        if (validRequests.length === 0) {
+          rateLimit.delete(userId)
+        } else {
+          rateLimit.set(userId, validRequests)
+        }
+      }
+    }, RATE_LIMIT.CLEANUP_INTERVAL)
+  }
+
+  // 检查限流
+  checkRateLimit(userId) {
+    const now = Date.now()
+    const userRequests = rateLimit.get(userId) || []
+    const validRequests = userRequests.filter(time => now - time < RATE_LIMIT.WINDOW_MS)
+    
+    if (validRequests.length >= RATE_LIMIT.MAX_REQUESTS) {
+      return false
+    }
+    
+    validRequests.push(now)
+    rateLimit.set(userId, validRequests)
+    return true
+  }
+
+  // 获取卡片数据(带缓存)
+  async getCardData(userId) {
+    try {
+      if (cardCache.has(userId)) {
+        return cardCache.get(userId)
+      }
+      
+      if (fs.existsSync(CARD_PATH)) {
+        const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'))
+        if (cardData[userId]) {
+          cardCache.set(userId, cardData[userId])
+          return cardData[userId]
+        }
+      }
+      return null
+    } catch (error) {
+      logger.error(`[ESO:名片化] 获取卡片数据失败: ${error.message}`)
+      return null
+    }
+  }
+
+  // 批量保存卡片数据
+  async batchSaveCards(userIds) {
+    try {
+      const cardData = fs.existsSync(CARD_PATH) 
+        ? JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'))
+        : {}
+      
+      let hasChanges = false
+      for (const userId of userIds) {
+        if (cardCache.has(userId)) {
+          cardData[userId] = cardCache.get(userId)
+          hasChanges = true
+        }
+      }
+      
+      if (hasChanges) {
+        fs.writeFileSync(CARD_PATH, JSON.stringify(cardData, null, 2))
+      }
+    } catch (error) {
+      logger.error(`[ESO:名片化] 批量保存失败: ${error.message}`)
+    }
+  }
+
+  // 获取卡片图片(带缓存)
+  async getCardImage(cardId, buildData) {
+    const cachedImage = imageCache.get(cardId)
+    if (cachedImage) {
+      return cachedImage
+    }
+    
+    // 使用现有的截图功能生成图片
+    buildData.buildData.userId = buildData.userId
+    let cardData = JSON.parse(JSON.stringify(await database.updateData(buildData.buildData, 7)))
+    let image = await puppeteer.screenshot('eso', cardData)
+    
+    // 缓存图片
+    imageCache.set(cardId, image)
+    return image
   }
 
   /**
@@ -3358,6 +3522,11 @@ export class esologPuzzle extends plugin {
     const userId = String(e.user_id);
 
     try {
+      // 检查限流
+      if (!this.checkRateLimit(userId)) {
+        return await this.reply('操作太频繁，请稍后再试');
+      }
+
       // 1. 检查用户是否绑定角色
       if (!fs.existsSync(ACCOUNT_PATH)) {
         let progressMsg = [
@@ -3426,27 +3595,17 @@ export class esologPuzzle extends plugin {
       // 4. 获取对应的构建数据
       const targetBuild = allBuilds[buildNum - 1];
 
-      // 5. 检查并更新CARD_PATH
-      let cardData = {};
-      if (fs.existsSync(CARD_PATH)) {
-        cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
-      }
-
-      // 初始化用户的卡片数据
-      if (!cardData[userId]) {
-        cardData[userId] = {
-          cards_info: []
-        };
-      }
+      // 5. 获取用户的卡片数据(使用缓存)
+      let userData = await this.getCardData(userId) || { cards_info: [] };
 
       // 检查卡片数量限制
-      if (cardData[userId].cards_info.length >= 5) {
+      if (userData.cards_info.length >= 5) {
         return await this.reply('你最多可以设置5个名片，槽位已满。请使用 #删除名片1 #删除名片2 等，来清理出空位');
       }
 
       // 6. 创建新的卡片数据
       const newCard = {
-        index: cardData[userId].cards_info.length + 1,
+        index: userData.cards_info.length + 1,
         accountName: targetBuild.accountName,
         playerName: targetBuild.playerName,
         reportsID: targetBuild.buildData.reportsID,
@@ -3454,9 +3613,10 @@ export class esologPuzzle extends plugin {
         sourceIndex: targetBuild.buildData.sourceIndex
       };
 
-      // 7. 添加新卡片并保存
-      cardData[userId].cards_info.push(newCard);
-      fs.writeFileSync(CARD_PATH, JSON.stringify(cardData, null, 2));
+      // 7. 添加新卡片到缓存并加入保存队列
+      userData.cards_info.push(newCard);
+      cardCache.set(userId, userData);
+      saveQueue.add(userId);
 
       return await this.reply(`角色${buildNum}已成功添加为名片${newCard.index}`);
 
@@ -3472,67 +3632,44 @@ export class esologPuzzle extends plugin {
     let personID = e.at
     let isOther = false
 
-    if (typeof personID != "undefined")
-    {
+    if (typeof personID != "undefined") {
       isOther = true
       userId = String(personID);
     }
-    else
-    {
-      isOther = false
-    }
 
     try {
-      // 1. 检查CARD_PATH是否存在
-      if (!fs.existsSync(CARD_PATH)) {
-      	let progressMsg = []
-      	if(isOther)
-      	{
-      	  progressMsg = [
-      	  	{ type: 'at', qq: this.e.user_id },
-          	{ type: 'text', text: `\n目标尚未设置任何名片！\n`}
-          ]
-      	}
-      	else
-      	{
-      	  progressMsg = [
-      	  	{ type: 'at', qq: this.e.user_id },
-          	{ type: 'text', text: `\n您未设置任何名片！\n`},
-          	{ type: 'text', text: `请使用命令 #名片化角色1 #名片化角色2， 具体序号见命令 #角色 的结果`}
-          ]
-      	}
-        return await this.reply(progressMsg, false, { recallMsg: -1 });
+      // 检查限流
+      if (!this.checkRateLimit(e.user_id)) {
+        return await this.reply('操作太频繁，请稍后再试');
       }
 
-      // 2. 读取卡片数据
-      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
-      if (!cardData[userId] || !cardData[userId].cards_info || cardData[userId].cards_info.length === 0) {
+      // 1. 获取用户的卡片数据(使用缓存)
+      const userData = await this.getCardData(userId);
+      
+      if (!userData || !userData.cards_info || userData.cards_info.length === 0) {
         let progressMsg = []
-      	if(isOther)
-      	{
-      	  progressMsg = [
-      	  	{ type: 'at', qq: this.e.user_id },
-          	{ type: 'text', text: `\n目标尚未设置任何名片！\n`}
+        if(isOther) {
+          progressMsg = [
+            { type: 'at', qq: this.e.user_id },
+            { type: 'text', text: `\n目标尚未设置任何名片！`}
           ]
-      	}
-      	else
-      	{
-      	  progressMsg = [
-      	  	{ type: 'at', qq: this.e.user_id },
-          	{ type: 'text', text: `\n您未设置任何名片！\n`},
-          	{ type: 'text', text: `请使用命令 #名片化角色1 #名片化角色2， 具体序号见命令 #角色 的结果`}
+        } else {
+          progressMsg = [
+            { type: 'at', qq: this.e.user_id },
+            { type: 'text', text: `\n您未设置任何名片！\n`},
+            { type: 'text', text: `请使用命令 #名片化角色1 #名片化角色2， 具体序号见命令 #角色 的结果`}
           ]
-      	}
+        }
         return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
-      // 3. 解析命令中的序号
+      // 2. 解析命令中的序号
       const cardNumStr = e.msg.replace(/^#(?:查看名片|名片)\s*/, '').trim();
       const cardNum = parseInt(cardNumStr);
 
-      // 4. 获取所有名片对应的构建数据
+      // 3. 获取所有名片对应的构建数据
       const allCards = [];
-      for (const card of cardData[userId].cards_info) {
+      for (const card of userData.cards_info) {
         const accountFileName = `${BUILD_PATH}${card.accountName}.json`;
         if (fs.existsSync(accountFileName)) {
           const accountData = JSON.parse(fs.readFileSync(accountFileName, 'utf8'));
@@ -3554,28 +3691,25 @@ export class esologPuzzle extends plugin {
         }
       }
 
-      // 5. 如果没有找到任何有效的名片数据
+      // 4. 如果没有找到任何有效的名片数据
       if (allCards.length === 0) {
         let progressMsg = []
-      	if(isOther)
-      	{
-      	  progressMsg = [
-      	  	{ type: 'at', qq: this.e.user_id },
-          	{ type: 'text', text: `\n未找到有效的名片数据\n`}
+        if(isOther) {
+          progressMsg = [
+            { type: 'at', qq: this.e.user_id },
+            { type: 'text', text: `\n未找到有效的名片数据`}
           ]
-      	}
-      	else
-      	{
-      	  progressMsg = [
-      	  	{ type: 'at', qq: this.e.user_id },
-          	{ type: 'text', text: `\n未找到有效的名片数据\n`},
-          	{ type: 'text', text: `请使用命令 #角色 查看您的战斗记录`}
+        } else {
+          progressMsg = [
+            { type: 'at', qq: this.e.user_id },
+            { type: 'text', text: `\n未找到有效的名片数据\n`},
+            { type: 'text', text: `请使用命令 #角色 查看您的战斗记录`}
           ]
-      	}
+        }
         return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
-      // 6. 处理不同的显示情况
+      // 5. 处理不同的显示情况
       if (isNaN(cardNum)) {
         // 显示名片列表
         let reply = '查询到如下名片：\n';
@@ -3603,11 +3737,11 @@ export class esologPuzzle extends plugin {
         if (!targetCard) {
           return await this.reply('未找到对应的名片数据');
         }
-
-        // 生成并发送图片
-        targetCard.buildData.buildData.userId = userId
-        let cardData = JSON.parse(JSON.stringify(await database.updateData(targetCard.buildData.buildData, 7)));
-        let msg = await puppeteer.screenshot('eso', cardData);
+        
+        // 使用缓存获取图片
+        const cardId = `${userId}_${cardNum}`;
+        targetCard.buildData.buildData.userId = userId;
+        const msg = await this.getCardImage(cardId, targetCard.buildData);
         return await this.reply(msg);
       }
 
@@ -3712,44 +3846,50 @@ export class esologPuzzle extends plugin {
     const userId = String(e.user_id);
 
     try {
-      // 1. 检查CARD_PATH是否存在
-      if (!fs.existsSync(CARD_PATH)) {
+      // 检查限流
+      if (!this.checkRateLimit(userId)) {
+        return await this.reply('操作太频繁，请稍后再试');
+      }
+
+      // 1. 获取用户的卡片数据(使用缓存)
+      const userData = await this.getCardData(userId);
+      
+      if (!userData || !userData.cards_info || userData.cards_info.length === 0) {
         return await this.reply('未设置任何名片');
       }
 
-      // 2. 读取卡片数据
-      const cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
-      if (!cardData[userId] || !cardData[userId].cards_info || cardData[userId].cards_info.length === 0) {
-        return await this.reply('未设置任何名片');
-      }
-
-      // 3. 解析要删除的名片序号
+      // 2. 解析要删除的名片序号
       const cardNumStr = e.msg.replace(/^#删除名片/, '').trim();
       const cardNum = parseInt(cardNumStr);
 
-      if (isNaN(cardNum) || cardNum <= 0 || cardNum > cardData[userId].cards_info.length) {
-        return await this.reply(`请输入正确的名片序号（1-${cardData[userId].cards_info.length}）`);
+      if (isNaN(cardNum) || cardNum <= 0 || cardNum > userData.cards_info.length) {
+        return await this.reply(`请输入正确的名片序号（1-${userData.cards_info.length}）`);
       }
 
-      // 4. 找到并删除对应的名片
-      const targetCardIndex = cardData[userId].cards_info.findIndex(card => card.index === cardNum);
+      // 3. 找到并删除对应的名片
+      const targetCardIndex = userData.cards_info.findIndex(card => card.index === cardNum);
       if (targetCardIndex === -1) {
         return await this.reply('未找到对应的名片');
       }
 
       // 保存被删除的名片信息用于提示
-      const deletedCard = cardData[userId].cards_info[targetCardIndex];
+      const deletedCard = userData.cards_info[targetCardIndex];
       
       // 删除名片
-      cardData[userId].cards_info.splice(targetCardIndex, 1);
+      userData.cards_info.splice(targetCardIndex, 1);
 
-      // 5. 更新剩余名片的序号
-      for (let i = targetCardIndex; i < cardData[userId].cards_info.length; i++) {
-        cardData[userId].cards_info[i].index = i + 1;
+      // 4. 更新剩余名片的序号
+      for (let i = targetCardIndex; i < userData.cards_info.length; i++) {
+        userData.cards_info[i].index = i + 1;
       }
 
-      // 6. 保存更新后的数据
-      fs.writeFileSync(CARD_PATH, JSON.stringify(cardData, null, 2));
+      // 5. 更新缓存并加入保存队列
+      cardCache.set(userId, userData);
+      saveQueue.add(userId);
+
+      // 6. 清除相关的图片缓存
+      const cardId = `${userId}_${cardNum}`;
+      imageCache.delete(cardId);
 
       return await this.reply(`名片${cardNum}（${deletedCard.playerName}@${deletedCard.accountName}）已删除`);
 
