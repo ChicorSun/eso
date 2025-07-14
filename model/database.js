@@ -2501,11 +2501,12 @@ class database {
     let index = 0
     /*---------------------------------------------------------------*/
     skillData.atlasData[1].p_name[index] = '消耗'
-    skillData.atlasData[1].cost_color = "rgb(204, 204, 204)"
+    skillData.atlasData[1].p_color[index] = "rgb(204, 204, 204)"
     if(newCNSkillData.ultimate)
     {
       skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 终极点'
-      skillData.atlasData[1].cost_color = "rgb(240, 240, 240)"
+      skillData.atlasData[1].p_color[index] = "rgb(240, 240, 240)"
+      index++
     }
     else
     {
@@ -2514,23 +2515,43 @@ class database {
         //logger.info(newCNSkillData.powerTypes)
         if(newCNSkillData.powerTypes['1'] > -1) {
           skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 魔力'
-          skillData.atlasData[1].cost_color = "rgb(58, 146, 254)"
-        } else if(newCNSkillData.powerTypes['4'] > -1) {
+          skillData.atlasData[1].p_color[index] = "rgb(58, 146, 254)"
+          if(index)
+          {
+            skillData.atlasData[1].p_name[index] = ' '
+          }
+          index++
+        }
+        if(newCNSkillData.powerTypes['4'] > -1) {
           skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 耐力'
-          skillData.atlasData[1].cost_color = "rgb(47, 213, 14)"
-        } else if(newCNSkillData.powerTypes['32'] > -1) {
+          skillData.atlasData[1].p_color[index] = "rgb(47, 213, 14)"
+          if(index)
+          {
+            skillData.atlasData[1].p_name[index] = ' '
+          }
+          index++
+        }
+        if(newCNSkillData.powerTypes['32'] > -1) {
           skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 生命'
-          skillData.atlasData[1].cost_color = "rgb(227, 36, 33)"
-        } else {
+          skillData.atlasData[1].p_color[index] = "rgb(227, 36, 33)"
+          if(index)
+          {
+            skillData.atlasData[1].p_name[index] = ' '
+          }
+          index++
+        }
+
+        if(!index) {
           skillData.atlasData[1].p_value[index] = newCNSkillData.cost
+          index++
         }
       }
       else
       {
         skillData.atlasData[1].p_value[index] = newCNSkillData.cost
+        index++
       }
     }
-    index++
     /*---------------------------------------------------------------*/
     skillData.atlasData[1].p_name[index] = '施法时间'
     if(newCNSkillData.castTime > 0)

@@ -427122,10 +427122,10 @@ DataExtractorSavedVariables =
                             ["name"] = "Titanborn Strength",
                             ["bonuses"] = 
                             {
-                                [2] = "(2 items) Adds 34 Offensive Penetration",
-                                [3] = "(3 items) Adds 3 Weapon and Spell Damage",
-                                [4] = "(4 items) Adds 25 Maximum Stamina",
-                                [5] = "(5 items) Adds 2 Weapon and Spell Damage and 28 Offensive Penetration. While in combat, this bonus doubles when you are under |cffffff75|r% Health and quadruples when you are under |cffffff50|r% Health.",
+                                [2] = "(2 items) Adds 1487 Offensive Penetration",
+                                [3] = "(3 items) Adds 129 Weapon and Spell Damage",
+                                [4] = "(4 items) Adds 1096 Maximum Stamina",
+                                [5] = "(5 items) Adds 110 Weapon and Spell Damage and 1240 Offensive Penetration. While in combat, this bonus doubles when you are under |cffffff75|r% Health and quadruples when you are under |cffffff50|r% Health.",
                             },
                             ["place"] = "Icereach,Wrothgar",
                             ["itemIDs"] = 
