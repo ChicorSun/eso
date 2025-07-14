@@ -15,6 +15,24 @@ let serverImg = {
   img: ''
 }
 
+// 冷却时间（毫秒）
+const COOLDOWN_TIME = 30 * 1000 // 30秒冷却
+
+// 用于跟踪每个状态的最后发送时间
+const lastNotifyTime = new Map()
+
+// 检查是否在冷却中
+function isInCooldown(key) {
+  const lastTime = lastNotifyTime.get(key)
+  if (!lastTime) return false
+  return Date.now() - lastTime < COOLDOWN_TIME
+}
+
+// 更新发送时间
+function updateNotifyTime(key) {
+  lastNotifyTime.set(key, Date.now())
+}
+
 //服务器列表
 let serverList= [
   ['pcNA','PC 美服'],
@@ -258,45 +276,47 @@ export class serverStatus extends plugin {
    * @判断服务器状态变更
    */
   async checkStatusChange (e) {
-  	let message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服维护了！' }]
-        //logger.info(lastStatus.time)
-  	if(lastStatus.time != '2023-01-01_00:00')
-  	{
-  		/*
-        logger.info('lastStatus.pcEU ：'+lastStatus.pcEU+'|status.pcEU :'+status.pcEU)
-        logger.info('lastStatus.pcNA ：'+lastStatus.pcNA+'|status.pcNA :'+status.pcNA)
-        logger.info('lastStatus.pcPTS ：'+lastStatus.pcPTS+'|status.pcPTS :'+status.pcPTS)
-        logger.info('lastStatus.xbEU ：'+lastStatus.xbEU+'|status.xbEU :'+status.xbEU)
-        logger.info('lastStatus.xbNA ：'+lastStatus.xbNA+'|status.xbNA :'+status.xbNA)
-        logger.info('lastStatus.psEU ：'+lastStatus.psEU+'|status.psEU :'+status.psEU)
-        logger.info('lastStatus.psNA ：'+lastStatus.psNA+'|status.psNA :'+status.psNA)
-        logger.info('status.msg ：'+status.msg)
-        */
-  		if((lastStatus.pcNA == 1) && (status.pcNA == 0))//美服进入维护
-  		{
+    let message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服维护了！' }]
+    
+    if(lastStatus.time != '2023-01-01_00:00')
+    {
+      if((lastStatus.pcNA == 1) && (status.pcNA == 0))//美服进入维护
+      {
         logger.info('美服维护了！')
-  			message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服维护了！' }]
-  			await this.e.reply(message, false, { recallMsg: -1 })
-  		}
-  		if((lastStatus.pcNA == 0) && (status.pcNA == 1))//美服完成维护
-  		{
+        if (!isInCooldown('pcNA_maintenance')) {
+          message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服维护了！' }]
+          await this.e.reply(message, false, { recallMsg: -1 })
+          updateNotifyTime('pcNA_maintenance')
+        }
+      }
+      if((lastStatus.pcNA == 0) && (status.pcNA == 1))//美服完成维护
+      {
         logger.info('美服开服了！')
-  			message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服开服了！' }]
-  			await this.e.reply(message, false, { recallMsg: -1 })
-  		}
-  		if((lastStatus.pcEU == 1) && (status.pcEU == 0))//欧服进入维护
-  		{
+        if (!isInCooldown('pcNA_online')) {
+          message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服开服了！' }]
+          await this.e.reply(message, false, { recallMsg: -1 })
+          updateNotifyTime('pcNA_online')
+        }
+      }
+      if((lastStatus.pcEU == 1) && (status.pcEU == 0))//欧服进入维护
+      {
         logger.info('欧服维护了！')
-  			message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '欧服维护了！' }]
-  			await this.e.reply(message, false, { recallMsg: -1 })
-  		}
-  		if((lastStatus.pcEU == 0) && (status.pcEU == 1))//欧服完成维护
-  		{
+        if (!isInCooldown('pcEU_maintenance')) {
+          message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '欧服维护了！' }]
+          await this.e.reply(message, false, { recallMsg: -1 })
+          updateNotifyTime('pcEU_maintenance')
+        }
+      }
+      if((lastStatus.pcEU == 0) && (status.pcEU == 1))//欧服完成维护
+      {
         logger.info('欧服开服了！')
-  			message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '欧服开服了！' }]
-  			await this.e.reply(message, false, { recallMsg: -1 })
-  		}
-  	}
+        if (!isInCooldown('pcEU_online')) {
+          message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '欧服开服了！' }]
+          await this.e.reply(message, false, { recallMsg: -1 })
+          updateNotifyTime('pcEU_online')
+        }
+      }
+    }
   }
   async cache (data) {
     let tmp = md5(JSON.stringify(data))
