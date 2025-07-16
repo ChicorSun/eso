@@ -1,0 +1,316 @@
+@font-face {
+  font-family: "tttgbnumber";
+  src: url("../../../../../resources/font/tttgbnumber.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 13px;
+  width: 580px;
+  color: #2c3e50;
+  line-height: 1.4;
+  transform: scale(1);
+  transform-origin: 0 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-weight: 400;
+}
+
+.container {
+  width: 580px;
+  padding: 10px;
+  background-color: rgba(255, 255, 255, 0.98);
+  border-radius: 10px;
+  margin: 6px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+}
+
+.box {
+  margin: 0;
+}
+
+.item {
+  padding: 0;
+  margin: 0;
+}
+
+/* 物品信息头部 */
+.item-header {
+  background: linear-gradient(135deg, #34495e 0%, #2980b9 100%);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(52, 73, 94, 0.25);
+}
+
+.item-name {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.server-info {
+  font-size: 12px;
+  opacity: 0.9;
+  font-weight: 400;
+}
+
+.item-name::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2ecc71, #f39c12, #e74c3c);
+  border-radius: 8px 8px 0 0;
+}
+
+/* 头部信息 */
+.header-info {
+  background: #f8f9fa;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 3px solid #3498db;
+}
+
+.data-count {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 13px;
+}
+
+.update-time {
+  font-size: 11px;
+  color: #7f8c8d;
+}
+
+/* 价格容器 */
+.price-container {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #ecf0f1;
+}
+
+.data-info {
+  background: #f8f9fa;
+  padding: 6px 12px;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 价格行 */
+.price-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f3f4;
+  transition: all 0.15s ease;
+  position: relative;
+  min-height: 50px;
+  background: white;
+}
+
+.price-row:hover {
+  background: #f8fafc;
+  transform: translateX(2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.price-row:last-child {
+  border-bottom: none;
+}
+
+.row-index {
+  font-weight: 600;
+  color: #34495e;
+  width: 28px;
+  text-align: center;
+  font-size: 14px;
+  background: #ecf0f1;
+  border-radius: 4px;
+  padding: 2px 0;
+  margin-right: 10px;
+}
+
+/* 品质信息 */
+.quality-info {
+  flex: 0 0 90px;
+  margin-left: 8px;
+}
+
+.quality-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 3px;
+  min-width: 50px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.quality-normal { background: #95a5a6; color: white; }
+.quality-fine { background: #27ae60; color: white; }
+.quality-superior { background: #3498db; color: white; }
+.quality-epic { background: #9b59b6; color: white; }
+.quality-legendary { background: #f39c12; color: white; }
+
+.level-trait {
+  font-size: 10px;
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.level {
+  margin-right: 6px;
+}
+
+.trait {
+  color: #8e44ad;
+  font-weight: 500;
+}
+
+/* 价格信息 */
+.price-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 6px;
+}
+
+.price-row-inner {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-start;
+}
+
+.price-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+}
+
+.price-item .label {
+  font-size: 9px;
+  color: #6c757d;
+  margin-bottom: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 500;
+}
+
+.price-item .value {
+  font-weight: 700;
+  font-size: 14px;
+  font-family: "tttgbnumber", monospace;
+}
+
+.price-item.average .value { color: #2980b9; }
+.price-item.suggested .value { color: #27ae60; }
+.price-item.low .value { color: #16a085; }
+.price-item.high .value { color: #e74c3c; }
+.price-item.sales-avg .value { color: #8e44ad; }
+
+/* 交易信息 */
+.trade-info {
+  flex: 0 0 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trade-row {
+  display: flex;
+  gap: 2px;
+  justify-content: space-between;
+}
+
+.trade-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 30px;
+  font-size: 9px;
+  flex: 1;
+}
+
+.trade-item .label {
+  font-size: 8px;
+  color: #6c757d;
+  margin-bottom: 1px;
+  text-align: center;
+  line-height: 1.1;
+  font-weight: 500;
+}
+
+.trade-item .value {
+  font-weight: 600;
+  font-size: 10px;
+  color: #2c3e50;
+  text-align: center;
+  line-height: 1.1;
+  font-family: "tttgbnumber", monospace;
+}
+
+/* 更多数据提示 */
+.more-data {
+  text-align: center;
+  padding: 8px;
+  color: #7f8c8d;
+  font-style: italic;
+  background: #f8f9fa;
+  font-size: 11px;
+  border-top: 1px solid #e9ecef;
+}
+
+/* 底部logo */
+.logo {
+  text-align: center;
+  margin-top: 15px;
+  padding: 8px;
+  font-size: 11px;
+  color: #7f8c8d;
+  opacity: 0.7;
+}
+
+/* 响应式调整 */
+@media (max-width: 600px) {
+  .price-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-height: auto;
+  }
+  
+  .price-info {
+    margin: 0;
+    width: 100%;
+  }
+  
+  .trade-info {
+    width: 100%;
+  }
+} 

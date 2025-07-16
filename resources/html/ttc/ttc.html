@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/ttc/ttc.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+
+    {{each ttcData val index}}
+    {{if index==0}}
+    <style> .container { background: url("{{pluResPath}}img/background/{{val.pic}}.png") #fff; background-repeat: no-repeat; background-size: 100% 100%; }</style>
+    {{else}}
+    <div class="item">
+      <div class="box">
+        <!-- 物品信息头部 -->
+        <div class="item-header">
+          <div class="item-name">{{val.itemName}}</div>
+          <div class="server-info">{{val.serverName}} | ID: {{val.itemId}}</div>
+        </div>
+        
+        <!-- 价格数据列表 -->
+        <div class="price-container">
+          <div class="data-info">
+            <span class="data-count">共{{val.dataCount}}条价格数据</span>
+            <span class="update-time">{{val.updateTime}}</span>
+          </div>
+          
+          {{each val.priceData item idx}}
+          <div class="price-row">
+            <div class="row-index">{{item.index}}</div>
+            <div class="quality-info">
+              <div class="quality-badge quality-{{item.qualityClass}}">{{item.quality}}</div>
+              <div class="level-trait">
+                <span class="level">{{item.level}}</span>
+                <span class="trait">{{item.trait}}</span>
+              </div>
+            </div>
+            <div class="price-info">
+              <div class="price-row-inner">
+                {{if item.lowPrice}}
+                <div class="price-item low">
+                  <span class="label">最低</span>
+                  <span class="value">{{item.lowPrice}}</span>
+                </div>
+                {{/if}}
+                {{if item.highPrice}}
+                <div class="price-item high">
+                  <span class="label">最高</span>
+                  <span class="value">{{item.highPrice}}</span>
+                </div>
+                {{/if}}
+                {{if item.averagePrice}}
+                <div class="price-item average">
+                  <span class="label">平均</span>
+                  <span class="value">{{item.averagePrice}}</span>
+                </div>
+                {{/if}}
+              </div>
+              {{if item.salesAvgPrice || item.suggestedPrice}}
+              <div class="price-row-inner">
+                {{if item.salesAvgPrice}}
+                <div class="price-item sales-avg">
+                  <span class="label">销售均价</span>
+                  <span class="value">{{item.salesAvgPrice}}</span>
+                </div>
+                {{/if}}
+                {{if item.suggestedPrice}}
+                <div class="price-item suggested">
+                  <span class="label">建议</span>
+                  <span class="value">{{item.suggestedPrice}}</span>
+                </div>
+                {{/if}}
+              </div>
+              {{/if}}
+            </div>
+            <div class="trade-info">
+              <div class="trade-row">
+                {{if item.listingCount}}
+                <div class="trade-item">
+                  <span class="label">在售</span>
+                  <span class="value">{{item.listingCount}}</span>
+                </div>
+                {{/if}}
+                {{if item.totalCount}}
+                <div class="trade-item">
+                  <span class="label">总物品数</span>
+                  <span class="value">{{item.totalCount}}</span>
+                </div>
+                {{/if}}
+              </div>
+              <div class="trade-row">
+                {{if item.salesCount}}
+                <div class="trade-item">
+                  <span class="label">销售记录</span>
+                  <span class="value">{{item.salesCount}}</span>
+                </div>
+                {{/if}}
+                {{if item.totalSalesCount}}
+                <div class="trade-item">
+                  <span class="label">销售总数</span>
+                  <span class="value">{{item.totalSalesCount}}</span>
+                </div>
+                {{/if}}
+              </div>
+            </div>
+          </div>
+          {{/each}}
+          
+          {{if val.hasMore}}
+          <div class="more-data">
+            ... 还有 {{val.moreCount}} 条数据
+          </div>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+    <div class="logo">TTC Price Data · ESO-Bot</div>
+  </div>
+</body>
+</html> 
