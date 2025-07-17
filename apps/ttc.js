@@ -30,6 +30,8 @@ const TTC_DATA_PATH = path.join(TTC_BASE_PATH, 'data/')
 
 // TTC 配置文件具体路径
 const TTC_CONFIG_FILE = path.join(TTC_CONFIG_PATH, 'ttcConfig.json')
+// 默认服务器配置文件
+const TTC_DEFAULT_SERVER_FILE = path.join(TTC_CONFIG_PATH, 'default.json')
 // NA服务器价格表文件（存放在data目录）
 const TTC_PRICE_TABLE_JSON_NA = path.join(TTC_DATA_PATH, 'PriceTableNA.json')
 const TTC_PRICE_TABLE_LUA_NA = path.join(TTC_DATA_PATH, 'PriceTableNA.lua')
@@ -171,6 +173,12 @@ let dailyUpdateTimer = null
 let isUpdatingPriceTable = false
 let initialUpdateCompleted = false
 
+// 默认服务器配置
+let defaultServerConfig = {
+  server: 'NA',  // 默认美服
+  name: '美服'
+}
+
 export class ttc extends plugin {
   constructor () {
     super({
@@ -212,6 +220,12 @@ export class ttc extends plugin {
           reg: '^#*(TTC帮助|ttc帮助)$',
           /** 执行方法 */
           fnc: 'help'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(设置ttc默认|设置TTC默认).*$',
+          /** 执行方法 */
+          fnc: 'setDefaultServer'
         }
       ]
     })
@@ -228,13 +242,16 @@ export class ttc extends plugin {
   /** 启动时初始化检查 */
   async initializeOnStartup() {
     try {
+      // 加载默认服务器配置
+      this.loadDefaultServerConfig()
+      
       // 如果已经完成初始检查，跳过
       if (initialUpdateCompleted) {
-        logger.info('[TTC] 初始化检查已完成，跳过重复检查')
+        //logger.info('[TTC] 初始化检查已完成，跳过重复检查')
         return
       }
 
-      logger.info('[TTC] 开始启动时初始化检查...')
+      //logger.info('[TTC] 开始启动时初始化检查...')
       
       // 检查必要文件是否存在
       const requiredFiles = [
@@ -259,7 +276,7 @@ export class ttc extends plugin {
         
         // 检查是否已经在更新中
         if (isUpdatingPriceTable) {
-          logger.info('[TTC] 价格表正在更新中，跳过重复更新')
+          //logger.info('[TTC] 价格表正在更新中，跳过重复更新')
           return
         }
         
@@ -277,7 +294,7 @@ export class ttc extends plugin {
           initialUpdateCompleted = true
         }
       } else {
-        logger.info('[TTC] 所有必要文件存在，跳过初始更新')
+        //logger.info('[TTC] 所有必要文件存在，跳过初始更新')
         initialUpdateCompleted = true
       }
       
@@ -347,7 +364,7 @@ export class ttc extends plugin {
   startDailyPriceUpdate() {
     // 检查是否已经调度过，避免重复调度
     if (dailyUpdateScheduled) {
-      logger.info(`[TTC] 价格表自动更新任务已存在，跳过重复调度`)
+      //logger.info(`[TTC] 价格表自动更新任务已存在，跳过重复调度`)
       return
     }
 
@@ -530,7 +547,7 @@ export class ttc extends plugin {
         return await this.reply(cachedResult)
       }
 
-      // 模拟查询物品功能（这里需要适配ESO的数据源）
+      // 查询物品功能
       const result = await this.searchItemInDatabase(itemName)
       
       if (result && result.length > 0) {
@@ -599,32 +616,32 @@ export class ttc extends plugin {
       } else if (content.includes('美服')) {
         serverType = 'us'
         content = content.replace('美服', '').trim()
+      } else {
+        // 如果没有指定服务器，使用默认配置
+        serverType = defaultServerConfig.server === 'NA' ? 'us' : 'eu'
       }
 
-      // 提取页数和物品名
-      let page = 1
-      let itemName = content
-
-      // 从后往前找数字作为页数
-      const match = content.match(/(.*?)(\d+)$/)
-      if (match) {
-        itemName = match[1].trim()
-        page = parseInt(match[2])
-      }
+      // 解析品质关键词和物品名
+      const { itemName, qualityId, page } = this.parseTradeQuery(content)
 
       if (!itemName) {
-        return await this.reply('请输入要查询的物品名称\n示例：#查询交易 蟹灵蜡\n示例：#查询交易 欧服 致命匕首 5')
+        return await this.reply('请输入要查询的物品名称\n示例：#查询交易 蟹灵蜡\n示例：#查询交易 欧服 致命匕首 5\n示例：#查询交易 普通 秩序之怒')
       }
 
       // 检查缓存
-      const cacheKey = `trade_${serverType}_${itemName}_${page}`
+      const cacheKey = `trade_${serverType}_${itemName}_${qualityId}_${page}`
       const cachedImage = ttcCache.get(cacheKey)
       if (cachedImage) {
         return await this.reply(cachedImage)
       }
 
       // 构建查询URL
-      const baseUrl = `https://${serverType}.tamrieltradecentre.com/pc/Trade/SearchResult?ItemNamePattern=${encodeURIComponent(itemName)}&lang=zh-CN&SortBy=Price&Order=asc&page=${page}`
+      let baseUrl = `https://${serverType}.tamrieltradecentre.com/pc/Trade/SearchResult?ItemNamePattern=${encodeURIComponent(itemName)}&lang=zh-CN&SortBy=Price&Order=asc&page=${page}`
+      
+      // 如果指定了品质，添加品质参数
+      if (qualityId !== null) {
+        baseUrl += `&ItemQualityID=${qualityId}`
+      }
       
       // 使用puppeteer获取交易信息
       const imageBuffer = await this.scrapeTradeInfo(baseUrl, itemName, page, serverType)
@@ -642,6 +659,42 @@ export class ttc extends plugin {
       logger.error(`[TTC] 查询交易失败: ${error.message}`)
       return await this.reply('查询交易失败，请稍后重试')
     }
+  }
+
+  /** 解析交易查询参数 */
+  parseTradeQuery(content) {
+    // 品质关键词映射
+    const qualityMap = {
+      '普通': 0, '白色': 0,
+      '优良': 1, '绿色': 1,
+      '上乘': 2, '蓝色': 2,
+      '史诗': 3, '紫色': 3,
+      '传说': 4, '金色': 4, '橙色': 4
+    }
+    
+    let itemName = content
+    let qualityId = null
+    let page = 1
+    
+    // 从后往前找数字作为页数
+    const pageMatch = content.match(/(.*?)(\d+)$/)
+    if (pageMatch) {
+      itemName = pageMatch[1].trim()
+      page = parseInt(pageMatch[2])
+    }
+    
+    // 查找品质关键词
+    for (const [keyword, id] of Object.entries(qualityMap)) {
+      // 检查关键词是否在物品名中
+      if (itemName.includes(keyword)) {
+        // 移除品质关键词，获取纯物品名
+        itemName = itemName.replace(keyword, '').trim()
+        qualityId = id
+        break
+      }
+    }
+    
+    return { itemName, qualityId, page }
   }
 
   /** 查询价格 */
@@ -665,6 +718,9 @@ export class ttc extends plugin {
       } else if (content.includes('美服') || content.includes('NA') || content.includes('US')) {
         serverKey = 'NA'
         content = content.replace(/美服|NA|US/g, '').trim()
+      } else {
+        // 如果没有指定服务器，使用默认配置
+        serverKey = defaultServerConfig.server
       }
 
       const queryContent = content
@@ -799,12 +855,14 @@ export class ttc extends plugin {
 ※ 返回的【数字】是物品ID，可用于价格查询
 
 📊 查询交易 ✨
-#查询交易 [服务器] [物品名] [页数]
+#查询交易 [服务器] [品质] [物品名] [页数]
 示例：#查询交易 蟹灵蜡
 示例：#查询交易 欧服 致命匕首 5
+示例：#查询交易 史诗 秩序之怒
 功能：查看当前在售的交易记录列表
 ※ 显示交易者、位置、工会、价格等详细信息
-※ 默认查询美服第1页，支持分页浏览
+※ 默认查询${defaultServerConfig.name}第1页，支持分页浏览
+※ 支持品质筛选：普通/白色(0)、优良/绿色(1)、上乘/蓝色(2)、史诗/紫色(3)、传说/金色/橙色(4)
 
 💰 查询价格
 #查询价格 [服务器] [物品名/ID]
@@ -813,7 +871,7 @@ export class ttc extends plugin {
 示例：#查询价格 美服 12345
 功能：获取物品的详细价格统计信息
 ※ 支持最多30条价格数据展示
-※ 默认查询美服价格
+※ 默认查询${defaultServerConfig.name}价格
 
 🔄 更新价格表（仅主人）
 #更新价格表 [服务器]
@@ -822,18 +880,19 @@ export class ttc extends plugin {
 示例：#更新价格表 美服（仅更新美服）
 功能：从TTC服务器下载最新价格数据
 
+⚙️ 设置默认服务器（仅主人）
+#设置ttc默认 [服务器]
+示例：#设置ttc默认 美服
+示例：#设置ttc默认 欧服
+功能：设置查询交易和查询价格的默认服务器
+
 ❓ 帮助
 #TTC帮助
 
 🌍 支持的服务器：
-• 美服 (NA/US) - 默认服务器
-• 欧服 (EU) - 需要在命令中指定
-
-📁 文件存储位置：
-• 配置文件：custome_resources/ttc/config/
-• 价格表数据：custome_resources/ttc/data/
-• 临时缓存：custome_resources/ttc/cache/
-• 生成图片：custome_resources/ttc/images/
+• 美服 (NA) - 美服服务器
+• 欧服 (EU) - 欧服服务器
+※ 当前默认服务器：${defaultServerConfig.name}
 
 注意事项：
 • 查询有频率限制，请勿过于频繁
@@ -845,42 +904,104 @@ export class ttc extends plugin {
     return await this.reply(helpMsg)
   }
 
+  /** 读取默认服务器配置 */
+  loadDefaultServerConfig() {
+    try {
+      if (fs.existsSync(TTC_DEFAULT_SERVER_FILE)) {
+        const configData = fs.readFileSync(TTC_DEFAULT_SERVER_FILE, 'utf-8')
+        const config = JSON.parse(configData)
+        
+        // 验证配置有效性
+        if (config.server && (config.server === 'NA' || config.server === 'EU')) {
+          defaultServerConfig = {
+            server: config.server,
+            name: config.server === 'NA' ? '美服' : '欧服'
+          }
+          logger.info(`[TTC] 已加载默认服务器配置: ${defaultServerConfig.name}`)
+        } else {
+          logger.warn('[TTC] 默认服务器配置文件格式无效，使用默认值：美服')
+        }
+      } else {
+        logger.info('[TTC] 默认服务器配置文件不存在，使用默认值：美服')
+      }
+    } catch (error) {
+      logger.error(`[TTC] 读取默认服务器配置失败: ${error.message}`)
+    }
+  }
+
+  /** 保存默认服务器配置 */
+  saveDefaultServerConfig() {
+    try {
+      const configData = {
+        server: defaultServerConfig.server,
+        name: defaultServerConfig.name,
+        updateTime: new Date().toISOString()
+      }
+      
+      fs.writeFileSync(TTC_DEFAULT_SERVER_FILE, JSON.stringify(configData, null, 2), 'utf-8')
+      logger.info(`[TTC] 默认服务器配置已保存: ${defaultServerConfig.name}`)
+    } catch (error) {
+      logger.error(`[TTC] 保存默认服务器配置失败: ${error.message}`)
+      throw error
+    }
+  }
+
+  /** 设置默认服务器 */
+  async setDefaultServer(e) {
+    try {
+      // 检查权限（只有管理员可以设置）
+      if (!e.isMaster) {
+        return await this.reply('只有主人才能设置默认服务器')
+      }
+
+      // 解析命令参数
+      let content = e.msg.replace(/^#*(设置ttc默认|设置TTC默认)/, '').trim()
+      
+      // 检查参数
+      if (!content) {
+        return await this.reply('请指定要设置的服务器\n示例：#设置ttc默认 美服\n示例：#设置ttc默认 欧服')
+      }
+
+      let newServer = null
+      let newServerName = ''
+
+      // 解析服务器参数
+      if (content.includes('美服')) {
+        newServer = 'NA'
+        newServerName = '美服'
+      } else if (content.includes('欧服')) {
+        newServer = 'EU'
+        newServerName = '欧服'
+      } else {
+        return await this.reply('只支持设置"美服"或"欧服"\n示例：#设置ttc默认 美服\n示例：#设置ttc默认 欧服')
+      }
+
+      // 检查是否与当前配置相同
+      if (defaultServerConfig.server === newServer) {
+        return await this.reply(`当前默认服务器已经是${newServerName}，无需重复设置`)
+      }
+
+      // 更新配置
+      defaultServerConfig.server = newServer
+      defaultServerConfig.name = newServerName
+
+      // 保存配置
+      this.saveDefaultServerConfig()
+
+      return await this.reply(`✅ 默认服务器已设置为：${newServerName}\n\n现在使用以下命令时将默认查询${newServerName}：\n• #查询交易 [物品名]\n• #查询价格 [物品名]`)
+
+    } catch (error) {
+      logger.error(`[TTC] 设置默认服务器失败: ${error.message}`)
+      return await this.reply('设置默认服务器失败，请稍后重试')
+    }
+  }
+
     /** 在数据库中搜索物品 */
   async searchItemInDatabase(itemName) {
     try {
       // 优先使用TTC的ItemLookUpTable_ZH.lua文件搜索可交易物品
       const lookupResults = await this.searchInTTCLookupTable(itemName)
-      if (lookupResults && lookupResults.length > 0) {
-        return lookupResults
-      }
-
-      // 如果TTC查找表中没有找到，再在ESO数据库中搜索装备/套装
-      let results = []
-      
-      // 搜索装备/套装 (type=1) - 这些可能可以交易
-      let setIndexes = await database.name2index(itemName, 1)
-      if (setIndexes && setIndexes[0] >= 0) {
-        for (let setKey of setIndexes.slice(0, 20)) { // 限制最多20个结果
-          try {
-            let setData = await database.updateData(setKey, 1)
-            if (setData && setData.atlasData && setData.atlasData[1]) {
-              results.push({
-                id: `ESO_${setKey}`, // 使用ESO前缀标识这是ESO数据库的ID，不是TTC物品ID
-                name: setData.atlasData[1].name,
-                type: '装备/套装',
-                category: setData.atlasData[1].type || '未知类型'
-              })
-            }
-          } catch (error) {
-            logger.warn(`[TTC] 获取装备数据失败: ${setKey}, ${error.message}`)
-          }
-        }
-      }
-      
-      // 注：不搜索技能，因为技能不能交易
-      // 注：暂时不搜索食物，因为大部分食物不在TTC中交易
-      
-      return results
+      return lookupResults
     } catch (error) {
       logger.error(`[TTC] 数据库搜索失败: ${error.message}`)
       return []
@@ -935,7 +1056,7 @@ export class ttc extends plugin {
   /** 使用puppeteer抓取交易信息 */
   async scrapeTradeInfo(url, itemName, page, serverType) {
     try {
-      logger.info(`[TTC] 开始抓取交易数据: ${url}`)
+      //logger.info(`[TTC] 开始抓取交易数据: ${url}`)
       
       // 使用puppeteer访问TTC网站并获取页面内容
       const htmlData = await this.fetchTradePageData(url, itemName, page, serverType)
@@ -1000,12 +1121,12 @@ export class ttc extends plugin {
         await browserPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
         
         // 设置视窗大小
-        await browserPage.setViewport({ width: 1920, height: 1080 })
+        //await browserPage.setViewport({ width: 1920, height: 1080 })
         
         // 清理浏览器缓存，确保获取最新内容
         await this.cleanBrowserCache(browserPage)
         
-        logger.info(`[TTC] 正在访问页面: ${url}`)
+        //logger.info(`[TTC] 正在访问页面: ${url}`)
         
         // 使用与esologPuzzle.js相同的策略访问页面
         try {
@@ -1060,7 +1181,7 @@ export class ttc extends plugin {
         // 如果没有找到表格，可能需要等待更长时间或页面结构改变了
         if (!pageContent.hasTable) {
           logger.warn(`[TTC] 未找到交易表格，可能页面结构已变更`)
-          logger.info(`[TTC] 页面内容片段: ${pageContent.bodyText}`)
+          //logger.info(`[TTC] 页面内容片段: ${pageContent.bodyText}`)
           
           // 尝试等待更长时间
           await new Promise(resolve => setTimeout(resolve, 5000))
@@ -1083,154 +1204,455 @@ export class ttc extends plugin {
         
         // 获取交易数据
         logger.info(`[TTC] 开始提取交易数据...`)
-        const tradeData = await browserPage.evaluate(() => {
-          const data = []
-          const rows = document.querySelectorAll('table.trade-list-table tbody tr')
-          
-          if (!rows || rows.length === 0) {
-            return { hasError: true, error: '未找到交易数据行' }
-          }
-          
-          rows.forEach((row, index) => {
-            try {
-              // 物品信息和品质
-              let item = "未找到物品信息"
-              let itemQualityColor = "深灰色"
-              const itemElement = row.querySelector('div[class*="item-quality-"]')
-              if (itemElement) {
-                item = itemElement.textContent.trim()
-                const itemQualityClass = itemElement.className
-                if (itemQualityClass.includes('item-quality-legendary')) {
-                  itemQualityColor = "金色"
-                } else if (itemQualityClass.includes('item-quality-epic')) {
-                  itemQualityColor = "紫色"
-                } else if (itemQualityClass.includes('item-quality-superior')) {
-                  itemQualityColor = "蓝色"
-                } else if (itemQualityClass.includes('item-quality-fine')) {
-                  itemQualityColor = "中绿色"
-                } else if (itemQualityClass.includes('item-quality-normal')) {
-                  itemQualityColor = "深灰色"
-                }
+        const tradeData = await browserPage.evaluate(
+          (serverType) => {
+            // 内联的图标URL处理函数
+            function processIconUrl(iconUrl, serverType) {
+              if (!iconUrl) {
+                return null
+              }
+
+              const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
+              
+              // 如果已经是完整的URL，直接返回
+              if (iconUrl.startsWith('http')) {
+                return iconUrl
               }
               
-              // 等级信息
-              let level = "未找到等级信息"
-              const levelDivs = row.querySelectorAll('div')
-              for (const div of levelDivs) {
-                if (div.textContent.includes('等级')) {
-                  const imgElement = div.querySelector('img')
-                  const spanElement = div.querySelector('span')
-                  if (imgElement && spanElement) {
-                    const imgSrc = imgElement.src
-                    const levelNum = spanElement.textContent.trim()
-                    if (imgSrc.includes('nonvet.png')) {
-                      level = `普通等级${levelNum}`
-                    } else if (imgSrc.includes('championPoint.png')) {
-                      level = `CP等级${levelNum}`
-                    }
-                  }
-                  break
-                }
+              // 处理相对路径
+              if (iconUrl.startsWith('/Content/icons/')) {
+                return `${baseUrl}${iconUrl}`
               }
               
-              // 检查奖励委托券
-              const allDivs = row.querySelectorAll('div')
-              for (const div of allDivs) {
-                if (div.textContent.includes('奖励')) {
-                  const voucherText = div.textContent.trim()
-                  level = `${level}（${voucherText}）`
-                  break
-                }
+              if (iconUrl.startsWith('Content/icons/')) {
+                return `${baseUrl}/${iconUrl}`
               }
               
-              // 交易者信息
-              let playerId = "未找到交易者信息"
-              const playerElement = row.querySelector('div.text-small-width')
-              if (playerElement) {
-                playerId = playerElement.textContent.trim()
+              // 如果包含Content/icons/但不是完整URL，提取路径
+              if (iconUrl.includes('Content/icons/')) {
+                const iconPath = iconUrl.includes('/Content/icons/') ? 
+                  iconUrl.substring(iconUrl.indexOf('/Content/icons/')) : 
+                  `/Content/icons/${iconUrl}`
+                return `${baseUrl}${iconPath}`
               }
               
-              // 位置信息
-              let location = "未找到位置信息"
-              const locationElement = row.querySelector('a.trade-list-clickable.bold')
-              if (locationElement) {
-                location = locationElement.textContent.trim()
+              // 如果只是图标名称，添加完整路径
+              if (iconUrl.includes('.png') || iconUrl.includes('.jpg') || iconUrl.includes('.gif')) {
+                return `${baseUrl}/Content/icons/${iconUrl}`
               }
               
-              // 工会信息
-              let guild = "未找到工会信息"
-              const guildElement = row.querySelector('div[data-bind="text: GuildName"]')
-              if (guildElement) {
-                guild = guildElement.textContent.trim()
-              }
-              
-              // 单价信息
-              let unitPrice = "未找到单价信息"
-              const unitPriceElement = row.querySelector('span[data-bind="localizedNumber: UnitPrice"]')
-              if (unitPriceElement) {
-                unitPrice = unitPriceElement.textContent.trim()
-              }
-              
-              // 数量信息
-              let amount = "未找到数量信息"
-              const amountElement = row.querySelector('span[data-bind="localizedNumber: Amount"]')
-              if (amountElement) {
-                amount = amountElement.textContent.trim()
-              }
-              
-              // 总价信息
-              let totalPrice = "未找到总价信息"
-              const totalPriceElement = row.querySelector('span[data-bind="localizedNumber: TotalPrice"]')
-              if (totalPriceElement) {
-                totalPrice = totalPriceElement.textContent.trim()
-              }
-              
-              // 最后看见时间信息
-              let lastSeen = "未找到最后看见时间信息"
-              const lastSeenElement = row.querySelector('td.bold.hidden-xs')
-              if (lastSeenElement) {
-                lastSeen = lastSeenElement.textContent.trim()
-              }
-              
-              // 如果至少有一些有效信息，就添加到数据中
-              if (item !== "未找到物品信息" || 
-                  unitPrice !== "未找到单价信息" || 
-                  amount !== "未找到数量信息") {
+              return iconUrl
+            }
+            const data = []
+            
+            // 尝试多种表格选择器
+            let rows = document.querySelectorAll('table.trade-list-table tbody tr')
+            if (!rows || rows.length === 0) {
+              rows = document.querySelectorAll('table tbody tr')
+            }
+            if (!rows || rows.length === 0) {
+              rows = document.querySelectorAll('tr[data-bind*="TradeAsset"]')
+            }
+            if (!rows || rows.length === 0) {
+              rows = document.querySelectorAll('.trade-list-table tr')
+            }
+            
+            console.log(`[TTC] 找到 ${rows.length} 行数据`)
+            
+            if (!rows || rows.length === 0) {
+              return { hasError: true, error: '未找到交易数据行' }
+            }
+            
+            rows.forEach((row, index) => {
+              try {
+                // 调试：查看行的HTML结构
+                console.log(`[TTC] 处理第 ${index + 1} 行，HTML结构:`, row.outerHTML.substring(0, 500))
                 
-                data.push([
-                  item, level, playerId, location, guild,
-                  unitPrice, amount, totalPrice, lastSeen, itemQualityColor
-                ])
+                // 调试：查看行的所有td元素
+                const tds = row.querySelectorAll('td')
+                console.log(`[TTC] 第 ${index + 1} 行有 ${tds.length} 个td元素`)
+                tds.forEach((td, tdIndex) => {
+                  console.log(`[TTC] 第 ${index + 1} 行第 ${tdIndex + 1} 个td内容:`, td.textContent.trim().substring(0, 100))
+                })
+                // 物品信息和品质
+                let item = "未找到物品信息"
+                let itemQualityColor = "深灰色"
+                let itemIconUrl = null
+                
+                // 尝试多种物品选择器
+                let itemElement = row.querySelector('div[class*="item-quality-"]')
+                if (!itemElement) {
+                  itemElement = row.querySelector('div[data-bind*="Name"]')
+                }
+                if (!itemElement) {
+                  itemElement = row.querySelector('td:first-child div')
+                }
+                if (!itemElement) {
+                  itemElement = row.querySelector('div.item-quality-fine, div.item-quality-normal, div.item-quality-superior, div.item-quality-epic, div.item-quality-legendary')
+                }
+                
+                if (itemElement) {
+                  item = itemElement.textContent.trim()
+                  const itemQualityClass = itemElement.className
+                  if (itemQualityClass.includes('item-quality-legendary')) {
+                    itemQualityColor = "金色"
+                  } else if (itemQualityClass.includes('item-quality-epic')) {
+                    itemQualityColor = "紫色"
+                  } else if (itemQualityClass.includes('item-quality-superior')) {
+                    itemQualityColor = "蓝色"
+                  } else if (itemQualityClass.includes('item-quality-fine')) {
+                    itemQualityColor = "中绿色"
+                  } else if (itemQualityClass.includes('item-quality-normal')) {
+                    itemQualityColor = "深灰色"
+                  }
+                  
+                  // 查找物品图标 - 改进的获取方法
+                  let iconElement = itemElement.querySelector('img.trade-item-icon')
+                  if (!iconElement) {
+                    // 在整个行中查找图标
+                    iconElement = row.querySelector('img.trade-item-icon')
+                  }
+                  if (!iconElement) {
+                    // 查找任何包含图标的img元素
+                    iconElement = row.querySelector('img[src*="Content/icons"]')
+                  }
+                  if (!iconElement) {
+                    // 查找任何包含图标的img元素
+                    iconElement = row.querySelector('img[data-bind*="IconName"]')
+                  }
+                  
+                  if (iconElement) {
+                    console.log(`[TTC] 找到图标元素:`, iconElement.outerHTML)
+                    
+                    // 方法1: 从data-bind属性中提取IconName
+                    const dataBind = iconElement.getAttribute('data-bind')
+                    if (dataBind) {
+                      console.log(`[TTC] 图标data-bind:`, dataBind)
+                      const iconNameMatch = dataBind.match(/IconName['"]\s*:\s*['"]([^'"]+)['"]/)
+                      if (iconNameMatch) {
+                        const iconName = iconNameMatch[1]
+                        const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
+                        itemIconUrl = `${baseUrl}/Content/icons/${iconName}`
+                        console.log(`[TTC] 从data-bind提取到图标名称: ${iconName} -> ${itemIconUrl}`)
+                      }
+                    }
+                    
+                    // 方法2: 如果data-bind没有找到，尝试从src属性获取
+                    if (!itemIconUrl && iconElement.src) {
+                      itemIconUrl = iconElement.src
+                      console.log(`[TTC] 从src属性获取图标URL: ${itemIconUrl}`)
+                    }
+                    
+                    // 方法3: 如果src是相对路径，转换为绝对路径
+                    if (itemIconUrl && itemIconUrl.startsWith('/Content/icons/')) {
+                      const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
+                      itemIconUrl = `${baseUrl}${itemIconUrl}`
+                      console.log(`[TTC] 转换相对路径图标URL: ${itemIconUrl}`)
+                    }
+                    
+                    // 方法4: 如果src是相对路径且没有协议，添加完整URL
+                    if (itemIconUrl && itemIconUrl.startsWith('Content/icons/')) {
+                      const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
+                      itemIconUrl = `${baseUrl}/${itemIconUrl}`
+                      console.log(`[TTC] 转换相对路径图标URL: ${itemIconUrl}`)
+                    }
+                    
+                    // 方法5: 如果src是相对路径且以斜杠开头，添加完整URL
+                    if (itemIconUrl && itemIconUrl.startsWith('/Content/icons/')) {
+                      const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
+                      itemIconUrl = `${baseUrl}${itemIconUrl}`
+                      console.log(`[TTC] 转换相对路径图标URL: ${itemIconUrl}`)
+                    }
+                    
+                    // 方法6: 使用统一的图标URL处理方法
+                    if (itemIconUrl) {
+                      const originalUrl = itemIconUrl
+                      itemIconUrl = processIconUrl(itemIconUrl, serverType)
+                      console.log(`[TTC] 统一处理图标URL: ${originalUrl} -> ${itemIconUrl}`)
+                    } else {
+                      console.log(`[TTC] 未能提取到图标URL`)
+                    }
+                  } else {
+                    console.log(`[TTC] 未找到图标元素`)
+                  }
+                }
+                
+                // 等级信息
+                let level = "未找到等级信息"
+                const levelDivs = row.querySelectorAll('div')
+                for (const div of levelDivs) {
+                  if (div.textContent.includes('等级')) {
+                    const imgElement = div.querySelector('img')
+                    const spanElement = div.querySelector('span')
+                    if (imgElement && spanElement) {
+                      const imgSrc = imgElement.src
+                      const levelNum = spanElement.textContent.trim()
+                      if (imgSrc.includes('nonvet.png')) {
+                        level = `普通等级${levelNum}`
+                      } else if (imgSrc.includes('championPoint.png')) {
+                        level = `CP等级${levelNum}`
+                      }
+                    }
+                    break
+                  }
+                }
+                
+                // 检查奖励委托券
+                const allDivs = row.querySelectorAll('div')
+                for (const div of allDivs) {
+                  if (div.textContent.includes('奖励')) {
+                    const voucherText = div.textContent.trim()
+                    level = `${level}（${voucherText}）`
+                    break
+                  }
+                }
+                
+                // 交易者信息
+                let playerId = "未找到交易者信息"
+                let playerElement = row.querySelector('div.text-small-width')
+                if (!playerElement) {
+                  playerElement = row.querySelector('div[data-bind*="PlayerName"]')
+                }
+                if (!playerElement) {
+                  playerElement = row.querySelector('td:nth-child(2) div')
+                }
+                if (!playerElement) {
+                  playerElement = row.querySelector('div[class*="player"]')
+                }
+                if (playerElement) {
+                  playerId = playerElement.textContent.trim()
+                }
+                
+                // 位置信息
+                let location = "未找到位置信息"
+                let locationElement = row.querySelector('a.trade-list-clickable.bold')
+                if (!locationElement) {
+                  locationElement = row.querySelector('a[data-bind*="Location"]')
+                }
+                if (!locationElement) {
+                  locationElement = row.querySelector('td:nth-child(3) a')
+                }
+                if (!locationElement) {
+                  locationElement = row.querySelector('a[href*="Location"]')
+                }
+                if (locationElement) {
+                  location = locationElement.textContent.trim()
+                }
+                
+                // 工会信息
+                let guild = "未找到工会信息"
+                let guildElement = row.querySelector('div[data-bind="text: GuildName"]')
+                if (!guildElement) {
+                  guildElement = row.querySelector('div[data-bind*="GuildName"]')
+                }
+                if (!guildElement) {
+                  guildElement = row.querySelector('td:nth-child(2) div:nth-child(2)')
+                }
+                if (!guildElement) {
+                  guildElement = row.querySelector('div[class*="guild"]')
+                }
+                if (guildElement) {
+                  guild = guildElement.textContent.trim()
+                }
+                
+                // 单价信息
+                let unitPrice = "未找到单价信息"
+                let unitPriceElement = row.querySelector('span[data-bind="localizedNumber: UnitPrice"]')
+                if (!unitPriceElement) {
+                  unitPriceElement = row.querySelector('span[data-bind*="UnitPrice"]')
+                }
+                if (!unitPriceElement) {
+                  unitPriceElement = row.querySelector('td:nth-child(4) span')
+                }
+                if (unitPriceElement) {
+                  unitPrice = unitPriceElement.textContent.trim()
+                }
+                
+                // 数量信息
+                let amount = "未找到数量信息"
+                let amountElement = row.querySelector('span[data-bind="localizedNumber: Amount"]')
+                if (!amountElement) {
+                  amountElement = row.querySelector('span[data-bind*="Amount"]')
+                }
+                if (!amountElement) {
+                  amountElement = row.querySelector('td:nth-child(5) span')
+                }
+                if (amountElement) {
+                  amount = amountElement.textContent.trim()
+                }
+                
+                // 总价信息
+                let totalPrice = "未找到总价信息"
+                let totalPriceElement = row.querySelector('span[data-bind="localizedNumber: TotalPrice"]')
+                if (!totalPriceElement) {
+                  totalPriceElement = row.querySelector('span[data-bind*="TotalPrice"]')
+                }
+                if (!totalPriceElement) {
+                  totalPriceElement = row.querySelector('td:nth-child(6) span')
+                }
+                if (totalPriceElement) {
+                  totalPrice = totalPriceElement.textContent.trim()
+                }
+                
+                // 最后看见时间信息
+                let lastSeen = "未找到最后看见时间信息"
+                let lastSeenElement = row.querySelector('td.bold.hidden-xs')
+                if (!lastSeenElement) {
+                  lastSeenElement = row.querySelector('td[data-bind*="LastSeen"]')
+                }
+                if (!lastSeenElement) {
+                  lastSeenElement = row.querySelector('td:last-child')
+                }
+                if (!lastSeenElement) {
+                  lastSeenElement = row.querySelector('td[class*="time"]')
+                }
+                if (lastSeenElement) {
+                  lastSeen = lastSeenElement.textContent.trim()
+                }
+                
+                // 如果至少有一些有效信息，就添加到数据中
+                if (item !== "未找到物品信息" || 
+                    unitPrice !== "未找到单价信息" || 
+                    amount !== "未找到数量信息") {
+                  
+                  data.push([
+                    item, level, playerId, location, guild,
+                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl
+                  ])
+                  
+                  // 调试信息
+                  console.log(`[TTC] 提取到数据行 ${index + 1}:`, {
+                    item, level, playerId, location, guild,
+                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl
+                  })
+                  
+                  // 特别调试图标URL
+                  if (itemIconUrl) {
+                    console.log(`[TTC] 第 ${index + 1} 行图标URL: ${itemIconUrl}`)
+                  } else {
+                    console.log(`[TTC] 第 ${index + 1} 行没有图标URL`)
+                  }
+                } else {
+                  console.log(`[TTC] 跳过无效数据行 ${index + 1}:`, {
+                    item, level, playerId, location, guild,
+                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl
+                  })
+                }
+                
+              } catch (error) {
+                console.error(`处理第 ${index + 1} 行数据时出现异常:`, error)
               }
-              
-            } catch (error) {
-              console.error(`处理第 ${index + 1} 行数据时出现异常:`, error)
+            })
+            
+            // 调试信息
+            console.log(`[TTC] 总共提取到 ${data.length} 条有效数据`)
+            console.log(`[TTC] 数据内容:`, data)
+            
+            // 提取页面信息
+            let currentPage = "1"
+            let totalPages = "1"
+            
+            // 查找当前页信息
+            const currentPageElement = document.querySelector('span.active[data-bind="text: $data"]')
+            if (currentPageElement) {
+              currentPage = currentPageElement.textContent.trim()
             }
-          })
-          
-          // 提取页面信息
-          let currentPage = "1"
-          let totalPages = "1"
-          
-          // 查找当前页信息
-          const currentPageElement = document.querySelector('span.active[data-bind="text: $data"]')
-          if (currentPageElement) {
-            currentPage = currentPageElement.textContent.trim()
-          }
-          
-          // 查找总页数信息
-          const totalPagesElements = document.querySelectorAll('li a')
-          for (const element of totalPagesElements) {
-            if (element.getAttribute('href') && element.getAttribute('href').includes('GetUrlForPage(TotalPageCount)')) {
-              totalPages = element.textContent.trim()
-              break
+            
+            // 查找总页数信息 - 改进的获取方法
+            // 方法1: 查找分页导航中的最后一页
+            const paginationElements = document.querySelectorAll('.pagination li a, .pager li a, nav ul li a')
+            let maxPage = 1
+            for (const element of paginationElements) {
+              const pageText = element.textContent.trim()
+              const pageNum = parseInt(pageText)
+              if (!isNaN(pageNum) && pageNum > maxPage) {
+                maxPage = pageNum
+              }
             }
-          }
-          
-          const pageInfo = `第${currentPage}页/总共${totalPages}页`
-          
-          return { hasError: false, data, pageInfo }
-        })
+            
+            // 如果找到大于1的页码，使用它作为总页数
+            if (maxPage > 1) {
+              totalPages = maxPage.toString()
+            }
+            
+            // 方法2: 查找包含TotalPageCount的链接
+            if (totalPages === "1") {
+              const totalPageElements = document.querySelectorAll('a[href*="TotalPageCount"], a[href*="totalPage"]')
+              for (const element of totalPageElements) {
+                const pageText = element.textContent.trim()
+                const pageNum = parseInt(pageText)
+                if (!isNaN(pageNum) && pageNum > 0) {
+                  totalPages = pageText
+                  break
+                }
+              }
+            }
+            
+            // 方法3: 查找页面中的文本信息
+            if (totalPages === "1") {
+              const pageTextElements = document.querySelectorAll('span, div, p')
+              for (const element of pageTextElements) {
+                const text = element.textContent
+                const match = text.match(/共\s*(\d+)\s*页|总共\s*(\d+)\s*页|of\s*(\d+)\s*pages/i)
+                if (match) {
+                  const pageNum = parseInt(match[1] || match[2] || match[3])
+                  if (!isNaN(pageNum) && pageNum > 0) {
+                    totalPages = pageNum.toString()
+                    break
+                  }
+                }
+              }
+            }
+            
+            // 确保当前页和总页数都是有效数字
+            const currentPageNum = parseInt(currentPage) || 1
+            const totalPagesNum = parseInt(totalPages) || 1
+            
+            // 如果当前页大于总页数，说明总页数获取有误，尝试重新计算
+            if (currentPageNum > totalPagesNum && totalPagesNum === 1) {
+              // 重新查找分页信息
+              const allPageLinks = document.querySelectorAll('a[href*="page"], a[href*="Page"]')
+              for (const link of allPageLinks) {
+                const href = link.getAttribute('href') || ''
+                const pageMatch = href.match(/page[=:]\s*(\d+)/i)
+                if (pageMatch) {
+                  const pageNum = parseInt(pageMatch[1])
+                  if (!isNaN(pageNum) && pageNum > totalPagesNum) {
+                    totalPages = pageNum.toString()
+                  }
+                }
+              }
+            }
+            
+            // 方法4: 通过分析页面内容中的分页信息（但限制搜索范围）
+            if (totalPages === "1") {
+              // 只在分页相关的元素中查找数字
+              const paginationRelatedElements = document.querySelectorAll('.pagination *, .pager *, nav *, [class*="page"]')
+              for (const element of paginationRelatedElements) {
+                const text = element.textContent.trim()
+                // 只匹配纯数字且范围合理的页码
+                if (/^\d+$/.test(text)) {
+                  const pageNum = parseInt(text)
+                  if (pageNum > 1 && pageNum <= 1000) { // 限制合理范围
+                    totalPages = pageNum.toString()
+                    break
+                  }
+                }
+              }
+            }
+            
+            // 最终验证：确保总页数合理
+            const finalTotalPages = parseInt(totalPages) || 1
+            if (finalTotalPages < 1 || finalTotalPages > 10000) {
+              totalPages = "1" // 如果数值明显不合理，重置为1
+            }
+            
+            const pageInfo = `第${currentPage}页/总共${totalPages}页`
+            
+            return { hasError: false, data, pageInfo }
+          },
+          serverType
+        )
         
         if (tradeData.hasError) {
           logger.warn(`[TTC] 数据提取失败: ${tradeData.error}`)
@@ -1242,6 +1664,8 @@ export class ttc extends plugin {
           return { hasError: true, error: '没有符合条件的交易' }
         }
         
+        // 添加页面信息调试日志
+        // logger.info(`[TTC] 页面信息提取: 当前页=${tradeData.pageInfo?.match(/第(\d+)页/)?.[1] || '未知'}, 总页数=${tradeData.pageInfo?.match(/总共(\d+)页/)?.[1] || '未知'}`)
         logger.info(`[TTC] 成功提取到 ${tradeData.data.length} 条交易数据`)
         
         return {
@@ -1290,20 +1714,35 @@ export class ttc extends plugin {
     const { data, pageInfo, itemName, serverType, page } = tradeData
     
     // 转换数据格式为HTML模板需要的格式
-    // 数据结构：[item, level, player_id, location, guild, unit_price, amount, total_price, last_seen, item_quality_color]
-    const tradeRows = data.map((row, index) => ({
-      index: index + 1,
-      itemName: row[0],                                                   // 物品名称
-      level: row[1],                                                      // 等级
-      trader: row[2],                                                     // 交易者
-      location: row[3],                                                   // 位置
-      guild: row[4],                                                      // 工会
-      unitPrice: row[5],                                                  // 单价
-      amount: row[6],                                                     // 数量
-      totalPrice: row[7],                                                 // 总价
-      lastSeen: row[8],                                                   // 最后看见时间
-      qualityColor: this.getQualityColorClass(row[9])                    // 品质颜色
-    }))
+    // 数据结构：[item, level, player_id, location, guild, unit_price, amount, total_price, last_seen, item_quality_color, item_icon_url]
+    const tradeRows = []
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i]
+      const itemIconUrl = row[10] // 物品图标URL
+      
+      // 获取物品图标路径
+      let itemIconPath = null
+      if (itemIconUrl) {
+        itemIconPath = await this.getItemIconPath(itemIconUrl, row[0])
+      }
+      
+      tradeRows.push({
+        index: i + 1,
+        itemIcon: itemIconPath,                                           // 物品图标路径
+        itemName: row[0],                                                 // 物品名称
+        level: row[1],                                                    // 等级
+        trader: row[2],                                                   // 交易者
+        location: row[3],                                                 // 位置
+        guild: row[4],                                                    // 工会
+        unitPrice: row[5],                                                // 单价
+        amount: row[6],                                                   // 数量
+        totalPrice: row[7],                                               // 总价
+        lastSeen: row[8],                                                 // 最后看见时间
+        qualityColor: this.getQualityColorClass(row[9]),                 // 品质颜色
+        rowBackgroundClass: this.getTradeLevelBackgroundClass(row[1])    // 等级背景色
+      })
+    }
     
     // 初始化TTC交易数据结构
     if (!this.tradeData || this.tradeData.init !== 'done') {
@@ -1345,8 +1784,190 @@ export class ttc extends plugin {
     return colorMap[colorName] || 'normal'
   }
 
+  /** 根据交易等级获取行背景CSS类名 */
+  getTradeLevelBackgroundClass(level) {
+    if (!level || level === '未找到等级信息') {
+      return ''
+    }
+    
+    // 检查是否为CP160等级
+    if (level.includes('CP160') || level === 'CP等级160') {
+      return 'cp160-bg'
+    }
+    
+    // 检查是否为普通等级160
+    if (level.includes('普通等级160') || level === '等级160') {
+      return 'level160-bg'
+    }
+    
+    // 检查是否为其他CP等级
+    if (level.includes('CP等级') || level.includes('CP')) {
+      return 'cp-level-bg'
+    }
+    
+    // 检查是否为普通等级
+    if (level.includes('普通等级') || /等级\d+/.test(level)) {
+      return 'normal-level-bg'
+    }
+    
+    // 默认无背景
+    return ''
+  }
+
+  /** 下载物品图标 */
+  async downloadItemIcon(iconUrl, itemName) {
+    try {
+      if (!iconUrl || !itemName) {
+        return null
+      }
+
+      // 从URL中提取原始图片名字
+      let originalFileName = null
+      
+      // 方法1: 从URL路径中提取文件名
+      if (iconUrl.includes('/Content/icons/')) {
+        const pathParts = iconUrl.split('/Content/icons/')
+        if (pathParts.length > 1) {
+          originalFileName = pathParts[1]
+        }
+      }
+      
+      // 方法2: 如果URL以图标名结尾，直接提取
+      if (!originalFileName && iconUrl.includes('.png')) {
+        const urlParts = iconUrl.split('/')
+        const lastPart = urlParts[urlParts.length - 1]
+        if (lastPart.includes('.png') || lastPart.includes('.jpg') || lastPart.includes('.gif')) {
+          originalFileName = lastPart
+        }
+      }
+      
+      // 如果无法提取原始文件名，使用默认命名方式
+      if (!originalFileName) {
+        const urlHash = md5(iconUrl)
+        const safeItemName = itemName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_').substring(0, 50)
+        originalFileName = `${safeItemName}_${urlHash}.png`
+      }
+      
+      // 确保文件名是安全的
+      const safeFileName = originalFileName.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const filePath = path.join(TTC_IMAGE_PATH, safeFileName)
+
+      // 检查文件是否已存在
+      if (fs.existsSync(filePath)) {
+        logger.info(`[TTC] 物品图标已存在: ${safeFileName}`)
+        return safeFileName
+      }
+
+      // 使用Bot.download方法下载图标
+      logger.info(`[TTC] 开始下载物品图标: ${iconUrl} -> ${safeFileName}`)
+      const success = await Bot.download(iconUrl, filePath)
+      
+      if (success) {
+        logger.info(`[TTC] 物品图标下载成功: ${safeFileName}`)
+        return safeFileName
+      } else {
+        logger.warn(`[TTC] 下载物品图标失败: Bot.download返回false`)
+        return null
+      }
+
+    } catch (error) {
+      logger.error(`[TTC] 下载物品图标失败: ${error.message}`)
+      return null
+    }
+  }
+
+  /** 获取物品图标文件名 */
+  async getItemIconFileName(iconUrl, itemName) {
+    if (!iconUrl || !itemName) {
+      return null
+    }
+
+    // 检查缓存
+    const cacheKey = `icon_${md5(iconUrl)}`
+    const cachedFileName = imageCache.get(cacheKey)
+    if (cachedFileName) {
+      return cachedFileName
+    }
+
+    // 下载图标
+    const fileName = await this.downloadItemIcon(iconUrl, itemName)
+    if (fileName) {
+      imageCache.set(cacheKey, fileName)
+    }
+
+    return fileName
+  }
+
+  /** 获取物品图标路径（用于HTML模板） */
+  async getItemIconPath(iconUrl, itemName) {
+    if (!iconUrl || !itemName) {
+      return null
+    }
+
+    // 获取图标文件名
+    const fileName = await this.getItemIconFileName(iconUrl, itemName)
+    if (!fileName) {
+      return null
+    }
+
+    // 返回相对于HTML模板的路径
+    // HTML模板中使用 {{pluResPath}}custome_resources/ttc/images/{{item.itemIcon}}
+    // 所以这里只需要返回文件名即可
+    return fileName
+  }
+
+  /** 处理图标URL，确保使用正确的服务器前缀 */
+  processIconUrl(iconUrl, serverType) {
+    if (!iconUrl) {
+      return null
+    }
+
+    const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
+    
+    // 如果已经是完整的URL，直接返回
+    if (iconUrl.startsWith('http')) {
+      logger.info(`[TTC] 图标URL已经是完整URL: ${iconUrl}`)
+      return iconUrl
+    }
+    
+    // 处理相对路径
+    if (iconUrl.startsWith('/Content/icons/')) {
+      const fullUrl = `${baseUrl}${iconUrl}`
+      logger.info(`[TTC] 处理相对路径图标URL: ${iconUrl} -> ${fullUrl}`)
+      return fullUrl
+    }
+    
+    if (iconUrl.startsWith('Content/icons/')) {
+      const fullUrl = `${baseUrl}/${iconUrl}`
+      logger.info(`[TTC] 处理相对路径图标URL: ${iconUrl} -> ${fullUrl}`)
+      return fullUrl
+    }
+    
+    // 如果包含Content/icons/但不是完整URL，提取路径
+    if (iconUrl.includes('Content/icons/')) {
+      const iconPath = iconUrl.includes('/Content/icons/') ? 
+        iconUrl.substring(iconUrl.indexOf('/Content/icons/')) : 
+        `/Content/icons/${iconUrl}`
+      const fullUrl = `${baseUrl}${iconPath}`
+      logger.info(`[TTC] 处理包含Content/icons/的图标URL: ${iconUrl} -> ${fullUrl}`)
+      return fullUrl
+    }
+    
+    // 如果只是图标名称，添加完整路径
+    if (iconUrl.includes('.png') || iconUrl.includes('.jpg') || iconUrl.includes('.gif')) {
+      const fullUrl = `${baseUrl}/Content/icons/${iconUrl}`
+      logger.info(`[TTC] 处理图标文件名: ${iconUrl} -> ${fullUrl}`)
+      return fullUrl
+    }
+    
+    logger.warn(`[TTC] 无法处理的图标URL格式: ${iconUrl}`)
+    return iconUrl
+  }
+
   /** 缓存交易截图 */
   async cacheTradeImage(data) {
+    //logger.info(data.ttcData[1].tradeData)
+
     const tmp = md5(JSON.stringify(data))
     if (ttcImgCache.md5 === tmp) {
       return ttcImgCache.img
@@ -1725,7 +2346,7 @@ export class ttc extends plugin {
     try {
       // 这里可以尝试使用系统命令解压或者第三方库
       // 为了简化，这里只是模拟解压过程
-      logger.info(`[TTC] 尝试解压 ${zipPath} 到 ${targetDir}`)
+      //logger.info(`[TTC] 尝试解压 ${zipPath} 到 ${targetDir}`)
       
       // 如果系统有unzip命令，可以尝试使用
       const { execSync } = await import('child_process')
@@ -1750,7 +2371,7 @@ export class ttc extends plugin {
   /** 解析lua价格表文件 */
   async parseLuaPriceTable(luaFilePath, lookupFilePath) {
     try {
-      logger.info(`[TTC] 开始解析lua文件: ${luaFilePath}`)
+      //logger.info(`[TTC] 开始解析lua文件: ${luaFilePath}`)
       
       // 读取lua文件内容
       const luaSrc = await fs.promises.readFile(luaFilePath, 'utf8')
@@ -1805,7 +2426,7 @@ export class ttc extends plugin {
       })
       
       // DEBUG: 显示转换过程
-      logger.info(`[TTC] 键名转换后的前500字符: ${convertedStr.substring(0, 500)}...`)
+      //logger.info(`[TTC] 键名转换后的前500字符: ${convertedStr.substring(0, 500)}...`)
       
       // 将 = 替换为 :
       convertedStr = convertedStr.replace(/=/g, ':')
@@ -1817,8 +2438,8 @@ export class ttc extends plugin {
       convertedStr = convertedStr.replace(/,(\s*[}\]])/g, '$1')
       
       // DEBUG: 显示最终转换结果的样本
-      logger.info(`[TTC] 最终转换结果的前1000字符: ${convertedStr.substring(0, 1000)}...`)
-      logger.info(`[TTC] 最终转换结果的后500字符: ...${convertedStr.substring(convertedStr.length - 500)}`)
+      //logger.info(`[TTC] 最终转换结果的前1000字符: ${convertedStr.substring(0, 1000)}...`)
+      //logger.info(`[TTC] 最终转换结果的后500字符: ...${convertedStr.substring(convertedStr.length - 500)}`)
       
       // 6. 先保存为JSON文件（按照原始项目流程）
       const serverKey = luaFilePath.includes('NA') ? 'NA' : 'EU'
@@ -1835,7 +2456,7 @@ export class ttc extends plugin {
         
         // 按照原始TTC项目逻辑：直接保存完整的解析数据（包含TimeStamp）
         await fs.promises.writeFile(jsonFilePath, JSON.stringify(parsedData, null, 2), 'utf8')
-        logger.info(`[TTC] 价格表已转换并保存到: ${jsonFilePath}`)
+        //logger.info(`[TTC] 价格表已转换并保存到: ${jsonFilePath}`)
         
         // 计算物品数量（优先从Data字段计算，因为真正的物品数据在Data中）
         let itemCount = 0

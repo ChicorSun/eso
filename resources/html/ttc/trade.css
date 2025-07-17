@@ -13,22 +13,27 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
-  font-size: 13px;
-  width: 1050px;
+  font-family: 'Segoe UI', Tahoma, Arial, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 14px;
+  width: 1250px;
   color: #2c3e50;
+  line-height: 1.4;
   transform: scale(1);
   transform-origin: 0 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .container {
-  width: 1050px;
-  padding: 15px;
-  background-color: rgba(255, 255, 255, 0.96);
-  border-radius: 12px;
-  margin: 8px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  width: 1250px;
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.98);
+  border-radius: 16px;
+  margin: 10px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px);
 }
 
 .box {
@@ -44,12 +49,15 @@ body {
 .trade-header {
   background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
   color: white;
-  padding: 18px;
-  border-radius: 10px;
-  margin-bottom: 15px;
+  padding: 24px;
+  border-radius: 14px;
+  margin-bottom: 20px;
   position: relative;
   overflow: hidden;
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 8px 32px rgba(52, 152, 219, 0.3);
 }
 
 .trade-header::before {
@@ -64,174 +72,280 @@ body {
 }
 
 .trade-title {
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  font-size: 26px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .server-info {
-  font-size: 15px;
-  margin-bottom: 6px;
+  font-size: 16px;
   color: #ecf0f1;
+  text-align: left;
+  margin-left: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 500;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .page-info {
   font-size: 13px;
   opacity: 0.9;
   color: #bdc3c7;
+  text-align: right;
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* 交易容器 */
 .trade-container {
   background: white;
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .data-info {
-  background: #f8f9fa;
-  padding: 10px 16px;
-  border-bottom: 1px solid #e9ecef;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 16px 20px;
+  border-bottom: 2px solid #dee2e6;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .data-count {
-  font-weight: 600;
-  color: #495057;
-  font-size: 13px;
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 14px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .current-page {
-  font-size: 12px;
-  color: #6c757d;
+  font-size: 13px;
+  color: #5a6c7d;
+  font-weight: 500;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 /* 表格样式 */
 .table-header {
   display: flex;
   background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
-  padding: 10px 0;
-  font-weight: bold;
-  font-size: 12px;
-  color: #495057;
-  border-bottom: 2px solid #dee2e6;
+  padding: 14px 0;
+  font-weight: 700;
+  font-size: 13px;
+  color: #2c3e50;
+  border-bottom: 3px solid #dee2e6;
+  text-transform: uppercase;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .trade-row {
   display: flex;
-  padding: 8px 0;
+  padding: 12px 0;
   border-bottom: 1px solid #f1f3f4;
-  transition: all 0.2s ease;
-  font-size: 12px;
-  line-height: 1.4;
+  transition: all 0.3s ease;
+  font-size: 13px;
+  line-height: 1.5;
+  align-items: center;
 }
 
 .trade-row:hover {
-  background: rgba(52, 152, 219, 0.05);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(52, 152, 219, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  margin: 0 4px;
 }
 
 .trade-row:nth-child(even) {
-  background: rgba(248, 249, 250, 0.5);
+  background: rgba(248, 249, 250, 0.6);
 }
 
 /* 优化后的列宽定义 */
+.col-icon {
+  flex: 0 0 50px;
+  padding: 0 8px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px;
+}
+
+.no-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border: 1px dashed #dee2e6;
+  border-radius: 4px;
+  color: #6c757d;
+  font-size: 10px;
+  font-weight: 500;
+}
+
 .col-item {
-  flex: 0 0 160px;
+  flex: 0 0 170px;
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+.col-level {
+  flex: 0 0 80px;
+  padding: 0 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+.col-trader {
+  flex: 0 0 140px;
   padding: 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
-}
-
-.col-level {
-  flex: 0 0 65px;
-  padding: 0 8px;
-  text-align: center;
-  font-size: 11px;
-}
-
-.col-trader {
-  flex: 0 0 120px;
-  padding: 0 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-  color: #495057;
+  color: #2c3e50;
+  font-size: 13px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .col-location {
-  flex: 0 0 130px;
-  padding: 0 8px;
+  flex: 0 0 150px;
+  padding: 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #6c757d;
+  color: #5a6c7d;
+  font-size: 13px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .col-guild {
-  flex: 0 0 150px;
-  padding: 0 8px;
+  flex: 0 0 170px;
+  padding: 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #6c757d;
-  font-size: 11px;
+  color: #5a6c7d;
+  font-size: 12px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .col-price {
-  flex: 0 0 75px;
-  padding: 0 8px;
+  flex: 0 0 90px;
+  padding: 0 10px;
   text-align: right;
-  font-weight: 600;
-  color: #28a745;
+  font-weight: 700;
+  color: #27ae60;
   font-family: "tttgbnumber", monospace;
+  font-size: 13px;
 }
 
 .col-amount {
-  flex: 0 0 50px;
-  padding: 0 8px;
+  flex: 0 0 60px;
+  padding: 0 10px;
   text-align: center;
-  font-weight: 500;
-  color: #6c757d;
+  font-weight: 600;
+  color: #5a6c7d;
+  font-size: 13px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .col-total {
-  flex: 0 0 90px;
-  padding: 0 8px;
+  flex: 0 0 100px;
+  padding: 0 10px;
   text-align: right;
-  font-weight: 600;
-  color: #007bff;
+  font-weight: 700;
+  color: #2980b9;
   font-family: "tttgbnumber", monospace;
+  font-size: 13px;
 }
 
 .col-time {
-  flex: 0 0 95px;
-  padding: 0 8px;
-  font-size: 11px;
-  color: #6c757d;
+  flex: 0 0 110px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: #5a6c7d;
   text-align: center;
+  font-weight: 500;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 /* 物品品质颜色 */
 .item-name {
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 13px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
-.quality-normal { color: #6c757d; }
-.quality-fine { color: #28a745; }
-.quality-superior { color: #17a2b8; }
-.quality-epic { color: #6f42c1; }
-.quality-legendary { color: #fd7e14; }
+.quality-normal { color: #95a5a6; }
+.quality-fine { color: #27ae60; }
+.quality-superior { color: #3498db; }
+.quality-epic { color: #9b59b6; }
+.quality-legendary { color: #f39c12; }
+
+/* 交易行等级背景色 */
+.trade-row.cp160-bg {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%) !important;
+  border-left: 3px solid #ffd700;
+}
+
+.trade-row.level160-bg {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(41, 128, 185, 0.05) 100%) !important;
+  border-left: 3px solid #3498db;
+}
+
+.trade-row.cp-level-bg {
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.1) 0%, rgba(142, 68, 173, 0.05) 100%) !important;
+  border-left: 3px solid #9b59b6;
+}
+
+.trade-row.normal-level-bg {
+  background: linear-gradient(135deg, rgba(149, 165, 166, 0.1) 0%, rgba(127, 140, 141, 0.05) 100%) !important;
+  border-left: 3px solid #95a5a6;
+}
+
+/* 确保背景色在hover时仍然可见 */
+.trade-row.cp160-bg:hover,
+.trade-row.level160-bg:hover,
+.trade-row.cp-level-bg:hover,
+.trade-row.normal-level-bg:hover {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.15) 0%, rgba(41, 128, 185, 0.1) 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
 
 /* 表头列样式 */
+.table-header .col-icon,
 .table-header .col-item,
 .table-header .col-level,
 .table-header .col-trader,
@@ -243,8 +357,10 @@ body {
 .table-header .col-time {
   border-right: 1px solid #dee2e6;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2c3e50;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .table-header .col-time {
@@ -265,61 +381,12 @@ body {
 /* 底部logo */
 .logo {
   text-align: center;
-  margin-top: 20px;
-  padding: 12px;
-  font-size: 12px;
-  color: #6c757d;
-  opacity: 0.7;
+  margin-top: 25px;
+  padding: 16px;
+  font-size: 13px;
+  color: #5a6c7d;
+  opacity: 0.8;
+  font-weight: 500;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
-/* 响应式调整 */
-@media (max-width: 1100px) {
-  body {
-    width: 100%;
-    font-size: 11px;
-  }
-  
-  .container {
-    width: 100%;
-    padding: 10px;
-  }
-  
-  .col-trader,
-  .col-location {
-    display: none;
-  }
-  
-  .col-guild {
-    flex: 0 0 120px;
-  }
-  
-  .col-item {
-    flex: 1;
-    min-width: 120px;
-  }
-  
-  .col-level {
-    flex: 0 0 50px;
-  }
-  
-  .col-price {
-    flex: 0 0 65px;
-  }
-  
-  .col-amount {
-    flex: 0 0 40px;
-  }
-  
-  .col-total {
-    flex: 0 0 75px;
-  }
-  
-  .col-time {
-    flex: 0 0 80px;
-  }
-  
-  .trade-row,
-  .table-header {
-    font-size: 10px;
-  }
-} 

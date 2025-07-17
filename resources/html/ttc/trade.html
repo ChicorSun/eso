@@ -20,18 +20,19 @@
         <div class="trade-header">
           <div class="trade-title">{{val.itemName}}</div>
           <div class="server-info">{{val.serverName}}</div>
-          <div class="page-info">{{val.pageInfo}}</div>
+          <!-- <div class="page-info">{{val.pageInfo}}</div> -->
         </div>
         
         <!-- 交易数据列表 -->
         <div class="trade-container">
           <div class="data-info">
             <span class="data-count">共{{val.dataCount}}条交易记录</span>
-            <span class="current-page">当前第{{val.currentPage}}页</span>
+            <span class="current-page">第{{val.currentPage}}页/共{{val.pageInfo.split('总共')[1]}}</span>
           </div>
           
           <!-- 表头 -->
           <div class="table-header">
+            <div class="col-icon">图标</div>
             <div class="col-item">物品</div>
             <div class="col-level">等级</div>
             <div class="col-trader">交易者</div>
@@ -44,7 +45,14 @@
           </div>
           
           {{each val.tradeData item idx}}
-          <div class="trade-row">
+          <div class="trade-row {{item.rowBackgroundClass}}">
+            <div class="col-icon">
+              {{if item.itemIcon}}
+              <img src="{{pluResPath}}../custome_resources/ttc/images/{{item.itemIcon}}" alt="物品图标" class="item-icon" />
+              {{else}}
+              <div class="no-icon">无</div>
+              {{/if}}
+            </div>
             <div class="col-item">
               <span class="item-name quality-{{item.qualityColor}}">{{item.itemName}}</span>
             </div>
