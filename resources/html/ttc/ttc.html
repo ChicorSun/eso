@@ -30,12 +30,12 @@
           </div>
           
           {{each val.priceData item idx}}
-          <div class="price-row">
+          <div class="price-row {{item.rowBackgroundClass}}">
             <div class="row-index">{{item.index}}</div>
             <div class="quality-info">
               <div class="quality-badge quality-{{item.qualityClass}}">{{item.quality}}</div>
               <div class="level-trait">
-                <span class="level">{{item.level}}</span>
+                <span class="level {{item.levelClass}}">{{item.level}}</span>
                 <span class="trait">{{item.trait}}</span>
               </div>
             </div>

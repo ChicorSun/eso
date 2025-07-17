@@ -1,9 +1,3 @@
-@font-face {
-  font-family: "tttgbnumber";
-  src: url("../../../../../resources/font/tttgbnumber.ttf");
-  font-weight: normal;
-  font-style: normal;
-}
 
 * {
   margin: 0;
@@ -13,15 +7,17 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 13px;
+  font-family: 'Segoe UI', Tahoma, Arial, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 14px;
   width: 580px;
   color: #2c3e50;
   line-height: 1.4;
   transform: scale(1);
   transform-origin: 0 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  font-weight: 400;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .container {
@@ -54,16 +50,16 @@ body {
 }
 
 .item-name {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   margin-bottom: 4px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .server-info {
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.9;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .item-name::before {
@@ -90,14 +86,16 @@ body {
 }
 
 .data-count {
-  font-weight: 600;
+  font-weight: 700;
   color: #2c3e50;
-  font-size: 13px;
+  font-size: 14px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .update-time {
-  font-size: 11px;
-  color: #7f8c8d;
+  font-size: 12px;
+  color: #5a6c7d;
+  font-weight: 500;
 }
 
 /* 价格容器 */
@@ -140,16 +138,26 @@ body {
   border-bottom: none;
 }
 
+/* 等级灰色背景 */
+.price-row.level-gray-bg {
+  background: #e8eaec;
+}
+
+.price-row.level-gray-bg:hover {
+  background: #dde1e4;
+}
+
 .row-index {
-  font-weight: 600;
-  color: #34495e;
-  width: 28px;
+  font-weight: 700;
+  color: #2c3e50;
+  width: 30px;
   text-align: center;
-  font-size: 14px;
+  font-size: 15px;
   background: #ecf0f1;
   border-radius: 4px;
-  padding: 2px 0;
+  padding: 3px 0;
   margin-right: 10px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 /* 品质信息 */
@@ -160,14 +168,15 @@ body {
 
 .quality-badge {
   display: inline-block;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   text-align: center;
   margin-bottom: 3px;
-  min-width: 50px;
+  min-width: 54px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .quality-normal { background: #95a5a6; color: white; }
@@ -177,18 +186,25 @@ body {
 .quality-legendary { background: #f39c12; color: white; }
 
 .level-trait {
-  font-size: 10px;
-  color: #7f8c8d;
-  font-weight: 500;
+  font-size: 12px;
+  color: #5a6c7d;
+  font-weight: 600;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .level {
   margin-right: 6px;
 }
 
+.level.cp160 {
+  color: #f39c12;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(243, 156, 18, 0.3);
+}
+
 .trait {
-  color: #8e44ad;
-  font-weight: 500;
+  color: #7d3c98;
+  font-weight: 600;
 }
 
 /* 价格信息 */
@@ -214,18 +230,20 @@ body {
 }
 
 .price-item .label {
-  font-size: 9px;
-  color: #6c757d;
+  font-size: 11px;
+  color: #5a6470;
   margin-bottom: 1px;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  font-weight: 500;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .price-item .value {
   font-weight: 700;
-  font-size: 14px;
-  font-family: "tttgbnumber", monospace;
+  font-size: 16px;
+  font-family: Tahoma, Arial, Helvetica, system-ui, sans-serif;
+  letter-spacing: -0.3px;
 }
 
 .price-item.average .value { color: #2980b9; }
@@ -258,32 +276,35 @@ body {
 }
 
 .trade-item .label {
-  font-size: 8px;
-  color: #6c757d;
+  font-size: 10px;
+  color: #5a6470;
   margin-bottom: 1px;
   text-align: center;
-  line-height: 1.1;
-  font-weight: 500;
+  line-height: 1.2;
+  font-weight: 700;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .trade-item .value {
-  font-weight: 600;
-  font-size: 10px;
+  font-weight: 700;
+  font-size: 12px;
   color: #2c3e50;
   text-align: center;
-  line-height: 1.1;
-  font-family: "tttgbnumber", monospace;
+  line-height: 1.2;
+  font-family: Tahoma, Arial, Helvetica, system-ui, sans-serif;
+  letter-spacing: -0.2px;
 }
 
 /* 更多数据提示 */
 .more-data {
   text-align: center;
   padding: 8px;
-  color: #7f8c8d;
+  color: #5a6c7d;
   font-style: italic;
   background: #f8f9fa;
-  font-size: 11px;
+  font-size: 12px;
   border-top: 1px solid #e9ecef;
+  font-weight: 500;
 }
 
 /* 底部logo */
@@ -291,9 +312,10 @@ body {
   text-align: center;
   margin-top: 15px;
   padding: 8px;
-  font-size: 11px;
-  color: #7f8c8d;
-  opacity: 0.7;
+  font-size: 12px;
+  color: #5a6c7d;
+  opacity: 0.8;
+  font-weight: 500;
 }
 
 /* 响应式调整 */

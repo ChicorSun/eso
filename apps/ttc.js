@@ -163,6 +163,14 @@ const ttcCache = new TTCCache(CACHE_CONFIG.DEFAULT_MAX_AGE)
 const priceCache = new TTCCache(CACHE_CONFIG.PRICE_CACHE_AGE)
 const imageCache = new TTCCache(CACHE_CONFIG.IMAGE_CACHE_AGE)
 
+// 全局定时任务状态
+let dailyUpdateScheduled = false
+let dailyUpdateTimer = null
+
+// 全局更新状态
+let isUpdatingPriceTable = false
+let initialUpdateCompleted = false
+
 export class ttc extends plugin {
   constructor () {
     super({
@@ -208,8 +216,115 @@ export class ttc extends plugin {
       ]
     })
 
+    // 启动时检查必要文件并初始化（异步执行，不阻塞启动）
+    this.initializeOnStartup().catch(error => {
+      logger.error(`[TTC] 启动初始化异步执行失败: ${error.message}`)
+    })
+    
     // 启动清理任务
     this.startCleanupTask()
+  }
+
+  /** 启动时初始化检查 */
+  async initializeOnStartup() {
+    try {
+      // 如果已经完成初始检查，跳过
+      if (initialUpdateCompleted) {
+        logger.info('[TTC] 初始化检查已完成，跳过重复检查')
+        return
+      }
+
+      logger.info('[TTC] 开始启动时初始化检查...')
+      
+      // 检查必要文件是否存在
+      const requiredFiles = [
+        { path: TTC_LOOKUP_TABLE_LUA, name: '物品查找表 (ItemLookUpTable_ZH.lua)' },
+        { path: TTC_PRICE_TABLE_JSON_NA, name: '美服价格表数据文件' },
+        { path: TTC_PRICE_TABLE_JSON_EU, name: '欧服价格表数据文件' }
+      ]
+      
+      const missingFiles = []
+      
+      for (const file of requiredFiles) {
+        if (!fs.existsSync(file.path)) {
+          missingFiles.push(file.name)
+          logger.warn(`[TTC] 缺少必要文件: ${file.name}`)
+        }
+      }
+      
+      // 如果有文件缺失，需要更新价格表
+      if (missingFiles.length > 0) {
+        logger.info(`[TTC] 检测到 ${missingFiles.length} 个文件缺失，需要更新价格表`)
+        logger.info(`[TTC] 缺失文件: ${missingFiles.join(', ')}`)
+        
+        // 检查是否已经在更新中
+        if (isUpdatingPriceTable) {
+          logger.info('[TTC] 价格表正在更新中，跳过重复更新')
+          return
+        }
+        
+        // 开始静默更新
+        logger.info('[TTC] 开始后台静默更新价格表...')
+        isUpdatingPriceTable = true
+        
+        try {
+          await this.performInitialSilentUpdate()
+          logger.info('[TTC] 后台价格表更新完成')
+        } catch (error) {
+          logger.error(`[TTC] 后台价格表更新失败: ${error.message}`)
+        } finally {
+          isUpdatingPriceTable = false
+          initialUpdateCompleted = true
+        }
+      } else {
+        logger.info('[TTC] 所有必要文件存在，跳过初始更新')
+        initialUpdateCompleted = true
+      }
+      
+    } catch (error) {
+      logger.error(`[TTC] 启动初始化检查失败: ${error.message}`)
+      initialUpdateCompleted = true // 即使失败也标记完成，避免重复尝试
+    }
+  }
+
+  /** 执行初始静默更新 */
+  async performInitialSilentUpdate() {
+    try {
+      const serverKeys = ['NA', 'EU']
+      const results = []
+      
+      for (const serverKey of serverKeys) {
+        logger.info(`[TTC] 正在更新${SERVER_CONFIG[serverKey].name}价格表...`)
+        const updateResult = await this.updatePriceData(serverKey)
+        results.push({
+          server: SERVER_CONFIG[serverKey].name,
+          ...updateResult
+        })
+      }
+      
+      // 清除所有相关缓存
+      ttcCache.clear()
+      priceCache.clear()
+      imageCache.clear()
+      ttcImgCache.md5 = ''
+      ttcImgCache.img = ''
+      
+      // 记录更新结果到日志
+      let logMsg = '[TTC] 初始化价格表更新完成！'
+      results.forEach((result) => {
+        if (result.success) {
+          logMsg += `\n${result.server}: 成功更新 ${result.count} 条记录 (${result.updateTime})`
+        } else {
+          logMsg += `\n${result.server}: 更新失败 - ${result.error}`
+        }
+      })
+      
+      logger.info(logMsg)
+      
+    } catch (error) {
+      logger.error(`[TTC] 执行初始静默更新失败: ${error.message}`)
+      throw error
+    }
   }
 
   /** 启动清理任务 */
@@ -230,6 +345,12 @@ export class ttc extends plugin {
 
   /** 启动每日价格表更新任务（每天19点） */
   startDailyPriceUpdate() {
+    // 检查是否已经调度过，避免重复调度
+    if (dailyUpdateScheduled) {
+      logger.info(`[TTC] 价格表自动更新任务已存在，跳过重复调度`)
+      return
+    }
+
     const scheduleNextUpdate = () => {
       const now = new Date()
       const target = new Date()
@@ -246,13 +367,21 @@ export class ttc extends plugin {
       
       logger.info(`[TTC] 价格表自动更新已安排，下次更新时间: ${target.toLocaleString('zh-CN')}`)
       
-      // 设置定时器
-      setTimeout(async () => {
+      // 清理旧的定时器（如果存在）
+      if (dailyUpdateTimer) {
+        clearTimeout(dailyUpdateTimer)
+      }
+      
+      // 设置新的定时器
+      dailyUpdateTimer = setTimeout(async () => {
         await this.silentUpdatePriceTable()
         // 更新完成后，安排下一次更新
         scheduleNextUpdate()
       }, timeUntilUpdate)
     }
+    
+    // 标记已调度
+    dailyUpdateScheduled = true
     
     // 立即安排第一次更新
     scheduleNextUpdate()
@@ -261,22 +390,40 @@ export class ttc extends plugin {
   /** 静默更新价格表（不发送消息通知） */
   async silentUpdatePriceTable() {
     try {
+      // 检查是否正在更新中
+      if (isUpdatingPriceTable) {
+        logger.info('[TTC] 价格表正在更新中，跳过定时更新')
+        return
+      }
+
       logger.info('[TTC] 开始执行定时价格表更新...')
+      
+      // 设置更新状态
+      isUpdatingPriceTable = true
       
       const serverKeys = ['NA', 'EU']
       const results = []
       
-      for (const serverKey of serverKeys) {
-        const updateResult = await this.updatePriceData(serverKey)
-        results.push({
-          server: SERVER_CONFIG[serverKey].name,
-          ...updateResult
-        })
+      try {
+        for (const serverKey of serverKeys) {
+          const updateResult = await this.updatePriceData(serverKey)
+          results.push({
+            server: SERVER_CONFIG[serverKey].name,
+            ...updateResult
+          })
+        }
+      } finally {
+        // 确保更新状态被重置
+        isUpdatingPriceTable = false
       }
       
-      // 清除价格相关缓存
+      // 清除所有相关缓存
       ttcCache.clear()
       priceCache.clear()
+      imageCache.clear()
+      // 重置HTML截图缓存
+      ttcImgCache.md5 = ''
+      ttcImgCache.img = ''
       
       // 记录更新结果到日志
       let logMsg = '[TTC] 定时价格表更新完成！'
@@ -308,30 +455,30 @@ export class ttc extends plugin {
     }
   }
 
-  /** 清理旧文件 */
+  /** 清理旧文件（仅清理cache文件夹） */
   cleanupOldFiles() {
     try {
-      const dirs = [TTC_CACHE_PATH, TTC_IMAGE_PATH, TTC_DATA_PATH]
+      // 只清理cache目录下的文件
+      const cacheDir = TTC_CACHE_PATH
       const now = Date.now()
 
-      dirs.forEach(dir => {
-        if (fs.existsSync(dir)) {
-          const files = fs.readdirSync(dir)
-          files.forEach(file => {
-            try {
-              const filePath = path.join(dir, file)
-              const stats = fs.statSync(filePath)
-              if (now - stats.mtime.getTime() > CLEANUP_CONFIG.FILE_MAX_AGE) {
-                fs.unlinkSync(filePath)
-              }
-            } catch (fileError) {
-              logger.warn(`[TTC] 清理文件时出错: ${file}, ${fileError.message}`)
+      if (fs.existsSync(cacheDir)) {
+        const files = fs.readdirSync(cacheDir)
+        files.forEach(file => {
+          try {
+            const filePath = path.join(cacheDir, file)
+            const stats = fs.statSync(filePath)
+            if (now - stats.mtime.getTime() > CLEANUP_CONFIG.FILE_MAX_AGE) {
+              fs.unlinkSync(filePath)
+              logger.info(`[TTC] 清理过期缓存文件: ${file}`)
             }
-          })
-        }
-      })
+          } catch (fileError) {
+            logger.warn(`[TTC] 清理缓存文件时出错: ${file}, ${fileError.message}`)
+          }
+        })
+      }
     } catch (error) {
-      logger.error(`[TTC] 清理文件失败: ${error.message}`)
+      logger.error(`[TTC] 清理缓存文件失败: ${error.message}`)
     }
   }
 
@@ -572,6 +719,11 @@ export class ttc extends plugin {
         return await this.reply('操作太频繁，请稍后再试')
       }
 
+      // 检查是否正在更新中
+      if (isUpdatingPriceTable) {
+        return await this.reply('价格表正在后台更新中，请稍后再试')
+      }
+
       // 解析服务器参数
       let content = e.msg.replace(/^#*(更新价格表|价格表更新)/, '').trim()
       let serverKeys = []
@@ -590,18 +742,30 @@ export class ttc extends plugin {
 
       await this.reply(`开始更新${serverKeys.map(k => SERVER_CONFIG[k].name).join('、')}价格表，请稍后...`)
 
+      // 设置更新状态
+      isUpdatingPriceTable = true
+
       const results = []
-      for (const serverKey of serverKeys) {
-        const updateResult = await this.updatePriceData(serverKey)
-        results.push({
-          server: SERVER_CONFIG[serverKey].name,
-          ...updateResult
-        })
+      try {
+        for (const serverKey of serverKeys) {
+          const updateResult = await this.updatePriceData(serverKey)
+          results.push({
+            server: SERVER_CONFIG[serverKey].name,
+            ...updateResult
+          })
+        }
+      } finally {
+        // 确保更新状态被重置
+        isUpdatingPriceTable = false
       }
       
-      // 清除价格相关缓存
+      // 清除所有相关缓存
       ttcCache.clear()
       priceCache.clear()
+      imageCache.clear()
+      // 重置HTML截图缓存
+      ttcImgCache.md5 = ''
+      ttcImgCache.img = ''
       
       // 构建回复消息
       let replyMsg = '\n价格表更新完成！\n'
@@ -1338,6 +1502,64 @@ export class ttc extends plugin {
     }
   }
 
+  /** 根据物品名称查找所有匹配的物品ID和名称 */
+  async findAllItemIdsByName(itemName) {
+    try {
+      const lookupPath = TTC_LOOKUP_TABLE_LUA
+      const exactMatches = []    // 完全匹配
+      const fuzzyMatches = []    // 模糊匹配
+      
+      if (fs.existsSync(lookupPath)) {
+        const content = fs.readFileSync(lookupPath, 'utf-8')
+        const pattern = /\["([^"]+)"\]\s*=\s*\{([^}]+)\}/g
+        let match
+        
+        while ((match = pattern.exec(content)) !== null) {
+          const fullName = match[1]
+          const idsContent = match[2]
+          
+          // 检查物品名匹配类型
+          const isExactMatch = fullName.toLowerCase() === itemName.toLowerCase()
+          const isFuzzyMatch = fullName.toLowerCase().includes(itemName.toLowerCase())
+          
+          if (isExactMatch || isFuzzyMatch) {
+            // 提取所有物品ID
+            const idMatches = idsContent.match(/\[\d+\]\s*=\s*(\d+)/g)
+            if (idMatches) {
+              for (const idMatch of idMatches) {
+                const itemId = idMatch.match(/=\s*(\d+)/)[1]
+                const itemInfo = {
+                  id: itemId,
+                  name: fullName
+                }
+                
+                if (isExactMatch) {
+                  exactMatches.push(itemInfo)
+                } else {
+                  fuzzyMatches.push(itemInfo)
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // 返回分类结果
+      return {
+        exactMatches: exactMatches.slice(0, 10),
+        fuzzyMatches: fuzzyMatches.slice(0, 10),
+        hasExactMatch: exactMatches.length > 0
+      }
+    } catch (error) {
+      logger.error(`[TTC] 查找所有物品ID失败: ${error.message}`)
+      return {
+        exactMatches: [],
+        fuzzyMatches: [],
+        hasExactMatch: false
+      }
+    }
+  }
+
   /** 更新价格数据 */
   async updatePriceData(serverKey = 'NA') {
     try {
@@ -1382,7 +1604,8 @@ export class ttc extends plugin {
       }
 
       // 检查lua文件是否存在并尝试解析
-      const updateTime = new Date().toLocaleString('zh-CN')
+      let luaTimestamp = null
+      let updateTime = new Date().toLocaleString('zh-CN') // 默认使用当前时间，如果无法从lua获取
       
       let priceTableData = {
         metadata: {
@@ -1405,6 +1628,32 @@ export class ttc extends plugin {
             priceTableData.priceTable = parseResult.priceTable
             // 使用解析结果中的正确物品数量，而不是重新计算
             priceTableData.metadata.itemCount = parseResult.metadata.itemCount
+            
+            // 将原始TimeStamp保存到正确位置，确保查询时能找到
+            if (parseResult.priceTable.TimeStamp) {
+              priceTableData.TimeStamp = parseResult.priceTable.TimeStamp
+              priceTableData.metadata.originalTimestamp = parseResult.priceTable.TimeStamp
+            }
+            
+            // 使用从lua文件解析的时间戳
+            if (parseResult.metadata.timestamp) {
+              luaTimestamp = parseResult.metadata.timestamp
+              // 检查时间戳是否合理（不是当前时间的默认值）
+              const currentTime = Date.now() / 1000
+              const timeDiff = Math.abs(luaTimestamp - currentTime)
+              
+              // 如果时间戳与当前时间差距超过1秒，说明是有效的lua时间戳
+              if (timeDiff > 1) {
+                updateTime = this.formatTimestamp(luaTimestamp, 'locale')
+                priceTableData.metadata.updateTime = updateTime
+                logger.info(`[TTC] 使用lua文件时间戳: ${updateTime} (原始值: ${luaTimestamp})`)
+              } else {
+                logger.warn(`[TTC] lua时间戳疑似为当前时间默认值，使用当前时间`)
+              }
+            } else {
+              logger.warn(`[TTC] lua文件中未找到时间戳，使用当前时间`)
+            }
+            
             logger.info(`[TTC] 成功解析 ${priceTableData.metadata.itemCount} 个物品价格`)
           } else {
             logger.warn('[TTC] lua文件解析结果为空，使用示例数据')
@@ -1456,7 +1705,8 @@ export class ttc extends plugin {
         success: true,
         updateTime: updateTime,
         count: priceTableData.metadata.itemCount,
-        savePath: path.relative('./plugins/eso/', jsonFilePath) // 显示相对路径更友好
+        savePath: path.relative('./plugins/eso/', jsonFilePath), // 显示相对路径更友好
+        originalTimestamp: luaTimestamp // 也返回原始时间戳用于调试
       }
 
     } catch (error) {
@@ -1883,128 +2133,60 @@ export class ttc extends plugin {
         }
       }
 
-      // 1. 如果输入是纯数字，直接作为物品ID查询
-      let itemId = null
-      let itemName = null
-      
+      // 1. 如果输入是纯数字，直接作为物品ID精确查询
       if (queryContent.match(/^\d+$/)) {
-        itemId = queryContent
-        itemName = `物品ID: ${itemId}`
+        const itemId = queryContent
+        const itemName = `物品ID: ${itemId}`
+        
+        // 精确ID查询
+        const result = await this.queryItemPriceById(itemId, itemName, priceTableData, serverConfig, cacheKey)
+        return result
       } else {
-        // 2. 如果输入是物品名称，先查找ID
-        itemId = await this.findItemIdByName(queryContent)
-        if (!itemId) {
-          return {
-            type: 'text',
-            content: `❌ 未找到物品 "${queryContent}"\n\n请先使用以下命令查找正确的物品ID：\n📦 #查询物品 ${queryContent}\n\n然后使用ID查询价格：\n💰 #查询价格 [物品ID]`
+        // 2. 如果输入是物品名称，查找所有匹配的物品
+        const matchResult = await this.findAllItemIdsByName(queryContent)
+        
+        // 3. 如果找到完全匹配的物品，使用完全匹配结果
+        if (matchResult.hasExactMatch) {
+          if (matchResult.exactMatches.length === 1) {
+            // 只有一个完全匹配，直接查询价格
+            const item = matchResult.exactMatches[0]
+            const result = await this.queryItemPriceById(item.id, item.name, priceTableData, serverConfig, cacheKey)
+            return result
+          } else {
+            // 多个完全匹配，显示价格摘要
+            return await this.queryMultipleItemsPrices(matchResult.exactMatches, priceTableData, serverConfig, queryContent, cacheKey)
           }
         }
-        itemName = queryContent
-      }
-
-      // 3. 在复杂的数据结构中查找物品数据
-      // 如果数据有priceTable字段，使用它；否则直接使用priceTableData
-      const dataToSearch = priceTableData.priceTable || priceTableData
-      const itemData = this.findItemData(dataToSearch, itemId)
-      logger.info(`[TTC] 搜索数据结构: ${Object.keys(dataToSearch).slice(0, 5).join(', ')}...`)
-      logger.info(`[TTC] 物品${itemId}查找结果: ${itemData ? '找到' : '未找到'}`)
-      if (!itemData) {
+        
+        // 4. 没有完全匹配，检查是否有模糊匹配
+        if (matchResult.fuzzyMatches.length > 0) {
+          if (matchResult.fuzzyMatches.length === 1) {
+            // 只有一个模糊匹配，自动使用该结果查询价格
+            const item = matchResult.fuzzyMatches[0]
+            logger.info(`[TTC] 找到唯一模糊匹配，自动使用该结果: ${queryContent} -> ${item.name}`)
+            const result = await this.queryItemPriceById(item.id, item.name, priceTableData, serverConfig, cacheKey)
+            
+            // 在结果中添加提示信息，说明使用了模糊匹配
+            if (result && result.type === 'text') {
+              result.content = `🔍 使用了模糊匹配结果：${item.name}\n\n${result.content}`
+            } else if (result && result.type === 'image') {
+              // 对于图片结果，我们无法直接添加文本，但可以在请求处理中添加说明
+              logger.info(`[TTC] 图片结果使用了模糊匹配: ${queryContent} -> ${item.name}`)
+            }
+            
+            return result
+          } else {
+            // 多个模糊匹配，转到查询物品功能
+            logger.info(`[TTC] 找到多个模糊匹配，转到查询物品功能: ${queryContent}`)
+            return await this.redirectToItemSearch(queryContent)
+          }
+        }
+        
+        // 5. 完全没有匹配结果
         return {
           type: 'text',
-          content: `❌ 物品ID ${itemId} 在${serverConfig.name}暂无价格数据\n\n可能原因：\n• 该物品无法交易\n• 近期无交易记录\n• 价格表需要更新`
+          content: `❌ 未找到包含 "${queryContent}" 的物品\n\n请先使用以下命令查找正确的物品ID：\n📦 #查询物品 找到完整物品名\n\n然后使用ID查询价格：\n💰 #查询价格 [物品ID]`
         }
-      }
-
-      // 4. 处理复杂的价格数据结构
-      const processedData = this.processSpecialStructures(itemData)
-      if (!processedData || processedData.length === 0) {
-        return {
-          type: 'text',
-          content: `❌ 物品ID ${itemId} 的价格数据格式异常\n\n请尝试重新更新价格表：\n🔄 #更新价格表`
-        }
-      }
-
-      // 5. 格式化价格信息
-      // 检查数据结构，从正确的位置获取TimeStamp
-      let timestamp = priceTableData.TimeStamp
-      
-      // 如果TimeStamp不在顶级，检查其他可能位置
-      if (!timestamp && priceTableData.priceTable) {
-        timestamp = priceTableData.priceTable.TimeStamp
-      }
-      if (!timestamp && priceTableData.Data) {
-        timestamp = priceTableData.Data.TimeStamp
-      }
-      
-      // 始终使用HTML截图生成价格信息
-      try {
-        const priceImage = await this.generatePriceImage(itemId, itemName, processedData, timestamp, serverConfig)
-        return {
-          type: 'image',
-          content: priceImage,
-          cacheKey: cacheKey
-        }
-      } catch (error) {
-        logger.warn(`[TTC] 图片生成失败，降级到文本显示: ${error.message}`)
-        // 继续执行文本版本
-      }
-      
-      let timeStr = "数据更新时间未知"
-      if (timestamp && timestamp !== null && timestamp !== undefined) {
-        try {
-          // 按照原始TTC项目的逻辑：使用time.localtime(timestamp)
-          const date = new Date(timestamp * 1000)
-          timeStr = `数据更新时间：${date.getFullYear()}年${(date.getMonth()+1).toString().padStart(2, '0')}月${date.getDate().toString().padStart(2, '0')}日${date.getHours().toString().padStart(2, '0')}时${date.getMinutes().toString().padStart(2, '0')}分${date.getSeconds().toString().padStart(2, '0')}秒`
-          logger.info(`[TTC] 时间戳转换成功: ${timeStr}`)
-        } catch (error) {
-          logger.error(`[TTC] 时间戳转换失败: ${error.message}`)
-          timeStr = "数据更新时间格式异常"
-        }
-      } else {
-        logger.warn(`[TTC] TimeStamp为空或未定义`)
-      }
-      
-      let priceText = `🏷️ 物品价格信息 (${serverConfig.name})\n`
-      priceText += `══════════════\n`
-      priceText += `📦 物品名称｜${itemName}\n`
-      priceText += `🔢 物品ID  ｜${itemId}\n`
-      priceText += `📊 数据条目｜${processedData.length}条\n`
-      priceText += `⏰ ${timeStr}\n\n`
-      
-      // 显示前几条价格数据
-      const maxDisplay = Math.min(5, processedData.length)
-      for (let i = 0; i < maxDisplay; i++) {
-        const data = processedData[i]
-        priceText += `📈 价格数据 ${i + 1}:\n`
-        priceText += `⭐ 品质：${data.品质 || '未知'}\n`
-        priceText += `🎯 等级：${data.等级 || '未知'}\n`
-        priceText += `🔧 特质：${data.特质 || '未知'}\n`
-        
-        // 价格信息 (按用户要求的顺序：最低价 → 最高价 → 平均价 → 销售均价→建议价)
-        if (data.最低价) priceText += `📉 最低价：${data.最低价.toLocaleString()}金\n`
-        if (data.最高价) priceText += `📈 最高价：${data.最高价.toLocaleString()}金\n`
-        if (data.平均价) priceText += `💰 平均价：${data.平均价.toLocaleString()}金\n`
-        if (data.销售均价) priceText += `💵 销售均价：${data.销售均价.toLocaleString()}金\n`
-        if (data.建议价) priceText += `💡 建议价：${data.建议价.toLocaleString()}金\n`
-        
-        // 交易统计信息
-        if (data.列表数量) priceText += `📋 在售：${data.列表数量}个\n`
-        if (data.总物品数) priceText += `📦 总物品数：${data.总物品数}个\n`
-        if (data.销售记录数) priceText += `📊 销售记录：${data.销售记录数}笔\n`
-        if (data.销售总数) priceText += `📈 销售总数：${data.销售总数}笔\n`
-        
-        priceText += `\n`
-      }
-      
-      if (processedData.length > maxDisplay) {
-        priceText += `... 还有 ${processedData.length - maxDisplay} 条数据\n`
-      }
-
-      // 返回文本结果
-      return {
-        type: 'text',
-        content: priceText,
-        cacheKey: cacheKey
       }
 
     } catch (error) {
@@ -2015,6 +2197,223 @@ export class ttc extends plugin {
         content: errorMsg,
         cacheKey: cacheKey
       }
+    }
+  }
+
+  /** 查询单个物品的价格 */
+  async queryItemPriceById(itemId, itemName, priceTableData, serverConfig, cacheKey) {
+    try {
+      // 在复杂的数据结构中查找物品数据
+      const dataToSearch = priceTableData.priceTable || priceTableData
+      const itemData = this.findItemData(dataToSearch, itemId)
+      
+      logger.info(`[TTC] 搜索数据结构: ${Object.keys(dataToSearch).slice(0, 5).join(', ')}...`)
+      logger.info(`[TTC] 物品${itemId}查找结果: ${itemData ? '找到' : '未找到'}`)
+      
+      if (!itemData) {
+        return {
+          type: 'text',
+          content: `❌ 物品ID ${itemId} 在${serverConfig.name}暂无价格数据\n\n可能原因：\n• 该物品无法交易\n• 近期无交易记录\n• 价格表需要更新`
+        }
+      }
+
+      // 处理复杂的价格数据结构
+      const processedData = this.processSpecialStructures(itemData)
+      if (!processedData || processedData.length === 0) {
+        return {
+          type: 'text',
+          content: `❌ 物品ID ${itemId} 的价格数据格式异常\n\n请尝试重新更新价格表：\n🔄 #更新价格表`
+        }
+      }
+
+      // 获取时间戳
+      let timestamp = priceTableData.TimeStamp
+      if (!timestamp && priceTableData.priceTable) {
+        timestamp = priceTableData.priceTable.TimeStamp
+      }
+      if (!timestamp && priceTableData.Data) {
+        timestamp = priceTableData.Data.TimeStamp
+      }
+
+      // 尝试生成HTML截图
+      try {
+        const priceImage = await this.generatePriceImage(itemId, itemName, processedData, timestamp, serverConfig)
+        return {
+          type: 'image',
+          content: priceImage,
+          cacheKey: cacheKey
+        }
+      } catch (error) {
+        logger.warn(`[TTC] 图片生成失败，降级到文本显示: ${error.message}`)
+        const textResult = await this.generateTextPrice(itemId, itemName, processedData, timestamp, serverConfig)
+        return {
+          type: 'text',
+          content: textResult,
+          cacheKey: cacheKey
+        }
+      }
+    } catch (error) {
+      logger.error(`[TTC] 查询物品${itemId}价格失败: ${error.message}`)
+      return {
+        type: 'text',
+        content: `❌ 查询物品${itemId}价格时发生错误\n\n${error.message}`,
+        cacheKey: cacheKey
+      }
+    }
+  }
+
+  /** 查询多个物品的价格 */
+  async queryMultipleItemsPrices(matchedItems, priceTableData, serverConfig, queryContent, cacheKey) {
+    try {
+      const dataToSearch = priceTableData.priceTable || priceTableData
+      const results = []
+      
+      // 获取时间戳
+      let timestamp = priceTableData.TimeStamp
+      if (!timestamp && priceTableData.priceTable) {
+        timestamp = priceTableData.priceTable.TimeStamp
+      }
+      if (!timestamp && priceTableData.Data) {
+        timestamp = priceTableData.Data.TimeStamp
+      }
+
+      let timeStr = this.formatTimestamp(timestamp, 'zh-CN')
+
+      // 查询每个匹配物品的价格
+      for (const item of matchedItems) {
+        const itemData = this.findItemData(dataToSearch, item.id)
+        if (itemData) {
+          const processedData = this.processSpecialStructures(itemData)
+          if (processedData && processedData.length > 0) {
+            // 只取第一条价格数据作为摘要
+            const firstData = processedData[0]
+            results.push({
+              id: item.id,
+              name: item.name,
+              quality: firstData.品质 || '未知',
+              level: firstData.等级 || '未知',
+              trait: firstData.特质 || '未知',
+              lowPrice: firstData.最低价 ? `${firstData.最低价.toLocaleString()}金` : '无',
+              avgPrice: firstData.平均价 ? `${firstData.平均价.toLocaleString()}金` : '无',
+              dataCount: processedData.length
+            })
+          }
+        }
+      }
+
+      if (results.length === 0) {
+        return {
+          type: 'text',
+          content: `❌ 找到 ${matchedItems.length} 个包含 "${queryContent}" 的物品，但都没有价格数据\n\n可能原因：\n• 这些物品无法交易\n• 近期无交易记录\n• 价格表需要更新`
+        }
+      }
+
+      // 构建多物品价格摘要
+      let priceText = `🔍 价格查询结果 (${serverConfig.name})\n`
+      priceText += `══════════════\n`
+      priceText += `🔎 搜索关键词｜${queryContent}\n`
+      priceText += `📊 匹配物品｜${results.length}个\n`
+      priceText += `⏰ ${timeStr}\n\n`
+
+      results.forEach((result, index) => {
+        priceText += `${index + 1}. 【${result.id}】${result.name}\n`
+        priceText += `   ⭐ ${result.quality} | 🎯 ${result.level} | 🔧 ${result.trait}\n`
+        priceText += `   💰 最低价: ${result.lowPrice} | 平均价: ${result.avgPrice}\n`
+        priceText += `   📊 数据条目: ${result.dataCount}条\n\n`
+      })
+
+      priceText += `💡 获取详细价格信息：\n#查询价格 [物品ID]\n例如：#查询价格 ${results[0].id}`
+
+      return {
+        type: 'text',
+        content: priceText,
+        cacheKey: cacheKey
+      }
+
+    } catch (error) {
+      logger.error(`[TTC] 查询多个物品价格失败: ${error.message}`)
+      return {
+        type: 'text',
+        content: `❌ 查询多个物品价格时发生错误\n\n${error.message}`,
+        cacheKey: cacheKey
+      }
+    }
+  }
+
+  /** 重定向到查询物品功能 */
+  async redirectToItemSearch(itemName) {
+    try {
+      logger.info(`[TTC] 重定向到查询物品功能: ${itemName}`)
+      
+      // 调用查询物品的核心搜索方法
+      const searchResults = await this.searchItemInDatabase(itemName)
+      
+      if (searchResults && searchResults.length > 0) {
+        // 构建查询物品的回复消息，前缀价格查询提示
+        let replyMsg = `💡 若要查询物品价格，请从下列物品名或前面的ID中选择查询。\n\n搜索到包含'${itemName}'的物品：\n`
+        
+        // 按类型分组显示
+        const groupedResults = {}
+        searchResults.forEach(item => {
+          if (!groupedResults[item.type]) {
+            groupedResults[item.type] = []
+          }
+          groupedResults[item.type].push(item)
+        })
+
+        Object.keys(groupedResults).forEach(type => {
+          replyMsg += `\n📦 ${type}：\n`
+          groupedResults[type].forEach(item => {
+            replyMsg += `【${item.id}】${item.name}`
+            if (item.category && item.category !== '未知类型' && item.category !== 'TTC物品') {
+              replyMsg += ` (${item.category})`
+            }
+            replyMsg += `\n`
+          })
+        })
+
+        if (searchResults.length > 30) {
+          replyMsg += `\n...(还有${searchResults.length - 30}个结果，请输入更精确的关键词)`
+        }
+
+        replyMsg += `\n\n📌 使用方法：\n💰 #查询价格 [完整物品名]\n💰 #查询价格 [物品ID]`
+
+        return {
+          type: 'text',
+          content: replyMsg
+        }
+      } else {
+        return {
+          type: 'text',
+          content: `❌ 未找到包含 "${itemName}" 的物品\n\n请使用 #查询物品 找到你需要查询的物品的完整名称。`
+        }
+      }
+    } catch (error) {
+      logger.error(`[TTC] 重定向到查询物品功能失败: ${error.message}`)
+      return {
+        type: 'text',
+        content: `❌ 查询物品时发生错误\n\n请使用 #查询物品 找到你需要查询的物品的完整名称。`
+      }
+    }
+  }
+
+  /** 统一的时间戳转换方法 */
+  formatTimestamp(timestamp, format = 'zh-CN') {
+    if (!timestamp || timestamp === null || timestamp === undefined) {
+      return '数据更新时间未知'
+    }
+    
+    try {
+      const date = new Date(timestamp * 1000)
+      if (format === 'zh-CN') {
+        return `${date.getFullYear()}年${(date.getMonth()+1).toString().padStart(2, '0')}月${date.getDate().toString().padStart(2, '0')}日${date.getHours().toString().padStart(2, '0')}时${date.getMinutes().toString().padStart(2, '0')}分${date.getSeconds().toString().padStart(2, '0')}秒`
+      } else if (format === 'locale') {
+        return date.toLocaleString('zh-CN')
+      }
+      return date.toISOString()
+    } catch (error) {
+      logger.error(`[TTC] 时间戳转换失败: ${error.message}`)
+      return '数据更新时间格式异常'
     }
   }
 
@@ -2059,15 +2458,7 @@ export class ttc extends plugin {
   /** 准备TTC HTML模板数据 */
   async prepareTTCData(itemId, itemName, processedData, timestamp, serverConfig) {
     // 格式化时间
-    let timeStr = "数据更新时间未知"
-    if (timestamp && timestamp !== null && timestamp !== undefined) {
-      try {
-        const date = new Date(timestamp * 1000)
-        timeStr = `${date.getFullYear()}年${(date.getMonth()+1).toString().padStart(2, '0')}月${date.getDate().toString().padStart(2, '0')}日${date.getHours().toString().padStart(2, '0')}时${date.getMinutes().toString().padStart(2, '0')}分${date.getSeconds().toString().padStart(2, '0')}秒`
-      } catch (error) {
-        timeStr = "数据更新时间格式异常"
-      }
-    }
+    let timeStr = this.formatTimestamp(timestamp, 'zh-CN')
 
     // 处理价格数据，转换为HTML模板格式
     const maxDisplay = Math.min(30, processedData.length) // 最多显示30条
@@ -2080,6 +2471,8 @@ export class ttc extends plugin {
         quality: data.品质 || '未知',
         qualityClass: this.getQualityClass(data.品质),
         level: data.等级 || '未知',
+        levelClass: (data.等级 === 'CP160') ? 'cp160' : '',
+        rowBackgroundClass: this.getLevelBackgroundClass(data.等级),
         trait: data.特质 || '未知',
         // 价格信息 (按用户要求的顺序：最低价 → 最高价 → 平均价 → 销售均价→建议价)
         lowPrice: data.最低价 ? `${data.最低价.toLocaleString()}金` : null,
@@ -2139,6 +2532,16 @@ export class ttc extends plugin {
     return qualityClassMap[quality] || "normal"
   }
 
+  /** 根据等级获取行背景CSS类名 */
+  getLevelBackgroundClass(level) {
+    // 如果等级为空、未知、0或CP160，则保持原本背景
+    if (!level || level === '未知' || level === '0' || level === 'CP160') {
+      return ''
+    }
+    // 其他等级添加灰色背景
+    return 'level-gray-bg'
+  }
+
   /** 缓存TTC截图 */
   async cacheTTCImage(data) {
     const tmp = md5(JSON.stringify(data))
@@ -2156,15 +2559,7 @@ export class ttc extends plugin {
   /** 生成文本格式的价格信息（降级方案） */
   async generateTextPrice(itemId, itemName, processedData, timestamp, serverConfig) {
     // 格式化时间
-    let timeStr = "数据更新时间未知"
-    if (timestamp && timestamp !== null && timestamp !== undefined) {
-      try {
-        const date = new Date(timestamp * 1000)
-        timeStr = `数据更新时间：${date.getFullYear()}年${(date.getMonth()+1).toString().padStart(2, '0')}月${date.getDate().toString().padStart(2, '0')}日${date.getHours().toString().padStart(2, '0')}时${date.getMinutes().toString().padStart(2, '0')}分${date.getSeconds().toString().padStart(2, '0')}秒`
-      } catch (error) {
-        timeStr = "数据更新时间格式异常"
-      }
-    }
+    let timeStr = `数据更新时间：${this.formatTimestamp(timestamp, 'zh-CN')}`
     
     let priceText = `🏷️ 物品价格信息 (${serverConfig.name})\n`
     priceText += `══════════════\n`
