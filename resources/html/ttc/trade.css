@@ -143,7 +143,7 @@ body {
   background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
   padding: 14px 0;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 15px;
   color: #2c3e50;
   border-bottom: 3px solid #dee2e6;
   text-transform: uppercase;
@@ -155,7 +155,7 @@ body {
   padding: 12px 0;
   border-bottom: 1px solid #f1f3f4;
   transition: all 0.3s ease;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.5;
   align-items: center;
 }
@@ -168,8 +168,9 @@ body {
   margin: 0 4px;
 }
 
-.trade-row:nth-child(even) {
-  background: rgba(248, 249, 250, 0.6);
+/* 基础背景色 - 去除明暗交替效果 */
+.trade-row {
+  background: white;
 }
 
 /* 优化后的列宽定义 */
@@ -202,28 +203,41 @@ body {
   border: 1px dashed #dee2e6;
   border-radius: 4px;
   color: #6c757d;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
 }
 
 .col-item {
-  flex: 0 0 170px;
+  flex: 0 0 140px;
   padding: 0 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
   font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .col-level {
-  flex: 0 0 80px;
+  flex: 0 0 110px;
   padding: 0 10px;
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+.col-trait {
+  flex: 0 0 130px;
+  padding: 0 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2c3e50;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .col-trader {
@@ -234,7 +248,7 @@ body {
   white-space: nowrap;
   font-weight: 500;
   color: #2c3e50;
-  font-size: 13px;
+  font-size: 15px;
   font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
@@ -245,18 +259,18 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #5a6c7d;
-  font-size: 13px;
+  font-size: 15px;
   font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .col-guild {
-  flex: 0 0 170px;
+  flex: 0 0 140px;
   padding: 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #5a6c7d;
-  font-size: 12px;
+  font-size: 14px;
   font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
@@ -267,7 +281,7 @@ body {
   font-weight: 700;
   color: #27ae60;
   font-family: "tttgbnumber", monospace;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .col-amount {
@@ -276,7 +290,7 @@ body {
   text-align: center;
   font-weight: 600;
   color: #5a6c7d;
-  font-size: 13px;
+  font-size: 15px;
   font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
@@ -287,13 +301,13 @@ body {
   font-weight: 700;
   color: #2980b9;
   font-family: "tttgbnumber", monospace;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .col-time {
   flex: 0 0 110px;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: 14px;
   color: #5a6c7d;
   text-align: center;
   font-weight: 500;
@@ -303,7 +317,7 @@ body {
 /* 物品品质颜色 */
 .item-name {
   font-weight: 700;
-  font-size: 13px;
+  font-size: 15px;
   font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
@@ -313,35 +327,51 @@ body {
 .quality-epic { color: #9b59b6; }
 .quality-legendary { color: #f39c12; }
 
-/* 交易行等级背景色 */
+/* 交易行等级背景色 - 仿照查询价格的背景色逻辑 */
 .trade-row.cp160-bg {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%) !important;
-  border-left: 3px solid #ffd700;
+  background: white;
+  border-left: 3px solid #ffd700;  /* 金色条带 */
 }
 
 .trade-row.level160-bg {
-  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(41, 128, 185, 0.05) 100%) !important;
-  border-left: 3px solid #3498db;
+  background: white;
+  border-left: 3px solid #3498db;  /* 蓝色条带 */
 }
 
 .trade-row.cp-level-bg {
-  background: linear-gradient(135deg, rgba(155, 89, 182, 0.1) 0%, rgba(142, 68, 173, 0.05) 100%) !important;
-  border-left: 3px solid #9b59b6;
+  background: rgba(248, 249, 250, 0.8);
+  border-left: 3px solid #9b59b6;  /* 紫色条带 */
 }
 
 .trade-row.normal-level-bg {
-  background: linear-gradient(135deg, rgba(149, 165, 166, 0.1) 0%, rgba(127, 140, 141, 0.05) 100%) !important;
-  border-left: 3px solid #95a5a6;
+  background: rgba(248, 249, 250, 0.8);
+  border-left: 3px solid #95a5a6;  /* 灰色条带 */
 }
 
 /* 确保背景色在hover时仍然可见 */
-.trade-row.cp160-bg:hover,
-.trade-row.level160-bg:hover,
-.trade-row.cp-level-bg:hover,
+.trade-row:hover {
+  background: rgba(52, 152, 219, 0.08) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  margin: 0 4px;
+}
+
+/* 等级条带的hover效果 - 保持条带颜色不变 */
+.trade-row.cp160-bg:hover {
+  border-left: 3px solid #ffd700;  /* 保持金色条带 */
+}
+
+.trade-row.level160-bg:hover {
+  border-left: 3px solid #3498db;  /* 保持蓝色条带 */
+}
+
+.trade-row.cp-level-bg:hover {
+  border-left: 3px solid #9b59b6;  /* 保持紫色条带 */
+}
+
 .trade-row.normal-level-bg:hover {
-  background: linear-gradient(135deg, rgba(52, 152, 219, 0.15) 0%, rgba(41, 128, 185, 0.1) 100%) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-left: 3px solid #95a5a6;  /* 保持灰色条带 */
 }
 
 /* 表头列样式 */

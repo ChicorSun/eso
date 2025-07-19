@@ -9,7 +9,7 @@
 body {
   font-family: 'Segoe UI', Tahoma, Arial, 'Microsoft YaHei', 'PingFang SC', sans-serif;
   font-size: 14px;
-  width: 580px;
+  width: 1250px;
   color: #2c3e50;
   line-height: 1.4;
   transform: scale(1);
@@ -21,12 +21,13 @@ body {
 }
 
 .container {
-  width: 580px;
-  padding: 10px;
+  width: 1350px;
+  padding: 20px;
   background-color: rgba(255, 255, 255, 0.98);
-  border-radius: 10px;
-  margin: 6px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+  border-radius: 16px;
+  margin: 10px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px);
 }
 
 .box {
@@ -40,26 +41,41 @@ body {
 
 /* 物品信息头部 */
 .item-header {
-  background: linear-gradient(135deg, #34495e 0%, #2980b9 100%);
+  background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
   color: white;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 8px;
+  padding: 24px;
+  border-radius: 14px;
+  margin-bottom: 20px;
   position: relative;
-  box-shadow: 0 4px 12px rgba(52, 73, 94, 0.25);
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 8px 32px rgba(52, 152, 219, 0.3);
 }
 
 .item-name {
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 700;
-  margin-bottom: 4px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .server-info {
-  font-size: 14px;
-  opacity: 0.9;
+  font-size: 16px;
+  color: #ecf0f1;
+  text-align: left;
+  margin-left: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
   font-weight: 500;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 .item-name::before {
@@ -93,207 +109,196 @@ body {
 }
 
 .update-time {
-  font-size: 12px;
+  font-size: 13px;
   color: #5a6c7d;
+  font-weight: 500;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+
+
+/* 表格样式 */
+.table-header {
+  display: flex;
+  background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
+  padding: 14px 0;
+  font-weight: 700;
+  font-size: 15px;
+  color: #2c3e50;
+  border-bottom: 3px solid #dee2e6;
+  text-transform: uppercase;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+.price-row {
+  display: flex;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f3f4;
+  transition: all 0.3s ease;
+  font-size: 15px;
+  line-height: 1.5;
+  align-items: center;
+}
+
+.price-row:hover {
+  background: rgba(52, 152, 219, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  margin: 0 4px;
+}
+
+.price-row:nth-child(even) {
+  background: rgba(248, 249, 250, 0.6);
+}
+
+/* 等级背景色设置 */
+/* CP160和等级0保持默认背景 */
+.price-row.cp160-bg {
+  background: white;
+  border-left: 3px solid #ffd700;  /* 金色条带 */
+}
+
+.price-row.level0-bg {
+  background: white;
+  border-left: 3px solid #95a5a6;  /* 灰色条带 */
+}
+
+/* 其他等级使用灰色背景 */
+.price-row.level-gray-bg {
+  background: rgba(248, 249, 250, 0.8);
+  border-left: 3px solid #95a5a6;  /* 灰色条带 */
+}
+
+/* 确保hover效果在所有背景色上都正常显示 */
+.price-row.cp160-bg:hover,
+.price-row.level0-bg:hover,
+.price-row.level-gray-bg:hover {
+  background: rgba(52, 152, 219, 0.08) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  margin: 0 4px;
+}
+
+/* 等级条带的hover效果 - 保持条带颜色不变 */
+.price-row.cp160-bg:hover {
+  border-left: 3px solid #ffd700;  /* 保持金色条带 */
+}
+
+.price-row.level0-bg:hover,
+.price-row.level-gray-bg:hover {
+  border-left: 3px solid #95a5a6;  /* 保持灰色条带 */
+}
+
+/* 列宽定义 */
+.col-item {
+  flex: 0 0 220px;
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 15px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+.col-level {
+  flex: 0 0 140px;
+  padding: 0 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5a6c7d;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+.col-low, .col-high, .col-avg, .col-sales, .col-suggest {
+  flex: 0 0 110px;
+  padding: 0 10px;
+  text-align: right;
+  font-weight: 700;
+  font-family: "tttgbnumber", monospace;
+  font-size: 15px;
+}
+
+.col-low { color: #16a085; }
+.col-high { color: #e74c3c; }
+.col-avg { color: #2980b9; }
+.col-sales { color: #8e44ad; }
+.col-suggest { color: #27ae60; }
+
+.col-listing, .col-total-items, .col-sales-count, .col-sales-total {
+  flex: 0 0 90px;
+  padding: 0 10px;
+  text-align: center;
+  font-weight: 600;
+  color: #5a6c7d;
+  font-size: 15px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+/* 物品名称样式 */
+.item-name {
+  font-weight: 700;
+  font-size: 15px;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+.quality-normal { color: #95a5a6; }
+.quality-fine { color: #27ae60; }
+.quality-superior { color: #3498db; }
+.quality-epic { color: #9b59b6; }
+.quality-legendary { color: #f39c12; }
+
+/* 等级信息样式 */
+.level-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.level {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.level.cp160 {
+  color: #f39c12;
+}
+
+.level.level160 {
+  color: #3498db;
+}
+
+.trait {
+  font-size: 12px;
+  color: #7f8c8d;
   font-weight: 500;
 }
 
 /* 价格容器 */
 .price-container {
   background: white;
-  border-radius: 8px;
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border: 1px solid #ecf0f1;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .data-info {
-  background: #f8f9fa;
-  padding: 6px 12px;
-  border-bottom: 1px solid #e9ecef;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 16px 20px;
+  border-bottom: 2px solid #dee2e6;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-/* 价格行 */
-.price-row {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid #f1f3f4;
-  transition: all 0.15s ease;
-  position: relative;
-  min-height: 50px;
-  background: white;
-}
 
-.price-row:hover {
-  background: #f8fafc;
-  transform: translateX(2px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-}
 
-.price-row:last-child {
-  border-bottom: none;
-}
 
-/* 等级灰色背景 */
-.price-row.level-gray-bg {
-  background: #e8eaec;
-}
-
-.price-row.level-gray-bg:hover {
-  background: #dde1e4;
-}
-
-.row-index {
-  font-weight: 700;
-  color: #2c3e50;
-  width: 30px;
-  text-align: center;
-  font-size: 15px;
-  background: #ecf0f1;
-  border-radius: 4px;
-  padding: 3px 0;
-  margin-right: 10px;
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-}
-
-/* 品质信息 */
-.quality-info {
-  flex: 0 0 90px;
-  margin-left: 8px;
-}
-
-.quality-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-  margin-bottom: 3px;
-  min-width: 54px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-}
-
-.quality-normal { background: #95a5a6; color: white; }
-.quality-fine { background: #27ae60; color: white; }
-.quality-superior { background: #3498db; color: white; }
-.quality-epic { background: #9b59b6; color: white; }
-.quality-legendary { background: #f39c12; color: white; }
-
-.level-trait {
-  font-size: 12px;
-  color: #5a6c7d;
-  font-weight: 600;
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-}
-
-.level {
-  margin-right: 6px;
-}
-
-.level.cp160 {
-  color: #f39c12;
-  font-weight: 700;
-  text-shadow: 0 1px 2px rgba(243, 156, 18, 0.3);
-}
-
-.trait {
-  color: #7d3c98;
-  font-weight: 600;
-}
-
-/* 价格信息 */
-.price-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0 6px;
-}
-
-.price-row-inner {
-  display: flex;
-  gap: 4px;
-  justify-content: flex-start;
-}
-
-.price-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 60px;
-}
-
-.price-item .label {
-  font-size: 11px;
-  color: #5a6470;
-  margin-bottom: 1px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 700;
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-}
-
-.price-item .value {
-  font-weight: 700;
-  font-size: 16px;
-  font-family: Tahoma, Arial, Helvetica, system-ui, sans-serif;
-  letter-spacing: -0.3px;
-}
-
-.price-item.average .value { color: #2980b9; }
-.price-item.suggested .value { color: #27ae60; }
-.price-item.low .value { color: #16a085; }
-.price-item.high .value { color: #e74c3c; }
-.price-item.sales-avg .value { color: #8e44ad; }
-
-/* 交易信息 */
-.trade-info {
-  flex: 0 0 140px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.trade-row {
-  display: flex;
-  gap: 2px;
-  justify-content: space-between;
-}
-
-.trade-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 30px;
-  font-size: 9px;
-  flex: 1;
-}
-
-.trade-item .label {
-  font-size: 10px;
-  color: #5a6470;
-  margin-bottom: 1px;
-  text-align: center;
-  line-height: 1.2;
-  font-weight: 700;
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-}
-
-.trade-item .value {
-  font-weight: 700;
-  font-size: 12px;
-  color: #2c3e50;
-  text-align: center;
-  line-height: 1.2;
-  font-family: Tahoma, Arial, Helvetica, system-ui, sans-serif;
-  letter-spacing: -0.2px;
-}
 
 /* 更多数据提示 */
 .more-data {

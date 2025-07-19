@@ -29,84 +29,43 @@
             <span class="update-time">{{val.updateTime}}</span>
           </div>
           
+
+          
+          <!-- 表头 -->
+          <div class="table-header">
+            <div class="col-item">物品名</div>
+            <div class="col-level">等级特质</div>
+            <div class="col-low">最低价</div>
+            <div class="col-high">最高价</div>
+            <div class="col-avg">平均价</div>
+            <div class="col-sales">销售均价</div>
+            <div class="col-suggest">建议价</div>
+            <div class="col-listing">在售数量</div>
+            <div class="col-total-items">总物品数</div>
+            <div class="col-sales-count">销售记录</div>
+            <div class="col-sales-total">销售总数</div>
+          </div>
+          
           {{each val.priceData item idx}}
           <div class="price-row {{item.rowBackgroundClass}}">
-            <div class="row-index">{{item.index}}</div>
-            <div class="quality-info">
-              <div class="quality-badge quality-{{item.qualityClass}}">{{item.quality}}</div>
-              <div class="level-trait">
+            <div class="col-item">
+              <span class="item-name quality-{{item.qualityClass}}">{{item.itemName}}</span>
+            </div>
+            <div class="col-level">
+              <div class="level-info">
                 <span class="level {{item.levelClass}}">{{item.level}}</span>
                 <span class="trait">{{item.trait}}</span>
               </div>
             </div>
-            <div class="price-info">
-              <div class="price-row-inner">
-                {{if item.lowPrice}}
-                <div class="price-item low">
-                  <span class="label">最低</span>
-                  <span class="value">{{item.lowPrice}}</span>
-                </div>
-                {{/if}}
-                {{if item.highPrice}}
-                <div class="price-item high">
-                  <span class="label">最高</span>
-                  <span class="value">{{item.highPrice}}</span>
-                </div>
-                {{/if}}
-                {{if item.averagePrice}}
-                <div class="price-item average">
-                  <span class="label">平均</span>
-                  <span class="value">{{item.averagePrice}}</span>
-                </div>
-                {{/if}}
-              </div>
-              {{if item.salesAvgPrice || item.suggestedPrice}}
-              <div class="price-row-inner">
-                {{if item.salesAvgPrice}}
-                <div class="price-item sales-avg">
-                  <span class="label">销售均价</span>
-                  <span class="value">{{item.salesAvgPrice}}</span>
-                </div>
-                {{/if}}
-                {{if item.suggestedPrice}}
-                <div class="price-item suggested">
-                  <span class="label">建议</span>
-                  <span class="value">{{item.suggestedPrice}}</span>
-                </div>
-                {{/if}}
-              </div>
-              {{/if}}
-            </div>
-            <div class="trade-info">
-              <div class="trade-row">
-                {{if item.listingCount}}
-                <div class="trade-item">
-                  <span class="label">在售</span>
-                  <span class="value">{{item.listingCount}}</span>
-                </div>
-                {{/if}}
-                {{if item.totalCount}}
-                <div class="trade-item">
-                  <span class="label">总物品数</span>
-                  <span class="value">{{item.totalCount}}</span>
-                </div>
-                {{/if}}
-              </div>
-              <div class="trade-row">
-                {{if item.salesCount}}
-                <div class="trade-item">
-                  <span class="label">销售记录</span>
-                  <span class="value">{{item.salesCount}}</span>
-                </div>
-                {{/if}}
-                {{if item.totalSalesCount}}
-                <div class="trade-item">
-                  <span class="label">销售总数</span>
-                  <span class="value">{{item.totalSalesCount}}</span>
-                </div>
-                {{/if}}
-              </div>
-            </div>
+            <div class="col-low">{{item.lowPrice || '-'}}</div>
+            <div class="col-high">{{item.highPrice || '-'}}</div>
+            <div class="col-avg">{{item.averagePrice || '-'}}</div>
+            <div class="col-sales">{{item.salesAvgPrice || '-'}}</div>
+            <div class="col-suggest">{{item.suggestedPrice || '-'}}</div>
+            <div class="col-listing">{{item.listingCount || '-'}}</div>
+            <div class="col-total-items">{{item.totalItems || '-'}}</div>
+            <div class="col-sales-count">{{item.salesCount || '-'}}</div>
+            <div class="col-sales-total">{{item.salesTotal || '-'}}</div>
           </div>
           {{/each}}
           

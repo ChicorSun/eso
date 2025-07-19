@@ -8,8 +8,11 @@ import fs from 'node:fs'
 import fetch from 'node-fetch'
 import path from 'path'
 import { createRequire } from 'module'
+import { fileURLToPath } from 'url'
 
 const require = createRequire(import.meta.url)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // ===========================================
 // HTML截图缓存
@@ -32,6 +35,21 @@ const TTC_DATA_PATH = path.join(TTC_BASE_PATH, 'data/')
 const TTC_CONFIG_FILE = path.join(TTC_CONFIG_PATH, 'ttcConfig.json')
 // 默认服务器配置文件
 const TTC_DEFAULT_SERVER_FILE = path.join(TTC_CONFIG_PATH, 'default.json')
+// 验证码配置文件
+const TTC_CAPTCHA_CONFIG_PATH = path.join(TTC_CONFIG_PATH, 'captcha.json')
+
+// 验证码服务配置（已移除第三方服务）
+const CAPTCHA_SERVICES = {
+  // 已移除所有第三方验证码破解服务
+  // 现在只支持手动处理验证码
+  MANUAL: {
+    name: '手动处理',
+    freeTier: {
+      dailyLimit: 0,
+      costPerSolve: 0
+    }
+  }
+}
 // NA服务器价格表文件（存放在data目录）
 const TTC_PRICE_TABLE_JSON_NA = path.join(TTC_DATA_PATH, 'PriceTableNA.json')
 const TTC_PRICE_TABLE_LUA_NA = path.join(TTC_DATA_PATH, 'PriceTableNA.lua')
@@ -179,6 +197,60 @@ let defaultServerConfig = {
   name: '美服'
 }
 
+// 截图计数器
+let screenshotCounter = 0
+
+// 清理截图文件函数
+async function cleanupScreenshots() {
+  try {
+    const screenshotDir = path.join(TTC_CACHE_PATH, 'screenshots')
+    if (fs.existsSync(screenshotDir)) {
+      const files = fs.readdirSync(screenshotDir)
+      const screenshotFiles = files.filter(file => file.startsWith('screenshot_') && file.endsWith('.png'))
+      
+      if (screenshotFiles.length > 0) {
+        for (const file of screenshotFiles) {
+          const filePath = path.join(screenshotDir, file)
+          fs.unlinkSync(filePath)
+        }
+        logger.info(`[TTC] 清理了 ${screenshotFiles.length} 个旧截图文件`)
+      }
+    }
+  } catch (error) {
+    logger.error(`[TTC] 清理截图文件失败: ${error.message}`)
+  }
+}
+
+// 截图工具函数
+async function takeDebugScreenshot(browserPage, debugInfo) {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)
+    screenshotCounter++
+    
+    // 创建截图目录 - 使用TTC缓存目录
+    const screenshotDir = path.join(TTC_CACHE_PATH, 'screenshots')
+    if (!fs.existsSync(screenshotDir)) {
+      fs.mkdirSync(screenshotDir, { recursive: true })
+    }
+    
+    // 生成文件名：screenshot_时间_行数_序号_描述.png
+    const fileName = `screenshot_${timestamp}_L${debugInfo.line}_${screenshotCounter.toString().padStart(3, '0')}_${debugInfo.description}.png`
+    const filePath = path.join(screenshotDir, fileName)
+    
+    // 截图
+    await browserPage.screenshot({
+      path: filePath,
+      fullPage: true
+    })
+    
+    logger.info(`[TTC] 调试截图已保存: ${fileName} (${debugInfo.description})`)
+    return filePath
+  } catch (error) {
+    logger.error(`[TTC] 截图失败: ${error.message}`)
+    return null
+  }
+}
+
 export class ttc extends plugin {
   constructor () {
     super({
@@ -226,17 +298,28 @@ export class ttc extends plugin {
           reg: '^#*(设置ttc默认|设置TTC默认).*$',
           /** 执行方法 */
           fnc: 'setDefaultServer'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(ttc验证码|TTC验证码).*$',
+          /** 执行方法 */
+          fnc: 'setCaptchaAutoSolve'
         }
       ]
     })
 
-    // 启动时检查必要文件并初始化（异步执行，不阻塞启动）
-    this.initializeOnStartup().catch(error => {
-      logger.error(`[TTC] 启动初始化异步执行失败: ${error.message}`)
-    })
-    
-    // 启动清理任务
-    this.startCleanupTask()
+    // 检查是否已经初始化过，避免重复初始化
+    if (!this.initialized) {
+      this.initialized = true
+      
+      // 启动时检查必要文件并初始化（异步执行，不阻塞启动）
+      this.initializeOnStartup().catch(error => {
+        logger.error(`[TTC] 启动初始化异步执行失败: ${error.message}`)
+      })
+      
+      // 启动清理任务
+      this.startCleanupTask()
+    }
   }
 
   /** 启动时初始化检查 */
@@ -244,6 +327,9 @@ export class ttc extends plugin {
     try {
       // 加载默认服务器配置
       this.loadDefaultServerConfig()
+      
+      // 加载验证码配置
+      this.loadCaptchaConfig()
       
       // 如果已经完成初始检查，跳过
       if (initialUpdateCompleted) {
@@ -382,7 +468,11 @@ export class ttc extends plugin {
       
       const timeUntilUpdate = target.getTime() - now.getTime()
       
-      logger.info(`[TTC] 价格表自动更新已安排，下次更新时间: ${target.toLocaleString('zh-CN')}`)
+      // 只在第一次调度时打印日志，避免重复打印
+      if (!this.dailyUpdateLogged) {
+        logger.info(`[TTC] 价格表自动更新已安排，下次更新时间: ${target.toLocaleString('zh-CN')}`)
+        this.dailyUpdateLogged = true
+      }
       
       // 清理旧的定时器（如果存在）
       if (dailyUpdateTimer) {
@@ -603,6 +693,12 @@ export class ttc extends plugin {
         return await this.reply('查询太频繁，请稍后再试')
       }
 
+      // 清理旧的截图文件
+      await cleanupScreenshots()
+      
+      // 重置截图计数器
+      screenshotCounter = 0
+
       await this.reply('正在查询请稍后...')
 
       // 解析命令
@@ -643,14 +739,28 @@ export class ttc extends plugin {
         baseUrl += `&ItemQualityID=${qualityId}`
       }
       
-      // 使用puppeteer获取交易信息
-      const imageBuffer = await this.scrapeTradeInfo(baseUrl, itemName, page, serverType)
+      // 使用puppeteer获取交易信息，支持重试机制
+      let result = await this.scrapeTradeInfo(baseUrl, itemName, page, serverType)
       
-      if (imageBuffer) {
-        // 缓存图片
-        ttcCache.set(cacheKey, imageBuffer)
-        
-        return await this.reply(imageBuffer)
+      // 已移除第三方验证码破解服务，不再重试
+      if (result && result.type === 'error' && result.message.includes('偶遇验证码')) {
+        logger.info(`[TTC] 检测到验证码，已移除第三方破解服务，无法自动处理`)
+      }
+      
+      if (result && result.type === 'error') {
+        // 如果是错误信息，检查是否包含截图
+        if (result.screenshot) {
+          // 发送错误消息和截图
+          await this.reply(result.message)
+          return await this.reply(segment.image(`file://${result.screenshot}`))
+        } else {
+          // 只发送错误消息
+          return await this.reply(result.message)
+        }
+      } else if (result && result.type === 'image') {
+        // 如果是图片，缓存并返回
+        ttcCache.set(cacheKey, result.data)
+        return await this.reply(result.data)
       } else {
         return await this.reply('没有找到符合条件的交易信息')
       }
@@ -886,6 +996,15 @@ export class ttc extends plugin {
 示例：#设置ttc默认 欧服
 功能：设置查询交易和查询价格的默认服务器
 
+🔐 验证码设置（仅主人）
+#ttc验证码 [开启/关闭/状态]
+示例：#ttc验证码 开启
+示例：#ttc验证码 关闭
+示例：#ttc验证码 状态
+功能：开启/关闭自动验证码解决功能
+※ 已移除所有第三方验证码破解服务
+※ 遇到验证码时将提示用户手动处理
+
 ❓ 帮助
 #TTC帮助
 
@@ -899,13 +1018,19 @@ export class ttc extends plugin {
 • 交易查询支持美服/欧服切换  
 • 价格查询支持美服/欧服独立数据
 • 价格信息基于TTC最新数据
-• 不同服务器的价格可能存在差异`
+• 不同服务器的价格可能存在差异
+• 如遇到验证码，将提示用户手动处理`
 
     return await this.reply(helpMsg)
   }
 
   /** 读取默认服务器配置 */
   loadDefaultServerConfig() {
+    // 检查是否已经加载过，避免重复加载
+    if (this.defaultServerConfigLoaded) {
+      return
+    }
+    
     try {
       if (fs.existsSync(TTC_DEFAULT_SERVER_FILE)) {
         const configData = fs.readFileSync(TTC_DEFAULT_SERVER_FILE, 'utf-8')
@@ -917,15 +1042,18 @@ export class ttc extends plugin {
             server: config.server,
             name: config.server === 'NA' ? '美服' : '欧服'
           }
-          logger.info(`[TTC] 已加载默认服务器配置: ${defaultServerConfig.name}`)
+          //logger.info(`[TTC] 已加载默认服务器配置: ${defaultServerConfig.name}`)
         } else {
-          logger.warn('[TTC] 默认服务器配置文件格式无效，使用默认值：美服')
+          //logger.warn('[TTC] 默认服务器配置文件格式无效，使用默认值：美服')
         }
       } else {
-        logger.info('[TTC] 默认服务器配置文件不存在，使用默认值：美服')
+        //logger.info('[TTC] 默认服务器配置文件不存在，使用默认值：美服')
       }
+      
+      this.defaultServerConfigLoaded = true
     } catch (error) {
       logger.error(`[TTC] 读取默认服务器配置失败: ${error.message}`)
+      this.defaultServerConfigLoaded = true // 即使失败也标记为已加载，避免重复尝试
     }
   }
 
@@ -1063,17 +1191,232 @@ export class ttc extends plugin {
       
       if (!htmlData || htmlData.hasError) {
         logger.warn(`[TTC] 抓取失败或无数据: ${htmlData?.error || '未知错误'}`)
-        return await this.generateNoDataImage(itemName, page, serverType, htmlData?.error)
+        
+        // 检查是否是验证码错误
+        if (htmlData?.error && htmlData.error.includes('偶遇验证码')) {
+          return {
+            type: 'error',
+            message: htmlData.error,
+            screenshot: htmlData.screenshot
+          }
+        }
+        
+        // 其他错误生成错误图片
+        const imgBuffer = await this.generateNoDataImage(itemName, page, serverType, htmlData?.error)
+        return {
+          type: 'image',
+          data: imgBuffer
+        }
       }
+      
+      // 数据抓取成功，准备生成图片
+      logger.info(`[TTC] 数据抓取成功，开始生成交易图片: ${itemName}`)
       
       // 生成交易信息图片
       const imgBuffer = await this.generateTradeImage(htmlData)
       
-      return imgBuffer
+      return {
+        type: 'image',
+        data: imgBuffer
+      }
 
     } catch (error) {
       logger.error(`[TTC] 抓取交易信息失败: ${error.message}`)
-      return await this.generateErrorImage(itemName, page, serverType, error.message)
+      
+      // 检查是否是验证码相关错误
+      if (error.message.includes('验证码')) {
+        return {
+          type: 'error',
+          message: error.message,
+          screenshot: error.screenshot
+        }
+      }
+      
+      // 其他错误生成错误图片
+      logger.info(`[TTC] 生成错误图片: ${itemName} - ${error.message}`)
+      const imgBuffer = await this.generateErrorImage(itemName, page, serverType, error.message)
+      return {
+        type: 'image',
+        data: imgBuffer
+      }
+    }
+  }
+
+  /** 处理广告拦截器弹窗 */
+  async handleAdBlockPopup(browserPage) {
+    try {
+      const result = await browserPage.evaluate(() => {
+        try {
+          let adBlockDetected = false
+          let adBlockText = ''
+          let actionTaken = false
+          
+          // 查找包含"Continue with first party ads"文本的按钮（只检查可见的）
+          const continueButton = Array.from(document.querySelectorAll('button, input[type="button"], .btn, .button, a')).find(el => {
+            // 检查元素是否可见
+            const style = window.getComputedStyle(el)
+            const isVisible = style.display !== 'none' && 
+                             style.visibility !== 'hidden' && 
+                             style.opacity !== '0' &&
+                             el.offsetWidth > 0 && 
+                             el.offsetHeight > 0
+            
+            if (!isVisible) {
+              return false // 跳过隐藏的元素
+            }
+            
+            const text = el.textContent || el.value || el.innerText || ''
+            return text.includes('Continue with first party ads') || 
+                   text.includes('继续使用第一方广告') ||
+                   text.includes('Continue') ||
+                   text.includes('Accept') ||
+                   text.includes('Allow')
+          })
+          
+          if (continueButton) {
+            adBlockDetected = true
+            adBlockText = continueButton.textContent || continueButton.value || 'Continue with first party ads'
+            console.log('找到可见的广告弹窗按钮:', adBlockText)
+            continueButton.click()
+            actionTaken = true
+            return { detected: true, text: adBlockText, action: 'clicked_continue_button' }
+          }
+          
+          // 查找包含广告相关文本的弹窗（只检查可见的）
+          const adBlockElement = Array.from(document.querySelectorAll('div, p, span, h1, h2, h3')).find(el => {
+            // 检查元素是否可见
+            const style = window.getComputedStyle(el)
+            const isVisible = style.display !== 'none' && 
+                             style.visibility !== 'hidden' && 
+                             style.opacity !== '0' &&
+                             el.offsetWidth > 0 && 
+                             el.offsetHeight > 0
+            
+            if (!isVisible) {
+              return false // 跳过隐藏的元素
+            }
+            
+            const text = el.textContent || ''
+            return text.includes('ad blocker') || 
+                   text.includes('广告拦截器') ||
+                   text.includes('广告收入') ||
+                   text.includes('ad revenue') ||
+                   text.includes('disable ad blocker') ||
+                   text.includes('关闭广告拦截器') ||
+                   text.includes('TTC 依赖广告收入') ||
+                   text.includes('tamriel trade centre') ||
+                   text.includes('donate')
+          })
+          
+          if (adBlockElement) {
+            adBlockDetected = true
+            adBlockText = adBlockElement.textContent.substring(0, 200)
+            console.log('检测到可见的广告拦截器相关文本:', adBlockText)
+            
+            // 查找可能的关闭按钮（只检查可见的）
+            const closeButton = Array.from(document.querySelectorAll('button, input[type="button"], .btn, .button, a, .close, .dismiss')).find(el => {
+              // 检查按钮是否可见
+              const style = window.getComputedStyle(el)
+              const isVisible = style.display !== 'none' && 
+                               style.visibility !== 'hidden' && 
+                               style.opacity !== '0' &&
+                               el.offsetWidth > 0 && 
+                               el.offsetHeight > 0
+              
+              if (!isVisible) {
+                return false // 跳过隐藏的按钮
+              }
+              
+              const text = el.textContent || el.value || el.innerText || ''
+              return text.includes('Continue') ||
+                     text.includes('Accept') ||
+                     text.includes('Allow') ||
+                     text.includes('OK') ||
+                     text.includes('确定') ||
+                     text.includes('继续') ||
+                     text.includes('允许')
+            })
+            
+            if (closeButton) {
+              console.log('找到可见的关闭按钮:', closeButton.textContent || closeButton.value)
+              closeButton.click()
+              actionTaken = true
+              return { detected: true, text: adBlockText, action: 'clicked_close_button' }
+            }
+          }
+          
+          // 查找模态框或弹窗的关闭按钮（只检查可见的）
+          const modalCloseButton = document.querySelector('.modal .close, .popup .close, .dialog .close, [data-dismiss="modal"], .btn-close')
+          if (modalCloseButton) {
+            // 检查按钮是否可见
+            const style = window.getComputedStyle(modalCloseButton)
+            const isVisible = style.display !== 'none' && 
+                             style.visibility !== 'hidden' && 
+                             style.opacity !== '0' &&
+                             modalCloseButton.offsetWidth > 0 && 
+                             modalCloseButton.offsetHeight > 0
+            
+            if (isVisible) {
+              adBlockDetected = true
+              adBlockText = '检测到可见的模态框弹窗'
+              console.log('找到可见的模态框关闭按钮')
+              modalCloseButton.click()
+              actionTaken = true
+              return { detected: true, text: adBlockText, action: 'clicked_modal_close' }
+            }
+          }
+          
+          // 查找ESC键关闭的弹窗（只检查可见的）
+          const visibleModal = Array.from(document.querySelectorAll('.modal, .popup, .dialog, .overlay')).find(el => {
+            const style = window.getComputedStyle(el)
+            const isVisible = style.display !== 'none' && 
+                             style.visibility !== 'hidden' && 
+                             style.opacity !== '0' &&
+                             el.offsetWidth > 0 && 
+                             el.offsetHeight > 0
+            return isVisible
+          })
+          
+          if (visibleModal) {
+            adBlockDetected = true
+            adBlockText = '检测到可见的模态框，尝试ESC键关闭'
+            console.log('检测到可见的模态框，尝试按ESC键关闭')
+            // 模拟ESC键
+            const escEvent = new KeyboardEvent('keydown', {
+              key: 'Escape',
+              keyCode: 27,
+              which: 27,
+              bubbles: true
+            })
+            document.dispatchEvent(escEvent)
+            actionTaken = true
+            return { detected: true, text: adBlockText, action: 'pressed_escape_key' }
+          }
+          
+          return { detected: false, text: '', action: 'none' }
+        } catch (error) {
+          console.error('处理广告弹窗时出错:', error)
+          return { detected: false, text: '', action: 'error', error: error.message }
+        }
+      })
+      
+      if (result.detected) {
+        logger.info(`[TTC] 发现了广告弹窗: ${result.text}`)
+        logger.info(`[TTC] 执行处理动作: ${result.action}`)
+        return true
+      } else {
+        // 只有在确实没有检测到广告弹窗时才打印日志
+        if (result.action === 'none') {
+          // 不打印日志，静默返回
+        } else if (result.action === 'error') {
+          logger.error(`[TTC] 检查广告弹窗时出错: ${result.error}`)
+        }
+        return false
+      }
+      
+    } catch (error) {
+      logger.error(`[TTC] 处理广告拦截器弹窗失败: ${error.message}`)
+      return false
     }
   }
 
@@ -1146,8 +1489,23 @@ export class ttc extends plugin {
         // 等待页面加载完成，使用更灵活的等待策略
         logger.info(`[TTC] 页面加载完成，等待内容渲染...`)
         
-        // 使用Promise.resolve + setTimeout来代替waitForTimeout
-        await new Promise(resolve => setTimeout(resolve, 3000))
+        // 延长等待时间，确保页面完全加载
+        await new Promise(resolve => setTimeout(resolve, 8000))
+        
+        // 检查并处理广告拦截器弹窗
+        const adBlockHandled = await this.handleAdBlockPopup(browserPage)
+        if (adBlockHandled) {
+          logger.info(`[TTC] 广告拦截器弹窗已处理，等待页面重新加载...`)
+          await new Promise(resolve => setTimeout(resolve, 3000))
+        }
+        
+        // 在验证码检测前截图
+        /*
+        await takeDebugScreenshot(browserPage, {
+          line: 1280,
+          description: '验证码检测前'
+        })
+        */
         
         // 检查页面内容
         const pageContent = await browserPage.evaluate(() => {
@@ -1160,17 +1518,103 @@ export class ttc extends plugin {
           const tradeTable = document.querySelector('table.trade-list-table')
           const tradeRows = document.querySelectorAll('table.trade-list-table tbody tr')
           
+          // 检查是否有真正的验证码挑战（排除不可见reCAPTCHA标识）
+          let hasRealCaptcha = false
+          
+          // 检查是否有可见的验证码复选框
+          const visibleCheckbox = document.querySelector('.recaptcha-checkbox-border, .recaptcha-checkbox')
+          if (visibleCheckbox) {
+            hasRealCaptcha = true
+          }
+          
+          // 检查是否有图片验证挑战
+          const imageChallenge = document.querySelector('.rc-imageselect, .rc-imageselect-target, iframe[src*="recaptcha/api2/bframe"]')
+          if (imageChallenge) {
+            hasRealCaptcha = true
+          }
+          
+          // 检查是否有验证码错误消息
+          const captchaError = document.querySelector('.recaptcha-error, .rc-anchor-error-msg')
+          if (captchaError && captchaError.style.display !== 'none') {
+            hasRealCaptcha = true
+          }
+          
+          // 检查是否有验证码文本提示（只有在没有真正验证码挑战时才考虑）
+          let captchaText = null
+          if (!hasRealCaptcha) {
+            captchaText = Array.from(document.querySelectorAll('h3, div, span, p')).find(el => 
+              el.textContent && (
+                el.textContent.includes('抱歉，您需要完成验证码测试才能继续') ||
+                el.textContent.includes('验证码') ||
+                el.textContent.includes('captcha') ||
+                el.textContent.includes('reCAPTCHA')
+              )
+            )
+          }
+          
+          // 检查是否有Cloudflare挑战
+          const cloudflareText = Array.from(document.querySelectorAll('h1, h2, h3, div, span')).find(el => 
+            el.textContent && (
+              el.textContent.includes('Checking your browser') ||
+              el.textContent.includes('Please wait while we verify') ||
+              el.textContent.includes('Cloudflare')
+            )
+          )
+          
           return {
             hasNoResults: !!noResultsText,
             hasTable: !!tradeTable,
             rowCount: tradeRows ? tradeRows.length : 0,
+            hasCaptcha: !!(hasRealCaptcha || captchaText),
+            hasCloudflare: !!cloudflareText,
             pageTitle: document.title,
             bodyText: document.body.textContent.substring(0, 500) // 前500字符用于调试
           }
         })
         
-        logger.info(`[TTC] 页面内容检查结果: 无结果=${pageContent.hasNoResults}, 有表格=${pageContent.hasTable}, 行数=${pageContent.rowCount}`)
-        logger.info(`[TTC] 页面标题: ${pageContent.pageTitle}`)
+        // 智能验证码检测：如果已经有价格表格数据，认为没有验证码
+        let finalHasCaptcha = pageContent.hasCaptcha
+        if (pageContent.hasTable && pageContent.rowCount > 0) {
+          //logger.info(`[TTC] 检测到价格表格数据（${pageContent.rowCount}行），认为无需验证码`)
+          finalHasCaptcha = false
+        }
+        
+        logger.info(`[TTC] 页面内容检查结果: 无结果=${pageContent.hasNoResults}, 有表格=${pageContent.hasTable}, 行数=${pageContent.rowCount}, 验证码=${pageContent.hasCaptcha}, Cloudflare=${pageContent.hasCloudflare}`)
+        //logger.info(`[TTC] 页面标题: ${pageContent.pageTitle}`)
+        //logger.info(`[TTC] 最终验证码判断: ${finalHasCaptcha}`)
+        
+        // 检查是否遇到验证码
+        if (finalHasCaptcha) {
+          logger.warn(`[TTC] 检测到验证码挑战: ${itemName}`)
+          
+          // 验证码检测后截图
+          await takeDebugScreenshot(browserPage, {
+            line: 1590,
+            description: '检测到验证码'
+          })
+          
+          // 获取最新的debug截图
+          const screenshotPath = await this.getLatestDebugScreenshot()
+          
+          // 已移除第三方验证码破解服务，返回指定的错误信息和截图
+          return { 
+            hasError: true, 
+            error: '偶遇验证码，拼尽全力，无法战胜！',
+            screenshot: screenshotPath
+          }
+        } else {
+          if (pageContent.hasTable && pageContent.rowCount > 0) {
+            //logger.info(`[TTC] 页面正常，已有价格表格数据，无需验证码`)
+          } else {
+            //logger.info(`[TTC] 页面正常，无验证码挑战`)
+          }
+        }
+        
+        // 检查是否遇到Cloudflare挑战
+        if (pageContent.hasCloudflare) {
+          logger.warn(`[TTC] 检测到Cloudflare挑战: ${itemName}`)
+          return { hasError: true, error: '遇到Cloudflare挑战，请稍后重试' }
+        }
         
         // 如果明确显示没有结果
         if (pageContent.hasNoResults) {
@@ -1180,20 +1624,39 @@ export class ttc extends plugin {
         
         // 如果没有找到表格，可能需要等待更长时间或页面结构改变了
         if (!pageContent.hasTable) {
-          logger.warn(`[TTC] 未找到交易表格，可能页面结构已变更`)
-          //logger.info(`[TTC] 页面内容片段: ${pageContent.bodyText}`)
+          logger.info(`[TTC] 页面表格未加载完成，等待额外时间...`)
           
           // 尝试等待更长时间
-          await new Promise(resolve => setTimeout(resolve, 5000))
+          await new Promise(resolve => setTimeout(resolve, 8000))
           
-          // 再次检查
-          const hasTableNow = await browserPage.evaluate(() => {
-            return !!document.querySelector('table.trade-list-table')
+          // 再次检查，使用更智能的检测
+          const tableCheck = await browserPage.evaluate(() => {
+            const tradeTable = document.querySelector('table.trade-list-table')
+            const anyTable = document.querySelector('table')
+            const dataRows = document.querySelectorAll('tr[data-bind*="TradeAsset"]')
+            const listRows = document.querySelectorAll('.trade-list-table tr')
+            const hasDataContent = document.body.textContent.includes('价格') || 
+                                 document.body.textContent.includes('交易') ||
+                                 document.body.textContent.includes('金币') ||
+                                 document.body.textContent.includes('gold')
+            
+            return {
+              hasTradeTable: !!tradeTable,
+              hasAnyTable: !!anyTable,
+              hasDataRows: dataRows ? dataRows.length : 0,
+              hasListRows: listRows ? listRows.length : 0,
+              hasDataContent: hasDataContent
+            }
           })
           
-          if (!hasTableNow) {
+          logger.info(`[TTC] 等待后表格检查: 交易表格=${tableCheck.hasTradeTable}, 任意表格=${tableCheck.hasAnyTable}, 数据行=${tableCheck.hasDataRows}, 列表行=${tableCheck.hasListRows}, 有数据内容=${tableCheck.hasDataContent}`)
+          
+          if (!tableCheck.hasTradeTable && !tableCheck.hasAnyTable && tableCheck.hasDataRows === 0 && tableCheck.hasListRows === 0 && !tableCheck.hasDataContent) {
+            logger.warn(`[TTC] 等待后仍未找到交易表格，可能页面结构已变更`)
             return { hasError: true, error: '页面结构异常，未找到交易表格' }
           }
+          
+          logger.info(`[TTC] 等待后成功找到交易数据`)
         }
         
         // 如果有表格但没有数据行
@@ -1245,22 +1708,70 @@ export class ttc extends plugin {
             }
             const data = []
             
-            // 尝试多种表格选择器
-            let rows = document.querySelectorAll('table.trade-list-table tbody tr')
+            // 尝试多种表格选择器，按优先级排序
+            let rows = null
+            let selectorUsed = ''
+            
+            // 方法1: 标准交易表格
+            rows = document.querySelectorAll('table.trade-list-table tbody tr')
+            if (rows && rows.length > 0) {
+              selectorUsed = 'table.trade-list-table tbody tr'
+            }
+            
+            // 方法2: 任意表格的tbody行
             if (!rows || rows.length === 0) {
               rows = document.querySelectorAll('table tbody tr')
+              if (rows && rows.length > 0) {
+                selectorUsed = 'table tbody tr'
+              }
             }
+            
+            // 方法3: 数据绑定行
             if (!rows || rows.length === 0) {
               rows = document.querySelectorAll('tr[data-bind*="TradeAsset"]')
+              if (rows && rows.length > 0) {
+                selectorUsed = 'tr[data-bind*="TradeAsset"]'
+              }
             }
+            
+            // 方法4: 交易列表表格行
             if (!rows || rows.length === 0) {
               rows = document.querySelectorAll('.trade-list-table tr')
+              if (rows && rows.length > 0) {
+                selectorUsed = '.trade-list-table tr'
+              }
             }
             
-            console.log(`[TTC] 找到 ${rows.length} 行数据`)
+            // 方法5: 任意表格行（包括没有tbody的）
+            if (!rows || rows.length === 0) {
+              rows = document.querySelectorAll('table tr')
+              if (rows && rows.length > 0) {
+                selectorUsed = 'table tr'
+              }
+            }
+            
+            // 方法6: 包含价格相关文本的行
+            if (!rows || rows.length === 0) {
+              const allRows = document.querySelectorAll('tr')
+              rows = Array.from(allRows).filter(row => {
+                const text = row.textContent.toLowerCase()
+                return text.includes('价格') || text.includes('金币') || text.includes('gold') || text.includes('交易')
+              })
+              if (rows && rows.length > 0) {
+                selectorUsed = 'filtered rows with price content'
+              }
+            }
+            
+            console.log(`[TTC] 使用选择器 "${selectorUsed}" 找到 ${rows ? rows.length : 0} 行数据`)
             
             if (!rows || rows.length === 0) {
-              return { hasError: true, error: '未找到交易数据行' }
+              // 如果还是找不到，尝试检查页面是否有任何数据内容
+              const pageText = document.body.textContent
+              if (pageText.includes('没有符合条件的交易') || pageText.includes('No results found')) {
+                return { hasError: true, error: '没有符合条件的交易' }
+              } else {
+                return { hasError: true, error: '未找到交易数据行，页面结构可能已变更' }
+              }
             }
             
             rows.forEach((row, index) => {
@@ -1509,6 +2020,29 @@ export class ttc extends plugin {
                 if (lastSeenElement) {
                   lastSeen = lastSeenElement.textContent.trim()
                 }
+
+                // 特质信息 - 从物品图标的data-original-title属性中提取
+                let trait = ""
+                let traitElement = row.querySelector('img.trade-item-icon[data-original-title]')
+                if (!traitElement) {
+                  traitElement = row.querySelector('img[data-original-title]')
+                }
+                if (!traitElement) {
+                  traitElement = row.querySelector('img[data-bind*="GetItemPropertyDescription"]')
+                }
+                
+                if (traitElement) {
+                  const originalTitle = traitElement.getAttribute('data-original-title')
+                  if (originalTitle) {
+                    // 清理特质信息，将换行符替换为空格
+                    trait = originalTitle.replace(/\n/g, ' ').replace(/\r/g, ' ').trim()
+                    console.log(`[TTC] 第 ${index + 1} 行提取到特质: "${trait}"`)
+                  } else {
+                    console.log(`[TTC] 第 ${index + 1} 行特质元素存在但data-original-title为空`)
+                  }
+                } else {
+                  console.log(`[TTC] 第 ${index + 1} 行未找到特质元素`)
+                }
                 
                 // 如果至少有一些有效信息，就添加到数据中
                 if (item !== "未找到物品信息" || 
@@ -1517,13 +2051,13 @@ export class ttc extends plugin {
                   
                   data.push([
                     item, level, playerId, location, guild,
-                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl
+                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl, trait
                   ])
                   
                   // 调试信息
                   console.log(`[TTC] 提取到数据行 ${index + 1}:`, {
                     item, level, playerId, location, guild,
-                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl
+                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl, trait
                   })
                   
                   // 特别调试图标URL
@@ -1535,7 +2069,7 @@ export class ttc extends plugin {
                 } else {
                   console.log(`[TTC] 跳过无效数据行 ${index + 1}:`, {
                     item, level, playerId, location, guild,
-                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl
+                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl, trait
                   })
                 }
                 
@@ -1656,17 +2190,62 @@ export class ttc extends plugin {
         
         if (tradeData.hasError) {
           logger.warn(`[TTC] 数据提取失败: ${tradeData.error}`)
+          
+          // 数据提取失败时截图
+          await takeDebugScreenshot(browserPage, {
+            line: 2060,
+            description: `数据提取失败_${tradeData.error}`
+          })
+          
           return tradeData
         }
         
         if (!tradeData.data || tradeData.data.length === 0) {
           logger.info(`[TTC] 提取到的数据为空: ${itemName}`)
+          
+          // 数据为空时截图
+          await takeDebugScreenshot(browserPage, {
+            line: 2065,
+            description: `提取到的数据为空_${itemName}`
+          })
+          
           return { hasError: true, error: '没有符合条件的交易' }
         }
         
         // 添加页面信息调试日志
         // logger.info(`[TTC] 页面信息提取: 当前页=${tradeData.pageInfo?.match(/第(\d+)页/)?.[1] || '未知'}, 总页数=${tradeData.pageInfo?.match(/总共(\d+)页/)?.[1] || '未知'}`)
         logger.info(`[TTC] 成功提取到 ${tradeData.data.length} 条交易数据`)
+        
+        // 智能验证码检测：检查是否只有1条记录且包含验证码提示
+        if (tradeData.data.length === 1) {
+          const firstRecord = tradeData.data[0]
+          const traderName = firstRecord[2] // 交易者名字在数组的第3个位置
+          
+          if (traderName && traderName.includes('抱歉，您需要完成验证码测试才能继续')) {
+            logger.warn(`[TTC] 检测到虚假数据：只有1条记录且卖家名字包含验证码提示`)
+            
+            // 虚假数据检测后截图
+            await takeDebugScreenshot(browserPage, {
+              line: 2075,
+              description: `检测到虚假数据_只有1条记录且包含验证码提示`
+            })
+            
+            // 获取最新的debug截图
+            const screenshotPath = await this.getLatestDebugScreenshot()
+            
+            return { 
+              hasError: true, 
+              error: '偶遇验证码，拼尽全力，无法战胜！',
+              screenshot: screenshotPath
+            }
+          }
+        }
+        
+        // 数据提取成功后截图
+        await takeDebugScreenshot(browserPage, {
+          line: 2070,
+          description: `成功提取到${tradeData.data.length}条交易数据`
+        })
         
         return {
           hasError: false,
@@ -1679,6 +2258,13 @@ export class ttc extends plugin {
         
       } catch (error) {
         logger.error(`[TTC] 页面操作失败: ${error.message}`)
+        
+        // 页面操作失败时截图
+        await takeDebugScreenshot(browserPage, {
+          line: 2080,
+          description: `页面操作失败_${error.message}`
+        })
+        
         return { hasError: true, error: `页面访问失败: ${error.message}` }
       } finally {
         // 在关闭页面前再次清理缓存
@@ -1688,6 +2274,15 @@ export class ttc extends plugin {
       
     } catch (error) {
       logger.error(`[TTC] 获取页面数据失败: ${error.message}`)
+      
+      // 整个函数失败时截图（如果browserPage存在）
+      if (browserPage) {
+        await takeDebugScreenshot(browserPage, {
+          line: 2090,
+          description: `获取页面数据失败_${error.message}`
+        }).catch(() => {}) // 忽略截图失败的错误
+      }
+      
       return { hasError: true, error: error.message }
     }
   }
@@ -1714,12 +2309,13 @@ export class ttc extends plugin {
     const { data, pageInfo, itemName, serverType, page } = tradeData
     
     // 转换数据格式为HTML模板需要的格式
-    // 数据结构：[item, level, player_id, location, guild, unit_price, amount, total_price, last_seen, item_quality_color, item_icon_url]
+    // 数据结构：[item, level, player_id, location, guild, unit_price, amount, total_price, last_seen, item_quality_color, item_icon_url, trait]
     const tradeRows = []
     
     for (let i = 0; i < data.length; i++) {
       const row = data[i]
       const itemIconUrl = row[10] // 物品图标URL
+      const trait = row[11] || "" // 特质信息
       
       // 获取物品图标路径
       let itemIconPath = null
@@ -1732,6 +2328,7 @@ export class ttc extends plugin {
         itemIcon: itemIconPath,                                           // 物品图标路径
         itemName: row[0],                                                 // 物品名称
         level: row[1],                                                    // 等级
+        trait: trait,                                                     // 特质
         trader: row[2],                                                   // 交易者
         location: row[3],                                                 // 位置
         guild: row[4],                                                    // 工会
@@ -1854,7 +2451,7 @@ export class ttc extends plugin {
 
       // 检查文件是否已存在
       if (fs.existsSync(filePath)) {
-        logger.info(`[TTC] 物品图标已存在: ${safeFileName}`)
+        //logger.info(`[TTC] 物品图标已存在: ${safeFileName}`)
         return safeFileName
       }
 
@@ -1863,7 +2460,7 @@ export class ttc extends plugin {
       const success = await Bot.download(iconUrl, filePath)
       
       if (success) {
-        logger.info(`[TTC] 物品图标下载成功: ${safeFileName}`)
+        //logger.info(`[TTC] 物品图标下载成功: ${safeFileName}`)
         return safeFileName
       } else {
         logger.warn(`[TTC] 下载物品图标失败: Bot.download返回false`)
@@ -2742,10 +3339,10 @@ export class ttc extends plugin {
       // 读取JSON价格表数据
       let priceTableData = null
       try {
-        logger.info('[TTC] 开始读取价格表JSON文件...')
+        //logger.info('[TTC] 开始读取价格表JSON文件...')
         const jsonContent = await fs.promises.readFile(jsonFilePath, 'utf8')
         priceTableData = JSON.parse(jsonContent)
-        logger.info(`[TTC] 成功读取价格表数据`)
+        //logger.info(`[TTC] 成功读取价格表数据`)
       } catch (error) {
         logger.error(`[TTC] 读取价格表失败: ${error.message}`)
         return {
@@ -2828,8 +3425,8 @@ export class ttc extends plugin {
       const dataToSearch = priceTableData.priceTable || priceTableData
       const itemData = this.findItemData(dataToSearch, itemId)
       
-      logger.info(`[TTC] 搜索数据结构: ${Object.keys(dataToSearch).slice(0, 5).join(', ')}...`)
-      logger.info(`[TTC] 物品${itemId}查找结果: ${itemData ? '找到' : '未找到'}`)
+      //logger.info(`[TTC] 搜索数据结构: ${Object.keys(dataToSearch).slice(0, 5).join(', ')}...`)
+      logger.info(`[TTC] 物品${itemId}查找结果: ${itemData ? '已找到' : '未找到'}`)
       
       if (!itemData) {
         return {
@@ -3088,11 +3685,11 @@ export class ttc extends plugin {
     for (let i = 0; i < maxDisplay; i++) {
       const data = processedData[i]
       const item = {
-        index: `${i + 1}.`,
+        itemName: itemName, // 添加物品名称
         quality: data.品质 || '未知',
         qualityClass: this.getQualityClass(data.品质),
         level: data.等级 || '未知',
-        levelClass: (data.等级 === 'CP160') ? 'cp160' : '',
+        levelClass: (data.等级 === 'CP160') ? 'cp160' : 'level160',
         rowBackgroundClass: this.getLevelBackgroundClass(data.等级),
         trait: data.特质 || '未知',
         // 价格信息 (按用户要求的顺序：最低价 → 最高价 → 平均价 → 销售均价→建议价)
@@ -3103,9 +3700,9 @@ export class ttc extends plugin {
         suggestedPrice: data.建议价 ? `${data.建议价.toLocaleString()}金` : null,
         // 交易信息
         listingCount: data.列表数量 ? `${data.列表数量}个` : null,
-        totalCount: data.总物品数 ? `${data.总物品数}个` : null,
+        totalItems: data.总物品数 ? `${data.总物品数}个` : null,
         salesCount: data.销售记录数 ? `${data.销售记录数}笔` : null,
-        totalSalesCount: data.销售总数 ? `${data.销售总数}笔` : null
+        salesTotal: data.销售总数 ? `${data.销售总数}笔` : null
       }
       priceData.push(item)
     }
@@ -3155,11 +3752,19 @@ export class ttc extends plugin {
 
   /** 根据等级获取行背景CSS类名 */
   getLevelBackgroundClass(level) {
-    // 如果等级为空、未知、0或CP160，则保持原本背景
-    if (!level || level === '未知' || level === '0' || level === 'CP160') {
-      return ''
+    // 如果等级为空、未知，则使用灰色背景
+    if (!level || level === '未知') {
+      return 'level-gray-bg'
     }
-    // 其他等级添加灰色背景
+    // 如果等级为CP160，则使用CP160背景
+    if (level === 'CP160') {
+      return 'cp160-bg'
+    }
+    // 如果等级为0，则使用等级0背景
+    if (level === '0') {
+      return 'level0-bg'
+    }
+    // 其他等级使用灰色背景
     return 'level-gray-bg'
   }
 
@@ -3219,5 +3824,1418 @@ export class ttc extends plugin {
     }
 
     return priceText
+  }
+
+  /** 加载验证码配置 */
+  loadCaptchaConfig() {
+    // 检查是否已经加载过，避免重复加载
+    if (this.captchaConfigLoaded) {
+      return
+    }
+    
+    try {
+      if (fs.existsSync(TTC_CAPTCHA_CONFIG_PATH)) {
+        const configData = fs.readFileSync(TTC_CAPTCHA_CONFIG_PATH, 'utf8')
+        this.captchaConfig = JSON.parse(configData)
+        
+        // 确保配置包含所有必要字段，默认关闭自动破解
+        if (!this.captchaConfig.autoSolve) {
+          this.captchaConfig.autoSolve = false
+        }
+        if (!this.captchaConfig.thirdPartyService) {
+          this.captchaConfig.thirdPartyService = 'MANUAL'
+        }
+        if (this.captchaConfig.dailyUsage === undefined) {
+          this.captchaConfig.dailyUsage = 0
+        }
+        if (!this.captchaConfig.lastResetDate) {
+          this.captchaConfig.lastResetDate = new Date().toISOString().split('T')[0]
+        }
+        
+        //logger.info(`[TTC] 验证码配置加载成功: 自动解决=${this.captchaConfig.autoSolve}`)
+      } else {
+        // 默认配置 - 关闭自动破解
+        this.captchaConfig = {
+          autoSolve: false,
+          useThirdParty: false,
+          thirdPartyService: 'MANUAL',
+          apiKey: '',
+          dailyUsage: 0,
+          lastResetDate: new Date().toISOString().split('T')[0]
+        }
+        this.saveCaptchaConfig()
+        logger.info(`[TTC] 验证码配置文件不存在，使用默认配置: 自动解决=false，已移除第三方服务`)
+      }
+      
+      this.captchaConfigLoaded = true
+    } catch (error) {
+      logger.error(`[TTC] 加载验证码配置失败: ${error.message}`)
+      this.captchaConfig = { autoSolve: false }
+      this.captchaConfigLoaded = true // 即使失败也标记为已加载，避免重复尝试
+    }
+  }
+
+  /** 保存验证码配置 */
+  saveCaptchaConfig() {
+    try {
+      const configDir = path.dirname(TTC_CAPTCHA_CONFIG_PATH)
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true })
+      }
+      
+      fs.writeFileSync(TTC_CAPTCHA_CONFIG_PATH, JSON.stringify(this.captchaConfig, null, 2), 'utf8')
+      logger.info(`[TTC] 验证码配置保存成功`)
+    } catch (error) {
+      logger.error(`[TTC] 保存验证码配置失败: ${error.message}`)
+    }
+  }
+
+  /** 设置验证码自动解决 */
+  async setCaptchaAutoSolve(e) {
+    const content = e.msg.replace(/^#*ttc验证码\s*/, '').trim()
+    
+    if (content === '开启') {
+      this.captchaConfig.autoSolve = true
+      this.saveCaptchaConfig()
+      await this.reply('✅ TTC验证码自动解决已开启\n\n💡 注意：已移除所有第三方验证码破解服务，遇到验证码时将提示用户手动处理')
+      logger.info(`[TTC] 用户 ${e.user_id} 开启验证码自动解决`)
+    } else if (content === '关闭') {
+      this.captchaConfig.autoSolve = false
+      this.saveCaptchaConfig()
+      await this.reply('❌ TTC验证码自动解决已关闭')
+      logger.info(`[TTC] 用户 ${e.user_id} 关闭验证码自动解决`)
+    } else if (content.startsWith('设置api')) {
+      // 已移除第三方验证码服务
+      await this.reply(`❌ 已移除所有第三方验证码破解服务\n\n💡 当前状态:\n• 遇到验证码时将提示用户手动处理\n• 无需设置API密钥`)
+    } else if (content === '状态') {
+      const autoStatus = this.captchaConfig.autoSolve ? '开启' : '关闭'
+      
+      const statusMsg = `📋 TTC验证码配置状态:\n\n` +
+        `🔧 自动解决: ${autoStatus}\n` +
+        `🌐 第三方服务: 已移除所有第三方验证码破解服务\n` +
+        `📊 今日使用: 0/0\n` +
+        `🔑 API密钥: 无需设置\n\n` +
+        `💡 当前状态:\n` +
+        `• 已移除所有第三方验证码破解服务\n` +
+        `• 遇到验证码时将提示用户手动处理`
+      
+      await this.reply(statusMsg)
+    } else if (content === '测试api') {
+      // 已移除第三方验证码服务
+      await this.reply(`❌ 已移除所有第三方验证码破解服务\n\n💡 当前状态:\n• 遇到验证码时将提示用户手动处理\n• 无需测试API密钥`)
+    } else if (content.startsWith('切换服务')) {
+      // 已移除第三方验证码服务
+      await this.reply(`❌ 已移除所有第三方验证码破解服务\n\n💡 当前状态:\n• 遇到验证码时将提示用户手动处理\n• 无需切换服务`)
+    } else if (content === '删除api') {
+      // 已移除第三方验证码服务
+      await this.reply(`❌ 已移除所有第三方验证码破解服务\n\n💡 当前状态:\n• 遇到验证码时将提示用户手动处理\n• 无需删除API密钥`)
+    } else if (content === '服务列表') {
+      // 已移除第三方验证码服务
+      await this.reply(`❌ 已移除所有第三方验证码破解服务\n\n💡 当前状态:\n• 遇到验证码时将提示用户手动处理\n• 无需查看服务列表`)
+    } else {
+      const status = this.captchaConfig.autoSolve ? '开启' : '关闭'
+      await this.reply(`📋 TTC验证码自动解决当前状态: ${status}\n\n使用方法:\n` +
+        `#ttc验证码 开启 - 开启自动解决\n` +
+        `#ttc验证码 关闭 - 关闭自动解决\n` +
+        `#ttc验证码 状态 - 查看详细状态\n\n` +
+        `💡 当前状态:\n` +
+        `• 已移除所有第三方验证码破解服务\n` +
+        `• 遇到验证码时将提示用户手动处理\n\n` +
+        `⚠️  注意: 验证码需要手动解决`)
+    }
+  }
+
+  /** 获取最新的debug截图 */
+  async getLatestDebugScreenshot() {
+    try {
+      const screenshotDir = path.join(TTC_CACHE_PATH, 'screenshots')
+      if (!fs.existsSync(screenshotDir)) {
+        return null
+      }
+      
+      const files = fs.readdirSync(screenshotDir)
+      const screenshotFiles = files.filter(file => file.startsWith('screenshot_') && file.endsWith('.png'))
+      
+      if (screenshotFiles.length === 0) {
+        return null
+      }
+      
+      // 按文件名排序，获取最新的截图
+      screenshotFiles.sort((a, b) => {
+        // 从文件名中提取时间戳进行比较
+        const timeA = a.match(/screenshot_(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/)?.[1] || ''
+        const timeB = b.match(/screenshot_(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/)?.[1] || ''
+        return timeB.localeCompare(timeA) // 降序排列，最新的在前
+      })
+      
+      const latestFile = screenshotFiles[0]
+      const screenshotPath = path.join(screenshotDir, latestFile)
+      
+      // 检查文件是否存在且可读
+      if (fs.existsSync(screenshotPath)) {
+        return screenshotPath
+      }
+      
+      return null
+    } catch (error) {
+      logger.error(`[TTC] 获取最新debug截图失败: ${error.message}`)
+      return null
+    }
+  }
+
+  /** 尝试自动解决验证码 */
+  async trySolveCaptcha(browserPage) {
+    // 已移除第三方验证码破解服务，现在只支持手动处理
+    logger.info(`[TTC] 检测到验证码，已移除第三方破解服务，需要手动处理`)
+    
+    // 检测到验证码时截图
+    await takeDebugScreenshot(browserPage, {
+      line: 3945,
+      description: '检测到验证码，需要手动处理'
+    })
+    
+    return false
+  }
+
+  /** 处理复选框阶段 - 已移除，由2captcha自动处理 */
+  async handleCheckboxStage(browserPage) {
+    // 此方法已不再使用，复选框由2captcha服务自动处理
+    logger.info(`[TTC] 复选框处理已委托给2captcha服务`)
+    return true
+  }
+
+  /** 处理图片验证阶段 - 已移除，由2captcha自动处理 */
+  async handleImageStage(browserPage) {
+    // 此方法已不再使用，图片验证由2captcha服务自动处理
+    logger.info(`[TTC] 图片验证处理已委托给2captcha服务`)
+    return true
+  }
+
+  /** 解决图片验证挑战 - 改进处理逻辑 */
+  async solveImageChallenge(browserPage) {
+    try {
+      // 获取验证码的详细信息 - 改进获取逻辑
+      const captchaInfo = await browserPage.evaluate(() => {
+        // 获取验证码的sitekey
+        const sitekey = document.querySelector('.g-recaptcha')?.getAttribute('data-sitekey') ||
+                       document.querySelector('div[data-sitekey]')?.getAttribute('data-sitekey')
+        
+        // 获取当前页面URL
+        const pageUrl = window.location.href
+        
+        // 获取验证码类型 - 改进检测逻辑
+        let challengeType = ''
+        
+        // 方法1：从主页面获取指令
+        const instructionEl = document.querySelector('.rc-imageselect-instructions')
+        if (instructionEl) {
+          challengeType = instructionEl.textContent.trim()
+        }
+        
+        // 方法2：从其他元素获取指令
+        if (!challengeType) {
+          const altInstructionEl = document.querySelector('[data-instructions], .rc-imageselect-instructions')
+          if (altInstructionEl) {
+            challengeType = altInstructionEl.textContent.trim() || altInstructionEl.getAttribute('data-instructions') || ''
+          }
+        }
+        
+        // 方法3：从iframe中获取指令
+        if (!challengeType) {
+          const iframe = document.querySelector('iframe[src*="recaptcha/api2/bframe"]')
+          if (iframe) {
+            try {
+              const iframeDoc = iframe.contentDocument || iframe.contentWindow.document
+              const iframeInstruction = iframeDoc.querySelector('.rc-imageselect-instructions')
+              if (iframeInstruction) {
+                challengeType = iframeInstruction.textContent.trim()
+              }
+            } catch (e) {
+              // 跨域限制，无法访问iframe内容
+            }
+          }
+        }
+        
+        // 方法4：从描述元素获取
+        if (!challengeType) {
+          const descEl = document.querySelector('.rc-imageselect-desc-no-canonical')
+          if (descEl) {
+            challengeType = descEl.textContent.trim()
+          }
+        }
+        
+        console.log('验证码信息:', { sitekey, pageUrl, challengeType })
+        
+        return {
+          sitekey,
+          pageUrl,
+          challengeType
+        }
+      })
+      
+      logger.info(`[TTC] 验证码指令: ${captchaInfo.challengeType}`)
+      
+      // 如果验证码指令为空，尝试通用处理方法
+      if (!captchaInfo.challengeType) {
+        logger.info(`[TTC] 验证码指令为空，尝试通用处理方法...`)
+        return await this.handleGenericImageChallenge(browserPage)
+      }
+      
+      // 检查是否有"确定"按钮
+      const hasConfirmButton = await browserPage.evaluate(() => {
+        const confirmBtn = document.querySelector('.rc-button-default, button[aria-label*="确定"], button[aria-label*="Verify"]')
+        return !!confirmBtn
+      })
+      
+      if (hasConfirmButton) {
+        // 点击确定按钮
+        await browserPage.evaluate(() => {
+          const confirmBtn = document.querySelector('.rc-button-default, button[aria-label*="确定"], button[aria-label*="Verify"]')
+          if (confirmBtn) {
+            confirmBtn.click()
+          }
+        })
+        
+        // 等待处理
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        
+        // 检查是否还有图片验证
+        const stillHasImageChallenge = await browserPage.evaluate(() => {
+          const imageChallenge = document.querySelector('.rc-imageselect, .rc-imageselect-target')
+          return !!imageChallenge
+        })
+        
+        if (!stillHasImageChallenge) {
+          return true
+        }
+      }
+      
+      // 尝试处理iframe中的验证码
+      const iframeResult = await this.handleIframeCaptcha(browserPage)
+      if (iframeResult) {
+        return true
+      }
+      
+      // 尝试基础图片识别（基于常见模式）
+      const basicResult = await this.basicImageRecognition(browserPage)
+      if (basicResult) {
+        return true
+      }
+      
+      // 已移除第三方验证码破解服务
+      logger.info(`[TTC] 已移除所有第三方验证码破解服务，无法自动解决验证码`)
+      
+      // 如果所有方法都失败，记录详细信息供后续改进
+      logger.warn(`[TTC] 需要高级图片识别，当前版本支持有限`)
+      logger.info(`[TTC] 验证码详情: ${JSON.stringify(captchaInfo)}`)
+      
+      return false
+      
+    } catch (error) {
+      logger.error(`[TTC] 图片验证解决出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 处理通用图片验证挑战 */
+  async handleGenericImageChallenge(browserPage) {
+    try {
+      logger.info(`[TTC] 尝试通用图片验证处理方法...`)
+      
+      // 尝试处理iframe中的验证码
+      const iframeResult = await this.handleIframeCaptcha(browserPage)
+      if (iframeResult) {
+        return true
+      }
+      
+      // 尝试基础图片识别
+      const basicResult = await this.basicImageRecognition(browserPage)
+      if (basicResult) {
+        return true
+      }
+      
+      // 已移除第三方验证码破解服务
+      logger.info(`[TTC] 已移除所有第三方验证码破解服务，无法自动解决验证码`)
+      
+      return false
+    } catch (error) {
+      logger.error(`[TTC] 通用图片验证处理出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 基础图片识别（基于常见模式） */
+  async basicImageRecognition(browserPage) {
+    try {
+      // 获取验证码指令 - 改进检测逻辑
+      const instruction = await browserPage.evaluate(() => {
+        let instructionText = ''
+        
+        // 尝试多种方式获取指令
+        const instructionEl = document.querySelector('.rc-imageselect-instructions')
+        if (instructionEl) {
+          instructionText = instructionEl.textContent.trim()
+        }
+        
+        // 如果还是空，尝试其他选择器
+        if (!instructionText) {
+          const altInstructionEl = document.querySelector('[data-instructions], .rc-imageselect-instructions')
+          if (altInstructionEl) {
+            instructionText = altInstructionEl.textContent.trim() || altInstructionEl.getAttribute('data-instructions') || ''
+          }
+        }
+        
+        // 尝试获取更详细的指令内容
+        if (!instructionText) {
+          const descEl = document.querySelector('.rc-imageselect-desc-no-canonical')
+          if (descEl) {
+            instructionText = descEl.textContent.trim()
+          }
+        }
+        
+        // 尝试从iframe中获取 - 改进iframe处理
+        if (!instructionText) {
+          const iframes = document.querySelectorAll('iframe')
+          for (const iframe of iframes) {
+            try {
+              if (iframe.src && iframe.src.includes('recaptcha')) {
+                // 等待iframe加载完成
+                if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+                  const iframeInstruction = iframe.contentDocument.querySelector('.rc-imageselect-instructions')
+                  if (iframeInstruction) {
+                    instructionText = iframeInstruction.textContent.trim()
+                    break
+                  }
+                  
+                  const iframeDesc = iframe.contentDocument.querySelector('.rc-imageselect-desc-no-canonical')
+                  if (iframeDesc) {
+                    instructionText = iframeDesc.textContent.trim()
+                    break
+                  }
+                }
+              }
+            } catch (e) {
+              // 跨域限制，无法访问iframe内容
+              console.log('无法访问iframe内容:', e.message)
+            }
+          }
+        }
+        
+        // 如果还是空，尝试等待并重新检测
+        if (!instructionText) {
+          // 等待一段时间让内容加载
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              const finalInstruction = document.querySelector('.rc-imageselect-instructions')?.textContent.trim() ||
+                                      document.querySelector('.rc-imageselect-desc-no-canonical')?.textContent.trim() ||
+                                      ''
+              resolve(finalInstruction)
+            }, 2000)
+          })
+        }
+        
+        return instructionText
+      })
+      
+      logger.info(`[TTC] 验证码指令: ${instruction}`)
+      
+      // 如果指令为空，尝试通用处理方法
+      if (!instruction || instruction.trim() === '') {
+        logger.info(`[TTC] 验证码指令为空，尝试通用处理方法...`)
+        return await this.solveGenericImageChallenge(browserPage)
+      }
+      
+      // 基于指令进行基础识别
+      if (instruction.includes('交通') || instruction.includes('traffic')) {
+        return await this.solveTrafficSigns(browserPage)
+      } else if (instruction.includes('商店') || instruction.includes('store')) {
+        return await this.solveStoreFronts(browserPage)
+      } else if (instruction.includes('汽车') || instruction.includes('car')) {
+        return await this.solveCars(browserPage)
+      } else if (instruction.includes('自行车') || instruction.includes('bicycle')) {
+        return await this.solveBicycles(browserPage)
+      } else if (instruction.includes('人行横道') || instruction.includes('crosswalk')) {
+        return await this.solveCrosswalks(browserPage)
+      } else if (instruction.includes('楼梯') || instruction.includes('stair')) {
+        return await this.solveStairs(browserPage)
+      } else {
+        logger.info(`[TTC] 未知验证码类型: ${instruction}`)
+        // 对于未知类型，也尝试通用处理方法
+        return await this.solveGenericImageChallenge(browserPage)
+      }
+      
+    } catch (error) {
+      logger.error(`[TTC] 基础图片识别出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 解决交通标志验证码 */
+  async solveTrafficSigns(browserPage) {
+    try {
+      logger.info(`[TTC] 尝试解决交通标志验证码...`)
+      
+      // 这里可以实现交通标志识别逻辑
+      // 由于需要AI模型，这里提供一个框架
+      
+      // 获取所有图片元素
+      const images = await browserPage.evaluate(() => {
+        const imgElements = document.querySelectorAll('.rc-imageselect-target img')
+        return Array.from(imgElements).map((img, index) => ({
+          index,
+          src: img.src,
+          alt: img.alt,
+          className: img.className
+        }))
+      })
+      
+      logger.info(`[TTC] 找到 ${images.length} 张图片`)
+      
+      // 这里应该调用AI模型进行识别
+      // 暂时返回false，表示需要手动处理
+      return false
+      
+    } catch (error) {
+      logger.error(`[TTC] 交通标志识别出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 解决商店门面验证码 */
+  async solveStoreFronts(browserPage) {
+    try {
+      logger.info(`[TTC] 尝试解决商店门面验证码...`)
+      // 类似交通标志的处理逻辑
+      return false
+    } catch (error) {
+      logger.error(`[TTC] 商店门面识别出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 解决汽车验证码 */
+  async solveCars(browserPage) {
+    try {
+      logger.info(`[TTC] 尝试解决汽车验证码...`)
+      // 类似交通标志的处理逻辑
+      return false
+    } catch (error) {
+      logger.error(`[TTC] 汽车识别出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 解决自行车验证码 */
+  async solveBicycles(browserPage) {
+    try {
+      logger.info(`[TTC] 尝试解决自行车验证码...`)
+      // 类似交通标志的处理逻辑
+      return false
+    } catch (error) {
+      logger.error(`[TTC] 自行车识别出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 解决人行横道验证码 */
+  async solveCrosswalks(browserPage) {
+    try {
+      logger.info(`[TTC] 尝试解决人行横道验证码...`)
+      // 类似交通标志的处理逻辑
+      return false
+    } catch (error) {
+      logger.error(`[TTC] 人行横道识别出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 解决楼梯验证码 */
+  async solveStairs(browserPage) {
+    try {
+      logger.info(`[TTC] 尝试解决楼梯验证码...`)
+      
+      // 获取所有图片元素
+      const images = await browserPage.evaluate(() => {
+        const imgElements = document.querySelectorAll('.rc-imageselect-tile')
+        return Array.from(imgElements).map((img, index) => ({
+          index,
+          src: img.src || img.querySelector('img')?.src,
+          alt: img.alt || img.querySelector('img')?.alt,
+          className: img.className,
+          isSelected: img.classList.contains('rc-imageselect-tileselected')
+        }))
+      })
+      
+      logger.info(`[TTC] 找到 ${images.length} 张图片，尝试识别楼梯...`)
+      
+      // 由于需要AI模型进行图像识别，这里使用通用处理方法
+      // 楼梯验证码通常需要选择包含楼梯的图片
+      return await this.processImageSelection(browserPage, images)
+      
+    } catch (error) {
+      logger.error(`[TTC] 楼梯识别出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 通用图片验证处理方法 */
+  async solveGenericImageChallenge(browserPage) {
+    try {
+      logger.info(`[TTC] 尝试通用图片验证处理方法...`)
+      
+      // 首先尝试直接处理iframe中的验证码
+      const iframeResult = await this.handleIframeCaptcha(browserPage)
+      if (iframeResult) {
+        return true
+      }
+      
+      // 如果iframe处理失败，尝试主页面处理
+      const images = await this.getImageElements(browserPage)
+      
+      logger.info(`[TTC] 找到 ${images.length} 张图片`)
+      
+      if (images.length === 0) {
+        logger.warn(`[TTC] 未找到图片元素，尝试备用选择器...`)
+        
+        // 备用方案：直接选择所有可点击的图片元素
+        const backupImages = await browserPage.evaluate(() => {
+          const allElements = document.querySelectorAll('.rc-imageselect-target *')
+          const clickableElements = []
+          
+          for (let i = 0; i < allElements.length; i++) {
+            const el = allElements[i]
+            if (el.tagName === 'TD' && el.getAttribute('role') === 'button') {
+              clickableElements.push({
+                index: clickableElements.length,
+                src: '',
+                alt: '',
+                className: el.className,
+                isSelected: el.classList.contains('rc-imageselect-tileselected'),
+                tagName: 'td'
+              })
+            }
+          }
+          
+          return clickableElements
+        })
+        
+        if (backupImages.length > 0) {
+          logger.info(`[TTC] 备用选择器找到 ${backupImages.length} 个可点击元素`)
+          return await this.processImageSelection(browserPage, backupImages)
+        }
+        
+        return false
+      }
+      
+      // 处理图片选择
+      return await this.processImageSelection(browserPage, images)
+    } catch (error) {
+      logger.error(`[TTC] 通用图片验证处理出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 确定选择策略 */
+  async determineSelectionStrategy(browserPage) {
+    try {
+      const strategy = await browserPage.evaluate(() => {
+        // 检查是否有特定的提示或模式
+        const instruction = document.querySelector('.rc-imageselect-instructions')?.textContent || ''
+        const imageCount = document.querySelectorAll('.rc-imageselect-target img, .rc-imageselect-target .rc-imageselect-tile').length
+        
+        // 基于图片数量和指令推测策略
+        if (imageCount <= 9) {
+          return 'select_all' // 选择所有图片
+        } else if (instruction.includes('所有') || instruction.includes('all')) {
+          return 'select_all'
+        } else if (instruction.includes('包含') || instruction.includes('contain') || instruction.includes('特殊')) {
+          return 'select_common' // 选择常见物品
+        } else {
+          return 'select_random' // 随机选择
+        }
+      })
+      
+      return strategy
+    } catch (error) {
+      logger.error(`[TTC] 确定选择策略出错: ${error.message}`)
+      return 'select_random'
+    }
+  }
+
+  /** 根据策略选择图片 */
+  async selectImagesByStrategy(browserPage, images, strategy) {
+    try {
+      switch (strategy) {
+        case 'select_all':
+          // 选择所有图片
+          return images.map((_, index) => index)
+          
+        case 'select_common':
+          // 选择常见物品（前3张）
+          return images.slice(0, Math.min(3, images.length)).map((_, index) => index)
+          
+        case 'select_random':
+        default:
+          // 随机选择2-4张图片
+          const count = Math.min(Math.floor(Math.random() * 3) + 2, images.length)
+          const indices = []
+          for (let i = 0; i < count; i++) {
+            indices.push(i)
+          }
+          return indices
+      }
+    } catch (error) {
+      logger.error(`[TTC] 选择图片策略出错: ${error.message}`)
+      return [0, 1, 2] // 默认选择前3张
+    }
+  }
+
+  /** 处理图片选择 */
+  async processImageSelection(browserPage, images) {
+    try {
+      // 尝试智能选择策略
+      const selectionStrategy = await this.determineSelectionStrategy(browserPage)
+      logger.info(`[TTC] 使用选择策略: ${selectionStrategy}`)
+      
+      // 根据策略选择图片
+      const selectedIndices = await this.selectImagesByStrategy(browserPage, images, selectionStrategy)
+      
+      if (selectedIndices.length > 0) {
+        logger.info(`[TTC] 选择了 ${selectedIndices.length} 张图片: ${selectedIndices.join(', ')}`)
+        
+        // 点击选中的图片 - 修复选择器
+        await browserPage.evaluate((indices) => {
+          // 尝试多种选择器来点击图片
+          let elements = document.querySelectorAll('.rc-imageselect-tile')
+          
+          if (elements.length === 0) {
+            elements = document.querySelectorAll('.rc-imageselect-target td[role="button"]')
+          }
+          
+          if (elements.length === 0) {
+            elements = document.querySelectorAll('.rc-imageselect-target img')
+          }
+          
+          indices.forEach(index => {
+            if (elements[index]) {
+              elements[index].click()
+            }
+          })
+        }, selectedIndices)
+        
+        // 等待选择完成
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // 点击验证按钮
+        await browserPage.evaluate(() => {
+          const verifyBtn = document.querySelector('.rc-button-default, button[aria-label*="确定"], button[aria-label*="Verify"]')
+          if (verifyBtn) {
+            verifyBtn.click()
+          }
+        })
+        
+        // 等待验证结果
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        
+        // 检查是否验证成功
+        const isVerified = await this.checkCaptchaSolved(browserPage)
+        if (isVerified) {
+          logger.info(`[TTC] 通用图片验证处理成功`)
+          return true
+        } else {
+          logger.warn(`[TTC] 通用图片验证处理失败，可能需要重试`)
+          return false
+        }
+      }
+      
+      return false
+    } catch (error) {
+      logger.error(`[TTC] 图片选择处理出错: ${error.message}`)
+      return false
+    }
+  }
+
+  /** 处理iframe中的验证码 */
+  async handleIframeCaptcha(browserPage) {
+    try {
+      logger.info(`[TTC] 尝试处理iframe中的验证码...`)
+      
+      // iframe验证码处理前截图
+      await takeDebugScreenshot(browserPage, {
+        line: 4485,
+        description: 'iframe验证码处理前'
+      })
+      
+      // 查找reCAPTCHA iframe
+      const iframes = await browserPage.$$('iframe[src*="recaptcha"]')
+      
+      if (iframes.length === 0) {
+        logger.info(`[TTC] 未找到reCAPTCHA iframe`)
+        
+        // 未找到iframe时截图
+        await takeDebugScreenshot(browserPage, {
+          line: 4495,
+          description: '未找到reCAPTCHA_iframe'
+        })
+        return false
+      }
+      
+      // 获取第一个reCAPTCHA iframe
+      const recaptchaFrame = iframes[0]
+      
+      // 切换到iframe上下文
+      const frame = await recaptchaFrame.contentFrame()
+      if (!frame) {
+        logger.warn(`[TTC] 无法访问iframe内容`)
+        
+        // 无法访问iframe时截图
+        await takeDebugScreenshot(browserPage, {
+          line: 4505,
+          description: '无法访问iframe内容'
+        })
+        return false
+      }
+      
+      // 等待iframe内容加载 - 增加等待时间
+      try {
+        await frame.waitForSelector('.rc-imageselect-instructions', { timeout: 10000 })
+      } catch (error) {
+        // 尝试等待其他可能的选择器
+        try {
+          await frame.waitForSelector('.rc-imageselect-desc-no-canonical', { timeout: 5000 })
+        } catch (error2) {
+          // 静默处理超时
+        }
+      }
+      
+      // 等待一段时间让内容完全加载
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // iframe内容加载后截图
+      await takeDebugScreenshot(browserPage, {
+        line: 4520,
+        description: 'iframe内容加载后'
+      })
+      
+      // 获取验证码指令 - 改进检测逻辑
+      const instruction = await frame.evaluate(() => {
+        let instructionText = ''
+        
+        // 尝试多种方式获取指令
+        const instructionEl = document.querySelector('.rc-imageselect-instructions')
+        if (instructionEl) {
+          instructionText = instructionEl.textContent.trim()
+        }
+        
+        // 如果还是空，尝试其他选择器
+        if (!instructionText) {
+          const descEl = document.querySelector('.rc-imageselect-desc-no-canonical')
+          if (descEl) {
+            instructionText = descEl.textContent.trim()
+          }
+        }
+        
+        // 尝试获取所有文本内容
+        if (!instructionText) {
+          const allText = document.body.textContent || document.body.innerText || ''
+          const lines = allText.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+          for (const line of lines) {
+            if (line.includes('选择') || line.includes('包含') || line.includes('所有')) {
+              instructionText = line
+              break
+            }
+          }
+        }
+        
+        return instructionText
+      })
+      
+      // 获取图片元素 - 使用更可靠的检测方法
+      const images = await frame.evaluate(() => {
+        // 尝试多种选择器来找到图片元素
+        const selectors = [
+          '.rc-imageselect-tile',
+          'td[role="button"]',
+          '.rc-imageselect-target td',
+          'table td[tabindex]',
+          '.rc-imageselect-tile img',
+          'td img'
+        ]
+        
+        let imgElements = []
+        for (const selector of selectors) {
+          imgElements = document.querySelectorAll(selector)
+          if (imgElements.length > 0) {
+            console.log(`找到图片元素，使用选择器: ${selector}, 数量: ${imgElements.length}`)
+            break
+          }
+        }
+        
+        // 如果还是没找到，尝试查找所有可点击的元素
+        if (imgElements.length === 0) {
+          const allTds = document.querySelectorAll('td')
+          imgElements = Array.from(allTds).filter(td => {
+            return td.hasAttribute('tabindex') || 
+                   td.hasAttribute('role') || 
+                   td.onclick || 
+                   td.style.cursor === 'pointer'
+          })
+          console.log(`通过可点击性找到元素: ${imgElements.length}`)
+        }
+        
+        return Array.from(imgElements).map((img, index) => ({
+          index,
+          className: img.className,
+          isSelected: img.classList.contains('rc-imageselect-tileselected'),
+          tagName: img.tagName.toLowerCase(),
+          role: img.getAttribute('role') || '',
+          tabindex: img.getAttribute('tabindex') || '',
+          hasClick: !!img.onclick,
+          cursor: img.style.cursor || ''
+        }))
+      })
+      
+      if (images.length === 0) {
+        // 未找到图片时截图
+        await takeDebugScreenshot(browserPage, {
+          line: 4560,
+          description: 'iframe中未找到图片'
+        })
+        return false
+      }
+      
+      // 找到图片后截图
+      await takeDebugScreenshot(browserPage, {
+        line: 4565,
+        description: `iframe中找到${images.length}张图片`
+      })
+      
+      // 根据指令选择策略
+      let selectedIndices = []
+      if (instruction.includes('所有') || instruction.includes('all')) {
+        selectedIndices = images.map((_, index) => index)
+      } else if (instruction.includes('包含') || instruction.includes('contain')) {
+        selectedIndices = images.slice(0, Math.min(3, images.length)).map((_, index) => index)
+      } else {
+        // 默认选择前3张
+        selectedIndices = images.slice(0, Math.min(3, images.length)).map((_, index) => index)
+      }
+      
+      // 在iframe中点击图片 - 使用更可靠的点击方法
+      for (const index of selectedIndices) {
+        try {
+          const img = images[index]
+          console.log(`尝试点击图片 ${index}:`, img)
+          
+          // 尝试多种点击方式
+          let clicked = false
+          
+          // 方式1: 使用tabindex
+          if (img.tabindex && !clicked) {
+            try {
+              await frame.click(`td[tabindex="${img.tabindex}"]`)
+              clicked = true
+              console.log(`通过tabindex点击成功: ${img.tabindex}`)
+            } catch (error) {
+              console.log(`tabindex点击失败: ${error.message}`)
+            }
+          }
+          
+          // 方式2: 使用role
+          if (img.role && !clicked) {
+            try {
+              await frame.click(`td[role="${img.role}"]`)
+              clicked = true
+              console.log(`通过role点击成功: ${img.role}`)
+            } catch (error) {
+              console.log(`role点击失败: ${error.message}`)
+            }
+          }
+          
+          // 方式3: 使用索引
+          if (!clicked) {
+            try {
+              await frame.click(`td:nth-child(${index + 1})`)
+              clicked = true
+              console.log(`通过索引点击成功: ${index + 1}`)
+            } catch (error) {
+              console.log(`索引点击失败: ${error.message}`)
+            }
+          }
+          
+          // 方式4: 使用JavaScript点击
+          if (!clicked) {
+            try {
+              await frame.evaluate((index) => {
+                const elements = document.querySelectorAll('td')
+                if (elements[index]) {
+                  elements[index].click()
+                }
+              }, index)
+              clicked = true
+              console.log(`通过JavaScript点击成功: ${index}`)
+            } catch (error) {
+              console.log(`JavaScript点击失败: ${error.message}`)
+            }
+          }
+          
+          if (clicked) {
+            await new Promise(resolve => setTimeout(resolve, 500))
+          }
+        } catch (error) {
+          console.log(`点击图片 ${index} 失败: ${error.message}`)
+        }
+      }
+      
+      // 等待选择完成
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // 点击验证按钮 - 改进点击逻辑
+      try {
+        await frame.click('.rc-button-default')
+      } catch (error) {
+        // 尝试其他可能的验证按钮
+        try {
+          await frame.click('button[aria-label*="确定"]')
+        } catch (error2) {
+          // 静默处理点击失败
+        }
+      }
+      
+      // 等待验证结果
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      
+      // 检查是否验证成功
+      const isVerified = await this.checkCaptchaSolved(browserPage)
+      if (isVerified) {
+        // 验证成功时截图
+        await takeDebugScreenshot(browserPage, {
+          line: 4600,
+          description: 'iframe验证码验证成功'
+        })
+        return true
+      } else {
+        // 验证失败时截图
+        await takeDebugScreenshot(browserPage, {
+          line: 4605,
+          description: 'iframe验证码验证失败'
+        })
+        // 如果失败，尝试重新选择图片
+        return await this.retryIframeCaptcha(browserPage, frame, images, instruction)
+      }
+      
+    } catch (error) {
+      logger.error(`[TTC] iframe验证码处理出错: ${error.message}`)
+      
+      // 处理出错时截图
+      await takeDebugScreenshot(browserPage, {
+        line: 4615,
+        description: 'iframe验证码处理出错'
+      })
+      return false
+    }
+  }
+
+  /** 重试iframe验证码处理 */
+  async retryIframeCaptcha(browserPage, frame, images, instruction) {
+    try {
+      // 重试前截图
+      await takeDebugScreenshot(browserPage, {
+        line: 4620,
+        description: 'iframe验证码重试前'
+      })
+      
+      // 等待一段时间后重试
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // 尝试不同的选择策略
+      let selectedIndices = []
+      
+      if (instruction.includes('所有') || instruction.includes('all')) {
+        // 如果指令是选择所有，尝试选择一半
+        selectedIndices = images.slice(0, Math.ceil(images.length / 2)).map((_, index) => index)
+      } else if (instruction.includes('包含') || instruction.includes('contain')) {
+        // 如果指令是选择包含，尝试选择更多
+        selectedIndices = images.slice(0, Math.min(6, images.length)).map((_, index) => index)
+      } else {
+        // 默认选择所有图片
+        selectedIndices = images.map((_, index) => index)
+      }
+      
+      // 重新点击图片
+      for (const index of selectedIndices) {
+        try {
+          const img = images[index]
+          if (img.role === 'button') {
+            await frame.click(`td[role="button"][tabindex="${img.tabindex}"]`)
+          } else {
+            await frame.click(`.rc-imageselect-tile:nth-child(${index + 1})`)
+          }
+          await new Promise(resolve => setTimeout(resolve, 200))
+        } catch (error) {
+          // 静默处理点击失败
+        }
+      }
+      
+      // 等待选择完成
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // 点击验证按钮
+      try {
+        await frame.click('.rc-button-default')
+      } catch (error) {
+        await frame.click('button[aria-label*="确定"]')
+      }
+      
+      // 等待验证结果
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      
+      // 检查是否验证成功
+      const isVerified = await this.checkCaptchaSolved(frame)
+      
+      if (isVerified) {
+        // 重试成功时截图
+        await takeDebugScreenshot(browserPage, {
+          line: 4670,
+          description: 'iframe验证码重试成功'
+        })
+      } else {
+        // 重试失败时截图
+        await takeDebugScreenshot(browserPage, {
+          line: 4675,
+          description: 'iframe验证码重试失败'
+        })
+      }
+      
+      return isVerified
+      
+    } catch (error) {
+      logger.error(`[TTC] iframe验证码重试出错: ${error.message}`)
+      
+      // 重试出错时截图
+      await takeDebugScreenshot(browserPage, {
+        line: 4685,
+        description: 'iframe验证码重试出错'
+      })
+      return false
+    }
+  }
+
+  /** 获取图片元素 */
+  async getImageElements(browserPage) {
+    return await browserPage.evaluate(() => {
+      // 尝试多种选择器来获取图片元素 - 改进检测逻辑
+      const selectors = [
+        '.rc-imageselect-tile',
+        '.rc-imageselect-target td[role="button"]',
+        '.rc-imageselect-target img',
+        '.rc-imageselect-target .rc-imageselect-tile-background',
+        '.rc-imageselect-target .rc-imageselect-tile-overlay',
+        '.rc-imageselect-target .rc-imageselect-tile img[src]',
+        '.rc-imageselect-target .rc-imageselect-tile[data-rid]',
+        '.rc-imageselect-target .rc-imageselect-tile[role="button"]',
+        '.rc-imageselect-target .rc-imageselect-tile[tabindex]',
+        '.rc-imageselect-target div[role="button"]',
+        '.rc-imageselect-target .rc-imageselect-tile img',
+        '.rc-imageselect-target .rc-imageselect-tile-background img',
+        '.rc-imageselect-target .rc-imageselect-tile-overlay img',
+        '.rc-imageselect-target .rc-imageselect-tile[data-rid] img',
+        '.rc-imageselect-target .rc-imageselect-tile[role="button"] img',
+        '.rc-imageselect-target .rc-imageselect-tile[tabindex] img'
+      ]
+      
+      let imgElements = []
+      
+      // 尝试每个选择器
+      for (const selector of selectors) {
+        const elements = document.querySelectorAll(selector)
+        if (elements.length > 0) {
+          console.log(`找到图片元素，选择器: ${selector}, 数量: ${elements.length}`)
+          imgElements = Array.from(elements)
+          break
+        }
+      }
+      
+      // 如果主页面没有找到，尝试在iframe中查找
+      if (imgElements.length === 0) {
+        const iframe = document.querySelector('iframe[src*="recaptcha/api2/bframe"]')
+        if (iframe) {
+          try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document
+            
+            for (const selector of selectors) {
+              const elements = iframeDoc.querySelectorAll(selector)
+              if (elements.length > 0) {
+                console.log(`在iframe中找到图片元素，选择器: ${selector}, 数量: ${elements.length}`)
+                imgElements = Array.from(elements)
+                break
+              }
+            }
+          } catch (e) {
+            console.error('无法访问iframe内容:', e)
+          }
+        }
+      }
+      
+      // 处理找到的元素
+      return imgElements.map((img, index) => {
+        const imgSrc = img.src || img.querySelector('img')?.src || img.getAttribute('data-src') || ''
+        const imgAlt = img.alt || img.querySelector('img')?.alt || img.getAttribute('alt') || ''
+        const imgClass = img.className || ''
+        const imgRole = img.getAttribute('role') || ''
+        const imgTabindex = img.getAttribute('tabindex') || ''
+        const imgDataRid = img.getAttribute('data-rid') || ''
+        
+        return {
+          index,
+          src: imgSrc,
+          alt: imgAlt,
+          className: imgClass,
+          role: imgRole,
+          tabindex: imgTabindex,
+          dataRid: imgDataRid,
+          isSelected: img.classList.contains('rc-imageselect-tileselected'),
+          tagName: img.tagName.toLowerCase(),
+          selector: img.matches ? img.matches(selectors.join(',')) : false
+        }
+      })
+    })
+  }
+
+  // 已移除第三方验证码破解服务
+
+
+
+  // 已移除Capsolver服务
+
+  // 已移除2captcha服务
+
+
+
+  // 已移除submitCapsolverTask函数
+
+  // 已移除waitForCapsolverResult函数
+
+  // 已移除submit2CaptchaTask函数
+
+  // 已移除waitFor2CaptchaResult函数
+
+  /** 应用2captcha解决方案 - 已移除第三方验证码服务 */
+  async apply2CaptchaSolution(browserPage, solution) {
+    logger.info(`[TTC] 已移除2captcha服务，无法应用解决方案`)
+    return false
+  }
+
+
+
+
+
+  /** 应用Capsolver解决方案 - 已移除第三方验证码服务 */
+  async applyCapsolverSolution(browserPage, solution) {
+    // 已移除第三方验证码破解服务
+    logger.info(`[TTC] 已移除Capsolver服务，无法应用解决方案`)
+    return false
+  }
+
+  /** 检查每日使用限制 - 已移除第三方验证码服务 */
+  checkDailyLimit() {
+    // 已移除第三方验证码破解服务
+    logger.info(`[TTC] 已移除所有第三方验证码破解服务，无需检查使用限制`)
+    return false
+  }
+
+  /** 更新每日使用计数 - 已移除第三方验证码服务 */
+  updateDailyUsage() {
+    // 已移除第三方验证码破解服务
+    logger.info(`[TTC] 已移除所有第三方验证码破解服务，无需更新使用计数`)
+  }
+
+  /** 测试API密钥是否有效 */
+  async testApiKey() {
+    // 已移除第三方验证码服务
+    logger.info(`[TTC] 已移除所有第三方验证码破解服务，无需测试API密钥`)
+    return false
+  }
+
+
+
+  /** 测试Capsolver API密钥 - 已移除第三方验证码服务 */
+  async testCapsolverApiKey() {
+    // 已移除第三方验证码破解服务
+    logger.info(`[TTC] 已移除Capsolver服务，无法测试API密钥`)
+    return false
+  }
+
+  /** 测试2captcha API密钥 - 已移除第三方验证码服务 */
+  async test2CaptchaApiKey() {
+    // 已移除第三方验证码破解服务
+    logger.info(`[TTC] 已移除2captcha服务，无法测试API密钥`)
+    return false
+  }
+
+  /** 测试Anti-Captcha API密钥 - 已移除第三方验证码服务 */
+  async testAntiCaptchaApiKey() {
+    // 已移除第三方验证码破解服务
+    logger.info(`[TTC] 已移除Anti-Captcha服务，无法测试API密钥`)
+    return false
+  }
+
+  /** 测试CaptchaAI API密钥 - 已移除第三方验证码服务 */
+  async testCaptchaAIApiKey() {
+    // 已移除第三方验证码破解服务
+    logger.info(`[TTC] 已移除CaptchaAI服务，无法测试API密钥`)
+    return false
+  }
+
+  /** 检查验证码是否完全解决 */
+  async checkCaptchaSolved(browserPage) {
+    try {
+      // 检查验证码状态前截图
+      await takeDebugScreenshot(browserPage, {
+        line: 5638,
+        description: '检查验证码状态前'
+      })
+      
+      // 检查主页面验证码状态
+      const result = await browserPage.evaluate(() => {
+        console.log('开始检查验证码状态...')
+        
+        // 检查是否还有验证码相关元素
+        const captchaElements = document.querySelectorAll('.recaptcha, iframe[src*="recaptcha"], div[data-sitekey], .rc-imageselect, .g-recaptcha')
+        console.log('验证码元素数量:', captchaElements.length)
+        
+        // 检查是否有验证码错误消息
+        const captchaError = document.querySelector('.recaptcha-error, .rc-anchor-error-msg, .g-recaptcha-error')
+        const hasError = captchaError && captchaError.style.display !== 'none' && captchaError.textContent && captchaError.textContent.trim() !== ''
+        console.log('是否有验证码错误:', hasError)
+        if (hasError && captchaError) {
+          console.log('验证码错误内容:', captchaError.textContent)
+        }
+        
+        // 检查是否有验证码复选框
+        const checkbox = document.querySelector('.recaptcha-checkbox-border, .recaptcha-checkbox, .g-recaptcha-checkbox')
+        console.log('是否有验证码复选框:', !!checkbox)
+        
+        // 检查页面是否已经加载了搜索结果
+        const searchResults = document.querySelector('.search-results, .results-table, table, .item-list, .ttc-results')
+        const hasResults = searchResults && searchResults.children.length > 0
+        console.log('是否有搜索结果:', hasResults)
+        
+        // 检查页面标题是否包含搜索结果
+        const title = document.title || ''
+        const hasSearchTitle = title.includes('搜索结果') || title.includes('Search Result') || title.includes('Tamriel Trade Centre')
+        console.log('页面标题:', title)
+        console.log('标题是否包含搜索结果:', hasSearchTitle)
+        
+        // 检查URL是否已经跳转到结果页面
+        const currentUrl = window.location.href
+        const isResultPage = currentUrl.includes('SearchResult') || currentUrl.includes('search') || currentUrl.includes('result')
+        const isDonationPage = currentUrl.includes('donate') || currentUrl.includes('donation') || currentUrl.includes('support')
+        console.log('当前URL:', currentUrl)
+        console.log('是否是结果页面:', isResultPage)
+        console.log('是否是捐款页面:', isDonationPage)
+        
+        // 检查是否有"无结果"或"没有找到"的消息
+        const noResultMsg = document.querySelector('.no-results, .no-data, .empty-results')
+        const hasNoResultMsg = noResultMsg && noResultMsg.textContent && (noResultMsg.textContent.includes('没有找到') || noResultMsg.textContent.includes('No results'))
+        console.log('是否有无结果消息:', hasNoResultMsg)
+        
+        // 检查是否有加载状态
+        const loadingElements = document.querySelectorAll('.loading, .spinner, .progress')
+        const isLoading = loadingElements.length > 0
+        console.log('是否正在加载:', isLoading)
+        
+        // 检查是否有真实的交易数据（不是虚假数据）
+        const tradeTable = document.querySelector('table, .search-results, .results-table, .item-list, .ttc-results')
+        let hasRealData = false
+        let fakeDataDetected = false
+        
+        if (tradeTable) {
+          const rows = tradeTable.querySelectorAll('tr, .item-row, .trade-row')
+          if (rows.length > 0) {
+            // 检查是否只有1条记录且包含验证码提示
+            if (rows.length === 1) {
+              const firstRow = rows[0]
+              const text = firstRow.textContent || ''
+              if (text.includes('抱歉，您需要完成验证码测试才能继续') || 
+                  text.includes('Please complete the captcha test to continue') ||
+                  text.includes('验证码') || text.includes('captcha')) {
+                fakeDataDetected = true
+                console.log('检测到虚假数据：包含验证码提示')
+              }
+            }
+            
+            // 检查是否有真实的交易数据
+            hasRealData = rows.length > 1 || (rows.length === 1 && !fakeDataDetected)
+          }
+        }
+        
+        console.log('有真实数据:', hasRealData)
+        console.log('检测到虚假数据:', fakeDataDetected)
+        
+        // 综合判断验证码是否已解决
+        const noCaptcha = captchaElements.length === 0 && !hasError && !checkbox
+        const hasData = hasResults || hasSearchTitle || isResultPage || hasNoResultMsg
+        const notLoading = !isLoading
+        const notDonationPage = !isDonationPage
+        const notFakeData = !fakeDataDetected
+        
+        console.log('无验证码元素:', noCaptcha)
+        console.log('有数据:', hasData)
+        console.log('不在加载:', notLoading)
+        console.log('不是捐款页面:', notDonationPage)
+        console.log('不是虚假数据:', notFakeData)
+        
+        // 如果没有任何验证码元素且没有错误消息，或者已经有搜索结果，则认为已解决
+        // 但如果跳转到捐款页面或检测到虚假数据，说明验证码解决失败
+        const isSolved = (noCaptcha || hasData) && notDonationPage && notFakeData
+        
+        return {
+          isSolved,
+          details: {
+            noCaptcha,
+            hasData,
+            hasRealData,
+            notLoading,
+            notDonationPage,
+            notFakeData,
+            captchaElementsCount: captchaElements.length,
+            hasError,
+            hasResults,
+            hasSearchTitle,
+            isResultPage,
+            isDonationPage,
+            hasNoResultMsg,
+            isLoading,
+            fakeDataDetected
+          }
+        }
+      })
+      
+      // 检查结果后截图
+      await takeDebugScreenshot(browserPage, {
+        line: 5670,
+        description: `验证码状态检查结果_${result.isSolved ? '已解决' : '未解决'}`
+      })
+      
+      if (result.isSolved) {
+        logger.info(`[TTC] 验证码已成功解决`)
+        logger.info(`[TTC] 验证码状态详情: ${JSON.stringify(result.details)}`)
+      } else {
+        logger.warn(`[TTC] 验证码仍未解决`)
+        logger.info(`[TTC] 验证码状态详情: ${JSON.stringify(result.details)}`)
+      }
+      
+      return result.isSolved
+    } catch (error) {
+      logger.error(`[TTC] 检查验证码状态出错: ${error.message}`)
+      
+      // 检查出错时截图
+      await takeDebugScreenshot(browserPage, {
+        line: 5680,
+        description: '验证码状态检查出错'
+      })
+      return false
+    }
   }
 } 
