@@ -1567,6 +1567,76 @@ export class ttc extends plugin {
           logger.info(`[TTC] reCAPTCHA令牌加载等待完成，共等待${recaptchaLoadingCount * recaptchaCheckInterval / 1000}秒`)
         }
         
+        // 检查并等待"载入中"字样消失
+        //logger.info(`[TTC] 检查页面载入状态...`)
+        let loadingCount = 0
+        const maxLoadingWaitTime = 60000 // 最大等待60秒
+        const loadingCheckInterval = 2000 // 每2秒检查一次
+        const loadingStartTime = Date.now()
+        
+        while (Date.now() - loadingStartTime < maxLoadingWaitTime) {
+          const loadingStatus = await browserPage.evaluate(() => {
+            // 检查页面中是否存在"载入中"字样
+            const loadingText = Array.from(document.querySelectorAll('*')).find(el => 
+              el.textContent && el.textContent.includes('载入中')
+            )
+            
+            // 检查是否有其他相关的加载提示
+            const loadingElements = Array.from(document.querySelectorAll('*')).filter(el => 
+              el.textContent && (
+                el.textContent.includes('载入中') ||
+                el.textContent.includes('加载中') ||
+                el.textContent.includes('Loading') ||
+                el.textContent.includes('请稍候') ||
+                el.textContent.includes('正在加载')
+              )
+            )
+            
+            return {
+              hasLoading: !!loadingText,
+              loadingElementsCount: loadingElements.length,
+              visibleElements: loadingElements.filter(el => {
+                const style = window.getComputedStyle(el)
+                return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0'
+              }).length
+            }
+          })
+          
+          if (loadingStatus.hasLoading && loadingStatus.visibleElements > 0) {
+            loadingCount++
+            logger.info(`[TTC] 检测到页面正在载入中，等待中... (${loadingCount}次检查)`)
+            await new Promise(resolve => setTimeout(resolve, loadingCheckInterval))
+          } else {
+            //logger.info(`[TTC] 页面载入完成或未检测到载入提示`)
+            break
+          }
+        }
+        
+        // 检查是否超时
+        if (Date.now() - loadingStartTime >= maxLoadingWaitTime) {
+          logger.warn(`[TTC] 页面载入超时，等待时间超过${maxLoadingWaitTime / 1000}秒`)
+          
+          // 超时时截图
+          await takeDebugScreenshot(browserPage, {
+            line: 1580,
+            description: '页面载入超时'
+          })
+          
+          // 获取最新的debug截图
+          const screenshotPath = await this.getLatestDebugScreenshot()
+          
+          await browserPage.close()
+          return { 
+            hasError: true, 
+            error: '当前网络较差，访问超时',
+            screenshot: screenshotPath
+          }
+        }
+        
+        if (loadingCount > 0) {
+          logger.info(`[TTC] 页面载入等待完成，共等待${loadingCount * loadingCheckInterval / 1000}秒`)
+        }
+        
         // 在验证码检测前截图
         /*
         await takeDebugScreenshot(browserPage, {
