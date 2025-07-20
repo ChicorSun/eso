@@ -1201,6 +1201,14 @@ export class ttc extends plugin {
           }
         }
         
+        // 检查是否是"没有符合条件的交易"错误
+        if (htmlData?.error && htmlData.error.includes('没有符合条件的交易')) {
+          return {
+            type: 'error',
+            message: htmlData.error
+          }
+        }
+        
         // 其他错误生成错误图片
         const imgBuffer = await this.generateNoDataImage(itemName, page, serverType, htmlData?.error)
         return {
@@ -1710,6 +1718,21 @@ export class ttc extends plugin {
           }
         })
         
+        logger.info(`[TTC] 页面内容检查结果: 无结果=${pageContent.hasNoResults}, 有表格=${pageContent.hasTable}, 行数=${pageContent.rowCount}, 验证码=${pageContent.hasCaptcha}, Cloudflare=${pageContent.hasCloudflare}`)
+        //logger.info(`[TTC] 页面标题: ${pageContent.pageTitle}`)
+        
+        // 优先检查是否明确显示没有结果
+        if (pageContent.hasNoResults) {
+          logger.info(`[TTC] 页面显示无交易数据: ${itemName}`)
+          return { hasError: true, error: '没有符合条件的交易' }
+        }
+        
+        // 检查是否遇到Cloudflare挑战
+        if (pageContent.hasCloudflare) {
+          logger.warn(`[TTC] 检测到Cloudflare挑战: ${itemName}`)
+          return { hasError: true, error: '遇到Cloudflare挑战，请稍后重试' }
+        }
+        
         // 智能验证码检测：如果已经有价格表格数据，认为没有验证码
         let finalHasCaptcha = pageContent.hasCaptcha
         if (pageContent.hasTable && pageContent.rowCount > 0) {
@@ -1717,8 +1740,6 @@ export class ttc extends plugin {
           finalHasCaptcha = false
         }
         
-        logger.info(`[TTC] 页面内容检查结果: 无结果=${pageContent.hasNoResults}, 有表格=${pageContent.hasTable}, 行数=${pageContent.rowCount}, 验证码=${pageContent.hasCaptcha}, Cloudflare=${pageContent.hasCloudflare}`)
-        //logger.info(`[TTC] 页面标题: ${pageContent.pageTitle}`)
         //logger.info(`[TTC] 最终验证码判断: ${finalHasCaptcha}`)
         
         // 检查是否遇到验证码
@@ -1746,18 +1767,6 @@ export class ttc extends plugin {
           } else {
             //logger.info(`[TTC] 页面正常，无验证码挑战`)
           }
-        }
-        
-        // 检查是否遇到Cloudflare挑战
-        if (pageContent.hasCloudflare) {
-          logger.warn(`[TTC] 检测到Cloudflare挑战: ${itemName}`)
-          return { hasError: true, error: '遇到Cloudflare挑战，请稍后重试' }
-        }
-        
-        // 如果明确显示没有结果
-        if (pageContent.hasNoResults) {
-          logger.info(`[TTC] 页面显示无交易数据: ${itemName}`)
-          return { hasError: true, error: '没有符合条件的交易' }
         }
         
         // 如果没有找到表格，可能需要等待更长时间或页面结构改变了
