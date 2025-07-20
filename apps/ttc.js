@@ -744,7 +744,7 @@ export class ttc extends plugin {
       
       // 已移除第三方验证码破解服务，不再重试
       if (result && result.type === 'error' && result.message.includes('偶遇验证码')) {
-        logger.info(`[TTC] 检测到验证码，已移除第三方破解服务，无法自动处理`)
+        //logger.info(`[TTC] 检测到验证码，已移除第三方破解服务，无法自动处理`)
       }
       
       if (result && result.type === 'error') {
@@ -1401,8 +1401,8 @@ export class ttc extends plugin {
       })
       
       if (result.detected) {
-        logger.info(`[TTC] 发现了广告弹窗: ${result.text}`)
-        logger.info(`[TTC] 执行处理动作: ${result.action}`)
+        //logger.info(`[TTC] 发现了广告弹窗: ${result.text}`)
+        //logger.info(`[TTC] 执行处理动作: ${result.action}`)
         return true
       } else {
         // 只有在确实没有检测到广告弹窗时才打印日志
@@ -1471,7 +1471,6 @@ export class ttc extends plugin {
         
         //logger.info(`[TTC] 正在访问页面: ${url}`)
         
-        // 使用与esologPuzzle.js相同的策略访问页面
         try {
           await Promise.race([
             browserPage.goto(url, { waitUntil: 'domcontentloaded' }),
@@ -1497,6 +1496,75 @@ export class ttc extends plugin {
         if (adBlockHandled) {
           logger.info(`[TTC] 广告拦截器弹窗已处理，等待页面重新加载...`)
           await new Promise(resolve => setTimeout(resolve, 3000))
+        }
+        
+        // 检查并等待"正在获取reCAPTCHA令牌"字样消失
+        //logger.info(`[TTC] 检查reCAPTCHA令牌加载状态...`)
+        let recaptchaLoadingCount = 0
+        const maxRecaptchaWaitTime = 60000 // 最大等待60秒
+        const recaptchaCheckInterval = 2000 // 每2秒检查一次
+        const startTime = Date.now()
+        
+        while (Date.now() - startTime < maxRecaptchaWaitTime) {
+          const recaptchaStatus = await browserPage.evaluate(() => {
+            // 检查页面中是否存在"正在获取reCAPTCHA令牌"字样
+            const recaptchaLoadingText = Array.from(document.querySelectorAll('*')).find(el => 
+              el.textContent && el.textContent.includes('正在获取reCAPTCHA令牌')
+            )
+            
+            // 检查是否有其他相关的reCAPTCHA加载提示
+            const recaptchaLoadingElements = Array.from(document.querySelectorAll('*')).filter(el => 
+              el.textContent && (
+                el.textContent.includes('reCAPTCHA') ||
+                el.textContent.includes('正在获取') ||
+                el.textContent.includes('获取令牌') ||
+                el.textContent.includes('Loading reCAPTCHA')
+              )
+            )
+            
+            return {
+              hasRecaptchaLoading: !!recaptchaLoadingText,
+              loadingElementsCount: recaptchaLoadingElements.length,
+              visibleElements: recaptchaLoadingElements.filter(el => {
+                const style = window.getComputedStyle(el)
+                return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0'
+              }).length
+            }
+          })
+          
+          if (recaptchaStatus.hasRecaptchaLoading && recaptchaStatus.visibleElements > 0) {
+            recaptchaLoadingCount++
+            logger.info(`[TTC] 检测到reCAPTCHA令牌正在加载中，等待中... (${recaptchaLoadingCount}次检查)`)
+            await new Promise(resolve => setTimeout(resolve, recaptchaCheckInterval))
+          } else {
+            //logger.info(`[TTC] reCAPTCHA令牌加载完成或未检测到加载提示`)
+            break
+          }
+        }
+        
+        // 检查是否超时
+        if (Date.now() - startTime >= maxRecaptchaWaitTime) {
+          logger.warn(`[TTC] reCAPTCHA令牌加载超时，等待时间超过${maxRecaptchaWaitTime / 1000}秒`)
+          
+          // 超时时截图
+          await takeDebugScreenshot(browserPage, {
+            line: 1520,
+            description: 'reCAPTCHA令牌加载超时'
+          })
+          
+          // 获取最新的debug截图
+          const screenshotPath = await this.getLatestDebugScreenshot()
+          
+          await browserPage.close()
+          return { 
+            hasError: true, 
+            error: '当前网络较差，访问超时',
+            screenshot: screenshotPath
+          }
+        }
+        
+        if (recaptchaLoadingCount > 0) {
+          logger.info(`[TTC] reCAPTCHA令牌加载等待完成，共等待${recaptchaLoadingCount * recaptchaCheckInterval / 1000}秒`)
         }
         
         // 在验证码检测前截图
@@ -3986,7 +4054,7 @@ export class ttc extends plugin {
   /** 尝试自动解决验证码 */
   async trySolveCaptcha(browserPage) {
     // 已移除第三方验证码破解服务，现在只支持手动处理
-    logger.info(`[TTC] 检测到验证码，已移除第三方破解服务，需要手动处理`)
+    //logger.info(`[TTC] 检测到验证码，已移除第三方破解服务，需要手动处理`)
     
     // 检测到验证码时截图
     await takeDebugScreenshot(browserPage, {
