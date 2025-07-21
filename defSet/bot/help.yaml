@@ -11,6 +11,11 @@
     - icon: ..\icon\eso
       title: "#服务器公告"
       desc: "查询服务器维护计划"
+      item_class: item_split2
+    - icon: ..\icon\clock
+      title: "#几点了"
+      desc: "查询当前UTC时间"
+      item_class: item_split2
 - group: 无畏者指令
   group_class: data_box_split1
   list:
@@ -49,6 +54,41 @@
       title: "*技能名"
       desc: "查询技能的图鉴(*不可省略)"
       item_class: item_split2
+    - icon: ../foods/store_crownfood_01
+      title: "%图鉴"
+      desc: "查询食物图鉴帮助(%不可省略)"
+      item_class: item_split2
+    - icon: ../foods/crafting_beer_002
+      title: "%食物名"
+      desc: "查询食物的图鉴(%不可省略)"
+      item_class: item_split2
+- group: TTC交易中心
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\ttc
+      title: "#查询物品 物品名"
+      desc: "查询物品基本信息"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#查询交易 物品名"
+      desc: "查询TTC交易信息"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#查询价格 物品名"
+      desc: "查询物品价格信息"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#更新价格表(仅主人可使用)"
+      desc: "更新TTC价格数据"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#TTC帮助"
+      desc: "查看TTC功能帮助"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#设置ttc默认 美服/欧服"
+      desc: "设置默认TTC服务器"
+      item_class: item_split2
 - group: ESOLOG解析
   group_class: data_box_split1
   list:
@@ -60,30 +100,147 @@
       title: "个人BD网址"
       desc: "发送esolog个人装备技能网址"
       item_class: item_split2
-- group: 其他指令及功能
+    - icon: ..\icon\esolog
+      title: "#绑定"
+      desc: "绑定玩家账户"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#查询绑定"
+      desc: "查询已绑定的账号"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#解绑"
+      desc: "解除玩家账户绑定"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#角色"
+      desc: "查看已绑定角色"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#编辑角色"
+      desc: "编辑角色信息"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#设置职业"
+      desc: "设置角色职业"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#设置定位"
+      desc: "设置角色定位"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#设置标题"
+      desc: "设置角色标题"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#添加标签"
+      desc: "添加角色标签"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#查看标签"
+      desc: "查看角色标签"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#删除标签"
+      desc: "删除角色标签"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#名片化"
+      desc: "生成角色名片"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#查看名片"
+      desc: "查看自己的名片"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#查看群友名片"
+      desc: "查看群友的名片"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#删除名片"
+      desc: "删除角色名片"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#更新头像"
+      desc: "更新角色头像"
+      item_class: item_split2
+- group: 游戏资讯
   group_class: data_box_split1
   list:
-    - icon: ..\icon\clock
-      title: "几点了"
-      desc: "查询当前UTC时间"
+    - icon: gear_undnarlimor_head_a
+      title: "#黄金商人"
+      desc: "查询黄金商人的商品"
       item_class: item_split2
-    - icon: ..\icon\champion
-      title: "全体成员 xxx"
+    - icon: ..\icon\alchemy
+      title: "#大力丸配方"
+      desc: "查询大力丸制作配方"
+      item_class: item_split2
+    - icon: ..\icon\alchemy
+      title: "#三回药配方"
+      desc: "查询三回药制作配方"
+      item_class: item_split2
+    - icon: ..\icon\alchemy
+      title: "#隐身药配方"
+      desc: "查询隐身药制作配方"
+      item_class: item_split2
+    - icon: ..\icon\alchemy
+      title: "#大招药配方"
+      desc: "查询大招药制作配方"
+      item_class: item_split2
+    - icon: ..\icon\guide
+      title: "#攻略"
+      desc: "获取游戏攻略链接"
+      item_class: item_split2
+    - icon: ..\icon\plugin
+      title: "#插件"
+      desc: "获取插件相关信息"
+      item_class: item_split2
+- group: 群管理功能
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\notice
+      title: "#全体成员 xxx"
       desc: "以此四字开头的消息会被通知全体"
       item_class: item_split2
-    - icon: ..\icon\crowns
-      title: "群昵称格式"
-      desc: "查看群昵称格式"
+    - icon: ..\icon\notice
+      title: "#禁止全体功能"
+      desc: "禁止用户使用全体功能"
+      item_class: item_split2
+    - icon: ..\icon\notice
+      title: "#允许使用全体功能"
+      desc: "允许用户使用全体功能"
+      item_class: item_split2
+    - icon: ..\icon\notice
+      title: "#查看全体功能黑名单"
+      desc: "查看全体功能黑名单"
       item_class: item_split2
     - icon: ..\turnplate\base
-      title: "禁言转盘"
+      title: "#禁言转盘"
       desc: "给你提供随机时长的禁言套餐"
       item_class: item_split2
+    - icon: ..\turnplate\base
+      title: "#禁言转盘开/关"
+      desc: "开启/关闭禁言转盘功能"
+      item_class: item_split2
+    - icon: ..\icon\recall
+      title: "撤回/撤销"
+      desc: "投票撤回消息(回复消息使用)"
+      item_class: item_split2
+    - icon: ..\icon\crowns
+      title: "#群昵称格式"
+      desc: "查看群昵称格式"
+      item_class: item_split2
+- group: 统计功能
+  group_class: data_box_split1
+  list:
     - icon: ..\icon\water
       title: "#发言榜(日榜|月榜)"
       desc: "群友水群次数排行榜"
       item_class: item_split2
+- group: 系统管理
+  group_class: data_box_split1
+  list:
     - icon: ..\icon\update
-      title: "#更新eso"
+      title: "#更新eso(仅主人可使用)"
       desc: "更新ESO-BOT"
       item_class: item_split2
