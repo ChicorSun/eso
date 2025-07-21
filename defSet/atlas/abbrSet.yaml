@@ -1,10 +1,16 @@
 - version: 1000_2024_11_03
   des: 装备别称对照表
   init: done
+- name: "潮生野猎者"
+  abbr:
+    - "潮生者"
 - name: "爆尸"
   abbr:
     - "尸爆"
     - "施暴"
+- name: "怒日"
+  abbr:
+    - "日怒"
 - name: "符文雕刻师烈焰"
   abbr:
     - "符雕"

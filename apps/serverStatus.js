@@ -82,7 +82,7 @@ export class serverStatus extends plugin {
       rule: [
         {
           /** 命令正则匹配 */
-          reg: '^#*(服务器公告|服务器状态)$',
+          reg: '^#*(服务器|服务器公告|服务器状态|服务器维护|服务器维护时间|服务器维护计划)$',
           /** 执行方法 */
           fnc: 'sendStatus'
         }
