@@ -1,6 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
+import moment from 'moment'
 import md5 from 'md5'
 
 //装备图鉴结构体变量
@@ -218,9 +219,118 @@ export class atlas extends plugin {
         setData = await database.updateData(setKey, 1)
       }
       
+      // 如果装备类型为"副本"（type=6），添加无畏者副本日期信息
+      //logger.info(setData.atlasData[1].type)
+      if (setData.atlasData[1].type == "副本" || setData.atlasData[1].type == "怪物") {
+        const undauntedDates = await this.getUndauntedDates(setData.atlasData[1].name)
+        //logger.info(undauntedDates)
+        if (undauntedDates.length > 0) {
+          // 将无畏者日期数据添加到atlasData中
+          setData.atlasData[1].undauntedDates = undauntedDates
+        }
+      }
+      
       let img = await this.cache(setData, setImg)
       await this.reply(img)
     }
+  }
+
+  // 计算未来两次无畏者副本出现特定装备的日期
+  async getUndauntedDates(setName) {
+    try {
+      // 获取无畏者数据库
+      const setsData = await database.getSetsEN()
+      const setsDataCN = await database.getSetsCN()
+      const dgSetsTable = await database.getdgSets()
+      const numDungeons = await database.getDgNum()
+
+      // 无畏者副本序号校准码
+      const adjust = [4, 4, 1]
+      const num0 = 12
+      const num1 = 12
+      const num2 = numDungeons-24
+
+      // 找到目标装备在dgSetsTable中的所有索引
+      // 同一个装备可能出现在多个副本中
+      const targetIndices = []
+      
+      // 遍历dgSetsTable找到目标装备的所有位置
+      for (let i = 0; i < dgSetsTable.length; i++) {
+        for (let j = 0; j < 4; j++) { // 每个副本有4个装备位置
+          if (dgSetsTable[i][j] > 0) {
+            const setId = dgSetsTable[i][j]
+            const setNameFromId = setsDataCN[setId].name
+            //logger.info(`检查装备 ${i}-${j}: ${setNameFromId} | 目标: ${setName}`)
+            if (setNameFromId === setName) {
+              //logger.info(`找到装备ID: ${setId} 在副本索引: ${i}`)
+              if (!targetIndices.includes(i)) {
+                targetIndices.push(i)
+              }
+            }
+          }
+        }
+      }
+
+      if (targetIndices.length === 0) {
+        return []
+      }
+
+      // 计算当前日期
+      const now = moment(new Date().getTime()).format('YYYY-MM-DD')
+      const passSeconds = new Date().getTime() - 57600000
+      const passDays = Math.floor((passSeconds - (passSeconds % 86400000)) / 86400000)
+
+      // 收集所有可能的日期
+      const allDates = []
+      let checkDays = -2 // 从当前日期的前一天开始
+
+      // 检查从昨天开始的365天内的无畏者副本
+      while (checkDays < 365) {
+        checkDays++
+        
+        // 计算第checkDays天的无畏者序号（checkDays=0是昨天，checkDays=1是今天）
+        const targetDay = passDays + checkDays
+        const t0 = (targetDay + adjust[0]) % num0
+        const t1 = (targetDay + adjust[1]) % num1 + 12
+        const t2 = (targetDay + adjust[2]) % num2 + 24
+
+        // 检查是否匹配任何目标副本
+        if (targetIndices.includes(t0) || targetIndices.includes(t1) || targetIndices.includes(t2)) {
+          const targetDate = moment().add(checkDays, 'days').format('YYYY-MM-DD')
+          const dayOfWeek = moment().add(checkDays, 'days').format('dddd')
+          const dayOfWeekCN = this.getDayOfWeekCN(dayOfWeek)
+          
+          allDates.push(`${targetDate} (${dayOfWeekCN})`)
+        }
+      }
+
+      // 去重并排序，取最早的两个不同日期
+      const uniqueDates = [...new Set(allDates)]
+      const sortedDates = uniqueDates.sort((a, b) => {
+        const dateA = moment(a.split(' ')[0], 'YYYY-MM-DD')
+        const dateB = moment(b.split(' ')[0], 'YYYY-MM-DD')
+        return dateA.diff(dateB)
+      })
+
+      return sortedDates.slice(0, 2)
+    } catch (error) {
+      //logger.error(`[ESO:图鉴] 计算无畏者副本日期失败: ${error.message}`)
+      return []
+    }
+  }
+
+  // 获取中文星期名称
+  getDayOfWeekCN(dayOfWeek) {
+    const dayMap = {
+      'Monday': '周一',
+      'Tuesday': '周二', 
+      'Wednesday': '周三',
+      'Thursday': '周四',
+      'Friday': '周五',
+      'Saturday': '周六',
+      'Sunday': '周日'
+    }
+    return dayMap[dayOfWeek] || dayOfWeek
   }
 
   async showSkills (e) {

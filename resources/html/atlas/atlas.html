@@ -33,6 +33,14 @@
         {{each val.msg item}}
         <div class="msg">{{item}}</div>
         {{/each}}
+        {{if val.undauntedDates && val.undauntedDates.length > 0}}
+        <div class="undaunted-section">
+          <div class="undaunted-title">近期无畏者副本出现日期:</div>
+          {{each val.undauntedDates date}}
+          <div class="undaunted-date">{{date}}</div>
+          {{/each}}
+        </div>
+        {{/if}}
       </div>
     </div>
     {{/if}}
