@@ -1475,7 +1475,7 @@ export class ttc extends plugin {
         //await browserPage.setViewport({ width: 1920, height: 1080 })
         
         // 清理浏览器缓存，确保获取最新内容
-        await this.cleanBrowserCache(browserPage)
+        //await this.cleanBrowserCache(browserPage)
         
         //logger.info(`[TTC] 正在访问页面: ${url}`)
         
@@ -2415,7 +2415,7 @@ export class ttc extends plugin {
         return { hasError: true, error: `页面访问失败: ${error.message}` }
       } finally {
         // 在关闭页面前再次清理缓存
-        await this.cleanBrowserCache(browserPage).catch(() => {})
+        //await this.cleanBrowserCache(browserPage).catch(() => {})
         await browserPage.close().catch(err => logger.error('[TTC] 关闭页面失败:', err))
       }
       
