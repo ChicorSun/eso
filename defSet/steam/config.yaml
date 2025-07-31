@@ -1,0 +1,43 @@
+# Steam功能默认配置
+
+# Steam API Key (必需)
+# 请前往 https://steamcommunity.com/dev/apikey 申请
+apiKey: ""
+
+# 反代链接 (可选)
+# 用于解决网络连接问题，格式: https://your-proxy.com/{{url}}
+proxyUrl: ""
+
+# 地区代码 (可选)
+# 影响价格显示和游戏信息，支持: cn, us, eu, jp, kr, tw, hk, sg
+regionCode: "cn"
+
+# 监控设置
+monitoring:
+  # 检查间隔 (毫秒)
+  checkInterval: 30000
+  # 是否自动启动监控
+  autoStart: false
+
+# 推送设置
+push:
+  # 默认开启在线状态推送
+  defaultOnlinePush: true
+  # 默认开启游戏状态推送
+  defaultGamePush: true
+  # 推送消息格式
+  messageFormat: "🎮 Steam状态变化\n\n用户: {username}\n状态: {status}\n游戏: {game}\n时间: {time}"
+
+# 游戏白名单设置
+whitelist:
+  # 是否启用白名单过滤
+  enabled: false
+  # 默认白名单游戏 (游戏ID列表)
+  defaultGames: []
+
+# 日志设置
+logging:
+  # 是否记录详细日志
+  verbose: false
+  # 日志级别: debug, info, warn, error
+  level: "info" 
