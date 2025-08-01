@@ -11,7 +11,6 @@ import fetch from 'node-fetch'
 import path from 'path'
 import { createRequire } from 'module'
 import { fileURLToPath } from 'url'
-import YAML from 'yaml'
 
 const require = createRequire(import.meta.url)
 const __filename = fileURLToPath(import.meta.url)
@@ -29,11 +28,6 @@ const STEAM_DATA_PATH = path.join(STEAM_BASE_PATH, 'data/')
 // Steam 配置文件具体路径
 const STEAM_CONFIG_FILE = path.join(STEAM_CONFIG_PATH, 'steamConfig.json')
 const STEAM_DEFAULT_CONFIG_FILE = path.join(STEAM_CONFIG_PATH, 'default.json')
-
-// 旧数据文件路径（用于迁移）
-const OLD_CONFIG_PATH = './plugins/eso/custome_resources/config/steam.yaml'
-const OLD_TOKENS_PATH = './plugins/eso/custome_resources/config/steam_tokens.json'
-const OLD_USERS_PATH = './plugins/eso/custome_resources/config/steam_users.json'
 
 // ===========================================
 // Steam 时间间隔配置
@@ -267,9 +261,6 @@ export class steam extends plugin {
     // 初始化目录
     initSteamDirectories()
     
-    // 执行数据迁移（如果存在旧数据）
-    this.migrateOldData()
-    
     // 启动清理任务
     this.startCleanupTask()
   }
@@ -305,147 +296,6 @@ export class steam extends plugin {
       }
     } catch (error) {
       console.error('清理Steam缓存文件失败:', error)
-    }
-  }
-
-  // ===========================================
-  // 数据迁移功能
-  // ===========================================
-  migrateOldData() {
-    try {
-      console.log('[ESO:Steam] 开始检查旧数据文件...')
-      
-      let migratedCount = 0
-      
-      // 1. 迁移Steam配置文件 (steam.yaml -> steamConfig.json)
-      if (fs.existsSync(OLD_CONFIG_PATH)) {
-        console.log('[ESO:Steam] 发现旧配置文件，开始迁移...')
-        this.migrateConfigFile()
-        migratedCount++
-      }
-      
-      // 2. 迁移用户绑定数据 (steam_users.json)
-      if (fs.existsSync(OLD_USERS_PATH)) {
-        console.log('[ESO:Steam] 发现旧用户数据，开始迁移...')
-        this.migrateUserData()
-        migratedCount++
-      }
-      
-      // 3. 迁移登录token数据 (steam_tokens.json)
-      if (fs.existsSync(OLD_TOKENS_PATH)) {
-        console.log('[ESO:Steam] 发现旧token数据，开始迁移...')
-        this.migrateTokenData()
-        migratedCount++
-      }
-      
-      if (migratedCount > 0) {
-        console.log(`[ESO:Steam] 数据迁移完成，共迁移了 ${migratedCount} 个文件`)
-      } else {
-        console.log('[ESO:Steam] 未发现需要迁移的旧数据文件')
-      }
-    } catch (error) {
-      console.error('[ESO:Steam] 数据迁移过程中出错:', error.message)
-    }
-  }
-
-  // ===========================================
-  // 迁移配置文件
-  // ===========================================
-  migrateConfigFile() {
-    try {
-      const oldConfig = YAML.parse(fs.readFileSync(OLD_CONFIG_PATH, 'utf8'))
-      
-      // 转换为新格式
-      const newConfig = {
-        apiKeys: oldConfig.apiKey ? [oldConfig.apiKey] : [],
-        proxyUrl: oldConfig.proxyUrl || '',
-        regionCode: oldConfig.regionCode || 'cn',
-        monitoring: oldConfig.monitoring || {
-          checkInterval: 30000,
-          autoStart: false
-        },
-        push: oldConfig.push || {
-          defaultOnlinePush: true,
-          defaultGamePush: true
-        },
-        migrated: true,
-        migrateTime: new Date().toISOString()
-      }
-      
-      // 保存新配置文件
-      fs.writeFileSync(STEAM_CONFIG_FILE, JSON.stringify(newConfig, null, 2))
-      console.log('[ESO:Steam] 配置文件迁移成功')
-      
-      // 删除旧文件
-      fs.unlinkSync(OLD_CONFIG_PATH)
-      console.log('[ESO:Steam] 旧配置文件已删除')
-    } catch (error) {
-      console.error('[ESO:Steam] 配置文件迁移失败:', error.message)
-    }
-  }
-
-  // ===========================================
-  // 迁移用户数据
-  // ===========================================
-  migrateUserData() {
-    try {
-      const oldUsers = JSON.parse(fs.readFileSync(OLD_USERS_PATH, 'utf8'))
-      const newUsers = {}
-      
-      // 转换用户数据格式
-      for (const [qqId, userData] of Object.entries(oldUsers)) {
-        if (userData.steamId) {
-          newUsers[qqId] = {
-            steamId: userData.steamId,
-            steamName: userData.steamName || userData.personaname || '',
-            bindTime: userData.bindTime || userData.login_time || new Date().toISOString(),
-            lastUpdate: userData.lastUpdate || new Date().toISOString(),
-            lastOnlineCheck: null,
-            lastGameCheck: null
-          }
-        }
-      }
-      
-      // 保存新用户数据
-      const newUserData = {
-        users: newUsers,
-        lastUpdate: new Date().toISOString(),
-        migrated: true,
-        migrateTime: new Date().toISOString()
-      }
-      
-      fs.writeFileSync(path.join(STEAM_DATA_PATH, 'steam_users.json'), JSON.stringify(newUserData, null, 2))
-      console.log(`[ESO:Steam] 用户数据迁移成功，共迁移 ${Object.keys(newUsers).length} 个用户`)
-      
-      // 删除旧文件
-      fs.unlinkSync(OLD_USERS_PATH)
-      console.log('[ESO:Steam] 旧用户数据文件已删除')
-    } catch (error) {
-      console.error('[ESO:Steam] 用户数据迁移失败:', error.message)
-    }
-  }
-
-  // ===========================================
-  // 迁移Token数据
-  // ===========================================
-  migrateTokenData() {
-    try {
-      const oldTokens = JSON.parse(fs.readFileSync(OLD_TOKENS_PATH, 'utf8'))
-      
-      // 将token数据转换为用户绑定数据（如果用户还没有绑定）
-      for (const [qqId, tokenData] of Object.entries(oldTokens)) {
-        if (tokenData.steam_id && !SteamUser.getUserSteamId(qqId)) {
-          // 如果用户还没有绑定，则创建绑定
-          SteamUser.bindUser(qqId, tokenData.steam_id, '')
-          console.log(`[ESO:Steam] 从token数据创建用户绑定: QQ ${qqId} -> Steam ${tokenData.steam_id}`)
-        }
-      }
-      
-      // 删除旧token文件
-      fs.unlinkSync(OLD_TOKENS_PATH)
-      console.log('[ESO:Steam] 旧token数据文件已删除')
-    } catch (error) {
-      console.error('[ESO:Steam] Token数据迁移失败:', error.message)
     }
   }
 
