@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam绑定成功</title>
+    <link rel="stylesheet" href="{{pluResPath}}html/steam/bindSuccess.css">
+</head>
+<body>
+    <div class="bind-success-container">
+        <div class="success-icon">
+            <div class="icon">✓</div>
+        </div>
+        
+        <div class="success-title">Steam绑定成功</div>
+        
+        <div class="user-info">
+            <div class="info-row">
+                <span class="info-label">Steam用户名</span>
+                <span class="info-value">{{userName}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Steam ID</span>
+                <span class="info-value steam-id">{{steamId}}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">QQ用户</span>
+                <span class="info-value">{{qqUser}}</span>
+            </div>
+        </div>
+        
+        <div class="next-steps">
+            <h4>接下来你可以使用以下命令：</h4>
+            <ul>
+                <li><span class="command">#steam信息</span> - 查看你的Steam信息</li>
+                <li><span class="command">#steam游戏</span> - 查看你的游戏库</li>
+                <li><span class="command">#steam在线</span> - 查看在线状态</li>
+                <li><span class="command">#steam统计</span> - 查看统计数据</li>
+            </ul>
+        </div>
+        
+        <div class="bind-time">
+            绑定时间：{{bindTime}}
+        </div>
+    </div>
+</body>
+</html> 

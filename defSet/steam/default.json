@@ -1,0 +1,62 @@
+{
+  "steam": {
+    "apiKey": "",
+    "proxyUrl": "",
+    "regionCode": "cn",
+    "defaultLanguage": "schinese",
+    "cacheEnabled": true,
+    "cacheExpireTime": 3600,
+    "rateLimit": {
+      "enabled": true,
+      "maxRequests": 10,
+      "windowMs": 60000
+    },
+    "push": {
+      "enabled": true,
+      "defaultPlayPush": true,
+      "defaultStatePush": true,
+      "defaultInventoryPush": false,
+      "defaultWishlistPush": false,
+      "checkInterval": 300000
+    },
+    "monitoring": {
+      "enabled": false,
+      "interval": 60000,
+      "maxConcurrent": 5
+    },
+    "display": {
+      "showFriendCode": true,
+      "showRegisterTime": true,
+      "showLastOnline": true,
+      "showGameTime": true,
+      "showAchievements": true,
+      "maxGamesDisplay": 10,
+      "maxFriendsDisplay": 20
+    },
+    "search": {
+      "maxResults": 10,
+      "includeFreeGames": true,
+      "includeDLC": false
+    },
+    "achievements": {
+      "showProgress": true,
+      "showUnlockedTime": true,
+      "maxDisplay": 20
+    },
+    "inventory": {
+      "showTradable": true,
+      "showMarketable": true,
+      "maxDisplay": 50
+    },
+    "wishlist": {
+      "showPrice": true,
+      "showDiscount": true,
+      "maxDisplay": 20
+    },
+    "discounts": {
+      "minDiscount": 20,
+      "maxResults": 20,
+      "includeFree": false
+    }
+  }
+} 

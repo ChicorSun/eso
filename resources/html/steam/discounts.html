@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/discounts.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    <!-- Discounts Card -->
+    <div class="steam_card">
+      <!-- Header -->
+      <div class="card_header">
+        <div class="header_title">Steam特惠</div>
+        <div class="header_subtitle">当前折扣游戏 ({{totalDeals}})</div>
+      </div>
+
+      {{if deals && deals.length > 0}}
+      <!-- Deals Grid -->
+      <div class="deals_grid">
+        {{each deals}}
+        <div class="deal_item">
+          <div class="game_image">
+            <img src="{{$value.headerImage}}" alt="{{$value.name}}" />
+            <div class="discount_badge">-{{$value.discount}}%</div>
+          </div>
+          <div class="game_info">
+            <div class="game_name">{{$value.name}}</div>
+            <div class="game_price">
+              <span class="original_price">{{$value.originalPrice}}</span>
+              <span class="current_price">{{$value.currentPrice}}</span>
+            </div>
+            {{if $value.releaseDate}}
+            <div class="release_date">发行日期: {{$value.releaseDate}}</div>
+            {{/if}}
+            {{if $value.tags && $value.tags.length > 0}}
+            <div class="game_tags">
+              {{each $value.tags}}
+              <span class="tag">{{$value}}</span>
+              {{/each}}
+            </div>
+            {{/if}}
+            {{if $value.description}}
+            <div class="game_description">{{$value.description}}</div>
+            {{/if}}
+            {{if $value.rating}}
+            <div class="game_rating">
+              <span class="rating_score">{{$value.rating}}</span>
+              <span class="rating_label">{{$value.ratingLabel}}</span>
+            </div>
+            {{/if}}
+          </div>
+        </div>
+        {{/each}}
+      </div>
+
+      <!-- Statistics -->
+      <div class="stats_section">
+        <div class="stat_item">
+          <span class="stat_label">折扣游戏:</span>
+          <span class="stat_value">{{totalDeals}}</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">平均折扣:</span>
+          <span class="stat_value">{{averageDiscount}}%</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">最高折扣:</span>
+          <span class="stat_value">{{maxDiscount}}%</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">免费游戏:</span>
+          <span class="stat_value">{{freeCount}}</span>
+        </div>
+      </div>
+      {{else}}
+      <div class="no_deals">
+        <div class="no_deals_text">暂无折扣信息</div>
+        <div class="no_deals_detail">请稍后再试或访问Steam商店</div>
+      </div>
+      {{/if}}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer_text">ESO-Bot Steam Plugin {{date}}</div>
+    </div>
+  </div>
+</body>
+</html> 

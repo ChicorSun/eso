@@ -4,7 +4,7 @@ import moment from 'moment'
 
 class SteamUserModel {
   constructor() {
-    this.dbPath = './plugins/eso/custome_resources/config/steam_users.json'
+    this.dbPath = './plugins/eso/custome_resources/steam/data/steam_users.json'
     this.users = this.loadUsers()
   }
 
@@ -17,7 +17,7 @@ class SteamUserModel {
       }
       return {}
     } catch (error) {
-      logger.error(`[ESO:Steam] 加载用户数据失败: ${error.message}`)
+      console.error(`[ESO:Steam] 加载用户数据失败: ${error.message}`)
       return {}
     }
   }
@@ -25,13 +25,18 @@ class SteamUserModel {
   // 保存用户数据
   saveUsers() {
     try {
+      const dataDir = path.dirname(this.dbPath)
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true })
+      }
+      
       const data = {
         users: this.users,
         lastUpdate: moment().format('YYYY-MM-DD HH:mm:ss')
       }
       fs.writeFileSync(this.dbPath, JSON.stringify(data, null, 2))
     } catch (error) {
-      logger.error(`[ESO:Steam] 保存用户数据失败: ${error.message}`)
+      console.error(`[ESO:Steam] 保存用户数据失败: ${error.message}`)
     }
   }
 
@@ -50,13 +55,15 @@ class SteamUserModel {
         steamId,
         steamName,
         bindTime: moment().format('YYYY-MM-DD HH:mm:ss'),
-        lastUpdate: moment().format('YYYY-MM-DD HH:mm:ss')
+        lastUpdate: moment().format('YYYY-MM-DD HH:mm:ss'),
+        lastOnlineCheck: null,
+        lastGameCheck: null
       }
 
       this.saveUsers()
       return { success: true, message: '绑定成功' }
     } catch (error) {
-      logger.error(`[ESO:Steam] 绑定用户失败: ${error.message}`)
+      console.error(`[ESO:Steam] 绑定用户失败: ${error.message}`)
       return { success: false, message: '绑定失败' }
     }
   }
@@ -78,7 +85,7 @@ class SteamUserModel {
       this.saveUsers()
       return { success: true, message: '解绑成功' }
     } catch (error) {
-      logger.error(`[ESO:Steam] 解绑用户失败: ${error.message}`)
+      console.error(`[ESO:Steam] 解绑用户失败: ${error.message}`)
       return { success: false, message: '解绑失败' }
     }
   }
@@ -110,6 +117,21 @@ class SteamUserModel {
     return this.users
   }
 
+  // 获取用户列表（用于显示）
+  getUserList() {
+    const userList = []
+    for (const [qqId, userData] of Object.entries(this.users)) {
+      userList.push({
+        qqId,
+        steamId: userData.steamId,
+        steamName: userData.steamName,
+        bindTime: userData.bindTime,
+        lastUpdate: userData.lastUpdate
+      })
+    }
+    return userList
+  }
+
   // 更新用户信息
   updateUserInfo(qqId, steamName) {
     try {
@@ -122,7 +144,39 @@ class SteamUserModel {
       }
       return false
     } catch (error) {
-      logger.error(`[ESO:Steam] 更新用户信息失败: ${error.message}`)
+      console.error(`[ESO:Steam] 更新用户信息失败: ${error.message}`)
+      return false
+    }
+  }
+
+  // 更新用户在线状态检查时间
+  updateOnlineCheckTime(qqId) {
+    try {
+      const userId = qqId.toString()
+      if (this.users[userId]) {
+        this.users[userId].lastOnlineCheck = moment().format('YYYY-MM-DD HH:mm:ss')
+        this.saveUsers()
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error(`[ESO:Steam] 更新在线检查时间失败: ${error.message}`)
+      return false
+    }
+  }
+
+  // 更新用户游戏检查时间
+  updateGameCheckTime(qqId) {
+    try {
+      const userId = qqId.toString()
+      if (this.users[userId]) {
+        this.users[userId].lastGameCheck = moment().format('YYYY-MM-DD HH:mm:ss')
+        this.saveUsers()
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error(`[ESO:Steam] 更新游戏检查时间失败: ${error.message}`)
       return false
     }
   }
@@ -140,9 +194,80 @@ class SteamUserModel {
       return moment(user.bindTime).isSame(moment(), 'day')
     }).length
 
+    const thisWeekBinds = Object.values(this.users).filter(user => {
+      return moment(user.bindTime).isSame(moment(), 'week')
+    }).length
+
+    const thisMonthBinds = Object.values(this.users).filter(user => {
+      return moment(user.bindTime).isSame(moment(), 'month')
+    }).length
+
     return {
       total: totalUsers,
-      today: todayBinds
+      today: todayBinds,
+      thisWeek: thisWeekBinds,
+      thisMonth: thisMonthBinds
+    }
+  }
+
+  // 清理过期绑定（超过30天未更新的）
+  cleanExpiredBindings() {
+    try {
+      const thirtyDaysAgo = moment().subtract(30, 'days')
+      let cleanedCount = 0
+      
+      for (const [qqId, userData] of Object.entries(this.users)) {
+        const lastUpdate = moment(userData.lastUpdate)
+        if (lastUpdate.isBefore(thirtyDaysAgo)) {
+          delete this.users[qqId]
+          cleanedCount++
+        }
+      }
+      
+      if (cleanedCount > 0) {
+        this.saveUsers()
+        console.log(`[ESO:Steam] 清理了 ${cleanedCount} 个过期绑定`)
+      }
+      
+      return cleanedCount
+    } catch (error) {
+      console.error(`[ESO:Steam] 清理过期绑定失败: ${error.message}`)
+      return 0
+    }
+  }
+
+  // 获取用户活跃度统计
+  getActivityStats() {
+    const now = moment()
+    const activeUsers = Object.values(this.users).filter(user => {
+      if (!user.lastOnlineCheck) return false
+      const lastCheck = moment(user.lastOnlineCheck)
+      return lastCheck.isAfter(now.subtract(7, 'days'))
+    }).length
+
+    return {
+      total: Object.keys(this.users).length,
+      active: activeUsers,
+      inactive: Object.keys(this.users).length - activeUsers
+    }
+  }
+
+  // 批量更新用户信息
+  batchUpdateUserInfo(updates) {
+    try {
+      let updatedCount = 0
+      
+      for (const update of updates) {
+        const { qqId, steamName } = update
+        if (this.updateUserInfo(qqId, steamName)) {
+          updatedCount++
+        }
+      }
+      
+      return updatedCount
+    } catch (error) {
+      console.error(`[ESO:Steam] 批量更新用户信息失败: ${error.message}`)
+      return 0
     }
   }
 }

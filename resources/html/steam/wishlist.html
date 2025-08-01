@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/wishlist.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    <!-- Wishlist Card -->
+    <div class="steam_card">
+      <!-- Header -->
+      <div class="card_header">
+        <div class="header_title">愿望单</div>
+        <div class="header_subtitle">{{userName}} 的愿望单 ({{totalItems}})</div>
+      </div>
+
+      {{if items && items.length > 0}}
+      <!-- Wishlist Grid -->
+      <div class="wishlist_grid">
+        {{each items}}
+        <div class="wishlist_item">
+          <div class="game_image">
+            <img src="{{$value.headerImage}}" alt="{{$value.name}}" />
+            {{if $value.discount}}
+            <div class="discount_badge">-{{$value.discount}}%</div>
+            {{/if}}
+          </div>
+          <div class="game_info">
+            <div class="game_name">{{$value.name}}</div>
+            <div class="game_price">
+              {{if $value.price}}
+                {{if $value.originalPrice && $value.originalPrice !== $value.price}}
+                <span class="original_price">{{$value.originalPrice}}</span>
+                {{/if}}
+                <span class="current_price">{{$value.price}}</span>
+              {{else}}
+                <span class="free_price">免费</span>
+              {{/if}}
+            </div>
+            {{if $value.releaseDate}}
+            <div class="release_date">发行日期: {{$value.releaseDate}}</div>
+            {{/if}}
+            {{if $value.addedDate}}
+            <div class="added_date">添加时间: {{$value.addedDate}}</div>
+            {{/if}}
+            {{if $value.tags && $value.tags.length > 0}}
+            <div class="game_tags">
+              {{each $value.tags}}
+              <span class="tag">{{$value}}</span>
+              {{/each}}
+            </div>
+            {{/if}}
+            {{if $value.description}}
+            <div class="game_description">{{$value.description}}</div>
+            {{/if}}
+          </div>
+        </div>
+        {{/each}}
+      </div>
+
+      <!-- Statistics -->
+      <div class="stats_section">
+        <div class="stat_item">
+          <span class="stat_label">总游戏:</span>
+          <span class="stat_value">{{totalItems}}</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">有折扣:</span>
+          <span class="stat_value">{{discountedCount}}</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">免费游戏:</span>
+          <span class="stat_value">{{freeCount}}</span>
+        </div>
+        {{if totalValue}}
+        <div class="stat_item">
+          <span class="stat_label">总价值:</span>
+          <span class="stat_value">{{totalValue}}</span>
+        </div>
+        {{/if}}
+      </div>
+      {{else}}
+      <div class="no_wishlist">
+        <div class="no_wishlist_text">暂无愿望单数据</div>
+        <div class="no_wishlist_detail">可能是隐私设置或愿望单为空</div>
+      </div>
+      {{/if}}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer_text">ESO-Bot Steam Plugin {{date}}</div>
+    </div>
+  </div>
+</body>
+</html> 

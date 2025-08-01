@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/userInfo.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    <!-- Steam ID Card -->
+    <div class="steam_id_card">
+      {{if userInfo}}
+      <!-- Top Section: Avatar and User Info -->
+      <div class="card_top">
+        <!-- Avatar with border -->
+        <div class="avatar_section">
+          {{if avatarImagePath}}
+          <img src="{{pluResPath}}../custome_resources/steam/images/avatar/{{avatarImagePath}}" alt="头像" class="user_avatar" />
+          {{else}}
+          <img src="{{userInfo.avatarfull}}" alt="头像" class="user_avatar" />
+          {{/if}}
+        </div>
+        
+        <!-- User Info Section -->
+        <div class="user_info_section">
+          <!-- Username -->
+          <div class="info_line username">{{userInfo.personaname}}</div>
+          
+          <!-- Online Status with icon -->
+          <div class="info_line status_line">
+            <span class="status_icon">{{statusIcon}}</span>
+            <span class="status_text">{{statusText}}</span>
+          </div>
+          
+          <!-- Friend Code -->
+          <div class="info_line friend_code">好友码: {{friendCode}}</div>
+          
+          <!-- Registration Time -->
+          {{if userInfo.timecreated}}
+          <div class="info_line register_time">{{registerTime}}</div>
+          {{/if}}
+        </div>
+      </div>
+
+      <!-- Bottom Section: Game Status and Last Online -->
+      <div class="card_bottom">
+        <!-- Currently Playing Game -->
+        <div class="game_section">
+          {{if userInfo.gameextrainfo}}
+          <div class="game_display" {{if gameImagePath}}style="background-image: url('{{pluResPath}}../custome_resources/steam/images/games/{{gameImagePath}}')"{{/if}} >
+            <div class="game_overlay">
+              <div class="game_status_text">正在游玩</div>
+              <div class="game_name">{{userInfo.gameextrainfo}}</div>
+            </div>
+          </div>
+          {{else}}
+          <div class="no_game_display">
+            <div class="no_game_text">当前未在游玩</div>
+          </div>
+          {{/if}}
+        </div>
+        
+        <!-- Last Online Time -->
+        <div class="last_online_section">
+          {{if lastOnline}}
+          <div class="last_online_label">最后在线时间</div>
+          <div class="last_online_time">{{lastOnline}}</div>
+          {{else}}
+          <div class="last_online_label">最后在线时间</div>
+          <div class="last_online_time">未知</div>
+          {{/if}}
+        </div>
+      </div>
+      {{else}}
+      <div class="error_message">
+        <div class="error_text">无法获取用户信息</div>
+        <div class="error_detail">{{errorMessage}}</div>
+      </div>
+      {{/if}}
+    </div>
+
+    <!-- Footer with current time -->
+    <div class="footer">
+      <div class="footer_time">{{currentTime}}</div>
+    </div>
+  </div>
+</body>
+</html> 

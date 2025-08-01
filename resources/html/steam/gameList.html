@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/gameList.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    <!-- Game Library Card -->
+    <div class="steam_card">
+      <!-- Header -->
+      <div class="card_header">
+        <div class="header_title">游戏库</div>
+        <div class="header_subtitle">{{userName}} 的游戏 ({{totalGames}})</div>
+      </div>
+
+      {{if games && games.length > 0}}
+      <!-- Games Grid -->
+      <div class="games_grid">
+        {{each games}}
+        <div class="game_item">
+          <div class="game_image">
+            <img src="{{$value.headerImage}}" alt="{{$value.name}}" />
+            {{if $value.playtime_forever > 0}}
+            <div class="playtime_badge">{{$value.playtimeText}}</div>
+            {{/if}}
+          </div>
+          <div class="game_info">
+            <div class="game_name">{{$value.name}}</div>
+            {{if $value.playtime_2weeks > 0}}
+            <div class="recent_playtime">最近两周: {{$value.recentPlaytimeText}}</div>
+            {{/if}}
+            {{if $value.achievements}}
+            <div class="achievement_info">
+              <span class="achievement_count">{{$value.achievements.unlocked}}/{{$value.achievements.total}}</span>
+              <span class="achievement_percent">({{$value.achievements.percent}}%)</span>
+            </div>
+            {{/if}}
+          </div>
+        </div>
+        {{/each}}
+      </div>
+
+      <!-- Statistics -->
+      <div class="stats_section">
+        <div class="stat_item">
+          <span class="stat_label">总游戏数:</span>
+          <span class="stat_value">{{totalGames}}</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">总游戏时长:</span>
+          <span class="stat_value">{{totalPlaytime}}</span>
+        </div>
+        {{if totalAchievements}}
+        <div class="stat_item">
+          <span class="stat_label">总成就数:</span>
+          <span class="stat_value">{{totalAchievements}}</span>
+        </div>
+        {{/if}}
+      </div>
+      {{else}}
+      <div class="no_games">
+        <div class="no_games_text">暂无游戏数据</div>
+        <div class="no_games_detail">可能是隐私设置或API限制</div>
+      </div>
+      {{/if}}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer_text">ESO-Bot Steam Plugin {{date}}</div>
+    </div>
+  </div>
+</body>
+</html> 

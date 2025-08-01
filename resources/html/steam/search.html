@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/search.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    <!-- Search Results Card -->
+    <div class="steam_card">
+      <!-- Header -->
+      <div class="card_header">
+        <div class="header_title">搜索结果</div>
+        <div class="header_subtitle">"{{query}}" ({{totalResults}})</div>
+      </div>
+
+      {{if results && results.length > 0}}
+      <!-- Search Results List -->
+      <div class="search_results">
+        {{each results}}
+        <div class="search_item">
+          <div class="game_image">
+            <img src="{{$value.headerImage}}" alt="{{$value.name}}" />
+            {{if $value.discount}}
+            <div class="discount_badge">-{{$value.discount}}%</div>
+            {{/if}}
+          </div>
+          <div class="game_info">
+            <div class="game_name">{{$value.name}}</div>
+            <div class="game_price">
+              {{if $value.price}}
+                {{if $value.originalPrice && $value.originalPrice !== $value.price}}
+                <span class="original_price">{{$value.originalPrice}}</span>
+                {{/if}}
+                <span class="current_price">{{$value.price}}</span>
+              {{else}}
+                <span class="free_price">免费</span>
+              {{/if}}
+            </div>
+            {{if $value.releaseDate}}
+            <div class="release_date">发行日期: {{$value.releaseDate}}</div>
+            {{/if}}
+            {{if $value.tags && $value.tags.length > 0}}
+            <div class="game_tags">
+              {{each $value.tags}}
+              <span class="tag">{{$value}}</span>
+              {{/each}}
+            </div>
+            {{/if}}
+            {{if $value.description}}
+            <div class="game_description">{{$value.description}}</div>
+            {{/if}}
+          </div>
+        </div>
+        {{/each}}
+      </div>
+
+      <!-- Pagination Info -->
+      {{if hasMore}}
+      <div class="pagination_info">
+        <div class="pagination_text">显示前 {{results.length}} 个结果</div>
+        <div class="pagination_note">更多结果请访问Steam商店</div>
+      </div>
+      {{/if}}
+      {{else}}
+      <div class="no_results">
+        <div class="no_results_text">未找到相关游戏</div>
+        <div class="no_results_detail">请尝试其他关键词</div>
+      </div>
+      {{/if}}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer_text">ESO-Bot Steam Plugin {{date}}</div>
+    </div>
+  </div>
+</body>
+</html> 

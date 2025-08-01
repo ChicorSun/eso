@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/achievements.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    <!-- Achievements Card -->
+    <div class="steam_card">
+      <!-- Header -->
+      <div class="card_header">
+        <div class="header_title">游戏成就</div>
+        <div class="header_subtitle">{{userName}} - {{gameName}}</div>
+      </div>
+
+      {{if achievements && achievements.length > 0}}
+      <!-- Achievement Progress -->
+      <div class="achievement_progress">
+        <div class="progress_bar">
+          <div class="progress_fill" style="width: {{progressPercent}}%"></div>
+        </div>
+        <div class="progress_text">{{unlockedCount}}/{{totalCount}} ({{progressPercent}}%)</div>
+      </div>
+
+      <!-- Achievements List -->
+      <div class="achievements_list">
+        {{each achievements}}
+        <div class="achievement_item {{$value.unlocked ? 'unlocked' : 'locked'}}">
+          <div class="achievement_icon">
+            <img src="{{$value.icon}}" alt="{{$value.name}}" />
+            {{if $value.unlocked}}
+            <div class="unlock_badge">✓</div>
+            {{/if}}
+          </div>
+          <div class="achievement_info">
+            <div class="achievement_name">{{$value.name}}</div>
+            <div class="achievement_description">{{$value.description}}</div>
+            {{if $value.unlocktime}}
+            <div class="unlock_time">解锁时间: {{$value.unlockTimeText}}</div>
+            {{/if}}
+            {{if $value.globalPercent}}
+            <div class="global_percent">全球解锁率: {{$value.globalPercent}}%</div>
+            {{/if}}
+          </div>
+        </div>
+        {{/each}}
+      </div>
+
+      <!-- Statistics -->
+      <div class="stats_section">
+        <div class="stat_item">
+          <span class="stat_label">已解锁:</span>
+          <span class="stat_value">{{unlockedCount}}</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">总成就:</span>
+          <span class="stat_value">{{totalCount}}</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">完成度:</span>
+          <span class="stat_value">{{progressPercent}}%</span>
+        </div>
+        {{if playtime}}
+        <div class="stat_item">
+          <span class="stat_label">游戏时长:</span>
+          <span class="stat_value">{{playtime}}</span>
+        </div>
+        {{/if}}
+      </div>
+      {{else}}
+      <div class="no_achievements">
+        <div class="no_achievements_text">暂无成就数据</div>
+        <div class="no_achievements_detail">可能是隐私设置或该游戏无成就</div>
+      </div>
+      {{/if}}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer_text">ESO-Bot Steam Plugin {{date}}</div>
+    </div>
+  </div>
+</body>
+</html> 

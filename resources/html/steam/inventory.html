@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/inventory.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    <!-- Inventory Card -->
+    <div class="steam_card">
+      <!-- Header -->
+      <div class="card_header">
+        <div class="header_title">Steam库存</div>
+        <div class="header_subtitle">{{userName}} 的库存 ({{totalItems}})</div>
+      </div>
+
+      {{if items && items.length > 0}}
+      <!-- Inventory Grid -->
+      <div class="inventory_grid">
+        {{each items}}
+        <div class="inventory_item">
+          <div class="item_image">
+            <img src="{{$value.icon}}" alt="{{$value.name}}" />
+            {{if $value.tradable}}
+            <div class="tradable_badge">可交易</div>
+            {{/if}}
+            {{if $value.marketable}}
+            <div class="marketable_badge">可出售</div>
+            {{/if}}
+          </div>
+          <div class="item_info">
+            <div class="item_name">{{$value.name}}</div>
+            <div class="item_type">{{$value.type}}</div>
+            {{if $value.rarity}}
+            <div class="item_rarity {{$value.rarityClass}}">{{$value.rarity}}</div>
+            {{/if}}
+            {{if $value.description}}
+            <div class="item_description">{{$value.description}}</div>
+            {{/if}}
+          </div>
+        </div>
+        {{/each}}
+      </div>
+
+      <!-- Statistics -->
+      <div class="stats_section">
+        <div class="stat_item">
+          <span class="stat_label">总物品:</span>
+          <span class="stat_value">{{totalItems}}</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">可交易:</span>
+          <span class="stat_value">{{tradableCount}}</span>
+        </div>
+        <div class="stat_item">
+          <span class="stat_label">可出售:</span>
+          <span class="stat_value">{{marketableCount}}</span>
+        </div>
+        {{if totalValue}}
+        <div class="stat_item">
+          <span class="stat_label">总价值:</span>
+          <span class="stat_value">{{totalValue}}</span>
+        </div>
+        {{/if}}
+      </div>
+      {{else}}
+      <div class="no_inventory">
+        <div class="no_inventory_text">暂无库存数据</div>
+        <div class="no_inventory_detail">可能是隐私设置或库存为空</div>
+      </div>
+      {{/if}}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer_text">ESO-Bot Steam Plugin {{date}}</div>
+    </div>
+  </div>
+</body>
+</html> 
