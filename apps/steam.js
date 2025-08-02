@@ -364,20 +364,24 @@ export class steam extends plugin {
   // ===========================================
   async steamBind(e) {
     const userId = e.user_id
-    const match = e.msg.match(/^#?steam绑定\s*(\d*)$/)
-    const steamId = match[1]
+    const match = e.msg.match(/^#?steam绑定\s*(.+)$/)
+    const input = match ? match[1].trim() : ''
     
     // 检查限流
     if (!checkRateLimit(userId)) {
       return this.reply('请求过于频繁，请稍后再试')
     }
     
-    // 检查是否提供了Steam ID
-    if (!steamId || steamId.trim() === '') {
+    // 检查是否提供了参数
+    if (!input) {
       const helpText = [
         'Steam绑定使用说明',
         '',
-        '命令格式: #steam绑定 <SteamID>',
+        '命令格式: #steam绑定 <SteamID或好友码>',
+        '',
+        '参数说明:',
+        '• SteamID: 17位数字的Steam ID',
+        '• 好友码: 数字形式的好友码',
         '',
         '如何获取Steam ID:',
         '1. 访问 https://steamidfinder.com/',
@@ -389,10 +393,11 @@ export class steam extends plugin {
         '2. 登录你的Steam账号',
         '3. 在URL中找到你的Steam ID',
         '',
-                 '示例:',
-         '• #steam绑定 76561198987654321',
+        '示例:',
+        '• #steam绑定 76561198987654321',
+        '• #steam绑定 1327308926',
         '',
-        '注意: Steam ID是17位数字，不是用户名'
+        '注意: 支持Steam ID（17位数字）或好友码（数字）'
       ].join('\n')
       
       return this.reply(helpText)
@@ -403,9 +408,10 @@ export class steam extends plugin {
       return this.reply('未配置Steam API密钥，无法进行绑定操作\n请使用 #steam设置 查看设置说明')
     }
     
-    // 验证Steam ID格式
-    if (!Steam.validateSteamId(steamId)) {
-      return this.reply('Steam ID格式不正确，请输入17位数字的Steam ID')
+    // 解析Steam ID或好友码
+    const steamId = Steam.parseSteamId(input)
+    if (!steamId) {
+      return this.reply('参数格式不正确，请输入有效的Steam ID（17位数字）或好友码（数字）')
     }
     
     try {
@@ -463,20 +469,24 @@ export class steam extends plugin {
   // ===========================================
   async steamUnbind(e) {
     const userId = e.user_id
-    const match = e.msg.match(/^#?steam解绑\s*(\d*)$/)
-    const steamId = match[1]
+    const match = e.msg.match(/^#?steam解绑\s*(.+)$/)
+    const input = match ? match[1].trim() : ''
     
     // 检查限流
     if (!checkRateLimit(userId)) {
       return this.reply('请求过于频繁，请稍后再试')
     }
     
-    // 检查是否提供了Steam ID
-    if (!steamId || steamId.trim() === '') {
+    // 检查是否提供了参数
+    if (!input) {
       const helpText = [
         'Steam解绑使用说明',
         '',
-        '命令格式: #steam解绑 <SteamID>',
+        '命令格式: #steam解绑 <SteamID或好友码>',
+        '',
+        '参数说明:',
+        '• SteamID: 17位数字的Steam ID',
+        '• 好友码: 数字形式的好友码',
         '',
         '如何获取Steam ID:',
         '1. 访问 https://steamidfinder.com/',
@@ -488,13 +498,20 @@ export class steam extends plugin {
         '2. 登录你的Steam账号',
         '3. 在URL中找到你的Steam ID',
         '',
-                 '示例:',
-         '• #steam解绑 76561198987654321',
+        '示例:',
+        '• #steam解绑 76561198987654321',
+        '• #steam解绑 1327308926',
         '',
-        '注意: Steam ID是17位数字，不是用户名'
+        '注意: 支持Steam ID（17位数字）或好友码（数字）'
       ].join('\n')
       
       return this.reply(helpText)
+    }
+    
+    // 解析Steam ID或好友码
+    const steamId = Steam.parseSteamId(input)
+    if (!steamId) {
+      return this.reply('参数格式不正确，请输入有效的Steam ID（17位数字）或好友码（数字）')
     }
     
     try {
@@ -525,8 +542,9 @@ export class steam extends plugin {
       userId = String(personID);
     }
 
-    const match = e.msg.replace("信息", "").replace("状态", "").match(/^#?steam\s*(\d*)$/)
-    const steamId = match[1] || SteamUser.getUserSteamId(userId)
+    const match = e.msg.replace("信息", "").replace("状态", "").match(/^#?steam\s*(.+)$/)
+    const input = match ? match[1].trim() : ''
+    const steamId = input ? Steam.parseSteamId(input) : SteamUser.getUserSteamId(userId)
     
     // 检查限流
     if (!checkRateLimit(userId)) {
@@ -596,8 +614,9 @@ export class steam extends plugin {
       userId = String(personID);
     }
 
-    const match = e.msg.match(/^#?steam在线\s*(\d*)$/)
-    const steamId = match[1] || SteamUser.getUserSteamId(userId)
+    const match = e.msg.match(/^#?steam在线\s*(.+)$/)
+    const input = match ? match[1].trim() : ''
+    const steamId = input ? Steam.parseSteamId(input) : SteamUser.getUserSteamId(userId)
     
     // 检查限流
     if (!checkRateLimit(userId)) {
@@ -656,8 +675,9 @@ export class steam extends plugin {
       userId = String(personID);
     }
 
-    const match = e.msg.match(/^#?steam游戏\s*(\d*)$/)
-    const steamId = match[1] || SteamUser.getUserSteamId(userId)
+    const match = e.msg.match(/^#?steam游戏\s*(.+)$/)
+    const input = match ? match[1].trim() : ''
+    const steamId = input ? Steam.parseSteamId(input) : SteamUser.getUserSteamId(userId)
     
     // 检查限流
     if (!checkRateLimit(userId)) {
@@ -752,9 +772,10 @@ export class steam extends plugin {
       userId = String(personID);
     }
 
-    const match = e.msg.match(/^#?steam成就\s*(\d*)\s*(\d*)$/)
+    const match = e.msg.match(/^#?steam成就\s*(\d+)\s*(.+)$/)
     const gameId = match[1]
-    const steamId = match[2] || SteamUser.getUserSteamId(userId)
+    const input = match[2] ? match[2].trim() : ''
+    const steamId = input ? Steam.parseSteamId(input) : SteamUser.getUserSteamId(userId)
     
     // 检查限流
     if (!checkRateLimit(userId)) {
@@ -766,11 +787,11 @@ export class steam extends plugin {
       const helpText = [
         'Steam成就查询使用说明',
         '',
-        '命令格式: #steam成就 <游戏ID> [SteamID]',
+        '命令格式: #steam成就 <游戏ID> [SteamID或好友码]',
         '',
         '参数说明:',
         '• 游戏ID: 必需参数，Steam游戏的数字ID',
-        '• SteamID: 可选参数，要查询的Steam用户ID（不指定则使用绑定的账号或at的群友）',
+        '• SteamID: 可选参数，要查询的Steam用户ID或好友码（不指定则使用绑定的账号或at的群友）',
         '',
         '如何获取游戏ID:',
         '1. 使用 #steam搜索 <游戏名> 搜索游戏',
@@ -781,6 +802,7 @@ export class steam extends plugin {
         '• #steam成就 730 - 查询CS2的成就（使用绑定账号）',
         '• #steam成就 730 @群友 - 查询at群友的CS2成就',
         '• #steam成就 730 76561198987654321 - 查询指定用户的CS2成就',
+        '• #steam成就 730 1327308926 - 使用好友码查询CS2成就',
         '',
         '注意: 游戏ID是数字，不是游戏名称'
       ].join('\n')
@@ -805,8 +827,9 @@ export class steam extends plugin {
       userId = String(personID);
     }
 
-    const match = e.msg.match(/^#?steam库存\s*(\d*)$/)
-    const steamId = match[1] || SteamUser.getUserSteamId(userId)
+    const match = e.msg.match(/^#?steam库存\s*(.+)$/)
+    const input = match ? match[1].trim() : ''
+    const steamId = input ? Steam.parseSteamId(input) : SteamUser.getUserSteamId(userId)
     
     // 检查限流
     if (!checkRateLimit(userId)) {
@@ -839,8 +862,9 @@ export class steam extends plugin {
       userId = String(personID);
     }
 
-    const match = e.msg.match(/^#?steam愿望单\s*(\d*)$/)
-    const steamId = match[1] || SteamUser.getUserSteamId(userId)
+    const match = e.msg.match(/^#?steam愿望单\s*(.+)$/)
+    const input = match ? match[1].trim() : ''
+    const steamId = input ? Steam.parseSteamId(input) : SteamUser.getUserSteamId(userId)
     
     // 检查限流
     if (!checkRateLimit(userId)) {
@@ -1183,10 +1207,6 @@ export class steam extends plugin {
       const registerTime = userInfo.timecreated ? 
         new Date(userInfo.timecreated * 1000).toISOString().replace('T', ' ').substring(0, 19) : '未知'
       
-      // 格式化最后在线时间：YYYY-MM-DD HH:MM:SS
-      const lastOnline = userInfo.lastlogoff ? 
-        new Date(userInfo.lastlogoff * 1000).toISOString().replace('T', ' ').substring(0, 19) : '未知'
-      
       // 当前时间：YYYY-MM-DD HH:MM:SS
       const currentTime = new Date().toISOString().replace('T', ' ').substring(0, 19)
       
@@ -1214,7 +1234,6 @@ export class steam extends plugin {
         statusIcon,
         statusClass,
         registerTime,
-        lastOnline,
         gameImage,
         gameImagePath,
         avatarImagePath,

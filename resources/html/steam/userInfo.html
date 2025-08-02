@@ -39,12 +39,12 @@
           
           <!-- Registration Time -->
           {{if userInfo.timecreated}}
-          <div class="info_line register_time">{{registerTime}}</div>
+          <div class="info_line register_time">注册时间: {{registerTime}}</div>
           {{/if}}
         </div>
       </div>
 
-      <!-- Bottom Section: Game Status and Last Online -->
+      <!-- Bottom Section: Game Status -->
       <div class="card_bottom">
         <!-- Currently Playing Game -->
         <div class="game_section">
@@ -59,17 +59,6 @@
           <div class="no_game_display">
             <div class="no_game_text">当前未在游玩</div>
           </div>
-          {{/if}}
-        </div>
-        
-        <!-- Last Online Time -->
-        <div class="last_online_section">
-          {{if lastOnline}}
-          <div class="last_online_label">最后在线时间</div>
-          <div class="last_online_time">{{lastOnline}}</div>
-          {{else}}
-          <div class="last_online_label">最后在线时间</div>
-          <div class="last_online_time">未知</div>
           {{/if}}
         </div>
       </div>

@@ -439,11 +439,32 @@ class SteamModel {
       return input
     }
     
-    // 如果是好友码，需要转换（简化版本）
-    if (input.length === 8) {
-      // 这里需要实现好友码到Steam ID的转换
-      // 由于复杂度较高，暂时返回null
+    // 如果是好友码，转换为Steam ID
+    const steamIdOffset = 76561197960265728n
+    try {
+      const friendCode = BigInt(input)
+      const steamId = (friendCode + steamIdOffset).toString()
+      
+      // 验证转换后的Steam ID是否有效
+      if (this.validateSteamId(steamId)) {
+        return steamId
+      }
+    } catch (error) {
+      // 如果转换失败，说明不是有效的好友码
       return null
+    }
+    
+    return null
+  }
+
+  // 解析Steam ID或好友码
+  parseSteamId(input) {
+    if (!input) return null
+    
+    // 尝试转换（支持Steam ID和好友码）
+    const steamId = this.convertSteamId(input)
+    if (steamId) {
+      return steamId
     }
     
     return null
@@ -453,17 +474,10 @@ class SteamModel {
   getFriendCode(steamId) {
     if (!this.validateSteamId(steamId)) return null
     
-    // 简化版本的好友码生成
-    // 实际实现需要更复杂的算法
-    const accountId = BigInt(steamId) - 76561197960265728n
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-    let code = ''
-    
-    for (let i = 0; i < 8; i++) {
-      code += alphabet[Number(accountId >> BigInt(i * 5)) & 31]
-    }
-    
-    return code
+    // Steam好友码计算：Steam ID - 固定偏移量
+    const steamIdOffset = 76561197960265728n
+    const friendCode = BigInt(steamId) - steamIdOffset
+    return friendCode.toString()
   }
 
   // 格式化游戏时间
