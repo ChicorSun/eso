@@ -163,7 +163,7 @@ export class speechStatic extends plugin {
         } else {
             let user_data = {
                 user_id: e.user_id,
-                nickname: e.nickname,
+                nickname: e.sender.card || e.sender.nickname || `用户${e.user_id}`,
                 number: 1
             }
             data.push(user_data)
@@ -187,7 +187,7 @@ export class speechStatic extends plugin {
         } else {
             let user_data = {
                 user_id: e.user_id,
-                nickname: e.nickname,
+                nickname: e.sender.card || e.sender.nickname || `用户${e.user_id}`,
                 number: 1
             }
             data.push(user_data)
