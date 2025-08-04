@@ -413,7 +413,7 @@ export class steam extends plugin {
       return this.reply('参数格式不正确，请输入有效的Steam ID（17位数字）或好友码（数字）')
     }
 
-    return this.reply('正在获取用户信息...')
+    await this.reply('正在获取用户信息...')
     
     try {
       // 尝试获取用户信息验证Steam ID是否有效
@@ -793,7 +793,7 @@ export class steam extends plugin {
       }
     }
     
-    return this.reply('正在获取用户信息...')
+    await this.reply('正在获取用户信息...')
 
     try {
       // 获取用户信息
@@ -867,7 +867,7 @@ export class steam extends plugin {
       }
     }
 
-    return this.reply('正在获取用户信息...')
+    await this.reply('正在获取用户信息...')
     
     try {
       // 获取用户信息
@@ -930,7 +930,7 @@ export class steam extends plugin {
       }
     }
 
-    return this.reply('正在获取用户信息...')
+    await this.reply('正在获取用户信息...')
     
     try {
       // 获取用户信息
