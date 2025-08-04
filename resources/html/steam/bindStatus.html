@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam绑定状态</title>
+    <link rel="stylesheet" href="{{pluResPath}}html/steam/bindStatus.css">
+</head>
+<body>
+    <div class="steam-bind-container">
+        <div class="header">
+            <div class="title">Steam绑定状态</div>
+            <div class="switch-tip">使用 <strong>#steam切换绑定1</strong> 切换steamID</div>
+        </div>
+        
+        <div class="bindings-table">
+            <div class="table-header">
+                <div class="col-index">序号</div>
+                <div class="col-avatar">头像</div>
+                <div class="col-info">账户信息</div>
+                <div class="col-push">推送设置</div>
+                <div class="col-status">状态</div>
+            </div>
+            
+            {{each bindings}}
+            <div class="binding-row {{$value.isNewBinding ? 'new-binding' : ''}} {{$value.isBind ? 'current-bind' : ''}}">
+                <div class="col-index">{{$value.index}}</div>
+                <div class="col-avatar">
+                    {{if $value.avatar}}
+                    <img src="{{pluResPath}}../custome_resources/steam/images/avatar/{{$value.avatar}}" alt="头像" class="user-avatar">
+                    {{else}}
+                    <div class="avatar-placeholder"> </div>
+                    {{/if}}
+                </div>
+                <div class="col-info">
+                    {{if $value.steamId}}
+                    <div class="steam-id">{{$value.steamId}}</div>
+                    <div class="friend-code">{{$value.friendCode}}</div>
+                    <div class="steam-name">{{$value.steamName}}</div>
+                    {{else}}
+                    <div class="empty-info">未绑定</div>
+                    {{/if}}
+                </div>
+                <div class="col-push">
+                    {{if $value.steamId}}
+                    <div class="push-item">
+                        <span class="push-label">游玩推送:</span>
+                        <span class="push-status {{$value.playPush ? 'enabled' : 'disabled'}}">
+                            {{$value.playPush ? '✓' : '✗'}}
+                        </span>
+                    </div>
+                    <div class="push-item">
+                        <span class="push-label">在线推送:</span>
+                        <span class="push-status {{$value.statePush ? 'enabled' : 'disabled'}}">
+                            {{$value.statePush ? '✓' : '✗'}}
+                        </span>
+                    </div>
+                    {{else}}
+                    <div class="empty-push">-</div>
+                    {{/if}}
+                </div>
+                <div class="col-status">
+                    {{if $value.isBind}}
+                    <div class="status-circle active">✓</div>
+                    {{else}}
+                    <div class="status-circle inactive">○</div>
+                    {{/if}}
+                    {{if $value.isNewBinding}}
+                    <div class="new-badge">绑定成功</div>
+                    {{/if}}
+                </div>
+            </div>
+            {{/each}}
+        </div>
+        
+        <div class="footer">
+            <div class="help-text">
+                <strong>绑定说明:</strong><br>
+                • 使用 <strong>#steam绑定 &lt;SteamID或好友码&gt;</strong> 添加新绑定<br>
+                • 使用 <strong>#steam切换绑定&lt;序号&gt;</strong> 切换当前绑定<br>
+                • 使用 <strong>#steam解绑&lt;序号&gt;</strong> 解除绑定
+            </div>
+            <div class="current-time">{{currentTime}}</div>
+        </div>
+    </div>
+</body>
+</html> 

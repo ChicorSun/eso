@@ -135,6 +135,25 @@ class SteamPushModel {
     return false
   }
 
+  // 获取用户所有推送设置
+  getUserPushSettings(userId) {
+    const settings = []
+    
+    for (const [key, pushSetting] of Object.entries(this.pushSettings)) {
+      if (key.startsWith(`${userId}_`) && pushSetting.steamId) {
+        settings.push({
+          steamId: pushSetting.steamId,
+          play: pushSetting.types?.play || false,
+          state: pushSetting.types?.state || false,
+          inventory: pushSetting.types?.inventory || false,
+          wishlist: pushSetting.types?.wishlist || false
+        })
+      }
+    }
+    
+    return settings
+  }
+
   // 设置游玩推送
   setPlayPush(userId, steamId, enabled) {
     return this.setUserPush(userId, steamId, 'play', enabled)

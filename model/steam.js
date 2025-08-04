@@ -234,7 +234,21 @@ class SteamModel {
       const data = await this.callApi(endpoint)
       
       if (data.response && data.response.games) {
-        return data.response.games
+        // 排序游戏列表：按最近两周游戏时长 > 总游戏时长 > 游戏名称
+        const sortedGames = data.response.games.sort((a, b) => {
+          // 首先按最近两周游戏时长排序（降序）
+          if ((a.playtime_2weeks || 0) !== (b.playtime_2weeks || 0)) {
+            return (b.playtime_2weeks || 0) - (a.playtime_2weeks || 0)
+          }
+          // 如果最近两周时长相同，按总游戏时长排序（降序）
+          if ((a.playtime_forever || 0) !== (b.playtime_forever || 0)) {
+            return (b.playtime_forever || 0) - (a.playtime_forever || 0)
+          }
+          // 如果总时长也相同，按游戏名称排序（升序）
+          return (a.name || '').localeCompare(b.name || '', 'zh-CN')
+        })
+        
+        return sortedGames
       }
       
       return []

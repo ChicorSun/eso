@@ -200,6 +200,18 @@ export class steam extends plugin {
           fnc: 'steamUnbind'
         },
         {
+          reg: '^#?steam切换绑定\\s*(\\d+)$',
+          fnc: 'steamSwitchBind'
+        },
+        {
+          reg: '^#?steam(开启|关闭)游玩推送\\s*(\\d*)$',
+          fnc: 'steamTogglePlayPush'
+        },
+        {
+          reg: '^#?steam(开启|关闭)在线推送\\s*(\\d*)$',
+          fnc: 'steamToggleOnlinePush'
+        },
+        {
           reg: '^#?steam信息\\s*(\\d*)$',
           fnc: 'steamInfo'
         },
@@ -306,10 +318,17 @@ export class steam extends plugin {
     const helpText = `Steam功能使用说明：
 
  基础指令：
-   • #steam绑定 <SteamID> - 绑定Steam账号
-   • #steam解绑 <SteamID> - 解除Steam绑定
+   • #steam绑定 [SteamID] - 绑定Steam账号或查看绑定状态
+   • #steam切换绑定 <序号> - 切换当前绑定的Steam账号
+   • #steam解绑 <序号> - 解除指定序号的Steam绑定
    • #steam信息 [SteamID] - 查看Steam用户信息
    • #steam在线 [SteamID] - 查看在线状态
+
+ 推送控制：
+   • #steam开启游玩推送 [序号] - 开启游玩状态推送
+   • #steam关闭游玩推送 [序号] - 关闭游玩状态推送
+   • #steam开启在线推送 [序号] - 开启在线状态推送
+   • #steam关闭在线推送 [序号] - 关闭在线状态推送
 
  游戏相关：
    • #steam游戏 [SteamID] - 查看游戏库
@@ -351,6 +370,12 @@ export class steam extends plugin {
    2. 登录Steam账号并填写域名
    3. 同意条款并生成API密钥
 
+ 多绑定功能：
+   • 支持绑定多个Steam账号，使用 #steam绑定 查看所有绑定
+   • 使用 #steam切换绑定<序号> 切换当前使用的账号
+   • 每个用户只能有一个当前绑定的账号
+   • 支持Steam ID（17位数字）和好友码（数字）两种格式
+
  使用提示：
    • 输入命令时如果不确定参数，直接输入命令会显示详细帮助
    • 所有命令都支持中文和英文
@@ -372,35 +397,9 @@ export class steam extends plugin {
       return this.reply('请求过于频繁，请稍后再试')
     }
     
-    // 检查是否提供了参数
+    // 如果没有提供参数，显示绑定状态
     if (!input) {
-      const helpText = [
-        'Steam绑定使用说明',
-        '',
-        '命令格式: #steam绑定 <SteamID或好友码>',
-        '',
-        '参数说明:',
-        '• SteamID: 17位数字的Steam ID',
-        '• 好友码: 数字形式的好友码',
-        '',
-        '如何获取Steam ID:',
-        '1. 访问 https://steamidfinder.com/',
-        '2. 输入你的Steam用户名或好友码',
-        '3. 获取17位数字的Steam ID',
-        '',
-        '或者:',
-        '1. 访问 https://steamcommunity.com/my/profile',
-        '2. 登录你的Steam账号',
-        '3. 在URL中找到你的Steam ID',
-        '',
-        '示例:',
-        '• #steam绑定 76561198987654321',
-        '• #steam绑定 1327308926',
-        '',
-        '注意: 支持Steam ID（17位数字）或好友码（数字）'
-      ].join('\n')
-      
-      return this.reply(helpText)
+      return await this.showBindStatus(e)
     }
     
     // 检查API密钥
@@ -413,6 +412,8 @@ export class steam extends plugin {
     if (!steamId) {
       return this.reply('参数格式不正确，请输入有效的Steam ID（17位数字）或好友码（数字）')
     }
+
+    return this.reply('正在获取用户信息...')
     
     try {
       // 尝试获取用户信息验证Steam ID是否有效
@@ -421,37 +422,17 @@ export class steam extends plugin {
         return this.reply('无法获取Steam用户信息，请检查Steam ID是否正确')
       }
       
-      // 绑定用户
-      const result = SteamUser.bindUser(userId, steamId, userInfo.personaname)
+      // 检查是否已被当前用户绑定（只检查用户自己的绑定）
+      const existingUser = SteamUser.getUserBySteamId(steamId)
+      if (existingUser && existingUser.qqId === userId.toString()) {
+        return this.reply('您已经绑定过该Steam账户')
+      }
+      
+      // 绑定用户（带参数绑定时不改变当前选择）
+      const result = SteamUser.bindUser(userId, steamId, userInfo.personaname, userInfo.avatarfull, true)
       if (result.success) {
-        // 生成绑定成功图片
-        const bindData = {
-          userName: userInfo.personaname,
-          steamId: steamId,
-          qqUser: e.sender.card || e.sender.nickname || `用户${userId}`,
-          bindTime: new Date().toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-          })
-        }
-        
-        try {
-          const img = await puppeteer.screenshot('eso', {
-            ...bindData,
-            pluResPath: `${process.cwd().replace(/\\/g, '/')}/plugins/eso/resources/`,
-            tplFile: './plugins/eso/resources/html/steam/bindSuccess.html'
-          })
-          
-          return this.reply(img)
-        } catch (error) {
-          console.error(`[ESO:Steam] 生成绑定成功图片失败:`, error)
-          // 如果图片生成失败，回退到文字回复
-          return this.reply(`绑定成功！\nSteam用户: ${userInfo.personaname}\nSteam ID: ${steamId}`)
-        }
+        // 生成绑定状态图片
+        return await this.showBindStatus(e, result.bindingIndex)
       } else {
         return this.reply(result.message)
       }
@@ -461,6 +442,258 @@ export class steam extends plugin {
         return this.reply('未配置Steam API密钥，请先使用 #steam添加apikey 命令添加API密钥')
       }
       return this.reply('绑定失败，请稍后再试')
+    }
+  }
+
+  // 显示绑定状态
+  async showBindStatus(e, highlightIndex = null) {
+    const userId = e.user_id
+    const bindings = SteamUser.getAllBindings(userId)
+    
+    // 准备绑定数据
+    const bindingData = []
+    
+    if (bindings.length === 0) {
+      // 没有绑定时显示空行
+      bindingData.push({
+        index: 1,
+        steamId: '',
+        friendCode: '',
+        steamName: '',
+        avatar: '',
+        isBind: false,
+        playPush: false,
+        statePush: false,
+        isNewBinding: false
+      })
+    } else {
+      for (let i = 0; i < bindings.length; i++) {
+        const binding = bindings[i]
+        const friendCode = Steam.getFriendCode(binding.steamId)
+        
+        // 获取用户头像（使用本地存储的数据，如果没有则通过API补全）
+        let avatar = ''
+        let avatarfull = binding.avatarfull
+        
+        // 如果没有头像信息，尝试通过API获取
+        if (!avatarfull) {
+          try {
+            const userInfo = await Steam.getUserInfo(binding.steamId)
+            if (userInfo && userInfo.avatarfull) {
+              avatarfull = userInfo.avatarfull
+              // 更新本地存储的头像信息
+              SteamUser.updateBindingAvatar(userId, binding.steamId, avatarfull)
+              console.log(`[ESO:Steam] 补全头像信息: ${binding.steamId}`)
+            }
+          } catch (error) {
+            console.error(`[ESO:Steam] 补全头像信息失败: ${error.message}`)
+          }
+        }
+        
+        // 使用头像URL获取本地缓存路径
+        if (avatarfull) {
+          try {
+            avatar = await this.getSteamImagePath(avatarfull, 'avatar', binding.steamId)
+          } catch (error) {
+            console.error(`[ESO:Steam] 获取本地头像失败: ${error.message}`)
+          }
+        }
+        
+        bindingData.push({
+          index: i + 1,
+          steamId: binding.steamId,
+          friendCode: friendCode,
+          steamName: binding.steamName || '未知用户',
+          avatar: avatar,
+          isBind: binding.isBind,
+          playPush: binding.lastGameCheck === 1, // 游玩推送状态
+          statePush: binding.lastOnlineCheck === 1, // 在线推送状态
+          isNewBinding: highlightIndex === i
+        })
+      }
+    }
+    
+    // 生成绑定状态图片
+    const statusData = {
+      qqUser: e.sender.card || e.sender.nickname || `用户${userId}`,
+      bindings: bindingData,
+      currentTime: new Date().toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    }
+    
+    try {
+      const img = await puppeteer.screenshot('eso', {
+        ...statusData,
+        pluResPath: `${process.cwd().replace(/\\/g, '/')}/plugins/eso/resources/`,
+        tplFile: './plugins/eso/resources/html/steam/bindStatus.html'
+      })
+      
+      return this.reply(img)
+    } catch (error) {
+      console.error(`[ESO:Steam] 生成绑定状态图片失败:`, error)
+      // 如果图片生成失败，回退到文字回复
+      const textLines = ['Steam绑定状态:']
+      if (bindings.length === 0) {
+        textLines.push('暂无绑定')
+      } else {
+        bindings.forEach((binding, index) => {
+          const friendCode = Steam.getFriendCode(binding.steamId)
+          const status = binding.isBind ? '✓' : '○'
+          textLines.push(`${index + 1}. ${status} ${binding.steamName} (${binding.steamId}) [${friendCode}]`)
+        })
+      }
+      textLines.push('')
+      textLines.push('使用 #steam切换绑定<序号> 切换当前绑定的Steam账户')
+      return this.reply(textLines.join('\n'))
+    }
+  }
+
+  // ===========================================
+  // Steam切换绑定
+  // ===========================================
+  async steamSwitchBind(e) {
+    const userId = e.user_id
+    const match = e.msg.match(/^#?steam切换绑定\s*(\d+)$/)
+    
+    if (!match) {
+      return this.reply('命令格式: #steam切换绑定<序号>\n例如: #steam切换绑定1')
+    }
+    
+    const index = parseInt(match[1]) - 1 // 转换为0基索引
+    
+    // 检查限流
+    if (!checkRateLimit(userId)) {
+      return this.reply('请求过于频繁，请稍后再试')
+    }
+    
+    try {
+      const result = SteamUser.switchBinding(userId, index)
+      if (result.success) {
+        return this.reply(result.message)
+      } else {
+        return this.reply(result.message)
+      }
+    } catch (error) {
+      console.error(`[ESO:Steam] 切换绑定失败: ${error.message}`)
+      return this.reply('切换绑定失败，请稍后再试')
+    }
+  }
+
+  // ===========================================
+  // Steam游玩推送开关
+  // ===========================================
+  async steamTogglePlayPush(e) {
+    const userId = e.user_id
+    const match = e.msg.match(/^#?steam(开启|关闭)游玩推送\s*(\d*)$/)
+    
+    if (!match) {
+      return this.reply('命令格式: #steam开启游玩推送 [序号] 或 #steam关闭游玩推送 [序号]')
+    }
+    
+    const action = match[1] // '开启' 或 '关闭'
+    const indexInput = match[2] ? match[2].trim() : ''
+    
+    // 检查限流
+    if (!checkRateLimit(userId)) {
+      return this.reply('请求过于频繁，请稍后再试')
+    }
+    
+    try {
+      const bindings = SteamUser.getAllBindings(userId)
+      if (bindings.length === 0) {
+        return this.reply('您还没有绑定任何Steam账户')
+      }
+      
+      let targetIndex = 0 // 默认操作当前绑定的账户
+      if (indexInput) {
+        targetIndex = parseInt(indexInput) - 1
+        if (targetIndex < 0 || targetIndex >= bindings.length) {
+          return this.reply(`无效的序号，请输入1-${bindings.length}之间的数字`)
+        }
+      } else {
+        // 如果没有指定序号，找到当前绑定的账户
+        const currentIndex = bindings.findIndex(binding => binding.isBind)
+        if (currentIndex >= 0) {
+          targetIndex = currentIndex
+        }
+      }
+      
+      const targetBinding = bindings[targetIndex]
+      const enabled = action === '开启' ? 1 : 0
+      
+      // 更新绑定中的lastGameCheck
+      const result = SteamUser.updateBindingGameCheck(userId, targetBinding.steamId, enabled)
+      if (result) {
+        const statusText = enabled ? '开启' : '关闭'
+        return this.reply(`已${statusText} ${targetBinding.steamName} (${targetBinding.steamId}) 的游玩推送`)
+      } else {
+        return this.reply('操作失败，请稍后再试')
+      }
+    } catch (error) {
+      console.error(`[ESO:Steam] 切换游玩推送失败: ${error.message}`)
+      return this.reply('操作失败，请稍后再试')
+    }
+  }
+
+  // ===========================================
+  // Steam在线推送开关
+  // ===========================================
+  async steamToggleOnlinePush(e) {
+    const userId = e.user_id
+    const match = e.msg.match(/^#?steam(开启|关闭)在线推送\s*(\d*)$/)
+    
+    if (!match) {
+      return this.reply('命令格式: #steam开启在线推送 [序号] 或 #steam关闭在线推送 [序号]')
+    }
+    
+    const action = match[1] // '开启' 或 '关闭'
+    const indexInput = match[2] ? match[2].trim() : ''
+    
+    // 检查限流
+    if (!checkRateLimit(userId)) {
+      return this.reply('请求过于频繁，请稍后再试')
+    }
+    
+    try {
+      const bindings = SteamUser.getAllBindings(userId)
+      if (bindings.length === 0) {
+        return this.reply('您还没有绑定任何Steam账户')
+      }
+      
+      let targetIndex = 0 // 默认操作当前绑定的账户
+      if (indexInput) {
+        targetIndex = parseInt(indexInput) - 1
+        if (targetIndex < 0 || targetIndex >= bindings.length) {
+          return this.reply(`无效的序号，请输入1-${bindings.length}之间的数字`)
+        }
+      } else {
+        // 如果没有指定序号，找到当前绑定的账户
+        const currentIndex = bindings.findIndex(binding => binding.isBind)
+        if (currentIndex >= 0) {
+          targetIndex = currentIndex
+        }
+      }
+      
+      const targetBinding = bindings[targetIndex]
+      const enabled = action === '开启' ? 1 : 0
+      
+      // 更新绑定中的lastOnlineCheck
+      const result = SteamUser.updateBindingOnlineCheck(userId, targetBinding.steamId, enabled)
+      if (result) {
+        const statusText = enabled ? '开启' : '关闭'
+        return this.reply(`已${statusText} ${targetBinding.steamName} (${targetBinding.steamId}) 的在线推送`)
+      } else {
+        return this.reply('操作失败，请稍后再试')
+      }
+    } catch (error) {
+      console.error(`[ESO:Steam] 切换在线推送失败: ${error.message}`)
+      return this.reply('操作失败，请稍后再试')
     }
   }
 
@@ -560,6 +793,8 @@ export class steam extends plugin {
       }
     }
     
+    return this.reply('正在获取用户信息...')
+
     try {
       // 获取用户信息
       const userInfo = await Steam.getUserInfo(steamId)
@@ -631,6 +866,8 @@ export class steam extends plugin {
         return this.reply('请先绑定Steam账号或指定Steam ID')
       }
     }
+
+    return this.reply('正在获取用户信息...')
     
     try {
       // 获取用户信息
@@ -692,6 +929,8 @@ export class steam extends plugin {
         return this.reply('请先绑定Steam账号或指定Steam ID')
       }
     }
+
+    return this.reply('正在获取用户信息...')
     
     try {
       // 获取用户信息
@@ -706,23 +945,72 @@ export class steam extends plugin {
         return this.reply('该用户没有公开的游戏库或游戏库为空')
       }
       
-      // 处理游戏数据
-      const processedGames = games.slice(0, 10).map(game => ({
-        name: game.name,
-        appid: game.appid,
-        headerImage: Steam.getHeaderImgUrlByAppid(game.appid),
-        playtime_forever: game.playtime_forever || 0,
-        playtime_2weeks: game.playtime_2weeks || 0,
-        playtimeText: this.formatGameTime(game.playtime_forever),
-        recentPlaytimeText: game.playtime_2weeks ? this.formatGameTime(game.playtime_2weeks) : null
-      }))
+      // 输出Steam API返回的游戏信息到日志
+      /*
+      console.log(`[ESO:Steam] Steam API返回的游戏信息示例（第一个游戏）:`)
+      if (games.length > 0) {
+        console.log(JSON.stringify(games[0], null, 2))
+      }
+      */
+
+      // 处理游戏数据并预下载图片
+      const processedGames = []
+      const gamesToProcess = games.slice(0, 10)
+      
+      for (const game of gamesToProcess) {
+        const headerImageUrl = Steam.getHeaderImgUrlByAppid(game.appid)
+        
+        // 预下载游戏图片
+        let headerImagePath = ''
+        
+        if (headerImageUrl) {
+          try {
+            headerImagePath = await this.getSteamImagePath(headerImageUrl, 'games', game.appid)
+            //console.log(`[ESO:Steam] 游戏图片已缓存: ${game.name} (${game.appid})`)
+          } catch (error) {
+            console.error(`[ESO:Steam] 游戏图片缓存失败: ${game.name} (${game.appid}) - ${error.message}`)
+          }
+        }
+        
+        processedGames.push({
+          name: game.name,
+          appid: game.appid,
+          headerImage: headerImageUrl,
+          headerImagePath: headerImagePath,
+          playtime_forever: game.playtime_forever || 0,
+          playtime_2weeks: game.playtime_2weeks || 0,
+          playtimeText: this.formatGameTime(game.playtime_forever),
+          recentPlaytimeText: game.playtime_2weeks ? this.formatGameTime(game.playtime_2weeks) : null
+        })
+      }
       
       // 计算总游戏时长
       const totalPlaytime = games.reduce((sum, game) => sum + (game.playtime_forever || 0), 0)
       
+      // 获取用户群昵称
+      const userNickname = e.sender.card || e.sender.nickname || `用户${userId}`
+      
+      // 获取用户头像路径（预下载到本地）
+      let userAvatarPath = ''
+      if (userInfo.avatarfull) {
+        try {
+          userAvatarPath = await this.getSteamImagePath(userInfo.avatarfull, 'avatar', steamId)
+          console.log(`[ESO:Steam] 用户头像已缓存: ${userInfo.personaname}`)
+        } catch (error) {
+          console.error(`[ESO:Steam] 用户头像缓存失败: ${userInfo.personaname} - ${error.message}`)
+        }
+      }
+      
+      // 获取好友码
+      const friendCode = Steam.getFriendCode(steamId)
+      
       // 准备HTML数据
       const htmlData = {
         userName: userInfo.personaname,
+        userNickname: userNickname,
+        userAvatar: userInfo.avatarfull,
+        userAvatarPath: userAvatarPath,
+        friendCode: friendCode,
         totalGames: games.length,
         games: processedGames,
         totalPlaytime: this.formatGameTime(totalPlaytime),

@@ -13,32 +13,48 @@
     <div class="steam_card">
       <!-- Header -->
       <div class="card_header">
-        <div class="header_title">游戏库</div>
-        <div class="header_subtitle">{{userName}} 的游戏 ({{totalGames}})</div>
+        <div class="header_user_info">
+          <div class="user_avatar">
+            {{if userAvatarPath}}
+            <img src="{{pluResPath}}../custome_resources/steam/images/avatar/{{userAvatarPath}}" alt="用户头像" />
+            {{else if userAvatar}}
+            <img src="{{userAvatar}}" alt="用户头像" />
+            {{else}}
+            <div class="default_avatar"></div>
+            {{/if}}
+          </div>
+          <div class="header_text">
+            <div class="header_title">{{userName}}的游戏库</div>
+            <div class="header_subtitle">用户{{userName}} <span class="friend_code">(好友码{{friendCode}})</span></div>
+          </div>
+        </div>
       </div>
 
       {{if games && games.length > 0}}
-      <!-- Games Grid -->
-      <div class="games_grid">
+      <!-- Games List -->
+      <div class="games_list">
         {{each games}}
         <div class="game_item">
-          <div class="game_image">
+          <div class="game_header_image">
+            {{if $value.headerImagePath}}
+            <img src="{{pluResPath}}../custome_resources/steam/images/games/{{$value.headerImagePath}}" alt="{{$value.name}}" />
+            {{else}}
             <img src="{{$value.headerImage}}" alt="{{$value.name}}" />
+            {{/if}}
             {{if $value.playtime_forever > 0}}
             <div class="playtime_badge">{{$value.playtimeText}}</div>
             {{/if}}
           </div>
-          <div class="game_info">
-            <div class="game_name">{{$value.name}}</div>
-            {{if $value.playtime_2weeks > 0}}
-            <div class="recent_playtime">最近两周: {{$value.recentPlaytimeText}}</div>
-            {{/if}}
-            {{if $value.achievements}}
-            <div class="achievement_info">
-              <span class="achievement_count">{{$value.achievements.unlocked}}/{{$value.achievements.total}}</span>
-              <span class="achievement_percent">({{$value.achievements.percent}}%)</span>
+          <div class="game_details">
+            <div class="game_info">
+              <div class="game_name">{{$value.name}}</div>
+              <div class="game_appid">App ID: {{$value.appid}}</div>
+              <div class="game_playtime">
+                {{if $value.playtime_2weeks > 0}}
+                <span class="recent_playtime">最近两周: {{$value.recentPlaytimeText}}</span>
+                {{/if}}
+              </div>
             </div>
-            {{/if}}
           </div>
         </div>
         {{/each}}
@@ -54,12 +70,6 @@
           <span class="stat_label">总游戏时长:</span>
           <span class="stat_value">{{totalPlaytime}}</span>
         </div>
-        {{if totalAchievements}}
-        <div class="stat_item">
-          <span class="stat_label">总成就数:</span>
-          <span class="stat_value">{{totalAchievements}}</span>
-        </div>
-        {{/if}}
       </div>
       {{else}}
       <div class="no_games">
