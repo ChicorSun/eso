@@ -1,0 +1,5 @@
+# 名片列表默认配置
+default:
+  title: "名片列表"
+  subtitle: "ESO角色名片集合"
+  info: "上古卷轴OL角色信息" 

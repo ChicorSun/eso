@@ -2,6 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import common from "../../../lib/common/common.js"
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
+import CardsList from '../model/cardslist.js'
 import md5 from 'md5'
 import fs from 'node:fs'
 
@@ -206,6 +207,7 @@ export class esologPuzzle extends plugin {
           /** 执行方法 */
           fnc: 'queryCard'
         },
+
         {
           /** 命令正则匹配 */
           reg: '^#(查看群友名片|群友名片|群名片|查看群名片).*$',
@@ -3709,25 +3711,18 @@ export class esologPuzzle extends plugin {
         return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
-      // 5. 处理不同的显示情况
-      if (isNaN(cardNum)) {
-        // 显示名片列表
-        let reply = '查询到如下名片：\n';
-        reply += '序号  角色@账号  种族  职责  职业  标题\n';
-        reply += '━━━━━━━━━━━━━━━━━━━━━━\n';
-        
-        allCards.forEach(card => {
-          const buildData = card.buildData.buildData || {};
-          const role = buildData.roleNameCN || '未知';
-          const race = buildData.raceInfo?.[0]?.name_cn || '未知';
-          const className = buildData.classNameCN || '未知';
-          const title = buildData.title || '';
+              // 5. 处理不同的显示情况
+        if (isNaN(cardNum)) {
+          // 显示名片列表网页截图
+          await this.reply('正在生成名片列表，请稍后...');
           
-          reply += `${card.index}.    ${card.playerName}@${card.accountName}  ${race}  ${role}  ${className}  ${title}\n`;
-        });
-
-        return await this.reply(reply);
-      } else {
+          // 生成名片列表数据
+          const cardsListData = await this.generateCardsListData(allCards);
+          
+          // 生成并发送图片
+          const msg = await puppeteer.screenshot('eso', cardsListData);
+          return await this.reply(msg);
+        } else {
         // 显示指定名片的图片
         if (cardNum <= 0 || cardNum > allCards.length) {
           return await this.reply(`请输入正确的名片序号（1-${allCards.length}）`);
@@ -3801,22 +3796,15 @@ export class esologPuzzle extends plugin {
 
       // 6. 处理不同的显示情况
       if (isNaN(cardNum)) {
-        // 显示名片列表
-        let reply = '查询到如下群成员名片：\n';
-        reply += '序号  角色@账号  种族  职责  职业  标题\n';
-        reply += '━━━━━━━━━━━━━━━━━━━━━━\n';
+        // 显示名片列表网页截图
+        await this.reply('正在生成群友名片列表，请稍后...');
         
-        allCards.forEach((card, index) => {
-          const buildData = card.buildData.buildData || {};
-          const role = buildData.roleNameCN || '未知';
-          const race = buildData.raceInfo?.[0]?.name_cn || '未知';
-          const className = buildData.classNameCN || '未知';
-          const title = buildData.title || '';
-          
-          reply += `${index + 1}.    ${card.playerName}@${card.accountName}  ${race}  ${role}  ${className}  ${title}\n`;
-        });
-
-        return await this.reply(reply);
+        // 生成群友名片列表数据
+        const groupCardsListData = await this.generateGroupCardsListData(allCards);
+        
+        // 生成并发送图片
+        const msg = await puppeteer.screenshot('eso', groupCardsListData);
+        return await this.reply(msg);
       } else {
         // 显示指定名片的图片
         if (cardNum <= 0 || cardNum > allCards.length) {
@@ -3897,5 +3885,394 @@ export class esologPuzzle extends plugin {
       logger.error(`[ESO:删除名片] 删除失败: ${error.message}`);
       return await this.reply('删除名片失败，请稍后重试');
     }
+  }
+
+
+
+  async generateCardsListData(allCards) {
+    try {
+      // 初始化cardslist数据结构
+      let cardsListData = await CardsList.get(this.e, 'cardslist', 'cardslist', 'cardslist');
+      if (!cardsListData) {
+        throw new Error('CardsList模板初始化失败');
+      }
+
+      // 处理每个名片的数据
+      const processedCards = [];
+      for (const card of allCards) {
+        // 从原始数据中获取基本信息
+        const buildData = card.buildData.buildData || {};
+        const role = buildData.roleNameCN || '未知';
+        const className = buildData.classNameCN || '未知';
+        const race = buildData.raceInfo?.[0]?.name_cn || '未知';
+        const playerName = card.playerName;
+        const accountName = card.accountName;
+
+        // 获取职责和职业的颜色
+        const roleColor = this.getRoleColor(role);
+        const classColor = this.getClassColor(className);
+
+        // 使用database.updateData处理数据，获取图标信息
+        const processedBuildData = await database.updateData(card.buildData.buildData, 7);
+
+        // 获取套装列表
+        const sets = await this.extractSetsFromProcessedData(processedBuildData);
+
+        // 获取装备图标（分为左右两行）
+        const gearsLeft = await this.extractGearsLeftFromProcessedData(processedBuildData);
+        const gearsRight = await this.extractGearsRightFromProcessedData(processedBuildData);
+
+        // 获取技能图标（分为左右两行，包含武器图标）
+        const skillsLeft = await this.extractSkillsLeftFromProcessedData(processedBuildData);
+        const skillsRight = await this.extractSkillsRightFromProcessedData(processedBuildData);
+
+        // 从处理后的数据中获取职责、职业和种族的图标文件名（用于图标显示）
+        const roleNameEn = processedBuildData.buildsData?.[1]?.role_name_en || 'dps';
+        const classIcon = processedBuildData.buildsData?.[1]?.class || 'Dragonknight';
+        const raceImg = processedBuildData.buildsData?.[1]?.race_img || 'Dunmer';
+
+        // 调试信息
+        logger.info(`[ESO:名片列表] 名片${card.index} - 套装: ${sets.length}个, 装备左: ${gearsLeft.length}个, 装备右: ${gearsRight.length}个, 技能左: ${skillsLeft.length}个, 技能右: ${skillsRight.length}个`);
+
+        processedCards.push({
+          index: card.index,
+          role: role,
+          roleColor: roleColor,
+          roleNameEn: roleNameEn,
+          class: className,
+          classColor: classColor,
+          classIcon: classIcon,
+          race: race,
+          raceImg: raceImg,
+          playerName: playerName,
+          accountName: accountName,
+          sets: sets,
+          gearsLeft: gearsLeft,
+          gearsRight: gearsRight,
+          skillsLeft: skillsLeft,
+          skillsRight: skillsRight
+        });
+      }
+
+      // 更新模板数据
+      cardsListData.cardsListData = [
+        {
+          pic: 'cd1' // 背景图片
+        },
+        {
+          title: '名片列表',
+          subtitle: `共 ${processedCards.length} 张名片`,
+          info: `用户: ${this.e.user_id}`,
+          cardsData: processedCards
+        }
+      ];
+
+      return cardsListData;
+
+    } catch (error) {
+      logger.error(`[ESO:名片列表] 生成数据失败: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async generateGroupCardsListData(allCards) {
+    try {
+      // 初始化cardslist数据结构
+      let cardsListData = await CardsList.get(this.e, 'cardslist', 'cardslist', 'cardslist');
+      if (!cardsListData) {
+        throw new Error('CardsList模板初始化失败');
+      }
+
+      // 处理每个群友名片的数据
+      const processedCards = [];
+      for (const card of allCards) {
+        // 从原始数据中获取基本信息
+        const buildData = card.buildData.buildData || {};
+        const role = buildData.roleNameCN || '未知';
+        const className = buildData.classNameCN || '未知';
+        const race = buildData.raceInfo?.[0]?.name_cn || '未知';
+        const playerName = card.playerName;
+        const accountName = card.accountName;
+
+        // 获取职责和职业的颜色
+        const roleColor = this.getRoleColor(role);
+        const classColor = this.getClassColor(className);
+
+        // 使用database.updateData处理数据，获取图标信息
+        const processedBuildData = await database.updateData(card.buildData.buildData, 7);
+
+        // 获取套装列表
+        const sets = await this.extractSetsFromProcessedData(processedBuildData);
+
+        // 获取装备图标（分为左右两行）
+        const gearsLeft = await this.extractGearsLeftFromProcessedData(processedBuildData);
+        const gearsRight = await this.extractGearsRightFromProcessedData(processedBuildData);
+
+        // 获取技能图标（分为左右两行，包含武器图标）
+        const skillsLeft = await this.extractSkillsLeftFromProcessedData(processedBuildData);
+        const skillsRight = await this.extractSkillsRightFromProcessedData(processedBuildData);
+
+        // 从处理后的数据中获取职责、职业和种族的图标文件名（用于图标显示）
+        const roleNameEn = processedBuildData.buildsData?.[1]?.role_name_en || 'dps';
+        const classIcon = processedBuildData.buildsData?.[1]?.class || 'Dragonknight';
+        const raceImg = processedBuildData.buildsData?.[1]?.race_img || 'Dunmer';
+
+        // 调试信息
+        logger.info(`[ESO:群友名片列表] 名片${card.index} - 套装: ${sets.length}个, 装备左: ${gearsLeft.length}个, 装备右: ${gearsRight.length}个, 技能左: ${skillsLeft.length}个, 技能右: ${skillsRight.length}个`);
+
+        processedCards.push({
+          index: processedCards.length + 1, // 使用列表序号而不是名片序号
+          role: role,
+          roleColor: roleColor,
+          roleNameEn: roleNameEn,
+          class: className,
+          classColor: classColor,
+          classIcon: classIcon,
+          race: race,
+          raceImg: raceImg,
+          playerName: playerName,
+          accountName: accountName,
+          sets: sets,
+          gearsLeft: gearsLeft,
+          gearsRight: gearsRight,
+          skillsLeft: skillsLeft,
+          skillsRight: skillsRight
+        });
+      }
+
+      // 更新模板数据
+      cardsListData.cardsListData = [
+        {
+          pic: 'cd1' // 背景图片
+        },
+        {
+          title: '群友名片列表',
+          subtitle: `共 ${processedCards.length} 张名片`,
+          info: `群成员名片汇总`,
+          cardsData: processedCards
+        }
+      ];
+
+      return cardsListData;
+
+    } catch (error) {
+      logger.error(`[ESO:群友名片列表] 生成数据失败: ${error.message}`);
+      throw error;
+    }
+  }
+
+  getRoleColor(role) {
+    const roleColors = {
+      '坦克': '#4a9eff',
+      '治疗': '#4aff4a',
+      '输出': '#ff4a4a',
+      'DPS': '#ff4a4a'
+    };
+    return roleColors[role] || '#ffffff';
+  }
+
+  getClassColor(className) {
+    const classColors = {
+      '龙骑士': '#ff6b35',
+      '夜刃': '#8b0000',
+      '法师': '#4a9eff',
+      '圣殿骑士': '#ffd700',
+      '守望者': '#32cd32',
+      '死灵法师': '#800080',
+      '奥术师': '#ff69b4'
+    };
+    return classColors[className] || '#ffffff';
+  }
+
+  async extractSetsFromProcessedData(processedBuildData) {
+    const sets = [];
+    const setCounts = new Map();
+
+    // 从处理后的装备数据中提取套装信息
+    if (processedBuildData.buildsData && processedBuildData.buildsData[1] && processedBuildData.buildsData[1].gear) {
+      for (let i = 0; i < 14; i++) {
+        const gear = processedBuildData.buildsData[1].gear[i];
+        if (gear && gear.set_cn && gear.set_cn !== '' && gear.set_cn !== 'N/A') {
+          const count = setCounts.get(gear.set_cn) || 0;
+          setCounts.set(gear.set_cn, count + 1);
+        }
+      }
+    }
+
+    // 为每个套装生成颜色和名称
+    for (const [setName, count] of setCounts) {
+      if (count >= 2) { // 只显示2件套以上的套装
+        sets.push({
+          name: `${setName} (${count}件)`,
+          color: this.generateSetColor(setName)
+        });
+      }
+    }
+
+    return sets;
+  }
+
+  generateSetColor(setName) {
+    // 根据套装名生成固定的颜色
+    const colors = [
+      '#ff6b35', '#4a9eff', '#4aff4a', '#ffd700', 
+      '#ff69b4', '#800080', '#32cd32', '#ff4a4a',
+      '#00ffff', '#ffa500', '#9370db', '#20b2aa'
+    ];
+    
+    let hash = 0;
+    for (let i = 0; i < setName.length; i++) {
+      hash = ((hash << 5) - hash) + setName.charCodeAt(i);
+      hash = hash & hash; // 转换为32位整数
+    }
+    
+    return colors[Math.abs(hash) % colors.length];
+  }
+
+  async extractGearsFromProcessedData(processedBuildData) {
+    const gears = [];
+    
+    // 检查是否有装备数据
+    if (processedBuildData.buildsData && processedBuildData.buildsData[1] && processedBuildData.buildsData[1].gear) {
+      for (let i = 0; i < 14; i++) {
+        const gear = processedBuildData.buildsData[1].gear[i];
+        if (gear && gear.icon && gear.icon !== 'transparent' && gear.icon !== '../../../../../') {
+          gears.push({
+            icon: gear.icon,
+            color: this.generateSetColor(gear.set_cn || 'default')
+          });
+        }
+      }
+    }
+
+    return gears;
+  }
+
+  async extractSkillsFromProcessedData(processedBuildData) {
+    const skills = [];
+    
+    // 检查是否有技能数据
+    if (processedBuildData.buildsData && processedBuildData.buildsData[1] && processedBuildData.buildsData[1].spell) {
+      for (let i = 0; i < 2; i++) {
+        if (processedBuildData.buildsData[1].spell[i] && processedBuildData.buildsData[1].spell[i].bar) {
+          for (let m = 0; m < 6; m++) {
+            const skill = processedBuildData.buildsData[1].spell[i].bar[m];
+            if (skill && skill.icon && skill.icon !== 'empty' && skill.icon !== '../../../../../') {
+              skills.push({
+                icon: skill.icon
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return skills;
+  }
+
+  async extractGearsLeftFromProcessedData(processedBuildData) {
+    const gears = [];
+    
+    // 检查是否有装备数据
+    if (processedBuildData.buildsData && processedBuildData.buildsData[1] && processedBuildData.buildsData[1].gear) {
+      // 左侧装备：索引2-6和10-11
+      const leftIndices = [2, 3, 4, 5, 6, 10, 11];
+      for (const index of leftIndices) {
+        const gear = processedBuildData.buildsData[1].gear[index];
+        if (gear && gear.icon && gear.icon !== 'transparent' && gear.icon !== '../../../../../') {
+          gears.push({
+            icon: gear.icon,
+            color: this.generateSetColor(gear.set_cn || 'default')
+          });
+        }
+      }
+    }
+
+    return gears;
+  }
+
+  async extractGearsRightFromProcessedData(processedBuildData) {
+    const gears = [];
+    
+    // 检查是否有装备数据
+    if (processedBuildData.buildsData && processedBuildData.buildsData[1] && processedBuildData.buildsData[1].gear) {
+      // 右侧装备：索引0-1, 7-9, 12-13
+      const rightIndices = [0, 1, 7, 8, 9, 12, 13];
+      for (const index of rightIndices) {
+        const gear = processedBuildData.buildsData[1].gear[index];
+        if (gear && gear.icon && gear.icon !== 'transparent' && gear.icon !== '../../../../../') {
+          gears.push({
+            icon: gear.icon,
+            color: this.generateSetColor(gear.set_cn || 'default')
+          });
+        }
+      }
+    }
+
+    return gears;
+  }
+
+  async extractSkillsLeftFromProcessedData(processedBuildData) {
+    const skills = [];
+    
+    // 检查是否有技能数据
+    if (processedBuildData.buildsData && processedBuildData.buildsData[1] && processedBuildData.buildsData[1].spell) {
+      // 获取武器图标
+      const weaponLeft = processedBuildData.buildsData[1].spell_weapon_left;
+      if (weaponLeft && weaponLeft !== 'empty') {
+        skills.push({
+          type: 'weapon',
+          icon: weaponLeft
+        });
+      }
+      
+      // 获取第一个技能栏的技能
+      if (processedBuildData.buildsData[1].spell[0] && processedBuildData.buildsData[1].spell[0].bar) {
+        for (let m = 0; m < 6; m++) {
+          const skill = processedBuildData.buildsData[1].spell[0].bar[m];
+          if (skill && skill.icon && skill.icon !== 'empty' && skill.icon !== '../../../../../') {
+            skills.push({
+              type: 'skill',
+              icon: skill.icon,
+              index: m
+            });
+          }
+        }
+      }
+    }
+
+    return skills;
+  }
+
+  async extractSkillsRightFromProcessedData(processedBuildData) {
+    const skills = [];
+    
+    // 检查是否有技能数据
+    if (processedBuildData.buildsData && processedBuildData.buildsData[1] && processedBuildData.buildsData[1].spell) {
+      // 获取武器图标
+      const weaponRight = processedBuildData.buildsData[1].spell_weapon_right;
+      if (weaponRight && weaponRight !== 'empty') {
+        skills.push({
+          type: 'weapon',
+          icon: weaponRight
+        });
+      }
+      
+      // 获取第二个技能栏的技能
+      if (processedBuildData.buildsData[1].spell[1] && processedBuildData.buildsData[1].spell[1].bar) {
+        for (let m = 0; m < 6; m++) {
+          const skill = processedBuildData.buildsData[1].spell[1].bar[m];
+          if (skill && skill.icon && skill.icon !== 'empty' && skill.icon !== '../../../../../') {
+            skills.push({
+              type: 'skill',
+              icon: skill.icon,
+              index: m
+            });
+          }
+        }
+      }
+    }
+
+    return skills;
   }
 }
