@@ -3907,7 +3907,7 @@ export class esologPuzzle extends plugin {
         const raceImg = processedBuildData.buildsData?.[1]?.race_img || 'Dunmer';
 
         // 调试信息
-        logger.info(`[ESO:名片列表] 名片${card.index} - 套装: ${sets.length}个, 装备左: ${gearsLeft.length}个, 装备右: ${gearsRight.length}个, 技能左: ${skillsLeft.length}个, 技能右: ${skillsRight.length}个`);
+        //logger.info(`[ESO:名片列表] 名片${card.index} - 套装: ${sets.length}个, 装备左: ${gearsLeft.length}个, 装备右: ${gearsRight.length}个, 技能左: ${skillsLeft.length}个, 技能右: ${skillsRight.length}个`);
 
         processedCards.push({
           index: card.index,
@@ -4237,22 +4237,22 @@ export class esologPuzzle extends plugin {
       }
       
       // 调试信息：位置2,3,4,5,6的统计
-      logger.info(`[ESO:位置统计] 位置2,3,4,5,6套装统计: ${JSON.stringify(Array.from(positions23456Counts.entries()))}`);
-      logger.info(`[ESO:位置统计] 数量最多的套装: ${maxCountSet}, 数量: ${maxCount}`);
+      //logger.info(`[ESO:位置统计] 位置2,3,4,5,6套装统计: ${JSON.stringify(Array.from(positions23456Counts.entries()))}`);
+      //logger.info(`[ESO:位置统计] 数量最多的套装: ${maxCountSet}, 数量: ${maxCount}`);
 
       // 按套装名称排序，确保颜色分配的一致性
       const sortedSetNames = Array.from(allSetNames).sort();
       
       // 创建套装考古状态映射
       const setArchaeologyMap = new Map();
-      logger.info(`[ESO:套装考古] 开始检查套装考古状态，套装列表: ${JSON.stringify(sortedSetNames)}`);
+      //logger.info(`[ESO:套装考古] 开始检查套装考古状态，套装列表: ${JSON.stringify(sortedSetNames)}`);
       for (const setName of sortedSetNames) {
         // 检查该套装在当前装备中是否有考古装备
         let isArchaeology = false;
         for (let i = 0; i < 14; i++) {
           if (gear[i] && gear[i].set_cn === setName) {
             // 检查装备的color属性是否为考古装备的颜色
-            logger.info(`[ESO:套装考古] ${setName} -> 装备${i}颜色: ${gear[i].color}`);
+            //logger.info(`[ESO:套装考古] ${setName} -> 装备${i}颜色: ${gear[i].color}`);
             if (gear[i].color === "rgb(255, 110, 0)") {
               isArchaeology = true;
               break;
@@ -4260,7 +4260,7 @@ export class esologPuzzle extends plugin {
           }
         }
         setArchaeologyMap.set(setName, isArchaeology);
-        logger.info(`[ESO:套装考古] ${setName} -> 考古状态: ${isArchaeology}`);
+        //logger.info(`[ESO:套装考古] ${setName} -> 考古状态: ${isArchaeology}`);
       }
 
       // 分配颜色
@@ -4275,13 +4275,13 @@ export class esologPuzzle extends plugin {
           const archaeologyColor = "rgb(255, 110, 0)";
           setColorMap.set(setName, archaeologyColor);
           usedColors.add(archaeologyColor);
-          logger.info(`[ESO:颜色分配] ${setName} -> 考古套装，使用颜色: ${archaeologyColor}`);
+          //logger.info(`[ESO:颜色分配] ${setName} -> 考古套装，使用颜色: ${archaeologyColor}`);
         }
         // 位置2,3,4,5,6中数量最多的套装使用gearColor[3]
         else if (setName === maxCountSet) {
           setColorMap.set(setName, gearColor[3]);
           usedColors.add(gearColor[3]);
-          logger.info(`[ESO:颜色分配] ${setName} -> 数量最多套装，使用颜色: ${gearColor[3]}`);
+          //logger.info(`[ESO:颜色分配] ${setName} -> 数量最多套装，使用颜色: ${gearColor[3]}`);
         }
       }
       
@@ -4392,7 +4392,7 @@ export class esologPuzzle extends plugin {
       }
       
       // 构建最终结果
-      logger.info(`[ESO:最终结果] 开始构建最终结果，套装颜色映射: ${JSON.stringify(Array.from(setColorMap.entries()))}`);
+      //logger.info(`[ESO:最终结果] 开始构建最终结果，套装颜色映射: ${JSON.stringify(Array.from(setColorMap.entries()))}`);
       for (const setName of sortedSetNames) {
         const group1Count = group1Counts.get(setName) || 0;
         const group2Count = group2Counts.get(setName) || 0;
@@ -4409,7 +4409,7 @@ export class esologPuzzle extends plugin {
             name: `${setName} (${totalCount}件)`,
             color: finalColor
           });
-          logger.info(`[ESO:最终结果] ${setName} (${totalCount}件) -> 颜色: ${finalColor}`);
+          //logger.info(`[ESO:最终结果] ${setName} (${totalCount}件) -> 颜色: ${finalColor}`);
         }
       }
     }
