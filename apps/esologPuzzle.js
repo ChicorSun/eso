@@ -1,8 +1,9 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import common from "../../../lib/common/common.js"
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
-import database from '../model/database.js'
+import database, { gearColor, setType } from '../model/database.js'
 import CardsList from '../model/cardslist.js'
+import RolesList from '../model/roleslist.js'
 import md5 from 'md5'
 import fs from 'node:fs'
 
@@ -2115,36 +2116,10 @@ export class esologPuzzle extends plugin {
         let msg = await puppeteer.screenshot('eso', buildData);
         await this.reply(msg);
       } else {
-        // 获取用户的名片数据
-        let cardData = {};
-        if (fs.existsSync(CARD_PATH)) {
-          cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
-        }
-
-        // 输出所有构建的表格
-        let reply = '您的角色构建记录如下：\n';
-        reply += '序号  角色@账号  种族  职责  职业\n';
-        reply += '━━━━━━━━━━━━━━━━━━━━━━\n';
-        
-        allBuilds.forEach(build => {
-          const bd = build.buildData.buildData;
-          
-          // 检查是否为名片
-          let isCard = false;
-          if (cardData[userId] && cardData[userId].cards_info) {
-            isCard = cardData[userId].cards_info.some(card => 
-              card.accountName === build.accountName &&
-              card.playerName === build.playerName &&
-              card.reportsID === build.buildData.reportsID &&
-              card.fightIndex === build.buildData.fightIndex &&
-              card.sourceIndex === build.buildData.sourceIndex
-            );
-          }
-          
-          reply += `${isCard ? '[√]' : '[×]'}${build.index}.  ${build.playerName}@${build.accountName}  ${bd.raceInfo?.[0]?.name_cn || '未知'}  ${bd.roleNameCN || '未知'}  ${bd.classNameCN || '未知'}\n`;
-        });
-
-        await this.reply(reply);
+        // 生成角色列表截图
+        const rolesListData = await this.generateRolesListData(allBuilds, userId);
+        let msg = await puppeteer.screenshot('eso', rolesListData);
+        await this.reply(msg);
       }
     } catch (error) {
       logger.error(`[ESO:角色查询] 查询失败: ${error.message}`);
@@ -3915,12 +3890,12 @@ export class esologPuzzle extends plugin {
         // 使用database.updateData处理数据，获取图标信息
         const processedBuildData = await database.updateData(card.buildData.buildData, 7);
 
-        // 获取套装列表
-        const sets = await this.extractSetsFromProcessedData(processedBuildData);
+        // 获取套装列表和颜色映射
+        const { sets, setColorMap } = await this.extractSetsFromProcessedData(processedBuildData);
 
-        // 获取装备图标（分为左右两行）
-        const gearsLeft = await this.extractGearsLeftFromProcessedData(processedBuildData);
-        const gearsRight = await this.extractGearsRightFromProcessedData(processedBuildData);
+        // 获取装备图标（分为左右两行），使用套装颜色映射
+        const gearsLeft = await this.extractGearsLeftFromProcessedData(processedBuildData, setColorMap);
+        const gearsRight = await this.extractGearsRightFromProcessedData(processedBuildData, setColorMap);
 
         // 获取技能图标（分为左右两行，包含武器图标）
         const skillsLeft = await this.extractSkillsLeftFromProcessedData(processedBuildData);
@@ -4001,12 +3976,12 @@ export class esologPuzzle extends plugin {
         // 使用database.updateData处理数据，获取图标信息
         const processedBuildData = await database.updateData(card.buildData.buildData, 7);
 
-        // 获取套装列表
-        const sets = await this.extractSetsFromProcessedData(processedBuildData);
+        // 获取套装列表和颜色映射
+        const { sets, setColorMap } = await this.extractSetsFromProcessedData(processedBuildData);
 
-        // 获取装备图标（分为左右两行）
-        const gearsLeft = await this.extractGearsLeftFromProcessedData(processedBuildData);
-        const gearsRight = await this.extractGearsRightFromProcessedData(processedBuildData);
+        // 获取装备图标（分为左右两行），使用套装颜色映射
+        const gearsLeft = await this.extractGearsLeftFromProcessedData(processedBuildData, setColorMap);
+        const gearsRight = await this.extractGearsRightFromProcessedData(processedBuildData, setColorMap);
 
         // 获取技能图标（分为左右两行，包含武器图标）
         const skillsLeft = await this.extractSkillsLeftFromProcessedData(processedBuildData);
@@ -4061,6 +4036,96 @@ export class esologPuzzle extends plugin {
     }
   }
 
+  async generateRolesListData(allBuilds, userId) {
+    try {
+      // 初始化roleslist数据结构
+      let rolesListData = await RolesList.get(this.e, 'roleslist', 'roleslist', 'roleslist');
+      if (!rolesListData) {
+        throw new Error('RolesList模板初始化失败');
+      }
+
+      // 获取用户的名片数据
+      let cardData = {};
+      if (fs.existsSync(CARD_PATH)) {
+        cardData = JSON.parse(fs.readFileSync(CARD_PATH, 'utf8'));
+      }
+      
+      const rolesData = [];
+      
+      for (const build of allBuilds) {
+        const bd = build.buildData.buildData;
+        
+        // 检查是否为名片
+        let isCard = false;
+        if (cardData[userId] && cardData[userId].cards_info) {
+          isCard = cardData[userId].cards_info.some(card => 
+            card.accountName === build.accountName &&
+            card.playerName === build.playerName &&
+            card.reportsID === build.buildData.reportsID &&
+            card.fightIndex === build.buildData.fightIndex &&
+            card.sourceIndex === build.buildData.sourceIndex
+          );
+        }
+        
+        // 使用database.updateData处理数据，获取图标信息
+        const processedBuildData = await database.updateData(build.buildData.buildData, 7);
+        
+        // 获取套装列表和颜色映射
+        const { sets, setColorMap } = await this.extractSetsFromProcessedData(processedBuildData);
+
+        // 获取装备图标（分为左右两行），使用套装颜色映射
+        const gearsLeft = await this.extractGearsLeftFromProcessedData(processedBuildData, setColorMap);
+        const gearsRight = await this.extractGearsRightFromProcessedData(processedBuildData, setColorMap);
+
+        // 获取技能图标（分为左右两行，包含武器图标）
+        const skillsLeft = await this.extractSkillsLeftFromProcessedData(processedBuildData);
+        const skillsRight = await this.extractSkillsRightFromProcessedData(processedBuildData);
+        
+        // 从处理后的数据中获取职责、职业和种族的图标文件名（用于图标显示）
+        const roleNameEn = processedBuildData.buildsData?.[1]?.role_name_en || 'dps';
+        const classIcon = processedBuildData.buildsData?.[1]?.class || 'Dragonknight';
+        const raceImg = processedBuildData.buildsData?.[1]?.race_img || 'Dunmer';
+        
+        rolesData.push({
+          index: build.index,
+          role: bd.roleNameCN || '未知',
+          roleNameEn: roleNameEn,
+          class: bd.classNameCN || '未知',
+          classIcon: classIcon,
+          race: bd.raceInfo?.[0]?.name_cn || '未知',
+          raceImg: raceImg,
+          playerName: build.playerName,
+          accountName: build.accountName,
+          isCard: isCard,
+          sets: sets,
+          gearsLeft: gearsLeft,
+          gearsRight: gearsRight,
+          skillsLeft: skillsLeft,
+          skillsRight: skillsRight
+        });
+      }
+
+      // 更新模板数据
+      rolesListData.rolesListData = [
+        {
+          pic: 'background1' // 背景图片
+        },
+        {
+          title: '角色列表',
+          subtitle: `共 ${rolesData.length} 个角色`,
+          info: `用户: ${this.e.user_id}`,
+          rolesData: rolesData
+        }
+      ];
+
+      return rolesListData;
+
+    } catch (error) {
+      logger.error(`[ESO:角色列表] 生成数据失败: ${error.message}`);
+      throw error;
+    }
+  }
+
   getRoleColor(role) {
     const roleColors = {
       '坦克': '#4a9eff',
@@ -4086,47 +4151,281 @@ export class esologPuzzle extends plugin {
 
   async extractSetsFromProcessedData(processedBuildData) {
     const sets = [];
-    const setCounts = new Map();
+    const setColorMap = new Map(); // 初始化setColorMap
 
     // 从处理后的装备数据中提取套装信息
     if (processedBuildData.buildsData && processedBuildData.buildsData[1] && processedBuildData.buildsData[1].gear) {
+      const gear = processedBuildData.buildsData[1].gear;
+      
+      // 组1：位置10,11
+      const group1Counts = new Map();
+      if (gear[10] && gear[10].set_cn && gear[10].set_cn !== '' && gear[10].set_cn !== 'N/A' && 
+          gear[10].icon && gear[10].icon !== 'transparent') {
+        const count = group1Counts.get(gear[10].set_cn) || 0;
+        group1Counts.set(gear[10].set_cn, count + 1);
+      }
+      if (gear[11] && gear[11].set_cn && gear[11].set_cn !== '' && gear[11].set_cn !== 'N/A' && 
+          gear[11].icon && gear[11].icon !== 'transparent') {
+        const count = group1Counts.get(gear[11].set_cn) || 0;
+        group1Counts.set(gear[11].set_cn, count + 1);
+      }
+      // 如果11位置为transparent，则10位置的套装额外计数1次
+      if ((!gear[11] || !gear[11].icon || gear[11].icon === 'transparent') && 
+          gear[10] && gear[10].set_cn && gear[10].set_cn !== '' && gear[10].set_cn !== 'N/A' &&
+          gear[10].icon && gear[10].icon !== 'transparent') {
+        const count = group1Counts.get(gear[10].set_cn) || 0;
+        group1Counts.set(gear[10].set_cn, count + 1);
+      }
+
+      // 组2：位置12,13
+      const group2Counts = new Map();
+      if (gear[12] && gear[12].set_cn && gear[12].set_cn !== '' && gear[12].set_cn !== 'N/A' && 
+          gear[12].icon && gear[12].icon !== 'transparent') {
+        const count = group2Counts.get(gear[12].set_cn) || 0;
+        group2Counts.set(gear[12].set_cn, count + 1);
+      }
+      if (gear[13] && gear[13].set_cn && gear[13].set_cn !== '' && gear[13].set_cn !== 'N/A' && 
+          gear[13].icon && gear[13].icon !== 'transparent') {
+        const count = group2Counts.get(gear[13].set_cn) || 0;
+        group2Counts.set(gear[13].set_cn, count + 1);
+      }
+      // 如果13位置为transparent，则12位置的套装额外计数1次
+      if ((!gear[13] || !gear[13].icon || gear[13].icon === 'transparent') && 
+          gear[12] && gear[12].set_cn && gear[12].set_cn !== '' && gear[12].set_cn !== 'N/A' &&
+          gear[12].icon && gear[12].icon !== 'transparent') {
+        const count = group2Counts.get(gear[12].set_cn) || 0;
+        group2Counts.set(gear[12].set_cn, count + 1);
+      }
+
+      // 组3：其他位置（0-9，不包括10,11,12,13）
+      const group3Counts = new Map();
       for (let i = 0; i < 14; i++) {
-        const gear = processedBuildData.buildsData[1].gear[i];
-        if (gear && gear.set_cn && gear.set_cn !== '' && gear.set_cn !== 'N/A') {
-          const count = setCounts.get(gear.set_cn) || 0;
-          setCounts.set(gear.set_cn, count + 1);
+        if (i !== 10 && i !== 11 && i !== 12 && i !== 13) {
+          if (gear[i] && gear[i].set_cn && gear[i].set_cn !== '' && gear[i].set_cn !== 'N/A' && 
+              gear[i].icon && gear[i].icon !== 'transparent') {
+            const count = group3Counts.get(gear[i].set_cn) || 0;
+            group3Counts.set(gear[i].set_cn, count + 1);
+          }
+        }
+      }
+
+      // 组1和组2取最大值，然后与组3相加
+      const allSetNames = new Set([
+        ...group1Counts.keys(),
+        ...group2Counts.keys(),
+        ...group3Counts.keys()
+      ]);
+
+      // 统计位置2,3,4,5,6中数量最多的套装
+      const positions23456Counts = new Map();
+      for (let i = 2; i <= 6; i++) {
+        if (gear[i] && gear[i].set_cn && gear[i].set_cn !== '' && gear[i].set_cn !== 'N/A' && 
+            gear[i].icon && gear[i].icon !== 'transparent') {
+          const count = positions23456Counts.get(gear[i].set_cn) || 0;
+          positions23456Counts.set(gear[i].set_cn, count + 1);
+        }
+      }
+      
+      // 找到位置2,3,4,5,6中数量最多的套装
+      let maxCountSet = null;
+      let maxCount = 0;
+      for (const [setName, count] of positions23456Counts) {
+        if (count > maxCount) {
+          maxCount = count;
+          maxCountSet = setName;
+        }
+      }
+      
+      // 调试信息：位置2,3,4,5,6的统计
+      logger.info(`[ESO:位置统计] 位置2,3,4,5,6套装统计: ${JSON.stringify(Array.from(positions23456Counts.entries()))}`);
+      logger.info(`[ESO:位置统计] 数量最多的套装: ${maxCountSet}, 数量: ${maxCount}`);
+
+      // 按套装名称排序，确保颜色分配的一致性
+      const sortedSetNames = Array.from(allSetNames).sort();
+      
+      // 创建套装考古状态映射
+      const setArchaeologyMap = new Map();
+      logger.info(`[ESO:套装考古] 开始检查套装考古状态，套装列表: ${JSON.stringify(sortedSetNames)}`);
+      for (const setName of sortedSetNames) {
+        // 检查该套装在当前装备中是否有考古装备
+        let isArchaeology = false;
+        for (let i = 0; i < 14; i++) {
+          if (gear[i] && gear[i].set_cn === setName) {
+            // 检查装备的color属性是否为考古装备的颜色
+            logger.info(`[ESO:套装考古] ${setName} -> 装备${i}颜色: ${gear[i].color}`);
+            if (gear[i].color === "rgb(255, 110, 0)") {
+              isArchaeology = true;
+              break;
+            }
+          }
+        }
+        setArchaeologyMap.set(setName, isArchaeology);
+        logger.info(`[ESO:套装考古] ${setName} -> 考古状态: ${isArchaeology}`);
+      }
+
+      // 分配颜色
+      const usedColors = new Set();
+      
+      // 首先处理考古套装和数量最多的套装
+      for (const setName of sortedSetNames) {
+        const isArchaeology = setArchaeologyMap.get(setName);
+        
+        // 考古套装使用考古装备的颜色
+        if (isArchaeology) {
+          const archaeologyColor = "rgb(255, 110, 0)";
+          setColorMap.set(setName, archaeologyColor);
+          usedColors.add(archaeologyColor);
+          logger.info(`[ESO:颜色分配] ${setName} -> 考古套装，使用颜色: ${archaeologyColor}`);
+        }
+        // 位置2,3,4,5,6中数量最多的套装使用gearColor[3]
+        else if (setName === maxCountSet) {
+          setColorMap.set(setName, gearColor[3]);
+          usedColors.add(gearColor[3]);
+          logger.info(`[ESO:颜色分配] ${setName} -> 数量最多套装，使用颜色: ${gearColor[3]}`);
+        }
+      }
+      
+      // 以数量最多的套装为基准，按顺序分配其他颜色
+      if (maxCountSet) {
+        const allSetsArray = Array.from(sortedSetNames);
+        const baseIndex = allSetsArray.indexOf(maxCountSet);
+        
+        // 向前分配颜色（gearColor[2], gearColor[0]）
+        let forwardColorIndex = 2;
+        for (let i = baseIndex - 1; i >= 0; i--) {
+          const setName = allSetsArray[i];
+          const isArchaeology = setArchaeologyMap.get(setName);
+          
+          // 跳过已经分配颜色的套装和考古套装
+          if (setColorMap.has(setName) || isArchaeology) {
+            continue;
+          }
+          
+          // 分配颜色
+          let color;
+          if (forwardColorIndex === 2) {
+            color = gearColor[2];
+            forwardColorIndex = 0;
+          } else {
+            color = gearColor[0];
+            forwardColorIndex = 2;
+          }
+          
+          // 如果颜色已被使用，寻找下一个可用颜色
+          while (usedColors.has(color)) {
+            if (forwardColorIndex === 2) {
+              forwardColorIndex = 0;
+              color = gearColor[0];
+            } else {
+              forwardColorIndex = 2;
+              color = gearColor[2];
+            }
+          }
+          
+          setColorMap.set(setName, color);
+          usedColors.add(color);
+        }
+        
+        // 向后分配颜色（gearColor[4], gearColor[5], gearColor[6], gearColor[8], gearColor[9], ...）
+        let backwardColorIndex = 4;
+        for (let i = baseIndex + 1; i < allSetsArray.length; i++) {
+          const setName = allSetsArray[i];
+          const isArchaeology = setArchaeologyMap.get(setName);
+          
+          // 跳过已经分配颜色的套装和考古套装
+          if (setColorMap.has(setName) || isArchaeology) {
+            continue;
+          }
+          
+          // 分配颜色
+          let color;
+          if (backwardColorIndex === 4) {
+            color = gearColor[4];
+            backwardColorIndex = 5;
+          } else if (backwardColorIndex === 5) {
+            color = gearColor[5];
+            backwardColorIndex = 6;
+          } else if (backwardColorIndex === 6) {
+            color = gearColor[6];
+            backwardColorIndex = 8;
+          } else if (backwardColorIndex === 8) {
+            color = gearColor[8];
+            backwardColorIndex = 9;
+          } else if (backwardColorIndex === 9) {
+            color = gearColor[9];
+            backwardColorIndex = 10;
+          } else {
+            color = gearColor[backwardColorIndex];
+            backwardColorIndex++;
+          }
+          
+          // 如果颜色已被使用，寻找下一个可用颜色
+          while (usedColors.has(color) || color === gearColor[3] || color === gearColor[7]) {
+            backwardColorIndex++;
+            if (backwardColorIndex >= gearColor.length) {
+              backwardColorIndex = 0;
+            }
+            color = gearColor[backwardColorIndex];
+          }
+          
+          setColorMap.set(setName, color);
+          usedColors.add(color);
+        }
+      }
+      
+      // 为未分配颜色的套装分配剩余颜色
+      let remainingColorIndex = 0;
+      for (const setName of sortedSetNames) {
+        if (!setColorMap.has(setName)) {
+          let color = gearColor[remainingColorIndex];
+          while (usedColors.has(color) || color === gearColor[3] || color === gearColor[7]) {
+            remainingColorIndex++;
+            if (remainingColorIndex >= gearColor.length) {
+              remainingColorIndex = 0;
+            }
+            color = gearColor[remainingColorIndex];
+          }
+          setColorMap.set(setName, color);
+          usedColors.add(color);
+          remainingColorIndex++;
+        }
+      }
+      
+      // 构建最终结果
+      logger.info(`[ESO:最终结果] 开始构建最终结果，套装颜色映射: ${JSON.stringify(Array.from(setColorMap.entries()))}`);
+      for (const setName of sortedSetNames) {
+        const group1Count = group1Counts.get(setName) || 0;
+        const group2Count = group2Counts.get(setName) || 0;
+        const group3Count = group3Counts.get(setName) || 0;
+        
+        // 组1和组2取最大值
+        const maxGroup12 = Math.max(group1Count, group2Count);
+        // 与组3相加
+        const totalCount = maxGroup12 + group3Count;
+        
+        if (totalCount >= 1) { // 显示所有套装，包括1件套
+          const finalColor = setColorMap.get(setName);
+          sets.push({
+            name: `${setName} (${totalCount}件)`,
+            color: finalColor
+          });
+          logger.info(`[ESO:最终结果] ${setName} (${totalCount}件) -> 颜色: ${finalColor}`);
         }
       }
     }
 
-    // 为每个套装生成颜色和名称
-    for (const [setName, count] of setCounts) {
-      if (count >= 2) { // 只显示2件套以上的套装
-        sets.push({
-          name: `${setName} (${count}件)`,
-          color: this.generateSetColor(setName)
-        });
-      }
-    }
-
-    return sets;
+    return { sets, setColorMap };
   }
 
   generateSetColor(setName) {
-    // 根据套装名生成固定的颜色
-    const colors = [
-      '#ff6b35', '#4a9eff', '#4aff4a', '#ffd700', 
-      '#ff69b4', '#800080', '#32cd32', '#ff4a4a',
-      '#00ffff', '#ffa500', '#9370db', '#20b2aa'
-    ];
-    
+    // 根据套装名生成固定的颜色，使用gearColor数组
     let hash = 0;
     for (let i = 0; i < setName.length; i++) {
       hash = ((hash << 5) - hash) + setName.charCodeAt(i);
       hash = hash & hash; // 转换为32位整数
     }
     
-    return colors[Math.abs(hash) % colors.length];
+    return gearColor[Math.abs(hash) % gearColor.length];
   }
 
   async extractGearsFromProcessedData(processedBuildData) {
@@ -4170,7 +4469,7 @@ export class esologPuzzle extends plugin {
     return skills;
   }
 
-  async extractGearsLeftFromProcessedData(processedBuildData) {
+  async extractGearsLeftFromProcessedData(processedBuildData, setColorMap = null) {
     const gears = [];
     
     // 检查是否有装备数据
@@ -4180,9 +4479,11 @@ export class esologPuzzle extends plugin {
       for (const index of leftIndices) {
         const gear = processedBuildData.buildsData[1].gear[index];
         if (gear && gear.icon && gear.icon !== 'transparent' && gear.icon !== '../../../../../') {
+          // 使用套装颜色映射，如果没有则使用默认颜色生成方法
+          const color = setColorMap && gear.set_cn ? setColorMap.get(gear.set_cn) : this.generateSetColor(gear.set_cn || 'default');
           gears.push({
             icon: gear.icon,
-            color: this.generateSetColor(gear.set_cn || 'default')
+            color: color
           });
         }
       }
@@ -4191,7 +4492,7 @@ export class esologPuzzle extends plugin {
     return gears;
   }
 
-  async extractGearsRightFromProcessedData(processedBuildData) {
+  async extractGearsRightFromProcessedData(processedBuildData, setColorMap = null) {
     const gears = [];
     
     // 检查是否有装备数据
@@ -4201,9 +4502,11 @@ export class esologPuzzle extends plugin {
       for (const index of rightIndices) {
         const gear = processedBuildData.buildsData[1].gear[index];
         if (gear && gear.icon && gear.icon !== 'transparent' && gear.icon !== '../../../../../') {
+          // 使用套装颜色映射，如果没有则使用默认颜色生成方法
+          const color = setColorMap && gear.set_cn ? setColorMap.get(gear.set_cn) : this.generateSetColor(gear.set_cn || 'default');
           gears.push({
             icon: gear.icon,
-            color: this.generateSetColor(gear.set_cn || 'default')
+            color: color
           });
         }
       }

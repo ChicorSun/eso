@@ -12,7 +12,7 @@
 }
 
 body {
-  width: 770px;
+  width: 790px;
   min-height: 200px;
   display: flex;
   justify-content: center;
@@ -23,7 +23,7 @@ body {
 }
 
 .eso-cardslist {
-  width: 770px;
+  width: 790px;
   min-height: 200px;
   border-radius: 15px;
   overflow: visible;
@@ -57,7 +57,7 @@ body {
 
 .card-row {
   display: grid;
-  grid-template-columns: 22px 20px 20px 20px 130px 120px 174px 181px;
+  grid-template-columns: 22px 20px 20px 20px 130px 140px 174px 181px;
   gap: 8px;
   padding: 1px 8px;
   border-bottom: 1px solid #2a2a2a;
@@ -117,10 +117,21 @@ body {
 }
 
 .col-name .player-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   color: #ffd700;
   font-weight: bold;
   font-size: 11px;
   text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+}
+
+.col-name .player-name-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  line-height: 1.2;
 }
 
 .col-sets .sets-list {
@@ -128,13 +139,14 @@ body {
   flex-direction: column;
   gap: 2px;
   align-items: flex-start;
-  max-height: 60px;
+  max-height: 100px;
   overflow-y: auto;
 }
 
 .set-item {
   display: flex;
   align-items: center;
+  height: 14px;
   gap: 3px;
   padding: 1px 3px;
   border-radius: 2px;

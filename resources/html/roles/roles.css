@@ -1,0 +1,259 @@
+@font-face {
+  font-family: "tttgbnumber";
+  src: url("../../../../../resources/font/tttgbnumber.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 790px;
+  min-height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background-color: #0a0a0a;
+  font-family: 'Microsoft YaHei', 'Arial', sans-serif;
+  padding: 20px 0 10px 0;
+}
+
+.eso-roleslist {
+  width: 790px;
+  min-height: 200px;
+  border-radius: 15px;
+  overflow: visible;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: multiply;
+  border: 2px solid #3a3a3a;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+}
+
+.roleslist-main {
+  width: 100%;
+  min-height: 100%;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+}
+
+.roleslist-container {
+  width: 100%;
+  margin: 0 auto;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  border: 1px solid #4a4a4a;
+  overflow: visible;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.role-row {
+  display: grid;
+  grid-template-columns: 22px 20px 20px 20px 130px 140px 174px 181px;
+  gap: 8px;
+  padding: 1px 8px;
+  border-bottom: 1px solid #2a2a2a;
+  transition: all 0.3s ease;
+}
+
+.role-row:hover {
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.1);
+}
+
+.role-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.role-row > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #e0e0e0;
+}
+
+.col-index .index-number {
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.col-index .index-active {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: 1px solid #4CAF50;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+.col-index .index-inactive {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: white;
+  border: 1px solid #f44336;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
+}
+
+.col-role .role-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  object-fit: cover;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  margin-top: -5px;
+}
+
+.col-class .class-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  object-fit: cover;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.col-race .race-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  object-fit: cover;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.col-name .player-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: #ffd700;
+  font-weight: bold;
+  font-size: 11px;
+  text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+}
+
+.col-name .player-name-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  line-height: 1.2;
+}
+
+.col-sets .sets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.set-item {
+  display: flex;
+  align-items: center;
+  height: 14px;
+  gap: 3px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.set-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 3px currentColor;
+}
+
+.set-name {
+  font-size: 10px;
+  color: #c0c0c0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.col-gears .gears-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+.gears-row {
+  display: flex;
+  gap: 1px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.gear-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.col-skills .skills-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+.skills-row {
+  display: flex;
+  gap: 1px;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  min-height: 20px;
+}
+
+.skill-gap-left {
+  margin-right: 3px;
+}
+
+.skill-gap-right {
+  margin-left: 3px;
+}
+
+.skill-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.weapon-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  margin-right: 1px;
+}
+
+.logo {
+  position: relative;
+  text-align: center;
+  margin-top: 4px;
+  margin-bottom: 0px;
+  font-size: 12px;
+  color: #666;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}

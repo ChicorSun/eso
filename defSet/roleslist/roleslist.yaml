@@ -1,0 +1,5 @@
+# 角色列表默认配置
+default:
+  title: "角色列表"
+  subtitle: "ESO角色构建记录"
+  info: "上古卷轴OL角色信息"

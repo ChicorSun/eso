@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/roles/roles.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+
+    {{each rolesListData val index}}
+    {{if index==0}}
+    <!-- 背景图url -->
+    <div
+      class="eso-roleslist"
+      style="
+        background-image: linear-gradient(
+            to bottom right,
+            rgba(0, 0, 0, 0.8),
+            rgba(20, 20, 20, 0.9) 50%,
+            rgba(40, 40, 40, 0.95)
+          ),
+          url({{pluResPath}}img/background/{{val.pic}}.jpg);
+      "
+    >
+    {{else}}
+      <div class="roleslist-main">
+        <!-- 角色列表表格 -->
+        <div class="roleslist-container">
+          
+          {{each val.rolesData item idx}}
+          <div class="role-row">
+            <div class="col-index">
+              <span class="index-number {{item.isCard ? 'index-active' : 'index-inactive'}}">{{item.index}}</span>
+            </div>
+            <div class="col-role">
+              <img class="role-icon" src="{{pluResPath}}img/roles/{{item.roleNameEn}}.png" alt="{{item.role}}" />
+            </div>
+            <div class="col-class">
+              <img class="class-icon" src="{{pluResPath}}img/classes/{{item.classIcon}}.png" alt="{{item.class}}" />
+            </div>
+            <div class="col-race">
+              <img class="race-icon" src="{{pluResPath}}img/stones/{{item.raceImg}}.png" alt="{{item.race}}" />
+            </div>
+            <div class="col-name">
+              <div class="player-name">
+                <div class="player-name-line">{{item.playerName}}</div>
+                <div class="player-name-line">@{{item.accountName}}</div>
+              </div>
+            </div>
+            <div class="col-sets">
+              <div class="sets-list">
+                {{each item.sets setItem}}
+                <div class="set-item">
+                  <div class="set-dot" style="background-color: {{setItem.color}};"></div>
+                  <span class="set-name">{{setItem.name}}</span>
+                </div>
+                {{/each}}
+              </div>
+            </div>
+            <div class="col-gears">
+              <div class="gears-container">
+                <div class="gears-row gears-left">
+                  {{each item.gearsLeft gearItem}}
+                  <img class="gear-icon" src="{{pluResPath}}img/sets/{{gearItem.icon}}.png" style="border: 2px solid {{gearItem.color}};" alt="装备" />
+                  {{/each}}
+                </div>
+                <div class="gears-row gears-right">
+                  {{each item.gearsRight gearItem}}
+                  <img class="gear-icon" src="{{pluResPath}}img/sets/{{gearItem.icon}}.png" style="border: 2px solid {{gearItem.color}};" alt="装备" />
+                  {{/each}}
+                </div>
+              </div>
+            </div>
+            <div class="col-skills">
+              <div class="skills-container">
+                <div class="skills-row skills-left">
+                  {{each item.skillsLeft skillItem}}
+                  {{if skillItem.type === 'weapon'}}
+                  <img class="weapon-icon" src="{{pluResPath}}img/weapons/{{skillItem.icon}}.png" alt="武器" />
+                  {{else}}
+                  <img class="skill-icon {{skillItem.index === 4 ? 'skill-gap-left' : ''}} {{skillItem.index === 5 ? 'skill-gap-right' : ''}}" src="{{pluResPath}}img/skills/{{skillItem.icon}}.png" alt="技能" />
+                  {{/if}}
+                  {{/each}}
+                </div>
+                <div class="skills-row skills-right">
+                  {{each item.skillsRight skillItem}}
+                  {{if skillItem.type === 'weapon'}}
+                  <img class="weapon-icon" src="{{pluResPath}}img/weapons/{{skillItem.icon}}.png" alt="武器" />
+                  {{else}}
+                  <img class="skill-icon {{skillItem.index === 4 ? 'skill-gap-left' : ''}} {{skillItem.index === 5 ? 'skill-gap-right' : ''}}" src="{{pluResPath}}img/skills/{{skillItem.icon}}.png" alt="技能" />
+                  {{/if}}
+                  {{/each}}
+                </div>
+              </div>
+            </div>
+          </div>
+          {{/each}}
+          
+        </div>
+        <div class="logo">ESO Roles List · ESO-Bot</div>
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+  </div>
+</body>
+</html>
