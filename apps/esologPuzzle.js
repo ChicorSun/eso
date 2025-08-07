@@ -3993,7 +3993,7 @@ export class esologPuzzle extends plugin {
         const raceImg = processedBuildData.buildsData?.[1]?.race_img || 'Dunmer';
 
         // 调试信息
-        logger.info(`[ESO:群友名片列表] 名片${card.index} - 套装: ${sets.length}个, 装备左: ${gearsLeft.length}个, 装备右: ${gearsRight.length}个, 技能左: ${skillsLeft.length}个, 技能右: ${skillsRight.length}个`);
+        //logger.info(`[ESO:群友名片列表] 名片${playerName}@${accountName}-${card.index} - 套装: ${sets.length}个, 装备左: ${gearsLeft.length}个, 装备右: ${gearsRight.length}个, 技能左: ${skillsLeft.length}个, 技能右: ${skillsRight.length}个`);
 
         processedCards.push({
           index: processedCards.length + 1, // 使用列表序号而不是名片序号
@@ -4152,23 +4152,26 @@ export class esologPuzzle extends plugin {
   async extractSetsFromProcessedData(processedBuildData) {
     const sets = [];
     const setColorMap = new Map(); // 初始化setColorMap
-
+    
     // 从处理后的装备数据中提取套装信息
     if (processedBuildData.buildsData && processedBuildData.buildsData[1] && processedBuildData.buildsData[1].gear) {
       const gear = processedBuildData.buildsData[1].gear;
-      
+
       // 组1：位置10,11
       const group1Counts = new Map();
+
       if (gear[10] && gear[10].set_cn && gear[10].set_cn !== '' && gear[10].set_cn !== 'N/A' && 
           gear[10].icon && gear[10].icon !== 'transparent') {
         const count = group1Counts.get(gear[10].set_cn) || 0;
         group1Counts.set(gear[10].set_cn, count + 1);
       }
+
       if (gear[11] && gear[11].set_cn && gear[11].set_cn !== '' && gear[11].set_cn !== 'N/A' && 
           gear[11].icon && gear[11].icon !== 'transparent') {
         const count = group1Counts.get(gear[11].set_cn) || 0;
         group1Counts.set(gear[11].set_cn, count + 1);
       }
+
       // 如果11位置为transparent，则10位置的套装额外计数1次
       if ((!gear[11] || !gear[11].icon || gear[11].icon === 'transparent') && 
           gear[10] && gear[10].set_cn && gear[10].set_cn !== '' && gear[10].set_cn !== 'N/A' &&
@@ -4184,11 +4187,13 @@ export class esologPuzzle extends plugin {
         const count = group2Counts.get(gear[12].set_cn) || 0;
         group2Counts.set(gear[12].set_cn, count + 1);
       }
+
       if (gear[13] && gear[13].set_cn && gear[13].set_cn !== '' && gear[13].set_cn !== 'N/A' && 
           gear[13].icon && gear[13].icon !== 'transparent') {
         const count = group2Counts.get(gear[13].set_cn) || 0;
         group2Counts.set(gear[13].set_cn, count + 1);
       }
+      
       // 如果13位置为transparent，则12位置的套装额外计数1次
       if ((!gear[13] || !gear[13].icon || gear[13].icon === 'transparent') && 
           gear[12] && gear[12].set_cn && gear[12].set_cn !== '' && gear[12].set_cn !== 'N/A' &&
@@ -4215,7 +4220,6 @@ export class esologPuzzle extends plugin {
         ...group2Counts.keys(),
         ...group3Counts.keys()
       ]);
-
       // 统计位置2,3,4,5,6中数量最多的套装
       const positions23456Counts = new Map();
       for (let i = 2; i <= 6; i++) {
@@ -4225,15 +4229,22 @@ export class esologPuzzle extends plugin {
           positions23456Counts.set(gear[i].set_cn, count + 1);
         }
       }
-      
+
       // 找到位置2,3,4,5,6中数量最多的套装
       let maxCountSet = null;
+      let defaultSet = null;
       let maxCount = 0;
       for (const [setName, count] of positions23456Counts) {
+        if(defaultSet == null){
+          defaultSet = setName;
+        }
         if (count > maxCount) {
           maxCount = count;
           maxCountSet = setName;
         }
+      }
+      if(maxCountSet == null){
+        maxCountSet = defaultSet;
       }
       
       // 调试信息：位置2,3,4,5,6的统计
@@ -4242,7 +4253,7 @@ export class esologPuzzle extends plugin {
 
       // 按套装名称排序，确保颜色分配的一致性
       const sortedSetNames = Array.from(allSetNames).sort();
-      
+
       // 创建套装考古状态映射
       const setArchaeologyMap = new Map();
       //logger.info(`[ESO:套装考古] 开始检查套装考古状态，套装列表: ${JSON.stringify(sortedSetNames)}`);
@@ -4265,7 +4276,6 @@ export class esologPuzzle extends plugin {
 
       // 分配颜色
       const usedColors = new Set();
-      
       // 首先处理考古套装和数量最多的套装
       for (const setName of sortedSetNames) {
         const isArchaeology = setArchaeologyMap.get(setName);
@@ -4284,7 +4294,6 @@ export class esologPuzzle extends plugin {
           //logger.info(`[ESO:颜色分配] ${setName} -> 数量最多套装，使用颜色: ${gearColor[3]}`);
         }
       }
-      
       // 以数量最多的套装为基准，按顺序分配其他颜色
       if (maxCountSet) {
         const allSetsArray = Array.from(sortedSetNames);
@@ -4292,6 +4301,7 @@ export class esologPuzzle extends plugin {
         
         // 向前分配颜色（gearColor[2], gearColor[0]）
         let forwardColorIndex = 2;
+        logger.info(`[ESO:群友名片列表] 开始向前分配颜色，baseIndex: ${baseIndex}`)
         for (let i = baseIndex - 1; i >= 0; i--) {
           const setName = allSetsArray[i];
           const isArchaeology = setArchaeologyMap.get(setName);
@@ -4312,7 +4322,8 @@ export class esologPuzzle extends plugin {
           }
           
           // 如果颜色已被使用，寻找下一个可用颜色
-          while (usedColors.has(color)) {
+          let attempts = 0;
+          while (usedColors.has(color) && attempts < gearColor.length) {
             if (forwardColorIndex === 2) {
               forwardColorIndex = 0;
               color = gearColor[0];
@@ -4320,6 +4331,11 @@ export class esologPuzzle extends plugin {
               forwardColorIndex = 2;
               color = gearColor[2];
             }
+            attempts++;
+          }
+          // 如果还是找不到可用颜色，使用默认颜色
+          if (attempts >= gearColor.length) {
+            color = gearColor[0]; // 使用默认颜色
           }
           
           setColorMap.set(setName, color);
@@ -4328,6 +4344,7 @@ export class esologPuzzle extends plugin {
         
         // 向后分配颜色（gearColor[4], gearColor[5], gearColor[6], gearColor[8], gearColor[9], ...）
         let backwardColorIndex = 4;
+        logger.info(`[ESO:群友名片列表] 开始向后分配颜色，baseIndex: ${baseIndex}, allSetsArray.length: ${allSetsArray.length}`)
         for (let i = baseIndex + 1; i < allSetsArray.length; i++) {
           const setName = allSetsArray[i];
           const isArchaeology = setArchaeologyMap.get(setName);
@@ -4357,20 +4374,35 @@ export class esologPuzzle extends plugin {
           } else {
             color = gearColor[backwardColorIndex];
             backwardColorIndex++;
+            if (backwardColorIndex >= gearColor.length) {
+              backwardColorIndex = 0;
+            }
           }
           
           // 如果颜色已被使用，寻找下一个可用颜色
-          while (usedColors.has(color) || color === gearColor[3] || color === gearColor[7]) {
+          let attempts = 0;
+          while ((usedColors.has(color) || color === gearColor[3] || color === gearColor[7]) && attempts < gearColor.length) {
             backwardColorIndex++;
             if (backwardColorIndex >= gearColor.length) {
               backwardColorIndex = 0;
             }
             color = gearColor[backwardColorIndex];
+            attempts++;
+          }
+          // 如果还是找不到可用颜色，使用默认颜色
+          if (attempts >= gearColor.length) {
+            color = gearColor[0]; // 使用默认颜色
           }
           
           setColorMap.set(setName, color);
           usedColors.add(color);
+          // 确保索引不会超出范围
+          if (backwardColorIndex >= gearColor.length) {
+            backwardColorIndex = 0;
+          }
         }
+      } else {
+        logger.info(`[ESO:群友名片列表] maxCountSet为null，跳过颜色分配`)
       }
       
       // 为未分配颜色的套装分配剩余颜色
@@ -4378,19 +4410,28 @@ export class esologPuzzle extends plugin {
       for (const setName of sortedSetNames) {
         if (!setColorMap.has(setName)) {
           let color = gearColor[remainingColorIndex];
-          while (usedColors.has(color) || color === gearColor[3] || color === gearColor[7]) {
+          let attempts = 0;
+          while ((usedColors.has(color) || color === gearColor[3] || color === gearColor[7]) && attempts < gearColor.length) {
             remainingColorIndex++;
             if (remainingColorIndex >= gearColor.length) {
               remainingColorIndex = 0;
             }
             color = gearColor[remainingColorIndex];
+            attempts++;
+          }
+          // 如果还是找不到可用颜色，使用默认颜色
+          if (attempts >= gearColor.length) {
+            color = gearColor[0]; // 使用默认颜色
           }
           setColorMap.set(setName, color);
           usedColors.add(color);
           remainingColorIndex++;
+          if (remainingColorIndex >= gearColor.length) {
+            remainingColorIndex = 0;
+          }
         }
       }
-      
+
       // 构建最终结果
       //logger.info(`[ESO:最终结果] 开始构建最终结果，套装颜色映射: ${JSON.stringify(Array.from(setColorMap.entries()))}`);
       for (const setName of sortedSetNames) {
