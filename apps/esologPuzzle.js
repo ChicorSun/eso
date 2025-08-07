@@ -4301,7 +4301,7 @@ export class esologPuzzle extends plugin {
         
         // 向前分配颜色（gearColor[2], gearColor[0]）
         let forwardColorIndex = 2;
-        logger.info(`[ESO:群友名片列表] 开始向前分配颜色，baseIndex: ${baseIndex}`)
+        //logger.info(`[ESO:群友名片列表] 开始向前分配颜色，baseIndex: ${baseIndex}`)
         for (let i = baseIndex - 1; i >= 0; i--) {
           const setName = allSetsArray[i];
           const isArchaeology = setArchaeologyMap.get(setName);
@@ -4313,12 +4313,13 @@ export class esologPuzzle extends plugin {
           
           // 分配颜色
           let color;
-          if (forwardColorIndex === 2) {
-            color = gearColor[2];
-            forwardColorIndex = 0;
+          if ((forwardColorIndex >=0) && (forwardColorIndex < gearColor.length)) {
+            color = gearColor[forwardColorIndex];
+            forwardColorIndex--;
           } else {
-            color = gearColor[0];
-            forwardColorIndex = 2;
+            forwardColorIndex = gearColor.length - 1;
+            color = gearColor[forwardColorIndex];
+            forwardColorIndex--;
           }
           
           // 如果颜色已被使用，寻找下一个可用颜色
@@ -4344,7 +4345,7 @@ export class esologPuzzle extends plugin {
         
         // 向后分配颜色（gearColor[4], gearColor[5], gearColor[6], gearColor[8], gearColor[9], ...）
         let backwardColorIndex = 4;
-        logger.info(`[ESO:群友名片列表] 开始向后分配颜色，baseIndex: ${baseIndex}, allSetsArray.length: ${allSetsArray.length}`)
+        //logger.info(`[ESO:群友名片列表] 开始向后分配颜色，baseIndex: ${baseIndex}, allSetsArray.length: ${allSetsArray.length}`)
         for (let i = baseIndex + 1; i < allSetsArray.length; i++) {
           const setName = allSetsArray[i];
           const isArchaeology = setArchaeologyMap.get(setName);
@@ -4375,7 +4376,7 @@ export class esologPuzzle extends plugin {
             color = gearColor[backwardColorIndex];
             backwardColorIndex++;
             if (backwardColorIndex >= gearColor.length) {
-              backwardColorIndex = 0;
+              backwardColorIndex = backwardColorIndex - gearColor.length;
             }
           }
           
