@@ -3425,21 +3425,89 @@ export class ttc extends plugin {
 
 
 
+    /** 在复杂的嵌套数据结构中查找物品数据（参考原始TTC项目的find_item_data函数） */
+  findItemData(data, itemId) {
+    const queue = [data]
+    
+    while (queue.length > 0) {
+      const current = queue.shift()
+      
+      if (typeof current === 'object' && current !== null) {
+        // 检查是否有Data属性
+        if (current.Data && typeof current.Data === 'object') {
+          const result = current.Data[String(itemId)]
+          if (result) return result
+        }
+        
+        // 检查当前层级是否有该物品ID
+        if (current[String(itemId)]) {
+          return current[String(itemId)]
+        }
+        
+        // 继续搜索子结构
+        for (const [key, value] of Object.entries(current)) {
+          if (key === String(itemId)) {
+            return value
+          }
+          if (typeof value === 'object' && value !== null) {
+            queue.push(value)
+          }
+        }
+      } else if (Array.isArray(current)) {
+        for (const item of current) {
+          if (typeof item === 'object' && item !== null) {
+            queue.push(item)
+          }
+        }
+      }
+    }
+    
+    return null
+  }
+
+  /** 处理特殊的价格数据结构（参考原始TTC项目的process_special_structures函数） */
+  processSpecialStructures(itemData) {
+    const results = []
+    
+    const traverse = (node, path = []) => {
+      if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
+        // 检查是否包含价格字段
+        if (node.A !== undefined || node.X !== undefined || node.N !== undefined) {
+          const priceInfo = this.flattenPriceData(node, path.join('|'))
+          results.push(priceInfo)
+          return
+        }
+        
+        // 继续遍历子节点
+        for (const [key, value] of Object.entries(node)) {
+          traverse(value, [...path, key])
+        }
+      } else if (Array.isArray(node)) {
+        for (let i = 0; i < node.length; i++) {
+          traverse(node[i], [...path, String(i)])
+        }
+      }
+    }
+    
+    traverse(itemData)
+    return results
+  }
+
   /** 扁平化价格数据（参考原始TTC项目的flatten_price_data函数） */
   flattenPriceData(priceData, traitPath) {
     const result = {}
     
     // 价格字段映射
     const priceFieldMap = {
-          'A': '平均价',
-    'X': '最高价',
-    'N': '最低价',
-    'EC': '列表数量',
-    'AC': '总物品数',
-    'S': '建议价',
-    'SA': '销售均价',
-    'SE': '销售记录数',
-    'SAC': '销售总数'
+      'A': '平均价',
+      'X': '最高价',
+      'N': '最低价',
+      'EC': '列表数量',
+      'AC': '总物品数',
+      'S': '建议价',
+      'SA': '销售均价',
+      'SE': '销售记录数',
+      'SAC': '销售总数'
     }
     
     // 只保留有值的字段
