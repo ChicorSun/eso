@@ -15,6 +15,37 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 // ===========================================
+// 性能优化配置
+// ===========================================
+const PERFORMANCE_CONFIG = {
+  MAX_RETRY_ATTEMPTS: 3,
+  REQUEST_TIMEOUT: 30000,
+  PAGE_LOAD_TIMEOUT: 60000,
+  SCREENSHOT_QUALITY: 80,
+  CACHE_CLEANUP_INTERVAL: 300000, // 5分钟
+  MAX_LOG_LENGTH: 1000
+}
+
+// ===========================================
+// 错误处理工具函数
+// ===========================================
+function safeJsonParse(jsonString, defaultValue = null) {
+  try {
+    return JSON.parse(jsonString)
+  } catch (error) {
+    logger.warn(`[TTC] JSON解析失败: ${error.message}`)
+    return defaultValue
+  }
+}
+
+function truncateLogMessage(message, maxLength = PERFORMANCE_CONFIG.MAX_LOG_LENGTH) {
+  if (message && message.length > maxLength) {
+    return message.substring(0, maxLength) + '...'
+  }
+  return message
+}
+
+// ===========================================
 // HTML截图缓存
 // ===========================================
 let ttcImgCache = {
@@ -37,6 +68,19 @@ const TTC_CONFIG_FILE = path.join(TTC_CONFIG_PATH, 'ttcConfig.json')
 const TTC_DEFAULT_SERVER_FILE = path.join(TTC_CONFIG_PATH, 'default.json')
 // 验证码配置文件
 const TTC_CAPTCHA_CONFIG_PATH = path.join(TTC_CONFIG_PATH, 'captcha.json')
+
+// TTC 代理配置
+let ttcProxyConfig = {
+  proxy: '',           // 代理地址，如 http://127.0.0.1:7890
+  proxyUsername: '',   // 代理用户名
+  proxyPassword: '',   // 代理密码
+  reverseProxy: '',    // 反代理地址，如 https://api.example.com
+  enableProxy: false,  // 是否启用代理
+  enableReverseProxy: false, // 是否启用反代理
+  timeout: 30000,      // 请求超时时间（毫秒）
+  retryCount: 3,       // 请求重试次数
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
 
 // 验证码服务配置（已移除第三方服务）
 const CAPTCHA_SERVICES = {
@@ -304,6 +348,24 @@ export class ttc extends plugin {
           reg: '^#*(ttc验证码|TTC验证码).*$',
           /** 执行方法 */
           fnc: 'setCaptchaAutoSolve'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(ttc代理|TTC代理).*$',
+          /** 执行方法 */
+          fnc: 'setTTCProxy'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(ttc反代理|TTC反代理).*$',
+          /** 执行方法 */
+          fnc: 'setTTCReverseProxy'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(ttc测试代理|TTC测试代理).*$',
+          /** 执行方法 */
+          fnc: 'testTTCProxy'
         }
       ]
     })
@@ -327,6 +389,9 @@ export class ttc extends plugin {
     try {
       // 加载默认服务器配置
       this.loadDefaultServerConfig()
+      
+      // 加载代理配置
+      this.loadTTCProxyConfig()
       
       // 加载验证码配置
       this.loadCaptchaConfig()
@@ -1005,6 +1070,29 @@ export class ttc extends plugin {
 ※ 已移除所有第三方验证码破解服务
 ※ 遇到验证码时将提示用户手动处理
 
+🌐 代理设置（仅主人）
+#ttc代理 [开启/关闭/状态/设置/认证/测试]
+示例：#ttc代理 开启
+示例：#ttc代理 关闭
+示例：#ttc代理 状态
+示例：#ttc代理 设置 http://127.0.0.1:7890
+示例：#ttc代理 设置 socks5://127.0.0.1:1080
+示例：#ttc代理 认证 用户名 密码
+示例：#ttc代理 测试
+功能：设置代理，解决页面访问问题（仅用于交易查询）
+※ 支持HTTP/HTTPS/SOCKS5代理
+※ 支持代理认证（用户名/密码）
+※ 设置后会自动重启浏览器以应用配置
+※ 可使用"测试"命令验证代理连接
+
+🌐 反代理设置（仅主人）
+#ttc反代理 [开启/关闭/状态/设置]
+示例：#ttc反代理 开启
+示例：#ttc反代理 关闭
+示例：#ttc反代理 状态
+示例：#ttc反代理 设置 https://api.example.com
+功能：设置反代理服务器，解决页面访问问题（仅用于交易查询）
+
 ❓ 帮助
 #TTC帮助
 
@@ -1019,7 +1107,8 @@ export class ttc extends plugin {
 • 价格查询支持美服/欧服独立数据
 • 价格信息基于TTC最新数据
 • 不同服务器的价格可能存在差异
-• 如遇到验证码，将提示用户手动处理`
+• 如遇到验证码，将提示用户手动处理
+• 如遇到页面访问问题，可使用代理功能解决（仅用于交易查询）`
 
     return await this.reply(helpMsg)
   }
@@ -1034,26 +1123,94 @@ export class ttc extends plugin {
     try {
       if (fs.existsSync(TTC_DEFAULT_SERVER_FILE)) {
         const configData = fs.readFileSync(TTC_DEFAULT_SERVER_FILE, 'utf-8')
-        const config = JSON.parse(configData)
+        const config = safeJsonParse(configData)
         
         // 验证配置有效性
-        if (config.server && (config.server === 'NA' || config.server === 'EU')) {
+        if (config && config.server && (config.server === 'NA' || config.server === 'EU')) {
           defaultServerConfig = {
             server: config.server,
             name: config.server === 'NA' ? '美服' : '欧服'
           }
-          //logger.info(`[TTC] 已加载默认服务器配置: ${defaultServerConfig.name}`)
         } else {
-          //logger.warn('[TTC] 默认服务器配置文件格式无效，使用默认值：美服')
+          logger.warn('[TTC] 默认服务器配置文件格式无效，使用默认值：美服')
         }
       } else {
-        //logger.info('[TTC] 默认服务器配置文件不存在，使用默认值：美服')
+        logger.info('[TTC] 默认服务器配置文件不存在，使用默认值：美服')
       }
       
       this.defaultServerConfigLoaded = true
     } catch (error) {
-      logger.error(`[TTC] 读取默认服务器配置失败: ${error.message}`)
+      logger.error(`[TTC] 读取默认服务器配置失败: ${truncateLogMessage(error.message)}`)
       this.defaultServerConfigLoaded = true // 即使失败也标记为已加载，避免重复尝试
+    }
+  }
+
+  /** 读取TTC代理配置 */
+  loadTTCProxyConfig() {
+    // 检查是否已经加载过，避免重复加载
+    if (this.proxyConfigLoaded) {
+      return
+    }
+    
+    try {
+      if (fs.existsSync(TTC_CONFIG_FILE)) {
+        const configData = fs.readFileSync(TTC_CONFIG_FILE, 'utf-8')
+        const config = safeJsonParse(configData)
+        
+        if (config) {
+          // 更新代理配置
+          if (config.proxy !== undefined) ttcProxyConfig.proxy = config.proxy
+          if (config.proxyUsername !== undefined) ttcProxyConfig.proxyUsername = config.proxyUsername
+          if (config.proxyPassword !== undefined) ttcProxyConfig.proxyPassword = config.proxyPassword
+          if (config.reverseProxy !== undefined) ttcProxyConfig.reverseProxy = config.reverseProxy
+          if (config.enableProxy !== undefined) ttcProxyConfig.enableProxy = config.enableProxy
+          if (config.enableReverseProxy !== undefined) ttcProxyConfig.enableReverseProxy = config.enableReverseProxy
+          if (config.timeout !== undefined) ttcProxyConfig.timeout = config.timeout
+          if (config.retryCount !== undefined) ttcProxyConfig.retryCount = config.retryCount
+          if (config.userAgent !== undefined) ttcProxyConfig.userAgent = config.userAgent
+          
+          logger.info(`[TTC] 已加载代理配置: 代理=${ttcProxyConfig.enableProxy ? '启用' : '禁用'}, 反代理=${ttcProxyConfig.enableReverseProxy ? '启用' : '禁用'}`)
+        } else {
+          logger.warn('[TTC] TTC配置文件格式无效，使用默认代理配置')
+        }
+      } else {
+        logger.info('[TTC] TTC配置文件不存在，使用默认代理配置')
+      }
+      
+      this.proxyConfigLoaded = true
+    } catch (error) {
+      logger.error(`[TTC] 读取代理配置失败: ${truncateLogMessage(error.message)}`)
+      this.proxyConfigLoaded = true // 即使失败也标记为已加载，避免重复尝试
+    }
+  }
+
+  /** 保存TTC代理配置 */
+  saveTTCProxyConfig() {
+    try {
+      // 读取现有配置（如果存在）
+      let config = {}
+      if (fs.existsSync(TTC_CONFIG_FILE)) {
+        const configData = fs.readFileSync(TTC_CONFIG_FILE, 'utf-8')
+        config = JSON.parse(configData)
+      }
+      
+      // 更新代理相关配置
+      config.proxy = ttcProxyConfig.proxy
+      config.proxyUsername = ttcProxyConfig.proxyUsername
+      config.proxyPassword = ttcProxyConfig.proxyPassword
+      config.reverseProxy = ttcProxyConfig.reverseProxy
+      config.enableProxy = ttcProxyConfig.enableProxy
+      config.enableReverseProxy = ttcProxyConfig.enableReverseProxy
+      config.timeout = ttcProxyConfig.timeout
+      config.retryCount = ttcProxyConfig.retryCount
+      config.userAgent = ttcProxyConfig.userAgent
+      config.updateTime = new Date().toISOString()
+      
+      fs.writeFileSync(TTC_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8')
+      logger.info(`[TTC] 代理配置已保存: ${TTC_CONFIG_FILE}`)
+    } catch (error) {
+      logger.error(`[TTC] 保存代理配置失败: ${error.message}`)
+      throw error
     }
   }
 
@@ -1457,19 +1614,41 @@ export class ttc extends plugin {
     try {
       logger.info(`[TTC] 开始访问TTC网站: ${url}`)
       
-      // 检查puppeteer浏览器
-      if (!puppeteer.browser) {
-        await puppeteer.browserInit()
-      }
+      // 管理代理浏览器实例
+      await this.manageProxyBrowser()
       
       const browserPage = await puppeteer.browser.newPage()
+      
+      // 如果启用了代理认证，设置页面代理认证
+      if (ttcProxyConfig.enableProxy && ttcProxyConfig.proxy && 
+          (ttcProxyConfig.proxyUsername || ttcProxyConfig.proxyPassword)) {
+        try {
+          await browserPage.authenticate({
+            username: ttcProxyConfig.proxyUsername || '',
+            password: ttcProxyConfig.proxyPassword || ''
+          })
+          logger.info(`[TTC] 页面代理认证已设置: ${ttcProxyConfig.proxyUsername ? '用户名已配置' : '无用户名'}`)
+        } catch (proxyError) {
+          logger.warn(`[TTC] 设置页面代理认证失败: ${proxyError.message}`)
+        }
+      }
+      
+      // 如果启用了反代理，修改URL
+      let finalUrl = url
+      if (ttcProxyConfig.enableReverseProxy && ttcProxyConfig.reverseProxy) {
+        // 将原始URL替换为反代理URL
+        const urlObj = new URL(url)
+        const reverseProxyUrl = new URL(ttcProxyConfig.reverseProxy)
+        finalUrl = `${reverseProxyUrl.origin}${urlObj.pathname}${urlObj.search}`
+        logger.info(`[TTC] 使用反代理访问: ${finalUrl}`)
+      }
       
       try {
         // 设置超时时间
         browserPage.setDefaultNavigationTimeout(30000)
         
         // 设置用户代理，避免被检测为爬虫
-        await browserPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        await browserPage.setUserAgent(ttcProxyConfig.userAgent)
         
         // 设置视窗大小
         //await browserPage.setViewport({ width: 1920, height: 1080 })
@@ -1481,7 +1660,7 @@ export class ttc extends plugin {
         
         try {
           await Promise.race([
-            browserPage.goto(url, { waitUntil: 'domcontentloaded' }),
+            browserPage.goto(finalUrl, { waitUntil: 'domcontentloaded' }),
             // 等待可能的页面元素
             new Promise((resolve) => setTimeout(resolve, 30000))
           ])
@@ -2602,7 +2781,7 @@ export class ttc extends plugin {
         return safeFileName
       }
 
-      // 使用Bot.download方法下载图标
+      // 使用Bot.download方法下载图标（不使用代理）
       logger.info(`[TTC] 开始下载物品图标: ${iconUrl} -> ${safeFileName}`)
       const success = await Bot.download(iconUrl, filePath)
       
@@ -2610,7 +2789,7 @@ export class ttc extends plugin {
         //logger.info(`[TTC] 物品图标下载成功: ${safeFileName}`)
         return safeFileName
       } else {
-        logger.warn(`[TTC] 下载物品图标失败: Bot.download返回false`)
+        logger.warn(`[TTC] 下载物品图标失败`)
         return null
       }
 
@@ -2619,6 +2798,8 @@ export class ttc extends plugin {
       return null
     }
   }
+
+
 
   /** 获取物品图标文件名 */
   async getItemIconFileName(iconUrl, itemName) {
@@ -2710,18 +2891,21 @@ export class ttc extends plugin {
 
   /** 缓存交易截图 */
   async cacheTradeImage(data) {
-    //logger.info(data.ttcData[1].tradeData)
+    try {
+      const tmp = md5(JSON.stringify(data))
+      if (ttcImgCache.md5 === tmp) {
+        return ttcImgCache.img
+      }
 
-    const tmp = md5(JSON.stringify(data))
-    if (ttcImgCache.md5 === tmp) {
+      // 生成新的截图
+      ttcImgCache.img = await puppeteer.screenshot('eso', data)
+      ttcImgCache.md5 = tmp
+
       return ttcImgCache.img
+    } catch (error) {
+      logger.error(`[TTC] 生成交易截图失败: ${truncateLogMessage(error.message)}`)
+      throw error
     }
-
-    // 生成新的截图
-    ttcImgCache.img = await puppeteer.screenshot('eso', data)
-    ttcImgCache.md5 = tmp
-
-    return ttcImgCache.img
   }
 
   /** 生成无数据图片 */
@@ -2942,7 +3126,7 @@ export class ttc extends plugin {
 
       logger.info('[TTC] 开始下载价格表...')
       
-      // 下载价格表压缩包
+      // 下载价格表压缩包（不使用代理）
       const response = await fetch(downloadUrl)
       if (!response.ok) {
         throw new Error(`下载失败: ${response.status} ${response.statusText}`)
@@ -3239,73 +3423,7 @@ export class ttc extends plugin {
     }
   }
 
-  /** 在复杂的嵌套数据结构中查找物品数据（参考原始TTC项目的find_item_data函数） */
-  findItemData(data, itemId) {
-    const queue = [data]
-    
-    while (queue.length > 0) {
-      const current = queue.shift()
-      
-      if (typeof current === 'object' && current !== null) {
-        // 检查是否有Data属性
-        if (current.Data && typeof current.Data === 'object') {
-          const result = current.Data[String(itemId)]
-          if (result) return result
-        }
-        
-        // 检查当前层级是否有该物品ID
-        if (current[String(itemId)]) {
-          return current[String(itemId)]
-        }
-        
-        // 继续搜索子结构
-        for (const [key, value] of Object.entries(current)) {
-          if (key === String(itemId)) {
-            return value
-          }
-          if (typeof value === 'object' && value !== null) {
-            queue.push(value)
-          }
-        }
-      } else if (Array.isArray(current)) {
-        for (const item of current) {
-          if (typeof item === 'object' && item !== null) {
-            queue.push(item)
-          }
-        }
-      }
-    }
-    
-    return null
-  }
 
-  /** 处理特殊的价格数据结构（参考原始TTC项目的process_special_structures函数） */
-  processSpecialStructures(itemData) {
-    const results = []
-    
-    const traverse = (node, path = []) => {
-      if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
-        // 检查是否包含价格字段
-        if (node.A !== undefined || node.X !== undefined || node.N !== undefined) {
-          const priceInfo = this.flattenPriceData(node, path.join('|'))
-          results.push(priceInfo)
-          return
-        }
-        
-        // 继续遍历子节点
-        for (const [key, value] of Object.entries(node)) {
-          traverse(value, [...path, key])
-        }
-      } else if (Array.isArray(node)) {
-        for (let i = 0; i < node.length; i++) {
-          traverse(node[i], [...path, String(i)])
-        }
-      }
-    }
-    
-    traverse(itemData)
-    return results
-  }
 
   /** 扁平化价格数据（参考原始TTC项目的flatten_price_data函数） */
   flattenPriceData(priceData, traitPath) {
@@ -3396,76 +3514,6 @@ export class ttc extends plugin {
     return baseInfo
   }
 
-  /** 在复杂的嵌套数据结构中查找物品数据（参考原始TTC项目的find_item_data函数） */
-  findItemData(data, itemId) {
-    const queue = [data]
-    
-    while (queue.length > 0) {
-      const current = queue.shift()
-      
-      if (typeof current === 'object' && current !== null) {
-        // 检查是否有Data属性
-        if (current.Data && typeof current.Data === 'object') {
-          const result = current.Data[String(itemId)]
-          if (result) return result
-        }
-        
-        // 检查当前层级是否有该物品ID
-        if (current[String(itemId)]) {
-          return current[String(itemId)]
-        }
-        
-        // 继续搜索子结构
-        for (const [key, value] of Object.entries(current)) {
-          if (key === String(itemId)) {
-            return value
-          }
-          if (typeof value === 'object' && value !== null) {
-            queue.push(value)
-          }
-        }
-      } else if (Array.isArray(current)) {
-        for (const item of current) {
-          if (typeof item === 'object' && item !== null) {
-            queue.push(item)
-          }
-        }
-      }
-    }
-    
-    return null
-  }
-
-  /** 处理特殊的价格数据结构（参考原始TTC项目的process_special_structures函数） */
-  processSpecialStructures(itemData) {
-    const results = []
-    
-    const traverse = (node, path = []) => {
-      if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
-        // 检查是否包含价格字段
-        if (node.A !== undefined || node.X !== undefined || node.N !== undefined) {
-          const priceInfo = this.flattenPriceData(node, path.join('|'))
-          results.push(priceInfo)
-          return
-        }
-        
-        // 继续遍历子节点
-        for (const [key, value] of Object.entries(node)) {
-          traverse(value, [...path, key])
-        }
-      } else if (Array.isArray(node)) {
-        for (let i = 0; i < node.length; i++) {
-          traverse(node[i], [...path, String(i)])
-        }
-      }
-    }
-    
-    traverse(itemData)
-    return results
-  }
-
-
-
   /** 查询物品价格 */
   async queryItemPrice(queryContent, serverKey = 'na') {
     try {
@@ -3486,12 +3534,13 @@ export class ttc extends plugin {
       // 读取JSON价格表数据
       let priceTableData = null
       try {
-        //logger.info('[TTC] 开始读取价格表JSON文件...')
         const jsonContent = await fs.promises.readFile(jsonFilePath, 'utf8')
-        priceTableData = JSON.parse(jsonContent)
-        //logger.info(`[TTC] 成功读取价格表数据`)
+        priceTableData = safeJsonParse(jsonContent)
+        if (!priceTableData) {
+          throw new Error('价格表数据格式无效')
+        }
       } catch (error) {
-        logger.error(`[TTC] 读取价格表失败: ${error.message}`)
+        logger.error(`[TTC] 读取价格表失败: ${truncateLogMessage(error.message)}`)
         return {
           type: 'text',
           content: `❌ 价格表读取失败\n\n错误信息: ${error.message}\n\n请尝试重新更新价格表：\n🔄 #更新价格表`
@@ -3917,16 +3966,21 @@ export class ttc extends plugin {
 
   /** 缓存TTC截图 */
   async cacheTTCImage(data) {
-    const tmp = md5(JSON.stringify(data))
-    if (ttcImgCache.md5 === tmp) {
+    try {
+      const tmp = md5(JSON.stringify(data))
+      if (ttcImgCache.md5 === tmp) {
+        return ttcImgCache.img
+      }
+
+      // 生成新的截图
+      ttcImgCache.img = await puppeteer.screenshot('eso', data)
+      ttcImgCache.md5 = tmp
+
       return ttcImgCache.img
+    } catch (error) {
+      logger.error(`[TTC] 生成TTC截图失败: ${truncateLogMessage(error.message)}`)
+      throw error
     }
-
-    // 生成新的截图
-    ttcImgCache.img = await puppeteer.screenshot('eso', data)
-    ttcImgCache.md5 = tmp
-
-    return ttcImgCache.img
   }
 
   /** 生成文本格式的价格信息（降级方案） */
@@ -3983,23 +4037,25 @@ export class ttc extends plugin {
     try {
       if (fs.existsSync(TTC_CAPTCHA_CONFIG_PATH)) {
         const configData = fs.readFileSync(TTC_CAPTCHA_CONFIG_PATH, 'utf8')
-        this.captchaConfig = JSON.parse(configData)
+        this.captchaConfig = safeJsonParse(configData)
         
-        // 确保配置包含所有必要字段，默认关闭自动破解
-        if (!this.captchaConfig.autoSolve) {
-          this.captchaConfig.autoSolve = false
+        if (this.captchaConfig) {
+          // 确保配置包含所有必要字段，默认关闭自动破解
+          if (!this.captchaConfig.autoSolve) {
+            this.captchaConfig.autoSolve = false
+          }
+          if (!this.captchaConfig.thirdPartyService) {
+            this.captchaConfig.thirdPartyService = 'MANUAL'
+          }
+          if (this.captchaConfig.dailyUsage === undefined) {
+            this.captchaConfig.dailyUsage = 0
+          }
+          if (!this.captchaConfig.lastResetDate) {
+            this.captchaConfig.lastResetDate = new Date().toISOString().split('T')[0]
+          }
+        } else {
+          throw new Error('验证码配置文件格式无效')
         }
-        if (!this.captchaConfig.thirdPartyService) {
-          this.captchaConfig.thirdPartyService = 'MANUAL'
-        }
-        if (this.captchaConfig.dailyUsage === undefined) {
-          this.captchaConfig.dailyUsage = 0
-        }
-        if (!this.captchaConfig.lastResetDate) {
-          this.captchaConfig.lastResetDate = new Date().toISOString().split('T')[0]
-        }
-        
-        //logger.info(`[TTC] 验证码配置加载成功: 自动解决=${this.captchaConfig.autoSolve}`)
       } else {
         // 默认配置 - 关闭自动破解
         this.captchaConfig = {
@@ -4016,7 +4072,7 @@ export class ttc extends plugin {
       
       this.captchaConfigLoaded = true
     } catch (error) {
-      logger.error(`[TTC] 加载验证码配置失败: ${error.message}`)
+      logger.error(`[TTC] 加载验证码配置失败: ${truncateLogMessage(error.message)}`)
       this.captchaConfig = { autoSolve: false }
       this.captchaConfigLoaded = true // 即使失败也标记为已加载，避免重复尝试
     }
@@ -4092,6 +4148,362 @@ export class ttc extends plugin {
     }
   }
 
+  /** 设置TTC代理 */
+  async setTTCProxy(e) {
+    try {
+      // 检查权限（只有管理员可以设置）
+      if (!e.isMaster) {
+        return await this.reply('只有主人才能设置代理配置')
+      }
+
+      // 解析命令参数
+      let content = e.msg.replace(/^#*(ttc代理|TTC代理)/, '').trim()
+      
+      // 检查参数
+      if (!content) {
+        return await this.reply('请指定代理设置\n示例：#ttc代理 开启\n示例：#ttc代理 关闭\n示例：#ttc代理 状态\n示例：#ttc代理 设置 http://127.0.0.1:7890\n示例：#ttc代理 认证 用户名 密码')
+      }
+
+      if (content === '状态') {
+        const statusMsg = `🌐 TTC代理配置状态：\n\n` +
+          `代理启用：${ttcProxyConfig.enableProxy ? '✅ 已开启' : '❌ 已关闭'}\n` +
+          `代理地址：${ttcProxyConfig.proxy || '未设置'}\n` +
+          `代理认证：${ttcProxyConfig.proxyUsername ? `用户名=${ttcProxyConfig.proxyUsername}` : '未设置'}\n` +
+          `反代理启用：${ttcProxyConfig.enableReverseProxy ? '✅ 已开启' : '❌ 已关闭'}\n` +
+          `反代理地址：${ttcProxyConfig.reverseProxy || '未设置'}\n` +
+          `超时时间：${ttcProxyConfig.timeout}ms\n` +
+          `重试次数：${ttcProxyConfig.retryCount}次\n\n` +
+          `💡 注意：代理仅用于交易查询页面访问，不影响价格表下载`
+        
+        return await this.reply(statusMsg)
+      }
+
+      if (content === '测试') {
+        return await this.testTTCProxy(e)
+      }
+
+      if (content === '开启') {
+        if (!ttcProxyConfig.proxy) {
+          return await this.reply('❌ 请先设置代理地址\n示例：#ttc代理 设置 http://127.0.0.1:7890\n示例：#ttc代理 设置 socks5://127.0.0.1:1080')
+        }
+        
+        if (ttcProxyConfig.enableProxy) {
+          return await this.reply('代理已经是开启状态')
+        }
+        
+        ttcProxyConfig.enableProxy = true
+        this.saveTTCProxyConfig()
+        
+        // 重新启动浏览器以应用代理设置
+        try {
+          await this.manageProxyBrowser()
+          return await this.reply('✅ 代理已开启，浏览器已重新启动以应用代理设置')
+        } catch (error) {
+          logger.error(`[TTC] 启动代理浏览器失败: ${error.message}`)
+          return await this.reply('✅ 代理已开启，但浏览器启动失败，请稍后重试')
+        }
+      }
+
+      if (content === '关闭') {
+        if (!ttcProxyConfig.enableProxy) {
+          return await this.reply('代理已经是关闭状态')
+        }
+        
+        ttcProxyConfig.enableProxy = false
+        this.saveTTCProxyConfig()
+        
+        // 重新启动浏览器以移除代理设置
+        try {
+          await this.manageProxyBrowser()
+          return await this.reply('❌ 代理已关闭，浏览器已重新启动以移除代理设置')
+        } catch (error) {
+          logger.error(`[TTC] 启动普通浏览器失败: ${error.message}`)
+          return await this.reply('❌ 代理已关闭，但浏览器启动失败，请稍后重试')
+        }
+      }
+
+      if (content.startsWith('设置 ')) {
+        const proxyUrl = content.replace('设置 ', '').trim()
+        
+        // 验证代理URL格式
+        if (!proxyUrl.startsWith('http://') && !proxyUrl.startsWith('https://') && !proxyUrl.startsWith('socks://') && !proxyUrl.startsWith('socks5://')) {
+          return await this.reply('❌ 代理地址格式错误，请使用以下格式：\nhttp://127.0.0.1:7890\nhttps://127.0.0.1:7890\nsocks://127.0.0.1:1080\nsocks5://127.0.0.1:1080')
+        }
+        
+        const oldProxy = ttcProxyConfig.proxy
+        ttcProxyConfig.proxy = proxyUrl
+        this.saveTTCProxyConfig()
+        
+        // 如果代理已启用且地址发生变化，重新启动浏览器
+        if (ttcProxyConfig.enableProxy && oldProxy !== proxyUrl) {
+          try {
+            await this.manageProxyBrowser()
+            return await this.reply(`✅ 代理地址已设置为：${proxyUrl}\n\n浏览器已重新启动以应用新的代理设置\n\n如需设置代理认证，请使用：#ttc代理 认证 用户名 密码`)
+          } catch (error) {
+            logger.error(`[TTC] 启动新代理浏览器失败: ${error.message}`)
+            return await this.reply(`✅ 代理地址已设置为：${proxyUrl}\n\n但浏览器启动失败，请稍后重试\n\n如需设置代理认证，请使用：#ttc代理 认证 用户名 密码`)
+          }
+        } else {
+          return await this.reply(`✅ 代理地址已设置为：${proxyUrl}\n\n请使用 #ttc代理 开启 来启用代理\n\n如需设置代理认证，请使用：#ttc代理 认证 用户名 密码`)
+        }
+      }
+
+      if (content.startsWith('认证 ')) {
+        const authParams = content.replace('认证 ', '').trim().split(' ')
+        if (authParams.length < 2) {
+          return await this.reply('❌ 认证参数格式错误\n示例：#ttc代理 认证 用户名 密码')
+        }
+        
+        const username = authParams[0]
+        const password = authParams[1]
+        
+        ttcProxyConfig.proxyUsername = username
+        ttcProxyConfig.proxyPassword = password
+        this.saveTTCProxyConfig()
+        
+        // 如果代理已启用，重新启动浏览器以应用认证设置
+        if (ttcProxyConfig.enableProxy) {
+          try {
+            await this.manageProxyBrowser()
+            return await this.reply(`✅ 代理认证已设置：用户名=${username}\n\n浏览器已重新启动以应用认证设置`)
+          } catch (error) {
+            logger.error(`[TTC] 启动代理浏览器失败: ${error.message}`)
+            return await this.reply(`✅ 代理认证已设置：用户名=${username}\n\n但浏览器启动失败，请稍后重试`)
+          }
+        } else {
+          return await this.reply(`✅ 代理认证已设置：用户名=${username}\n\n请使用 #ttc代理 开启 来启用代理`)
+        }
+      }
+
+      return await this.reply('无效的参数，请使用：开启、关闭、状态、设置 [代理地址]、认证 [用户名] [密码]、测试')
+
+    } catch (error) {
+      logger.error(`[TTC] 设置代理配置失败: ${error.message}`)
+      return await this.reply('设置代理配置失败，请稍后重试')
+    }
+  }
+
+  /** 设置TTC反代理 */
+  async setTTCReverseProxy(e) {
+    try {
+      // 检查权限（只有管理员可以设置）
+      if (!e.isMaster) {
+        return await this.reply('只有主人才能设置反代理配置')
+      }
+
+      // 解析命令参数
+      let content = e.msg.replace(/^#*(ttc反代理|TTC反代理)/, '').trim()
+      
+      // 检查参数
+      if (!content) {
+        return await this.reply('请指定反代理设置\n示例：#ttc反代理 开启\n示例：#ttc反代理 关闭\n示例：#ttc反代理 状态\n示例：#ttc反代理 设置 https://api.example.com')
+      }
+
+      if (content === '状态') {
+        const statusMsg = `🌐 TTC反代理配置状态：\n\n` +
+          `反代理启用：${ttcProxyConfig.enableReverseProxy ? '✅ 已开启' : '❌ 已关闭'}\n` +
+          `反代理地址：${ttcProxyConfig.reverseProxy || '未设置'}\n` +
+          `代理启用：${ttcProxyConfig.enableProxy ? '✅ 已开启' : '❌ 已关闭'}\n` +
+          `代理地址：${ttcProxyConfig.proxy || '未设置'}\n\n` +
+          `💡 注意：反代理仅用于交易查询页面访问，不影响价格表下载`
+        
+        return await this.reply(statusMsg)
+      }
+
+      if (content === '开启') {
+        if (!ttcProxyConfig.reverseProxy) {
+          return await this.reply('❌ 请先设置反代理地址\n示例：#ttc反代理 设置 https://api.example.com')
+        }
+        
+        if (ttcProxyConfig.enableReverseProxy) {
+          return await this.reply('反代理已经是开启状态')
+        }
+        
+        ttcProxyConfig.enableReverseProxy = true
+        this.saveTTCProxyConfig()
+        return await this.reply('✅ 反代理已开启')
+      }
+
+      if (content === '关闭') {
+        if (!ttcProxyConfig.enableReverseProxy) {
+          return await this.reply('反代理已经是关闭状态')
+        }
+        
+        ttcProxyConfig.enableReverseProxy = false
+        this.saveTTCProxyConfig()
+        return await this.reply('❌ 反代理已关闭')
+      }
+
+      if (content.startsWith('设置 ')) {
+        const reverseProxyUrl = content.replace('设置 ', '').trim()
+        
+        // 验证反代理URL格式
+        if (!reverseProxyUrl.startsWith('http://') && !reverseProxyUrl.startsWith('https://')) {
+          return await this.reply('❌ 反代理地址格式错误，请使用以下格式：\nhttps://api.example.com\nhttp://api.example.com')
+        }
+        
+        ttcProxyConfig.reverseProxy = reverseProxyUrl
+        this.saveTTCProxyConfig()
+        return await this.reply(`✅ 反代理地址已设置为：${reverseProxyUrl}\n\n请使用 #ttc反代理 开启 来启用反代理`)
+      }
+
+      return await this.reply('无效的参数，请使用：开启、关闭、状态、设置 [反代理地址]')
+
+    } catch (error) {
+      logger.error(`[TTC] 设置反代理配置失败: ${error.message}`)
+      return await this.reply('设置反代理配置失败，请稍后重试')
+    }
+  }
+
+  /** 管理代理浏览器实例 */
+  async manageProxyBrowser() {
+    try {
+      // 如果启用了代理且配置了代理地址
+      if (ttcProxyConfig.enableProxy && ttcProxyConfig.proxy) {
+        // 如果当前浏览器实例存在，检查是否需要重新启动以应用代理
+        if (puppeteer.browser) {
+          // 检查当前浏览器是否已经配置了代理
+          const browserArgs = await puppeteer.browser.process()?.spawnargs || []
+          const hasProxy = browserArgs.some(arg => arg.includes('--proxy-server='))
+          
+          if (!hasProxy) {
+            logger.info(`[TTC] 检测到代理配置变更，重新启动浏览器以应用代理设置`)
+            await puppeteer.browser.close().catch(() => {})
+            puppeteer.browser = null
+          }
+        }
+        
+        // 如果没有浏览器实例，启动带代理的浏览器
+        if (!puppeteer.browser) {
+          // 构建代理启动参数
+          const proxyArgs = [
+            '--disable-gpu',
+            '--disable-setuid-sandbox', 
+            '--no-sandbox',
+            '--no-zygote',
+            `--proxy-server=${ttcProxyConfig.proxy}`
+          ]
+          
+          // 启动新的浏览器实例
+          const puppeteerModule = await import('puppeteer')
+          puppeteer.browser = await puppeteerModule.default.launch({
+            headless: 'new',
+            args: proxyArgs
+          })
+          
+          logger.info(`[TTC] 已启动带代理的浏览器: ${ttcProxyConfig.proxy}`)
+        }
+      } else {
+        // 如果禁用了代理，但当前浏览器有代理配置，需要重新启动
+        if (puppeteer.browser) {
+          const browserArgs = await puppeteer.browser.process()?.spawnargs || []
+          const hasProxy = browserArgs.some(arg => arg.includes('--proxy-server='))
+          
+          if (hasProxy) {
+            logger.info(`[TTC] 检测到代理已禁用，重新启动浏览器以移除代理设置`)
+            await puppeteer.browser.close().catch(() => {})
+            puppeteer.browser = null
+          }
+        }
+        
+        // 如果没有浏览器实例，启动普通浏览器
+        if (!puppeteer.browser) {
+          await puppeteer.browserInit()
+        }
+      }
+    } catch (error) {
+      logger.error(`[TTC] 管理代理浏览器失败: ${error.message}`)
+      // 如果代理启动失败，尝试启动普通浏览器
+      if (!puppeteer.browser) {
+        await puppeteer.browserInit()
+      }
+    }
+  }
+
+  /** 测试TTC代理连接 */
+  async testTTCProxy(e) {
+    try {
+      // 检查权限（只有管理员可以测试）
+      if (!e.isMaster) {
+        return await this.reply('只有主人才能测试代理连接')
+      }
+
+      // 检查代理配置
+      if (!ttcProxyConfig.enableProxy || !ttcProxyConfig.proxy) {
+        return await this.reply('❌ 代理未启用或未配置\n\n请先设置代理：\n#ttc代理 设置 http://127.0.0.1:7890\n#ttc代理 开启')
+      }
+
+      await this.reply('🔄 正在测试代理连接，请稍后...')
+
+      try {
+        // 管理代理浏览器实例
+        await this.manageProxyBrowser()
+        
+        // 创建新页面进行测试
+        const testPage = await puppeteer.browser.newPage()
+        
+        // 设置页面代理认证
+        if (ttcProxyConfig.proxyUsername || ttcProxyConfig.proxyPassword) {
+          await testPage.authenticate({
+            username: ttcProxyConfig.proxyUsername || '',
+            password: ttcProxyConfig.proxyPassword || ''
+          })
+        }
+        
+        // 设置超时时间
+        testPage.setDefaultNavigationTimeout(15000)
+        
+        // 测试访问一个简单的网站
+        const testUrl = 'http://httpbin.org/ip'
+        await testPage.goto(testUrl, { waitUntil: 'domcontentloaded' })
+        
+        // 获取页面内容
+        const pageContent = await testPage.evaluate(() => document.body.textContent)
+        
+        // 关闭测试页面
+        await testPage.close()
+        
+        // 解析IP信息
+        let ipInfo = '未知'
+        try {
+          const ipMatch = pageContent.match(/"origin":\s*"([^"]+)"/)
+          if (ipMatch) {
+            ipInfo = ipMatch[1]
+          }
+        } catch (parseError) {
+          logger.warn(`[TTC] 解析IP信息失败: ${parseError.message}`)
+        }
+        
+        const successMsg = `✅ 代理连接测试成功！\n\n` +
+          `代理地址：${ttcProxyConfig.proxy}\n` +
+          `代理认证：${ttcProxyConfig.proxyUsername ? `用户名=${ttcProxyConfig.proxyUsername}` : '无'}\n` +
+          `当前IP：${ipInfo}\n\n` +
+          `代理配置正常，可以正常使用交易查询功能`
+        
+        return await this.reply(successMsg)
+        
+      } catch (testError) {
+        logger.error(`[TTC] 代理连接测试失败: ${testError.message}`)
+        
+        const errorMsg = `❌ 代理连接测试失败！\n\n` +
+          `代理地址：${ttcProxyConfig.proxy}\n` +
+          `代理认证：${ttcProxyConfig.proxyUsername ? `用户名=${ttcProxyConfig.proxyUsername}` : '无'}\n` +
+          `错误信息：${testError.message}\n\n` +
+          `请检查：\n` +
+          `• 代理服务器是否正常运行\n` +
+          `• 代理地址和端口是否正确\n` +
+          `• 代理认证信息是否正确\n` +
+          `• 网络连接是否正常`
+        
+        return await this.reply(errorMsg)
+      }
+      
+    } catch (error) {
+      logger.error(`[TTC] 测试代理失败: ${error.message}`)
+      return await this.reply('测试代理失败，请稍后重试')
+    }
+  }
+
   /** 获取最新的debug截图 */
   async getLatestDebugScreenshot() {
     try {
@@ -4133,29 +4545,23 @@ export class ttc extends plugin {
   /** 尝试自动解决验证码 */
   async trySolveCaptcha(browserPage) {
     // 已移除第三方验证码破解服务，现在只支持手动处理
-    //logger.info(`[TTC] 检测到验证码，已移除第三方破解服务，需要手动处理`)
-    
-    // 检测到验证码时截图
     await takeDebugScreenshot(browserPage, {
       line: 3945,
       description: '检测到验证码，需要手动处理'
     })
-    
     return false
   }
 
-  /** 处理复选框阶段 - 已移除，由2captcha自动处理 */
+  /** 处理复选框阶段 - 已移除第三方服务 */
   async handleCheckboxStage(browserPage) {
-    // 此方法已不再使用，复选框由2captcha服务自动处理
-    logger.info(`[TTC] 复选框处理已委托给2captcha服务`)
-    return true
+    logger.info(`[TTC] 已移除第三方验证码服务，无法自动处理复选框`)
+    return false
   }
 
-  /** 处理图片验证阶段 - 已移除，由2captcha自动处理 */
+  /** 处理图片验证阶段 - 已移除第三方服务 */
   async handleImageStage(browserPage) {
-    // 此方法已不再使用，图片验证由2captcha服务自动处理
-    logger.info(`[TTC] 图片验证处理已委托给2captcha服务`)
-    return true
+    logger.info(`[TTC] 已移除第三方验证码服务，无法自动处理图片验证`)
+    return false
   }
 
   /** 解决图片验证挑战 - 改进处理逻辑 */
@@ -5071,7 +5477,7 @@ export class ttc extends plugin {
   /** 获取图片元素 */
   async getImageElements(browserPage) {
     return await browserPage.evaluate(() => {
-      // 尝试多种选择器来获取图片元素 - 改进检测逻辑
+      // 尝试多种选择器来获取图片元素
       const selectors = [
         '.rc-imageselect-tile',
         '.rc-imageselect-target td[role="button"]',
@@ -5082,13 +5488,7 @@ export class ttc extends plugin {
         '.rc-imageselect-target .rc-imageselect-tile[data-rid]',
         '.rc-imageselect-target .rc-imageselect-tile[role="button"]',
         '.rc-imageselect-target .rc-imageselect-tile[tabindex]',
-        '.rc-imageselect-target div[role="button"]',
-        '.rc-imageselect-target .rc-imageselect-tile img',
-        '.rc-imageselect-target .rc-imageselect-tile-background img',
-        '.rc-imageselect-target .rc-imageselect-tile-overlay img',
-        '.rc-imageselect-target .rc-imageselect-tile[data-rid] img',
-        '.rc-imageselect-target .rc-imageselect-tile[role="button"] img',
-        '.rc-imageselect-target .rc-imageselect-tile[tabindex] img'
+        '.rc-imageselect-target div[role="button"]'
       ]
       
       let imgElements = []
@@ -5097,7 +5497,6 @@ export class ttc extends plugin {
       for (const selector of selectors) {
         const elements = document.querySelectorAll(selector)
         if (elements.length > 0) {
-          console.log(`找到图片元素，选择器: ${selector}, 数量: ${elements.length}`)
           imgElements = Array.from(elements)
           break
         }
@@ -5113,13 +5512,12 @@ export class ttc extends plugin {
             for (const selector of selectors) {
               const elements = iframeDoc.querySelectorAll(selector)
               if (elements.length > 0) {
-                console.log(`在iframe中找到图片元素，选择器: ${selector}, 数量: ${elements.length}`)
                 imgElements = Array.from(elements)
                 break
               }
             }
           } catch (e) {
-            console.error('无法访问iframe内容:', e)
+            // 跨域限制，无法访问iframe内容
           }
         }
       }
@@ -5142,97 +5540,13 @@ export class ttc extends plugin {
           tabindex: imgTabindex,
           dataRid: imgDataRid,
           isSelected: img.classList.contains('rc-imageselect-tileselected'),
-          tagName: img.tagName.toLowerCase(),
-          selector: img.matches ? img.matches(selectors.join(',')) : false
+          tagName: img.tagName.toLowerCase()
         }
       })
     })
   }
 
-  // 已移除第三方验证码破解服务
-
-
-
-  // 已移除Capsolver服务
-
-  // 已移除2captcha服务
-
-
-
-  // 已移除submitCapsolverTask函数
-
-  // 已移除waitForCapsolverResult函数
-
-  // 已移除submit2CaptchaTask函数
-
-  // 已移除waitFor2CaptchaResult函数
-
-  /** 应用2captcha解决方案 - 已移除第三方验证码服务 */
-  async apply2CaptchaSolution(browserPage, solution) {
-    logger.info(`[TTC] 已移除2captcha服务，无法应用解决方案`)
-    return false
-  }
-
-
-
-
-
-  /** 应用Capsolver解决方案 - 已移除第三方验证码服务 */
-  async applyCapsolverSolution(browserPage, solution) {
-    // 已移除第三方验证码破解服务
-    logger.info(`[TTC] 已移除Capsolver服务，无法应用解决方案`)
-    return false
-  }
-
-  /** 检查每日使用限制 - 已移除第三方验证码服务 */
-  checkDailyLimit() {
-    // 已移除第三方验证码破解服务
-    logger.info(`[TTC] 已移除所有第三方验证码破解服务，无需检查使用限制`)
-    return false
-  }
-
-  /** 更新每日使用计数 - 已移除第三方验证码服务 */
-  updateDailyUsage() {
-    // 已移除第三方验证码破解服务
-    logger.info(`[TTC] 已移除所有第三方验证码破解服务，无需更新使用计数`)
-  }
-
-  /** 测试API密钥是否有效 */
-  async testApiKey() {
-    // 已移除第三方验证码服务
-    logger.info(`[TTC] 已移除所有第三方验证码破解服务，无需测试API密钥`)
-    return false
-  }
-
-
-
-  /** 测试Capsolver API密钥 - 已移除第三方验证码服务 */
-  async testCapsolverApiKey() {
-    // 已移除第三方验证码破解服务
-    logger.info(`[TTC] 已移除Capsolver服务，无法测试API密钥`)
-    return false
-  }
-
-  /** 测试2captcha API密钥 - 已移除第三方验证码服务 */
-  async test2CaptchaApiKey() {
-    // 已移除第三方验证码破解服务
-    logger.info(`[TTC] 已移除2captcha服务，无法测试API密钥`)
-    return false
-  }
-
-  /** 测试Anti-Captcha API密钥 - 已移除第三方验证码服务 */
-  async testAntiCaptchaApiKey() {
-    // 已移除第三方验证码破解服务
-    logger.info(`[TTC] 已移除Anti-Captcha服务，无法测试API密钥`)
-    return false
-  }
-
-  /** 测试CaptchaAI API密钥 - 已移除第三方验证码服务 */
-  async testCaptchaAIApiKey() {
-    // 已移除第三方验证码破解服务
-    logger.info(`[TTC] 已移除CaptchaAI服务，无法测试API密钥`)
-    return false
-  }
+  // 已移除所有第三方验证码破解服务相关代码
 
   /** 检查验证码是否完全解决 */
   async checkCaptchaSolved(browserPage) {
@@ -5245,52 +5559,36 @@ export class ttc extends plugin {
       
       // 检查主页面验证码状态
       const result = await browserPage.evaluate(() => {
-        console.log('开始检查验证码状态...')
-        
         // 检查是否还有验证码相关元素
         const captchaElements = document.querySelectorAll('.recaptcha, iframe[src*="recaptcha"], div[data-sitekey], .rc-imageselect, .g-recaptcha')
-        console.log('验证码元素数量:', captchaElements.length)
         
         // 检查是否有验证码错误消息
         const captchaError = document.querySelector('.recaptcha-error, .rc-anchor-error-msg, .g-recaptcha-error')
         const hasError = captchaError && captchaError.style.display !== 'none' && captchaError.textContent && captchaError.textContent.trim() !== ''
-        console.log('是否有验证码错误:', hasError)
-        if (hasError && captchaError) {
-          console.log('验证码错误内容:', captchaError.textContent)
-        }
         
         // 检查是否有验证码复选框
         const checkbox = document.querySelector('.recaptcha-checkbox-border, .recaptcha-checkbox, .g-recaptcha-checkbox')
-        console.log('是否有验证码复选框:', !!checkbox)
         
         // 检查页面是否已经加载了搜索结果
         const searchResults = document.querySelector('.search-results, .results-table, table, .item-list, .ttc-results')
         const hasResults = searchResults && searchResults.children.length > 0
-        console.log('是否有搜索结果:', hasResults)
         
         // 检查页面标题是否包含搜索结果
         const title = document.title || ''
         const hasSearchTitle = title.includes('搜索结果') || title.includes('Search Result') || title.includes('Tamriel Trade Centre')
-        console.log('页面标题:', title)
-        console.log('标题是否包含搜索结果:', hasSearchTitle)
         
         // 检查URL是否已经跳转到结果页面
         const currentUrl = window.location.href
         const isResultPage = currentUrl.includes('SearchResult') || currentUrl.includes('search') || currentUrl.includes('result')
         const isDonationPage = currentUrl.includes('donate') || currentUrl.includes('donation') || currentUrl.includes('support')
-        console.log('当前URL:', currentUrl)
-        console.log('是否是结果页面:', isResultPage)
-        console.log('是否是捐款页面:', isDonationPage)
         
         // 检查是否有"无结果"或"没有找到"的消息
         const noResultMsg = document.querySelector('.no-results, .no-data, .empty-results')
         const hasNoResultMsg = noResultMsg && noResultMsg.textContent && (noResultMsg.textContent.includes('没有找到') || noResultMsg.textContent.includes('No results'))
-        console.log('是否有无结果消息:', hasNoResultMsg)
         
         // 检查是否有加载状态
         const loadingElements = document.querySelectorAll('.loading, .spinner, .progress')
         const isLoading = loadingElements.length > 0
-        console.log('是否正在加载:', isLoading)
         
         // 检查是否有真实的交易数据（不是虚假数据）
         const tradeTable = document.querySelector('table, .search-results, .results-table, .item-list, .ttc-results')
@@ -5308,7 +5606,6 @@ export class ttc extends plugin {
                   text.includes('Please complete the captcha test to continue') ||
                   text.includes('验证码') || text.includes('captcha')) {
                 fakeDataDetected = true
-                console.log('检测到虚假数据：包含验证码提示')
               }
             }
             
@@ -5317,21 +5614,12 @@ export class ttc extends plugin {
           }
         }
         
-        console.log('有真实数据:', hasRealData)
-        console.log('检测到虚假数据:', fakeDataDetected)
-        
         // 综合判断验证码是否已解决
         const noCaptcha = captchaElements.length === 0 && !hasError && !checkbox
         const hasData = hasResults || hasSearchTitle || isResultPage || hasNoResultMsg
         const notLoading = !isLoading
         const notDonationPage = !isDonationPage
         const notFakeData = !fakeDataDetected
-        
-        console.log('无验证码元素:', noCaptcha)
-        console.log('有数据:', hasData)
-        console.log('不在加载:', notLoading)
-        console.log('不是捐款页面:', notDonationPage)
-        console.log('不是虚假数据:', notFakeData)
         
         // 如果没有任何验证码元素且没有错误消息，或者已经有搜索结果，则认为已解决
         // 但如果跳转到捐款页面或检测到虚假数据，说明验证码解决失败
@@ -5367,10 +5655,8 @@ export class ttc extends plugin {
       
       if (result.isSolved) {
         logger.info(`[TTC] 验证码已成功解决`)
-        logger.info(`[TTC] 验证码状态详情: ${JSON.stringify(result.details)}`)
       } else {
         logger.warn(`[TTC] 验证码仍未解决`)
-        logger.info(`[TTC] 验证码状态详情: ${JSON.stringify(result.details)}`)
       }
       
       return result.isSolved
