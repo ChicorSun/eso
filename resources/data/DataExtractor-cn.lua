@@ -310604,7 +310604,7 @@ DataExtractorSavedVariables =
                                         {
                                             ["styleId"] = 0,
                                             ["style"] = "",
-                                            ["icon"] = "/esoui/art/icons/icon_missing.dds",
+                                            ["icon"] = "/esoui/art/icons/gear_breton_light_head_d.dds",
                                         },
                                         ["重型"] = 
                                         {

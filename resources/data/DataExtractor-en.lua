@@ -177038,7 +177038,7 @@ DataExtractorSavedVariables =
                                         },
                                         ["Light"] = 
                                         {
-                                            ["icon"] = "/esoui/art/icons/icon_missing.dds",
+                                            ["icon"] = "/esoui/art/icons/gear_breton_light_head_d.dds",
                                             ["style"] = "",
                                             ["styleId"] = 0,
                                         },
