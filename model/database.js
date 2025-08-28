@@ -1618,6 +1618,7 @@ class database {
                 }
                 if(enFindByPlace)
                 {
+                  let places = await this.get_setsPlace(setKey)
                   if((places.loot_place_cn).toLowerCase().includes(eachAbbr.name))
                   {
                     isThisOne = true
