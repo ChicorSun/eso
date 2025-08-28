@@ -428,7 +428,7 @@ export let setType = [
 
   "试炼",
   "神话",
-  "考古",
+  "怪物",
   "怪物",
   "职业专属"
   ]
@@ -774,6 +774,7 @@ class database {
 
     await this.enhance_database()
     await this.init_databaseDG()
+    //await this.list_setsData()
   }
 
   async enhance_database () {
@@ -782,16 +783,179 @@ class database {
     //logger.info(skillLineBuffs)
   }
 
+  async get_setsPlace (setKey) {
+      let loot_place_cn = ''
+      let loot_place_en = ''
+      let zone_place_cn = ''
+      let zone_place_en = ''
+      let cate_place_cn = ''
+      let cate_place_en = ''
+
+      if((setsData[setKey].type == 1) || (setsData[setKey].type == 6) || (setsData[setKey].type == 7) || (setsData[setKey].type == 8) || (setsData[setKey].type == 13) || (setsData[setKey].type == 14) || (setsData[setKey].type == 15))
+      {
+          let index = 0
+          let placeStrCN = ''
+          let placeStrEN = ''
+          var keysPlaceCN = Object.keys(setsDataCN[setsData[setKey].id].place)
+          index = 0
+          for (let placeKey of keysPlaceCN) {
+              index++
+              if(index == 1)
+              {
+                  continue;
+              }
+              if(placeStrCN == '')
+              {
+                  placeStrCN = setsDataCN[setsData[setKey].id].place[placeKey]
+              }
+              else
+              {
+                  placeStrCN = placeStrCN + ',' + setsDataCN[setsData[setKey].id].place[placeKey]
+              }
+          }
+          var keysPlaceEN = Object.keys(setsData[setKey].place)
+          index = 0
+          for (let placeKey of keysPlaceEN) {
+              index++
+              if(index == 1)
+              {
+                  continue;
+              }
+              if(placeStrEN == '')
+              {
+                  placeStrEN = setsData[setKey].place[placeKey]
+              }
+              else
+              {
+                  placeStrEN = placeStrEN + ',' + setsData[setKey].place[placeKey]
+              }
+          }
+          loot_place_cn = placeStrCN
+          zone_place_cn = setsDataCN[setsData[setKey].id].place[0]
+          cate_place_cn = setsDataCN[setsData[setKey].id].categoryName
+          loot_place_en = placeStrEN
+          zone_place_en = setsData[setKey].place[0]
+          cate_place_en = setsData[setKey].categoryName
+          if(loot_place_cn.length == 0)
+          {
+              loot_place_cn = cate_place_cn
+          }
+          if(loot_place_en.length == 0)
+          {
+              loot_place_en = cate_place_en
+          }
+          if(setsData[setKey].type == 15)
+          {
+              loot_place_en = setsDataCN[setsData[setKey].id].categoryName
+          }
+      }
+      else if((setsData[setKey].type == 2) || (setsData[setKey].type == 9) || (setsData[setKey].type == 11))
+      {
+          loot_place_cn = setsDataCN[setsData[setKey].id].categoryName
+          zone_place_cn = setsDataCN[setsData[setKey].id].categoryName
+          cate_place_cn = setsDataCN[setsData[setKey].id].categoryName
+          loot_place_en = setsData[setKey].categoryName
+          zone_place_en = setsData[setKey].categoryName
+          cate_place_en = setsData[setKey].categoryName
+      }
+      else if((setsData[setKey].type == 3) || (setsData[setKey].type == 4) || (setsData[setKey].type == 5) || (setsData[setKey].type == 12))
+      {
+          let placeStrCN = ''
+          let placeStrEN = ''
+          var keysPlaceCN = Object.keys(setsDataCN[setsData[setKey].id].place)
+          for (let placeKey of keysPlaceCN) {
+              if(placeStrCN == '')
+              {
+                  placeStrCN = setsDataCN[setsData[setKey].id].place[placeKey]
+              }
+              else
+              {
+                  placeStrCN = placeStrCN + ',' + setsDataCN[setsData[setKey].id].place[placeKey]
+              }
+          }
+          var keysPlaceEN = Object.keys(setsData[setKey].place)
+          for (let placeKey of keysPlaceEN) {
+              if(placeStrEN == '')
+              {
+                  placeStrEN = setsData[setKey].place[placeKey]
+              }
+              else
+              {
+                  placeStrEN = placeStrEN + ',' + setsData[setKey].place[placeKey]
+              }
+          }
+          loot_place_cn = placeStrCN
+          zone_place_cn = ''
+          cate_place_cn = setsDataCN[setsData[setKey].id].categoryName
+          loot_place_en = placeStrEN
+          zone_place_en = ''
+          cate_place_en = setsData[setKey].categoryName
+          if(loot_place_cn.length == 0)
+          {
+              loot_place_cn = cate_place_cn
+          }
+          if(loot_place_en.length == 0)
+          {
+              loot_place_en = cate_place_en
+          }
+      }
+      else
+      {
+          loot_place_cn = setsDataCN[setsData[setKey].id].place[0]
+          zone_place_cn = setsDataCN[setsData[setKey].id].place[0]
+          cate_place_cn = setsDataCN[setsData[setKey].id].categoryName
+          loot_place_en = setsData[setKey].place[0]
+          zone_place_en = setsData[setKey].place[0]
+          cate_place_en = setsData[setKey].categoryName
+      }
+            
+      let places = {
+          loot_place_cn: loot_place_cn,
+          zone_place_cn: zone_place_cn,
+          cate_place_cn: cate_place_cn,
+          loot_place_en: loot_place_en,
+          zone_place_en: zone_place_en,
+          cate_place_en: cate_place_en
+      };
+
+      return places
+  }
+
+  async list_setsData () {
+    var keysSet = Object.keys(setsData)
+    var numSets = keysSet.length
+
+    // 创建一个包含 setKey 和 type 的数组用于排序
+    var sortArray = []
+    for (let setKey of keysSet) {
+      sortArray.push({
+        setKey: setKey,
+        type: setsData[setKey].type
+      })
+    }
+
+    // 按照 type 排序，相同 type 的情况下按照 setKey 排序
+    sortArray.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type - b.type
+      }
+      return a.setKey.localeCompare(b.setKey)
+    })
+
+    // 按照排序后的顺序输出数据
+    for (let item of sortArray) {
+        let setKey = item.setKey
+        let places = await this.get_setsPlace(setKey)
+
+        logger.info('[' + setsDataCN[setsData[setKey].id].id + '|' + setsData[setKey].type + '(' + setType[setsData[setKey].type - 1] + ')' + ']' + setsDataCN[setsData[setKey].id].name + '|<' + places.loot_place_cn + '>||<' + places.loot_place_en + '>')
+    }
+  }
+
   async enhance_setsData () {
     var keysSet = Object.keys(setsData)
     var numSets = keysSet.length
 
     for (let setKey of keysSet) {
-      if(setsData[setKey].type == 15)
-      {
-        setsDataCN[setsData[setKey].id].place = "无尽档案塔"
-      }
-
       if(setsData[setKey].name == "Undaunted Bastion")
       {
         if (setsData[setKey].styles.Apparel.Head.Light)
@@ -806,26 +970,26 @@ class database {
 
       if(setsData[setKey].name == "Pillager's Profit")
       {
-        if(setsDataCN[setsData[setKey].id].bonuses['5'].includes('高级力量'))
+        if(setsDataCN[setsData[setKey].id].bonuses['5']['4'].includes('高级力量'))
         {
-          setsDataCN[setsData[setKey].id].bonuses['5'] = "（5件套）[ESOBOT改]在战斗中施放终极技能时，根据你消耗的终极点数量每2秒为12米范围内最多11名其他小队成员提供持续10秒的终极点恢复，每2秒恢复一次，恢复量为施放者消耗终极点的5%，单次恢复值最大为20终极点。"
+          setsDataCN[setsData[setKey].id].bonuses['5']['4'] = "（5件套）[ESOBOT改]在战斗中施放终极技能时，根据你消耗的终极点数量每2秒为12米范围内最多11名其他小队成员提供持续10秒的终极点恢复，每2秒恢复一次，恢复量为施放者消耗终极点的5%，单次恢复值最大为20终极点。"
         }
         //logger.info(setsDataCN[setsData[setKey].id])
       }
       if(setsData[setKey].name == "Perfected Pillager's Profit")
       {
-        if(setsDataCN[setsData[setKey].id].bonuses['6'].includes('高级力量'))
+        if(setsDataCN[setsData[setKey].id].bonuses['5']['5'].includes('高级力量'))
         {
-          setsDataCN[setsData[setKey].id].bonuses['6'] = "（5件套）[ESOBOT改]在战斗中施放终极技能时，根据你消耗的终极点数量每2秒为12米范围内最多11名其他小队成员提供持续10秒的终极点恢复，每2秒恢复一次，恢复量为施放者消耗终极点的5%，单次恢复值最大为20终极点。"
+          setsDataCN[setsData[setKey].id].bonuses['5']['5'] = "（5件套）[ESOBOT改]在战斗中施放终极技能时，根据你消耗的终极点数量每2秒为12米范围内最多11名其他小队成员提供持续10秒的终极点恢复，每2秒恢复一次，恢复量为施放者消耗终极点的5%，单次恢复值最大为20终极点。"
         }
         //logger.info(setsDataCN[setsData[setKey].id])
       }
 
       if(setsData[setKey].name == "Hollowfang Thirst")
       {
-        if(setsDataCN[setsData[setKey].id].bonuses['5'].includes('|cffffff1750|r6'))
+        if(setsDataCN[setsData[setKey].id].bonuses['5']['4'].includes('|cffffff1750|r6'))
         {
-          setsDataCN[setsData[setKey].id].bonuses['5'] = "（5件套）对目标造成暴击治疗或暴击伤害时，在目标位置生成一个血球。2秒后血球爆炸，为你和血球6米范围内的队伍成员恢复1750魔力，并附加次级活力，持续9秒，其受到的治疗和伤害护盾强度提高6%。该效果每9秒可触发一次。"
+          setsDataCN[setsData[setKey].id].bonuses['5']['4'] = "（5件套）对目标造成暴击治疗或暴击伤害时，在目标位置生成一个血球。2秒后血球爆炸，为你和血球6米范围内的队伍成员恢复1750魔力，并附加次级活力，持续9秒，其受到的治疗和伤害护盾强度提高6%。该效果每9秒可触发一次。"
         }
         //logger.info(setsData[setKey])
         //logger.info(setsDataCN[setsData[setKey].id])
@@ -1139,24 +1303,27 @@ class database {
     var numSets = keysSet.length
 
     for (let setKey of keysSet) {
+      let places = await this.get_setsPlace(setKey)
+      //logger.info('[' + setsDataCN[setsData[setKey].id].id + '|' + setsData[setKey].type + '(' + setType[setsData[setKey].type - 1] + ')' + ']' + setsDataCN[setsData[setKey].id].name + '|<' + places.loot_place_cn + '>||<' + places.loot_place_en + '>')
+
       if(setsData[setKey].type == 8)
       {
-        var indexInList = await this.isInList(setsData[setKey].place.split(',')[0], dgList)
+        var indexInList = await this.isInList(places.loot_place_en, dgList)
         if(indexInList > -1)
         {
           dgSetsTable[indexInList][0] = setsData[setKey].id
-          //logger.info("[Y][No." + dgIndex + "]" + setsData[setKey].place.split(',')[0] + "|" + setsDataCN[setsData[setKey].id].place.split(',')[0] + "|")
+          //logger.info("[Y][No." + dgIndex + "]" + places.loot_place_en + "|" + places.loot_place_cn + "|")
         }
         else
         {
           dgSetsTable[dgIndex][0] = setsData[setKey].id
-          //logger.info("[N][No." + dgIndex + "]" + setsData[setKey].place.split(',')[0] + "|" + setsDataCN[setsData[setKey].id].place.split(',')[0] + "|")
-          dgList[dgIndex] = setsData[setKey].place.split(',')[0]
+          //logger.info("[N][No." + dgIndex + "]" + places.loot_place_en + "|" + places.loot_place_cn + "|")
+          dgList[dgIndex] = places.loot_place_en
         }
         dgIndex = dgIndex+1
-        //logger.info("[No." + dgIndex + "]SetID:" + setKey + " " + setsData[setKey].name + " [" + setsData[setKey].place + "]")
-        //logger.info("[No." + dgIndex + "]" + setsData[setKey].place.split(',')[0] + "|" + setsDataCN[setsData[setKey].id].place.split(',')[0] + "|")
-        //logger.info(setsDataCN[setsData[setKey].id].bonuses)
+        //logger.info("[No." + dgIndex + "]SetID:" + setKey + " " + setsData[setKey].name + " [" + places.loot_place_en + "]")
+        //logger.info("[No." + dgIndex + "]" + places.loot_place_en + "|" + places.loot_place_cn + "|")
+        //logger.info(setsDataCN[setsData[setKey].id].bonuses['5'])
       }
     }
     numDungeons = dgIndex
@@ -1165,7 +1332,8 @@ class database {
     for (let setKey of keysSet) {
       if(setsData[setKey].type == 6)
       {
-        for (let setPlace of setsData[setKey].place.split(',')) {
+        let places = await this.get_setsPlace(setKey)
+        for (let setPlace of places.loot_place_en.split(',')) {
           var indexInList = await this.isInList(setPlace, dgList)
           if(indexInList > -1)
           {
@@ -1397,11 +1565,12 @@ class database {
         }
         if(enFindByPlace)
         {
-          if(notAbbrSet && (setsDataCN[setsData[setKey].id].place.split(',')[0]).toLowerCase().includes(name))
+          let places = await this.get_setsPlace(setKey)
+          if(notAbbrSet && (places.loot_place_cn).toLowerCase().includes(name))
           {
             isThisOne = true
           }
-          if(notAbbrSet && (setsData[setKey].place.split(',')[0]).toLowerCase().includes(name))
+          if(notAbbrSet && (places.loot_place_en).toLowerCase().includes(name))
           {
             isThisOne = true
           }
@@ -1449,7 +1618,7 @@ class database {
                 }
                 if(enFindByPlace)
                 {
-                  if((setsDataCN[setsData[setKey].id].place.split(',')[0]).toLowerCase().includes(eachAbbr.name))
+                  if((places.loot_place_cn).toLowerCase().includes(eachAbbr.name))
                   {
                     isThisOne = true
                     break;
@@ -2295,34 +2464,17 @@ class database {
       }
     }     
 
-    if(setsData[setKey].type == 12)
-    {
-      setData.atlasData[1].place = '考古'
-      setData.atlasData[1].place_en = ''
-    }
-    else if(setsData[setKey].type == 2)
-    {
-      setData.atlasData[1].place = '角斗场'
-      setData.atlasData[1].place_en = ''
-    }
-    else if(setsData[setKey].type == 6)
-    {
-      setData.atlasData[1].place = (setsDataCN[setsData[setKey].id].place.split(',')[0]).replace(" II", "").replace(" I", "")
-      setData.atlasData[1].place_en = (setsData[setKey].place.split(',')[0]).replace(" II", "").replace(" I", "")
-    }
-    else
-    {
-      setData.atlasData[1].place = setsDataCN[setsData[setKey].id].place.split(',')[0]
-      setData.atlasData[1].place_en = setsData[setKey].place.split(',')[0]
-    }
+    let places = await this.get_setsPlace(setKey)
+    setData.atlasData[1].place = places.loot_place_cn
+    setData.atlasData[1].place_en = places.loot_place_en
 
     if(showEnglish)
     {
-      setData.atlasData[1].msg = await this.bonuses2msg(setsData[setKey].bonuses)
+      setData.atlasData[1].msg = await this.bonuses2msg(setsData[setKey].bonuses['5'])
     }
     else
     {
-      setData.atlasData[1].msg = await this.bonuses2msg(setsDataCN[setsData[setKey].id].bonuses)
+      setData.atlasData[1].msg = await this.bonuses2msg(setsDataCN[setsData[setKey].id].bonuses['5'])
     }
     
     /*
@@ -2894,7 +3046,7 @@ class database {
             {
               buildData.buildsData[1].gear[index].type_color = 'rgb(221, 221, 221)'
             }
-            if(setData.atlasData[1].place == '考古')
+            if(setData.atlasData[1].type == '神话')
             {
               buildData.buildsData[1].gear[index].name_cn = setData.atlasData[1].name
             }
@@ -2909,7 +3061,7 @@ class database {
             {
               buildData.buildsData[1].gear[index].color = 'rgb(255, 230, 45)'
             }
-            if(setData.atlasData[1].place == '考古')
+            if(setData.atlasData[1].type == '神话')
             {
               buildData.buildsData[1].gear[index].color = 'rgb(255, 110, 0)'
             }

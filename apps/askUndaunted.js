@@ -130,11 +130,13 @@ export class askUndaunted extends plugin {
 
     //判断是否需要更新无畏者变量并执行
     let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD').replace(/是0/g, "是").replace(/点0/g, "点")
+    let places = ''
     if(now != unData.generalData[0].date)
     {
       await this.cal_index(now)
-      unData.generalData[1].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.t0][0]].id].place.split(',')[0]
-      unData.generalData[1].list[0].desc = "<"+setsData[dgSetsTable[unIndex.t0][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.t0][0])
+      unData.generalData[1].list[0].title = places.loot_place_cn
+      unData.generalData[1].list[0].desc = "<"+places.loot_place_en+">"
       unData.generalData[1].list[1].icon = setsData[dgSetsTable[unIndex.t0][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unData.generalData[1].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.t0][0]].id].name
       unData.generalData[1].list[1].desc = "<"+setsData[dgSetsTable[unIndex.t0][0]].name+">"
@@ -148,8 +150,9 @@ export class askUndaunted extends plugin {
       unData.generalData[1].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.t0][3]].id].name
       unData.generalData[1].list[4].desc = "<"+setsData[dgSetsTable[unIndex.t0][3]].name+">"
 
-      unData.generalData[1].list[5].title = setsDataCN[setsData[dgSetsTable[unIndex.t1][0]].id].place.split(',')[0]
-      unData.generalData[1].list[5].desc = "<"+setsData[dgSetsTable[unIndex.t1][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.t1][0])
+      unData.generalData[1].list[5].title = places.loot_place_cn
+      unData.generalData[1].list[5].desc = "<"+places.loot_place_en+">"
       unData.generalData[1].list[6].icon = setsData[dgSetsTable[unIndex.t1][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unData.generalData[1].list[6].title = setsDataCN[setsData[dgSetsTable[unIndex.t1][0]].id].name
       unData.generalData[1].list[6].desc = "<"+setsData[dgSetsTable[unIndex.t1][0]].name+">"
@@ -163,8 +166,9 @@ export class askUndaunted extends plugin {
       unData.generalData[1].list[9].title = setsDataCN[setsData[dgSetsTable[unIndex.t1][3]].id].name
       unData.generalData[1].list[9].desc = "<"+setsData[dgSetsTable[unIndex.t1][3]].name+">"
 
-      unData.generalData[1].list[10].title = setsDataCN[setsData[dgSetsTable[unIndex.t2][0]].id].place.split(',')[0]
-      unData.generalData[1].list[10].desc = "<"+setsData[dgSetsTable[unIndex.t2][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.t2][0])
+      unData.generalData[1].list[10].title = places.loot_place_cn
+      unData.generalData[1].list[10].desc = "<"+places.loot_place_en+">"
       unData.generalData[1].list[11].icon = setsData[dgSetsTable[unIndex.t2][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unData.generalData[1].list[11].title = setsDataCN[setsData[dgSetsTable[unIndex.t2][0]].id].name
       unData.generalData[1].list[11].desc = "<"+setsData[dgSetsTable[unIndex.t2][0]].name+">"
@@ -178,19 +182,25 @@ export class askUndaunted extends plugin {
       unData.generalData[1].list[14].title = setsDataCN[setsData[dgSetsTable[unIndex.t2][3]].id].name
       unData.generalData[1].list[14].desc = "<"+setsData[dgSetsTable[unIndex.t2][3]].name+">"
 
-      unData.generalData[2].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.y0][0]].id].place.split(',')[0]
-      unData.generalData[2].list[0].desc = "<"+setsData[dgSetsTable[unIndex.y0][0]].place.split(',')[0]+">"
-      unData.generalData[2].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.y1][0]].id].place.split(',')[0]
-      unData.generalData[2].list[1].desc = "<"+setsData[dgSetsTable[unIndex.y1][0]].place.split(',')[0]+">"
-      unData.generalData[2].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.y2][0]].id].place.split(',')[0]
-      unData.generalData[2].list[2].desc = "<"+setsData[dgSetsTable[unIndex.y2][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.y0][0])
+      unData.generalData[2].list[0].title = places.loot_place_cn
+      unData.generalData[2].list[0].desc = "<"+places.loot_place_en+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.y1][0])
+      unData.generalData[2].list[1].title = places.loot_place_cn
+      unData.generalData[2].list[1].desc = "<"+places.loot_place_en+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.y2][0])
+      unData.generalData[2].list[2].title = places.loot_place_cn
+      unData.generalData[2].list[2].desc = "<"+places.loot_place_en+">"
 
-      unData.generalData[3].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.tm0][0]].id].place.split(',')[0]
-      unData.generalData[3].list[0].desc = "<"+setsData[dgSetsTable[unIndex.tm0][0]].place.split(',')[0]+">"
-      unData.generalData[3].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.tm1][0]].id].place.split(',')[0]
-      unData.generalData[3].list[1].desc = "<"+setsData[dgSetsTable[unIndex.tm1][0]].place.split(',')[0]+">"
-      unData.generalData[3].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.tm2][0]].id].place.split(',')[0]
-      unData.generalData[3].list[2].desc = "<"+setsData[dgSetsTable[unIndex.tm2][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.tm0][0])
+      unData.generalData[3].list[0].title = places.loot_place_cn
+      unData.generalData[3].list[0].desc = "<"+places.loot_place_en+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.tm1][0])
+      unData.generalData[3].list[1].title = places.loot_place_cn
+      unData.generalData[3].list[1].desc = "<"+places.loot_place_en+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.tm2][0])
+      unData.generalData[3].list[2].title = places.loot_place_cn
+      unData.generalData[3].list[2].desc = "<"+places.loot_place_en+">"
 
       unData.generalData[0].date = now
       //unData.generalData[2].group = '明日无畏';
@@ -221,86 +231,90 @@ export class askUndaunted extends plugin {
 
     //判断是否需要更新无畏者变量并执行
     let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD').replace(/是0/g, "是").replace(/点0/g, "点")
+    let places = ''
     if(now != unTodayData.generalData[0].date)
     {
       await this.cal_index(now)
-      unTodayData.generalData[1].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.t0][0]].id].place.split(',')[0]
-      unTodayData.generalData[1].list[0].msg[0] = "<"+setsData[dgSetsTable[unIndex.t0][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.t0][0])
+      unTodayData.generalData[1].list[0].title = places.loot_place_cn
+      unTodayData.generalData[1].list[0].msg[0] = "<"+places.loot_place_en+">"
       
       unTodayData.generalData[1].list[1].icon = setsData[dgSetsTable[unIndex.t0][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[1].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.t0][0]].id].name
       unTodayData.generalData[1].list[1].desc = "<"+setsData[dgSetsTable[unIndex.t0][0]].name+">"
-      unTodayData.generalData[1].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t0][0]].id].bonuses)
+      unTodayData.generalData[1].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t0][0]].id].bonuses['5'])
 
 
       unTodayData.generalData[1].list[2].icon = setsData[dgSetsTable[unIndex.t0][1]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[1].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.t0][1]].id].name
       unTodayData.generalData[1].list[2].desc = "<"+setsData[dgSetsTable[unIndex.t0][1]].name+">"
-      unTodayData.generalData[1].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t0][1]].id].bonuses)
+      unTodayData.generalData[1].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t0][1]].id].bonuses['5'])
 
 
       unTodayData.generalData[1].list[3].icon = setsData[dgSetsTable[unIndex.t0][2]].styles.Apparel.Head.Medium.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[1].list[3].title = setsDataCN[setsData[dgSetsTable[unIndex.t0][2]].id].name
       unTodayData.generalData[1].list[3].desc = "<"+setsData[dgSetsTable[unIndex.t0][2]].name+">"
-      unTodayData.generalData[1].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t0][2]].id].bonuses)
+      unTodayData.generalData[1].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t0][2]].id].bonuses['5'])
 
 
       unTodayData.generalData[1].list[4].icon = setsData[dgSetsTable[unIndex.t0][3]].styles.Apparel.Head.Heavy.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[1].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.t0][3]].id].name
       unTodayData.generalData[1].list[4].desc = "<"+setsData[dgSetsTable[unIndex.t0][3]].name+">"
-      unTodayData.generalData[1].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t0][3]].id].bonuses)
+      unTodayData.generalData[1].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t0][3]].id].bonuses['5'])
       /*----------------------------------------------------------------------------*/
-      unTodayData.generalData[2].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.t1][0]].id].place.split(',')[0]
-      unTodayData.generalData[2].list[0].msg[0] = "<"+setsData[dgSetsTable[unIndex.t1][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.t1][0])
+      unTodayData.generalData[2].list[0].title = places.loot_place_cn
+      unTodayData.generalData[2].list[0].msg[0] = "<"+places.loot_place_en+">"
       
       unTodayData.generalData[2].list[1].icon = setsData[dgSetsTable[unIndex.t1][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[2].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.t1][0]].id].name
       unTodayData.generalData[2].list[1].desc = "<"+setsData[dgSetsTable[unIndex.t1][0]].name+">"
-      unTodayData.generalData[2].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t1][0]].id].bonuses)
+      unTodayData.generalData[2].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t1][0]].id].bonuses['5'])
 
 
       unTodayData.generalData[2].list[2].icon = setsData[dgSetsTable[unIndex.t1][1]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[2].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.t1][1]].id].name
       unTodayData.generalData[2].list[2].desc = "<"+setsData[dgSetsTable[unIndex.t1][1]].name+">"
-      unTodayData.generalData[2].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t1][1]].id].bonuses)
+      unTodayData.generalData[2].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t1][1]].id].bonuses['5'])
 
 
       unTodayData.generalData[2].list[3].icon = setsData[dgSetsTable[unIndex.t1][2]].styles.Apparel.Head.Medium.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[2].list[3].title = setsDataCN[setsData[dgSetsTable[unIndex.t1][2]].id].name
       unTodayData.generalData[2].list[3].desc = "<"+setsData[dgSetsTable[unIndex.t1][2]].name+">"
-      unTodayData.generalData[2].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t1][2]].id].bonuses)
+      unTodayData.generalData[2].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t1][2]].id].bonuses['5'])
 
 
       unTodayData.generalData[2].list[4].icon = setsData[dgSetsTable[unIndex.t1][3]].styles.Apparel.Head.Heavy.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[2].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.t1][3]].id].name
       unTodayData.generalData[2].list[4].desc = "<"+setsData[dgSetsTable[unIndex.t1][3]].name+">"
-      unTodayData.generalData[2].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t1][3]].id].bonuses)
+      unTodayData.generalData[2].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t1][3]].id].bonuses['5'])
       /*----------------------------------------------------------------------------*/
-      unTodayData.generalData[3].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.t2][0]].id].place.split(',')[0]
-      unTodayData.generalData[3].list[0].msg[0] = "<"+setsData[dgSetsTable[unIndex.t2][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.t2][0])
+      unTodayData.generalData[3].list[0].title = places.loot_place_cn
+      unTodayData.generalData[3].list[0].msg[0] = "<"+places.loot_place_en+">"
       
       unTodayData.generalData[3].list[1].icon = setsData[dgSetsTable[unIndex.t2][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[3].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.t2][0]].id].name
       unTodayData.generalData[3].list[1].desc = "<"+setsData[dgSetsTable[unIndex.t2][0]].name+">"
-      unTodayData.generalData[3].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t2][0]].id].bonuses)
+      unTodayData.generalData[3].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t2][0]].id].bonuses['5'])
 
 
       unTodayData.generalData[3].list[2].icon = setsData[dgSetsTable[unIndex.t2][1]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[3].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.t2][1]].id].name
       unTodayData.generalData[3].list[2].desc = "<"+setsData[dgSetsTable[unIndex.t2][1]].name+">"
-      unTodayData.generalData[3].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t2][1]].id].bonuses)
+      unTodayData.generalData[3].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t2][1]].id].bonuses['5'])
 
 
       unTodayData.generalData[3].list[3].icon = setsData[dgSetsTable[unIndex.t2][2]].styles.Apparel.Head.Medium.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[3].list[3].title = setsDataCN[setsData[dgSetsTable[unIndex.t2][2]].id].name
       unTodayData.generalData[3].list[3].desc = "<"+setsData[dgSetsTable[unIndex.t2][2]].name+">"
-      unTodayData.generalData[3].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t2][2]].id].bonuses)
+      unTodayData.generalData[3].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t2][2]].id].bonuses['5'])
 
 
       unTodayData.generalData[3].list[4].icon = setsData[dgSetsTable[unIndex.t2][3]].styles.Apparel.Head.Heavy.icon.split('.')[0].split('icons/')[1]
       unTodayData.generalData[3].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.t2][3]].id].name
       unTodayData.generalData[3].list[4].desc = "<"+setsData[dgSetsTable[unIndex.t2][3]].name+">"
-      unTodayData.generalData[3].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t2][3]].id].bonuses)
+      unTodayData.generalData[3].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t2][3]].id].bonuses['5'])
 
       unTodayData.generalData[0].date = now
       //unTodayData.generalData[2].group = '明日无畏';
@@ -331,77 +345,81 @@ export class askUndaunted extends plugin {
 
     //判断是否需要更新无畏者变量并执行
     let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD').replace(/是0/g, "是").replace(/点0/g, "点")
+    let places = ''
     if(now != unYesterdayData.generalData[0].date)
     {
       await this.cal_index(now)
-      unYesterdayData.generalData[1].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.y0][0]].id].place.split(',')[0]
-      unYesterdayData.generalData[1].list[0].msg[0] = "<"+setsData[dgSetsTable[unIndex.y0][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.y0][0])
+      unYesterdayData.generalData[1].list[0].title = places.loot_place_cn
+      unYesterdayData.generalData[1].list[0].msg[0] = "<"+places.loot_place_en+">"
       
       unYesterdayData.generalData[1].list[1].icon = setsData[dgSetsTable[unIndex.y0][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[1].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.y0][0]].id].name
       unYesterdayData.generalData[1].list[1].desc = "<"+setsData[dgSetsTable[unIndex.y0][0]].name+">"
-      unYesterdayData.generalData[1].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y0][0]].id].bonuses)
+      unYesterdayData.generalData[1].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y0][0]].id].bonuses['5'])
 
       unYesterdayData.generalData[1].list[2].icon = setsData[dgSetsTable[unIndex.y0][1]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[1].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.y0][1]].id].name
       unYesterdayData.generalData[1].list[2].desc = "<"+setsData[dgSetsTable[unIndex.y0][1]].name+">"
-      unYesterdayData.generalData[1].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y0][1]].id].bonuses)
+      unYesterdayData.generalData[1].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y0][1]].id].bonuses['5'])
 
       unYesterdayData.generalData[1].list[3].icon = setsData[dgSetsTable[unIndex.y0][2]].styles.Apparel.Head.Medium.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[1].list[3].title = setsDataCN[setsData[dgSetsTable[unIndex.y0][2]].id].name
       unYesterdayData.generalData[1].list[3].desc = "<"+setsData[dgSetsTable[unIndex.y0][2]].name+">"
-      unYesterdayData.generalData[1].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y0][2]].id].bonuses)
+      unYesterdayData.generalData[1].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y0][2]].id].bonuses['5'])
 
       unYesterdayData.generalData[1].list[4].icon = setsData[dgSetsTable[unIndex.y0][3]].styles.Apparel.Head.Heavy.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[1].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.y0][3]].id].name
       unYesterdayData.generalData[1].list[4].desc = "<"+setsData[dgSetsTable[unIndex.y0][3]].name+">"
-      unYesterdayData.generalData[1].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y0][3]].id].bonuses)
+      unYesterdayData.generalData[1].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y0][3]].id].bonuses['5'])
       /*----------------------------------------------------------------------------*/
-      unYesterdayData.generalData[2].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.y1][0]].id].place.split(',')[0]
-      unYesterdayData.generalData[2].list[0].msg[0] = "<"+setsData[dgSetsTable[unIndex.y1][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.y1][0])
+      unYesterdayData.generalData[2].list[0].title = places.loot_place_cn
+      unYesterdayData.generalData[2].list[0].msg[0] = "<"+places.loot_place_en+">"
       
       unYesterdayData.generalData[2].list[1].icon = setsData[dgSetsTable[unIndex.y1][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[2].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.y1][0]].id].name
       unYesterdayData.generalData[2].list[1].desc = "<"+setsData[dgSetsTable[unIndex.y1][0]].name+">"
-      unYesterdayData.generalData[2].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y1][0]].id].bonuses)
+      unYesterdayData.generalData[2].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y1][0]].id].bonuses['5'])
 
       unYesterdayData.generalData[2].list[2].icon = setsData[dgSetsTable[unIndex.y1][1]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[2].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.y1][1]].id].name
       unYesterdayData.generalData[2].list[2].desc = "<"+setsData[dgSetsTable[unIndex.y1][1]].name+">"
-      unYesterdayData.generalData[2].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y1][1]].id].bonuses)
+      unYesterdayData.generalData[2].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y1][1]].id].bonuses['5'])
 
       unYesterdayData.generalData[2].list[3].icon = setsData[dgSetsTable[unIndex.y1][2]].styles.Apparel.Head.Medium.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[2].list[3].title = setsDataCN[setsData[dgSetsTable[unIndex.y1][2]].id].name
       unYesterdayData.generalData[2].list[3].desc = "<"+setsData[dgSetsTable[unIndex.y1][2]].name+">"
-      unYesterdayData.generalData[2].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y1][2]].id].bonuses)
+      unYesterdayData.generalData[2].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y1][2]].id].bonuses['5'])
 
       unYesterdayData.generalData[2].list[4].icon = setsData[dgSetsTable[unIndex.y1][3]].styles.Apparel.Head.Heavy.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[2].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.y1][3]].id].name
       unYesterdayData.generalData[2].list[4].desc = "<"+setsData[dgSetsTable[unIndex.y1][3]].name+">"
-      unYesterdayData.generalData[2].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y1][3]].id].bonuses)
+      unYesterdayData.generalData[2].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y1][3]].id].bonuses['5'])
       /*----------------------------------------------------------------------------*/
-      unYesterdayData.generalData[3].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.y2][0]].id].place.split(',')[0]
-      unYesterdayData.generalData[3].list[0].msg[0] = "<"+setsData[dgSetsTable[unIndex.y2][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.y2][0])
+      unYesterdayData.generalData[3].list[0].title = places.loot_place_cn
+      unYesterdayData.generalData[3].list[0].msg[0] = "<"+places.loot_place_en+">"
       
       unYesterdayData.generalData[3].list[1].icon = setsData[dgSetsTable[unIndex.y2][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[3].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.y2][0]].id].name
       unYesterdayData.generalData[3].list[1].desc = "<"+setsData[dgSetsTable[unIndex.y2][0]].name+">"
-      unYesterdayData.generalData[3].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y2][0]].id].bonuses)
+      unYesterdayData.generalData[3].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y2][0]].id].bonuses['5'])
 
       unYesterdayData.generalData[3].list[2].icon = setsData[dgSetsTable[unIndex.y2][1]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[3].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.y2][1]].id].name
       unYesterdayData.generalData[3].list[2].desc = "<"+setsData[dgSetsTable[unIndex.y2][1]].name+">"
-      unYesterdayData.generalData[3].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y2][1]].id].bonuses)
+      unYesterdayData.generalData[3].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y2][1]].id].bonuses['5'])
 
       unYesterdayData.generalData[3].list[3].icon = setsData[dgSetsTable[unIndex.y2][2]].styles.Apparel.Head.Medium.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[3].list[3].title = setsDataCN[setsData[dgSetsTable[unIndex.y2][2]].id].name
       unYesterdayData.generalData[3].list[3].desc = "<"+setsData[dgSetsTable[unIndex.y2][2]].name+">"
-      unYesterdayData.generalData[3].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y2][2]].id].bonuses)
+      unYesterdayData.generalData[3].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y2][2]].id].bonuses['5'])
 
       unYesterdayData.generalData[3].list[4].icon = setsData[dgSetsTable[unIndex.y2][3]].styles.Apparel.Head.Heavy.icon.split('.')[0].split('icons/')[1]
       unYesterdayData.generalData[3].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.y2][3]].id].name
       unYesterdayData.generalData[3].list[4].desc = "<"+setsData[dgSetsTable[unIndex.y2][3]].name+">"
-      unYesterdayData.generalData[3].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y2][3]].id].bonuses)
+      unYesterdayData.generalData[3].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y2][3]].id].bonuses['5'])
 
       unYesterdayData.generalData[0].date = now
       //unYesterdayData.generalData[2].group = '昨日日无畏';
@@ -433,77 +451,81 @@ export class askUndaunted extends plugin {
 
     //判断是否需要更新无畏者变量并执行
     let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD').replace(/是0/g, "是").replace(/点0/g, "点")
+    let places = ''
     if(now != unTomorrowData.generalData[0].date)
     {
       await this.cal_index(now)
-      unTomorrowData.generalData[1].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.tm0][0]].id].place.split(',')[0]
-      unTomorrowData.generalData[1].list[0].msg[0] = "<"+setsData[dgSetsTable[unIndex.tm0][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.tm0][0])
+      unTomorrowData.generalData[1].list[0].title = places.loot_place_cn
+      unTomorrowData.generalData[1].list[0].msg[0] = "<"+places.loot_place_en+">"
       
       unTomorrowData.generalData[1].list[1].icon = setsData[dgSetsTable[unIndex.tm0][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[1].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.tm0][0]].id].name
       unTomorrowData.generalData[1].list[1].desc = "<"+setsData[dgSetsTable[unIndex.tm0][0]].name+">"
-      unTomorrowData.generalData[1].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm0][0]].id].bonuses)
+      unTomorrowData.generalData[1].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm0][0]].id].bonuses['5'])
 
       unTomorrowData.generalData[1].list[2].icon = setsData[dgSetsTable[unIndex.tm0][1]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[1].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.tm0][1]].id].name
       unTomorrowData.generalData[1].list[2].desc = "<"+setsData[dgSetsTable[unIndex.tm0][1]].name+">"
-      unTomorrowData.generalData[1].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm0][1]].id].bonuses)
+      unTomorrowData.generalData[1].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm0][1]].id].bonuses['5'])
 
       unTomorrowData.generalData[1].list[3].icon = setsData[dgSetsTable[unIndex.tm0][2]].styles.Apparel.Head.Medium.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[1].list[3].title = setsDataCN[setsData[dgSetsTable[unIndex.tm0][2]].id].name
       unTomorrowData.generalData[1].list[3].desc = "<"+setsData[dgSetsTable[unIndex.tm0][2]].name+">"
-      unTomorrowData.generalData[1].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm0][2]].id].bonuses)
+      unTomorrowData.generalData[1].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm0][2]].id].bonuses['5'])
 
       unTomorrowData.generalData[1].list[4].icon = setsData[dgSetsTable[unIndex.tm0][3]].styles.Apparel.Head.Heavy.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[1].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.tm0][3]].id].name
       unTomorrowData.generalData[1].list[4].desc = "<"+setsData[dgSetsTable[unIndex.tm0][3]].name+">"
-      unTomorrowData.generalData[1].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm0][3]].id].bonuses)
+      unTomorrowData.generalData[1].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm0][3]].id].bonuses['5'])
       /*----------------------------------------------------------------------------*/
-      unTomorrowData.generalData[2].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.tm1][0]].id].place.split(',')[0]
-      unTomorrowData.generalData[2].list[0].msg[0] = "<"+setsData[dgSetsTable[unIndex.tm1][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.tm1][0])
+      unTomorrowData.generalData[2].list[0].title = places.loot_place_cn
+      unTomorrowData.generalData[2].list[0].msg[0] = "<"+places.loot_place_en+">"
       
       unTomorrowData.generalData[2].list[1].icon = setsData[dgSetsTable[unIndex.tm1][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[2].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.tm1][0]].id].name
       unTomorrowData.generalData[2].list[1].desc = "<"+setsData[dgSetsTable[unIndex.tm1][0]].name+">"
-      unTomorrowData.generalData[2].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm1][0]].id].bonuses)
+      unTomorrowData.generalData[2].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm1][0]].id].bonuses['5'])
 
       unTomorrowData.generalData[2].list[2].icon = setsData[dgSetsTable[unIndex.tm1][1]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[2].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.tm1][1]].id].name
       unTomorrowData.generalData[2].list[2].desc = "<"+setsData[dgSetsTable[unIndex.tm1][1]].name+">"
-      unTomorrowData.generalData[2].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm1][1]].id].bonuses)
+      unTomorrowData.generalData[2].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm1][1]].id].bonuses['5'])
 
       unTomorrowData.generalData[2].list[3].icon = setsData[dgSetsTable[unIndex.tm1][2]].styles.Apparel.Head.Medium.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[2].list[3].title = setsDataCN[setsData[dgSetsTable[unIndex.tm1][2]].id].name
       unTomorrowData.generalData[2].list[3].desc = "<"+setsData[dgSetsTable[unIndex.tm1][2]].name+">"
-      unTomorrowData.generalData[2].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm1][2]].id].bonuses)
+      unTomorrowData.generalData[2].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm1][2]].id].bonuses['5'])
 
       unTomorrowData.generalData[2].list[4].icon = setsData[dgSetsTable[unIndex.tm1][3]].styles.Apparel.Head.Heavy.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[2].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.tm1][3]].id].name
       unTomorrowData.generalData[2].list[4].desc = "<"+setsData[dgSetsTable[unIndex.tm1][3]].name+">"
-      unTomorrowData.generalData[2].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm1][3]].id].bonuses)
+      unTomorrowData.generalData[2].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm1][3]].id].bonuses['5'])
       /*----------------------------------------------------------------------------*/
-      unTomorrowData.generalData[3].list[0].title = setsDataCN[setsData[dgSetsTable[unIndex.tm2][0]].id].place.split(',')[0]
-      unTomorrowData.generalData[3].list[0].msg[0] = "<"+setsData[dgSetsTable[unIndex.tm2][0]].place.split(',')[0]+">"
+      places = await database.get_setsPlace(dgSetsTable[unIndex.tm2][0])
+      unTomorrowData.generalData[3].list[0].title = places.loot_place_cn
+      unTomorrowData.generalData[3].list[0].msg[0] = "<"+places.loot_place_en+">"
       
       unTomorrowData.generalData[3].list[1].icon = setsData[dgSetsTable[unIndex.tm2][0]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[3].list[1].title = setsDataCN[setsData[dgSetsTable[unIndex.tm2][0]].id].name
       unTomorrowData.generalData[3].list[1].desc = "<"+setsData[dgSetsTable[unIndex.tm2][0]].name+">"
-      unTomorrowData.generalData[3].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm2][0]].id].bonuses)
+      unTomorrowData.generalData[3].list[1].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm2][0]].id].bonuses['5'])
 
       unTomorrowData.generalData[3].list[2].icon = setsData[dgSetsTable[unIndex.tm2][1]].styles.Apparel.Head.Light.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[3].list[2].title = setsDataCN[setsData[dgSetsTable[unIndex.tm2][1]].id].name
       unTomorrowData.generalData[3].list[2].desc = "<"+setsData[dgSetsTable[unIndex.tm2][1]].name+">"
-      unTomorrowData.generalData[3].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm2][1]].id].bonuses)
+      unTomorrowData.generalData[3].list[2].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm2][1]].id].bonuses['5'])
 
       unTomorrowData.generalData[3].list[3].icon = setsData[dgSetsTable[unIndex.tm2][2]].styles.Apparel.Head.Medium.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[3].list[3].title = setsDataCN[setsData[dgSetsTable[unIndex.tm2][2]].id].name
       unTomorrowData.generalData[3].list[3].desc = "<"+setsData[dgSetsTable[unIndex.tm2][2]].name+">"
-      unTomorrowData.generalData[3].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm2][2]].id].bonuses)
+      unTomorrowData.generalData[3].list[3].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm2][2]].id].bonuses['5'])
 
       unTomorrowData.generalData[3].list[4].icon = setsData[dgSetsTable[unIndex.tm2][3]].styles.Apparel.Head.Heavy.icon.split('.')[0].split('icons/')[1]
       unTomorrowData.generalData[3].list[4].title = setsDataCN[setsData[dgSetsTable[unIndex.tm2][3]].id].name
       unTomorrowData.generalData[3].list[4].desc = "<"+setsData[dgSetsTable[unIndex.tm2][3]].name+">"
-      unTomorrowData.generalData[3].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm2][3]].id].bonuses)
+      unTomorrowData.generalData[3].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm2][3]].id].bonuses['5'])
 
       unTomorrowData.generalData[0].date = now
       //unTomorrowData.generalData[2].group = '明日无畏'
@@ -542,7 +564,8 @@ export class askUndaunted extends plugin {
     //logger.info('昨日序号：['+unIndex.y0+']['+unIndex.y1+']['+unIndex.y2+']')
     //logger.info('明日序号：['+unIndex.tm0+']['+unIndex.tm1+']['+unIndex.tm2+']')
 
-    //logger.info(setsDataCN[setsData[dgSetsTable[unIndex.t0][0]].id].place.split(',')[0])
+    //let places = await database.get_setsPlace(dgSetsTable[unIndex.t0][0])
+    //logger.info(places.loot_place_cn)
 
     return 0
   }
