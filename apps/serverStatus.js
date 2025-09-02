@@ -5,6 +5,159 @@ import moment from 'moment'
 import ServerStatus from '../model/serverstatus.js'
 import md5 from 'md5'
 
+// 辅助函数：获取月份数字
+function getMonthNumber(monthName) {
+  const months = {
+    'January': '01', 'February': '02', 'March': '03', 'April': '04',
+    'May': '05', 'June': '06', 'July': '07', 'August': '08',
+    'September': '09', 'October': '10', 'November': '11', 'December': '12'
+  };
+  return months[monthName] || '01';
+}
+
+// 辅助函数：获取中文月份名称
+function getMonthName(monthName) {
+  const months = {
+    'January': '1月', 'February': '2月', 'March': '3月', 'April': '4月',
+    'May': '5月', 'June': '6月', 'July': '7月', 'August': '8月',
+    'September': '9月', 'October': '10月', 'November': '11月', 'December': '12月'
+  };
+  return months[monthName] || '1月';
+}
+
+// 辅助函数：将EDT时间转换为北京时间
+function convertEDTtoBeijing(time, ampm) {
+  let [hours, minutes] = time.split(':').map(Number);
+  
+  // 转换为24小时制
+  if (ampm === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (ampm === 'AM' && hours === 12) {
+    hours = 0;
+  }
+  
+  // EDT比北京时间慢12小时，所以加12小时
+  hours += 12;
+  
+  // 处理跨日
+  if (hours >= 24) {
+    hours -= 24;
+  }
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
+// 维护信息处理函数
+function processMaintenanceInfo(maintenanceMessage) {
+    const lines = maintenanceMessage.trim().split('\n').filter(line => line.trim() !== '');
+    const newLines = [];
+    const currentYear = new Date().getFullYear();
+
+    const firstLine = lines[0];
+    const dateMatch = firstLine.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})/);
+    if (dateMatch) {
+        const monthName = dateMatch[1];
+        const day = dateMatch[2];
+        const monthNumber = getMonthNumber(monthName);
+        newLines.push({
+            text: `${currentYear}-${monthNumber}-${day} 当周服务器维护信息`,
+            color: 'rgb(58, 146, 254)' // 蓝色标题
+        });
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line) continue;
+
+        let statusText = '';
+        let statusColor = '';
+        
+        if (line.includes('[COMPLETE]')) {
+            statusText = '[已更新]';
+            statusColor = 'rgb(19, 217, 98)'; // 绿色
+        } else if (line.includes('[IN PROGRESS]')) {
+            statusText = '[维护中]';
+            statusColor = 'rgb(255, 105, 180)'; // 纯红色，更亮
+        } else {
+            statusText = '[待更新]';
+            statusColor = 'rgb(255, 165, 0)'; // 橙色
+        }
+        
+        const platformMatch = line.match(/(PC\/Mac|Xbox|PlayStation®)/);
+        const platform = platformMatch ? platformMatch[0] : '';
+        
+        let serverRegion = '';
+        const hasNA = line.includes('NA');
+        const hasEU = line.includes('EU');
+        if (hasNA && hasEU) {
+            serverRegion = '美服和欧服';
+        } else if (hasNA) {
+            serverRegion = '美服';
+        } else if (hasEU) {
+            serverRegion = '欧服';
+        }
+
+        let maintenanceType = '';
+        let translatedTime = '';
+        let isNoMaintenance = false;
+
+        if (line.includes('No maintenance')) {
+            maintenanceType = '无需维护';
+            isNoMaintenance = true;
+        } else if (line.includes('patch')) {
+            maintenanceType = '版本维护';
+        } else {
+            maintenanceType = '维护';
+        }
+
+        if (!isNoMaintenance) {
+            const timeRegex = /(\d{1,2}:\d{2})(AM|PM)\sEDT\s+\((\d{1,2}:\d{2})\sUTC\)\s+-\s+(\d{1,2}:\d{2})(AM|PM)\sEDT\s+\((\d{1,2}:\d{2})\sUTC\)/;
+            const timeMatch = line.match(timeRegex);
+
+            if (timeMatch) {
+                const maintenanceDateMatch = line.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})/);
+                const maintenanceMonth = maintenanceDateMatch ? getMonthName(maintenanceDateMatch[1]) : '';
+                const maintenanceDay = maintenanceDateMatch ? maintenanceDateMatch[2] : '';
+
+                const startLocalTime = convertEDTtoBeijing(timeMatch[1], timeMatch[2]);
+                const endLocalTime = convertEDTtoBeijing(timeMatch[4], timeMatch[5]);
+
+                translatedTime = ` 北京时间${maintenanceMonth}${maintenanceDay}日 ${startLocalTime} (${timeMatch[3]} UTC) - ${endLocalTime} (${timeMatch[6]} UTC)`;
+            } else {
+                translatedTime = '';
+            }
+        }
+        
+        const newLine = `${statusText} ${platform}：${serverRegion}${maintenanceType}${translatedTime ? ` -${translatedTime}` : ''}`;
+        newLines.push({
+            text: newLine,
+            color: statusColor
+        });
+    }
+    
+    const finalLines = {};
+    for (const line of newLines) {
+        if (line.text.includes('当周服务器维护信息')) {
+            finalLines["header"] = line;
+        }
+        else if (line.text.includes('PC/Mac')) {
+            const pcLine = { ...line };
+            pcLine.text = line.text.replace('PC/Mac', 'PC');
+            const macLine = { ...line };
+            macLine.text = line.text.replace('PC/Mac', 'Mac');
+            finalLines["PC"] = pcLine;
+            finalLines["Mac"] = macLine;
+        } else {
+            if (line.text.includes('Xbox')) {
+                finalLines["Xbox"] = line;
+            } else if (line.text.includes('PlayStation')) {
+                finalLines["PlayStation"] = line;
+            }
+        }
+    }
+    return finalLines;
+}
+
 //serverStatus结构体变量
 let serverData = {
 }
@@ -130,9 +283,40 @@ export class serverStatus extends plugin {
         serverData = ssData
     }
 
+    // 处理维护信息
+    let maintenanceInfo = [];
+    try {
+      const maintenanceData = processMaintenanceInfo(status.msg);
+      if (maintenanceData.header) {
+        maintenanceInfo.push(maintenanceData.header);
+      }
+      if (maintenanceData.PC) {
+        maintenanceInfo.push(maintenanceData.PC);
+      }
+      if (maintenanceData.Mac) {
+        maintenanceInfo.push(maintenanceData.Mac);
+      }
+      if (maintenanceData.Xbox) {
+        maintenanceInfo.push(maintenanceData.Xbox);
+      }
+      if (maintenanceData.PlayStation) {
+        maintenanceInfo.push(maintenanceData.PlayStation);
+      }
+    } catch (error) {
+      logger.error('[ESO:服务器状态] 处理维护信息失败:', error);
+    }
+
     serverData.serverData[1].msg = []
-    let tmpMsg = status.msg
     let msgIndex = 0
+    
+    // 首先添加维护信息
+    for (let maintenanceMsg of maintenanceInfo) {
+      serverData.serverData[1].msg[msgIndex] = maintenanceMsg
+      msgIndex = msgIndex + 1
+    }
+    
+    // 然后添加原有的服务器状态信息
+    let tmpMsg = status.msg
     let srcMsgs = tmpMsg.split('\n').filter(line => line.trim() !== '').map(line => line.replace(/\t/g, ''));
     for (let oneMsg of srcMsgs) {
       serverData.serverData[1].msg[msgIndex] = oneMsg

@@ -22,7 +22,11 @@
           </div>
           <div class="notes">
             {{each val.msg item}}
+            {{if item.color}}
+            <div class="msg" style="color: {{item.color}};">{{item.text}}</div>
+            {{else}}
             <div class="msg">{{item}}</div>
+            {{/if}}
             {{/each}}
           </div>
           {{each val.servers item}}
