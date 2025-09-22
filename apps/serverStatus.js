@@ -47,10 +47,209 @@ function convertEDTtoBeijing(time, ampm) {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
+// 维护信息解析函数对象
+const parseMaintenanceFunctions = {
+    getMaintenanceStatus(line) {
+        if (line.includes('[COMPLETE]')) {
+            return '[已更新]';
+        } else if (line.includes('[IN PROGRESS]')) {
+            return '[维护中]';
+        } else {
+            return '[待更新]';
+        }
+    },
+
+    getPlatformInfo(line) {
+        const platformMatch = line.match(/(PC\/Mac|Xbox|PlayStation®)/);
+        if (platformMatch) {
+            return {
+                platform: platformMatch[0],
+                isPlatformSpecific: true,
+                isValid: true
+            };
+        }
+        
+        const megaserverMatch = line.match(/(NA|EU)\s+megaservers/i);
+        if (megaserverMatch) {
+            return {
+                platform: 'PC', // 通用信息归类到PC
+                isPlatformSpecific: false,
+                isValid: true
+            };
+        }
+        
+        return { isValid: false };
+    },
+
+    getServerRegion(line) {
+        const hasNA = line.includes('NA');
+        const hasEU = line.includes('EU');
+        
+        if (hasNA && hasEU) {
+            return '美服和欧服';
+        } else if (hasNA) {
+            return '美服';
+        } else if (hasEU) {
+            return '欧服';
+        }
+        return '';
+    },
+
+    getMaintenanceType(line) {
+        if (line.includes('No maintenance')) {
+            return '无需维护';
+        } else if (line.includes('patch')) {
+            return '版本维护';
+        } else {
+            return '维护';
+        }
+    },
+
+    parseSingleTime(line) {
+        const singleTimeRegex = /(\d{1,2}:\d{2})\s*(AM|PM)\s*EDT/i;
+        const singleTimeMatch = line.match(singleTimeRegex);
+        
+        if (singleTimeMatch) {
+            const maintenanceDateMatch = line.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})/);
+            const maintenanceMonth = maintenanceDateMatch ? getMonthName(maintenanceDateMatch[1]) : '';
+            const maintenanceDay = maintenanceDateMatch ? maintenanceDateMatch[2] : '';
+            
+            const localTime = convertEDTtoBeijing(singleTimeMatch[1], singleTimeMatch[2]);
+            return ` 北京时间${maintenanceMonth}${maintenanceDay}日 ${localTime}`;
+        }
+        
+        return '';
+    },
+
+    parseTimeMatch(timeMatch, isEdtFirst, line) {
+        const startDateMatch = line.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})/);
+        const startMonth = startDateMatch ? getMonthName(startDateMatch[1]) : '';
+        const startDay = startDateMatch ? startDateMatch[2] : '';
+
+        let startLocalTime, endLocalTime, startUTC, endUTC;
+        let endMonth = startMonth;
+        let endDay = startDay;
+        
+        if (isEdtFirst) {
+            startLocalTime = convertEDTtoBeijing(timeMatch[1], timeMatch[2]);
+            endLocalTime = convertEDTtoBeijing(timeMatch[4], timeMatch[5]);
+            startUTC = timeMatch[3];
+            endUTC = timeMatch[6];
+        } else {
+            startLocalTime = convertEDTtoBeijing(timeMatch[2], timeMatch[3]);
+            startUTC = timeMatch[1];
+            
+            if (timeMatch[4] && timeMatch[5]) {
+                endMonth = getMonthName(timeMatch[4]);
+                endDay = timeMatch[5];
+                endLocalTime = convertEDTtoBeijing(timeMatch[7], timeMatch[8]);
+                endUTC = timeMatch[6];
+            } else {
+                endLocalTime = convertEDTtoBeijing(timeMatch[7], timeMatch[8]);
+                endUTC = timeMatch[6];
+            }
+        }
+
+        
+        if (endMonth !== startMonth || endDay !== startDay) {
+            return ` 北京时间${startMonth}${startDay}日 ${startLocalTime} (${startUTC} UTC) - ${endMonth}${endDay}日 ${endLocalTime} (${endUTC} UTC)`;
+        } else {
+            return ` 北京时间${startMonth}${startDay}日 ${startLocalTime} (${startUTC} UTC) - ${endLocalTime} (${endUTC} UTC)`;
+        }
+    },
+
+    parseMaintenanceTime(line) {
+        if (line.includes('No maintenance')) {
+            return '';
+        }
+
+        const edtFirstRegex = /(\d{1,2}:\d{2})\s*(AM|PM)\s*EDT\s*\((\d{1,2}:\d{2})\s*UTC\)\s*-\s*(\d{1,2}:\d{2})\s*(AM|PM)\s*EDT\s*\((\d{1,2}:\d{2})\s*UTC\)/i;
+        const utcFirstRegex = /(\d{1,2}:\d{2})\s*UTC\s*\((\d{1,2}:\d{2})\s*(AM|PM)\s*EDT\)\s*-\s*(?:(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+)?(\d{1,2}:\d{2})\s*UTC\s*\((\d{1,2}:\d{2})\s*(AM|PM)\s*EDT\)/i;
+        
+        let timeMatch = line.match(edtFirstRegex);
+        let isEdtFirst = true;
+        
+        if (!timeMatch) {
+            timeMatch = line.match(utcFirstRegex);
+            isEdtFirst = false;
+        }
+
+        if (timeMatch) {
+            return this.parseTimeMatch(timeMatch, isEdtFirst, line);
+        } else {
+            return this.parseSingleTime(line);
+        }
+    },
+
+    parseMaintenanceLine(line) {
+        const status = this.getMaintenanceStatus(line);
+        const platformInfo = this.getPlatformInfo(line);
+        
+        if (!platformInfo.isValid) return null;
+
+        const serverRegion = this.getServerRegion(line);
+        const maintenanceType = this.getMaintenanceType(line);
+        const translatedTime = this.parseMaintenanceTime(line);
+
+        return {
+            status,
+            platform: platformInfo.platform,
+            isPlatformSpecific: platformInfo.isPlatformSpecific,
+            serverRegion,
+            maintenanceType,
+            translatedTime
+        };
+    },
+
+    assignToPlatform(finalLines, maintenanceInfo, line) {
+        const { status, platform, isPlatformSpecific, serverRegion, maintenanceType, translatedTime } = maintenanceInfo;
+        
+        // 根据状态确定颜色
+        let statusColor = '';
+        if (status.includes('已更新')) {
+            statusColor = 'rgb(19, 217, 98)'; // 绿色
+        } else if (status.includes('维护中')) {
+            statusColor = 'rgb(255, 105, 180)'; // 纯红色，更亮
+        } else {
+            statusColor = 'rgb(255, 165, 0)'; // 橙色
+        }
+        
+        const newLine = `${status} ${platform}：${serverRegion}${maintenanceType}${translatedTime ? ` -${translatedTime}` : ''}`;
+        const lineObject = {
+            text: newLine,
+            color: statusColor
+        };
+        
+        if (isPlatformSpecific) {
+            if (line.includes('PC/Mac')) {
+                const pcLine = { ...lineObject };
+                pcLine.text = newLine.replace('PC/Mac', 'PC');
+                const macLine = { ...lineObject };
+                macLine.text = newLine.replace('PC/Mac', 'Mac');
+                
+                // 初始化数组
+                if (!finalLines["PC"]) finalLines["PC"] = [];
+                if (!finalLines["Mac"]) finalLines["Mac"] = [];
+                finalLines["PC"].push(pcLine);
+                finalLines["Mac"].push(macLine);
+            } else if (line.includes('Xbox')) {
+                if (!finalLines["Xbox"]) finalLines["Xbox"] = [];
+                finalLines["Xbox"].push(lineObject);
+            } else if (line.includes('PlayStation')) {
+                if (!finalLines["PlayStation"]) finalLines["PlayStation"] = [];
+                finalLines["PlayStation"].push(lineObject);
+            }
+        } else {
+            if (!finalLines["PC"]) finalLines["PC"] = [];
+            finalLines["PC"].push(lineObject);
+        }
+    }
+};
+
 // 维护信息处理函数
 function processMaintenanceInfo(maintenanceMessage) {
     const lines = maintenanceMessage.trim().split('\n').filter(line => line.trim() !== '');
-    const newLines = [];
+    const finalLines = {};
     const currentYear = new Date().getFullYear();
 
     const firstLine = lines[0];
@@ -59,102 +258,22 @@ function processMaintenanceInfo(maintenanceMessage) {
         const monthName = dateMatch[1];
         const day = dateMatch[2];
         const monthNumber = getMonthNumber(monthName);
-        newLines.push({
+        finalLines["header"] = {
             text: `${currentYear}-${monthNumber}-${day} 当周服务器维护信息`,
             color: 'rgb(58, 146, 254)' // 蓝色标题
-        });
+        };
     }
 
     for (let i = 1; i < lines.length; i++) {
-        let line = lines[i].trim();
+        const line = lines[i].trim();
         if (!line) continue;
 
-        let statusText = '';
-        let statusColor = '';
-        
-        if (line.includes('[COMPLETE]')) {
-            statusText = '[已更新]';
-            statusColor = 'rgb(19, 217, 98)'; // 绿色
-        } else if (line.includes('[IN PROGRESS]')) {
-            statusText = '[维护中]';
-            statusColor = 'rgb(255, 105, 180)'; // 纯红色，更亮
-        } else {
-            statusText = '[待更新]';
-            statusColor = 'rgb(255, 165, 0)'; // 橙色
-        }
-        
-        const platformMatch = line.match(/(PC\/Mac|Xbox|PlayStation®)/);
-        const platform = platformMatch ? platformMatch[0] : '';
-        
-        let serverRegion = '';
-        const hasNA = line.includes('NA');
-        const hasEU = line.includes('EU');
-        if (hasNA && hasEU) {
-            serverRegion = '美服和欧服';
-        } else if (hasNA) {
-            serverRegion = '美服';
-        } else if (hasEU) {
-            serverRegion = '欧服';
-        }
+        const maintenanceInfo = parseMaintenanceFunctions.parseMaintenanceLine(line);
+        if (!maintenanceInfo) continue;
 
-        let maintenanceType = '';
-        let translatedTime = '';
-        let isNoMaintenance = false;
-
-        if (line.includes('No maintenance')) {
-            maintenanceType = '无需维护';
-            isNoMaintenance = true;
-        } else if (line.includes('patch')) {
-            maintenanceType = '版本维护';
-        } else {
-            maintenanceType = '维护';
-        }
-
-        if (!isNoMaintenance) {
-            const timeRegex = /(\d{1,2}:\d{2})(AM|PM)\sEDT\s+\((\d{1,2}:\d{2})\sUTC\)\s+-\s+(\d{1,2}:\d{2})(AM|PM)\sEDT\s+\((\d{1,2}:\d{2})\sUTC\)/;
-            const timeMatch = line.match(timeRegex);
-
-            if (timeMatch) {
-                const maintenanceDateMatch = line.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})/);
-                const maintenanceMonth = maintenanceDateMatch ? getMonthName(maintenanceDateMatch[1]) : '';
-                const maintenanceDay = maintenanceDateMatch ? maintenanceDateMatch[2] : '';
-
-                const startLocalTime = convertEDTtoBeijing(timeMatch[1], timeMatch[2]);
-                const endLocalTime = convertEDTtoBeijing(timeMatch[4], timeMatch[5]);
-
-                translatedTime = ` 北京时间${maintenanceMonth}${maintenanceDay}日 ${startLocalTime} (${timeMatch[3]} UTC) - ${endLocalTime} (${timeMatch[6]} UTC)`;
-            } else {
-                translatedTime = '';
-            }
-        }
-        
-        const newLine = `${statusText} ${platform}：${serverRegion}${maintenanceType}${translatedTime ? ` -${translatedTime}` : ''}`;
-        newLines.push({
-            text: newLine,
-            color: statusColor
-        });
+        parseMaintenanceFunctions.assignToPlatform(finalLines, maintenanceInfo, line);
     }
     
-    const finalLines = {};
-    for (const line of newLines) {
-        if (line.text.includes('当周服务器维护信息')) {
-            finalLines["header"] = line;
-        }
-        else if (line.text.includes('PC/Mac')) {
-            const pcLine = { ...line };
-            pcLine.text = line.text.replace('PC/Mac', 'PC');
-            const macLine = { ...line };
-            macLine.text = line.text.replace('PC/Mac', 'Mac');
-            finalLines["PC"] = pcLine;
-            finalLines["Mac"] = macLine;
-        } else {
-            if (line.text.includes('Xbox')) {
-                finalLines["Xbox"] = line;
-            } else if (line.text.includes('PlayStation')) {
-                finalLines["PlayStation"] = line;
-            }
-        }
-    }
     return finalLines;
 }
 
@@ -291,16 +410,32 @@ export class serverStatus extends plugin {
         maintenanceInfo.push(maintenanceData.header);
       }
       if (maintenanceData.PC) {
-        maintenanceInfo.push(maintenanceData.PC);
+        if (Array.isArray(maintenanceData.PC)) {
+          maintenanceInfo.push(...maintenanceData.PC);
+        } else {
+          maintenanceInfo.push(maintenanceData.PC);
+        }
       }
       if (maintenanceData.Mac) {
-        maintenanceInfo.push(maintenanceData.Mac);
+        if (Array.isArray(maintenanceData.Mac)) {
+          maintenanceInfo.push(...maintenanceData.Mac);
+        } else {
+          maintenanceInfo.push(maintenanceData.Mac);
+        }
       }
       if (maintenanceData.Xbox) {
-        maintenanceInfo.push(maintenanceData.Xbox);
+        if (Array.isArray(maintenanceData.Xbox)) {
+          maintenanceInfo.push(...maintenanceData.Xbox);
+        } else {
+          maintenanceInfo.push(maintenanceData.Xbox);
+        }
       }
       if (maintenanceData.PlayStation) {
-        maintenanceInfo.push(maintenanceData.PlayStation);
+        if (Array.isArray(maintenanceData.PlayStation)) {
+          maintenanceInfo.push(...maintenanceData.PlayStation);
+        } else {
+          maintenanceInfo.push(maintenanceData.PlayStation);
+        }
       }
     } catch (error) {
       logger.error('[ESO:服务器状态] 处理维护信息失败:', error);
