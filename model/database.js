@@ -1309,16 +1309,32 @@ class database {
       if(setsData[setKey].type == 8)
       {
         var indexInList = await this.isInList(places.loot_place_en, dgList)
-        if(indexInList > -1)
+        if(indexInList > -1 && ((places.loot_place_en != 'Naj-Caldeesh') && (places.loot_place_en != 'Black Gem Foundry')))
         {
           dgSetsTable[indexInList][0] = setsData[setKey].id
           //logger.info("[Y][No." + dgIndex + "]" + places.loot_place_en + "|" + places.loot_place_cn + "|")
         }
         else
         {
-          dgSetsTable[dgIndex][0] = setsData[setKey].id
-          //logger.info("[N][No." + dgIndex + "]" + places.loot_place_en + "|" + places.loot_place_cn + "|")
-          dgList[dgIndex] = places.loot_place_en
+          //logger.info(places.loot_place_en)
+          if (places.loot_place_en == 'Naj-Caldeesh')
+          {
+            dgSetsTable[dgIndex-1][0] = setsData[setKey].id
+            //logger.info("[N][No." + dgIndex + "]" + places.loot_place_en + "|" + places.loot_place_cn + "|")
+            dgList[dgIndex-1] = places.loot_place_en
+          }
+          else if (places.loot_place_en == 'Black Gem Foundry')
+          {
+            dgSetsTable[dgIndex+1][0] = setsData[setKey].id
+            //logger.info("[N][No." + dgIndex + "]" + places.loot_place_en + "|" + places.loot_place_cn + "|")
+            dgList[dgIndex+1] = places.loot_place_en
+          }
+          else
+          {
+            dgSetsTable[dgIndex][0] = setsData[setKey].id
+            //logger.info("[N][No." + dgIndex + "]" + places.loot_place_en + "|" + places.loot_place_cn + "|")
+            dgList[dgIndex] = places.loot_place_en
+          }
         }
         dgIndex = dgIndex+1
         //logger.info("[No." + dgIndex + "]SetID:" + setKey + " " + setsData[setKey].name + " [" + places.loot_place_en + "]")
@@ -1328,6 +1344,7 @@ class database {
     }
     numDungeons = dgIndex
     //logger.info("[EN]Num of dungeons is " + numDungeons)
+    //logger.info(dgList)
     
     for (let setKey of keysSet) {
       if(setsData[setKey].type == 6)
