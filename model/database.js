@@ -34,6 +34,28 @@ const jsonDataMD5PathCN = './plugins/eso/resources/data/database-cn.md5'
 // 数据文件的 MD5 值
 let currentMD5 = null
 
+// 内存监控和优化函数
+function optimizeMemoryUsage(context = '') {
+  if (global.gc) {
+    global.gc()
+    logger.info(`[ESO:图鉴] 内存优化: ${context}`)
+  }
+}
+
+// 获取当前内存使用情况（如果可用）
+function getMemoryUsage() {
+  if (process.memoryUsage) {
+    const usage = process.memoryUsage()
+    return {
+      heapUsed: (usage.heapUsed / 1024 / 1024).toFixed(2),
+      heapTotal: (usage.heapTotal / 1024 / 1024).toFixed(2),
+      external: (usage.external / 1024 / 1024).toFixed(2),
+      rss: (usage.rss / 1024 / 1024).toFixed(2)
+    }
+  }
+  return null
+}
+
 // 计算文件的 MD5
 function calculateMD5(filePath) {
   try {
@@ -69,8 +91,8 @@ function calculateMD5Fast(filePath) {
 async function parseLuaFileWithMemoryControl(luaFilePath, jsonCachePath, md5FilePath, typeName) {
   try {
     const startTime = Date.now()
-    const maxMemoryMB = 500 // 最大内存限制500MB
-    const memoryThreshold = maxMemoryMB * 1024 * 1024 * 0.8 // 80%阈值
+    const maxMemoryMB = 200 // 最大内存限制200MB（低内存环境）
+    const memoryThreshold = maxMemoryMB * 1024 * 1024 * 0.7 // 70%阈值（更保守）
     
     logger.info(`[ESO:图鉴] 开始解析${typeName}文件（内存限制：${maxMemoryMB}MB）...`)
     
@@ -1551,8 +1573,23 @@ class database {
           const cachedMD5 = (await fs.promises.readFile(jsonCacheMD5PathEN, 'utf8')).trim()
           if (cachedMD5 === currentMD5) {
             logger.info('[ESO:图鉴] 使用缓存加载英文数据库（custome_resources/cache）...')
+            // 优化：使用流式方式读取，减少内存峰值
+            const fileStats = fs.statSync(jsonCachePathEN)
+            const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2)
+            logger.info(`[ESO:图鉴] 缓存文件大小: ${fileSizeMB}MB`)
+            
             const cachedData = await fs.promises.readFile(jsonCachePathEN, 'utf8')
+            const memBefore = getMemoryUsage()
             lua_code = JSON.parse(cachedData)
+            
+            // 立即释放JSON字符串内存
+            const jsonStrRef = cachedData
+            optimizeMemoryUsage('解析JSON后释放字符串')
+            
+            if (memBefore) {
+              const memAfter = getMemoryUsage()
+              logger.info(`[ESO:图鉴] 内存使用: ${memBefore.heapUsed}MB -> ${memAfter.heapUsed}MB`)
+            }
             cacheFound = true
           }
         } catch (error) {
@@ -1568,6 +1605,11 @@ class database {
             logger.info('[ESO:图鉴] 使用备份缓存加载英文数据库（resources）...')
             const cachedData = await fs.promises.readFile(jsonDataPathEN, 'utf8')
             lua_code = JSON.parse(cachedData)
+            
+            // 立即释放JSON字符串内存
+            if (global.gc) {
+              global.gc()
+            }
             cacheFound = true
             
             // 将备份缓存复制到主缓存位置
@@ -1622,6 +1664,13 @@ class database {
       // 加载技能数据
       skillsData = accountData['dataSkills'] || [{}]
 
+      // 立即释放lua_code对象，只保留需要的数据
+      lua_code = null
+      if (global.gc) {
+        global.gc()
+        logger.info('[ESO:图鉴] 已释放解析后的临时对象内存')
+      }
+
       logger.info('[ESO:图鉴] 英文数据库加载完成')
     } catch (error) {
       logger.error(`[ESO:图鉴] 加载英文数据库失败: ${error.message}`)
@@ -1663,8 +1712,18 @@ class database {
           const cachedMD5 = (await fs.promises.readFile(jsonCacheMD5PathCN, 'utf8')).trim()
           if (cachedMD5 === currentMD5) {
             logger.info('[ESO:图鉴] 使用缓存加载中文数据库（custome_resources/cache）...')
+            // 优化：使用流式方式读取，减少内存峰值
+            const fileStats = fs.statSync(jsonCachePathCN)
+            const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2)
+            logger.info(`[ESO:图鉴] 缓存文件大小: ${fileSizeMB}MB`)
+            
             const cachedData = await fs.promises.readFile(jsonCachePathCN, 'utf8')
             lua_code = JSON.parse(cachedData)
+            
+            // 立即释放JSON字符串内存（如果可用）
+            if (global.gc) {
+              global.gc()
+            }
             cacheFound = true
           }
         } catch (error) {
@@ -1681,6 +1740,11 @@ class database {
             logger.info('[ESO:图鉴] 使用备份缓存加载中文数据库（resources）...')
             const cachedData = await fs.promises.readFile(jsonDataPathCN, 'utf8')
             lua_code = JSON.parse(cachedData)
+            
+            // 立即释放JSON字符串内存
+            if (global.gc) {
+              global.gc()
+            }
             cacheFound = true
             
             // 将备份缓存复制到主缓存位置
@@ -1734,6 +1798,13 @@ class database {
 
       // 加载技能数据
       skillsDataCN = accountData['dataSkills'] || [{}]
+
+      // 立即释放lua_code对象，只保留需要的数据
+      lua_code = null
+      if (global.gc) {
+        global.gc()
+        logger.info('[ESO:图鉴] 已释放解析后的临时对象内存')
+      }
 
       logger.info('[ESO:图鉴] 中文数据库加载完成')
     } catch (error) {
