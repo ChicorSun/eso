@@ -19,6 +19,18 @@ let dataExtractorCNPath = './plugins/eso/resources/data/DataExtractor-cn.lua'
 const cachePath = './plugins/eso/custome_resources/cache/'
 const MAX_CACHE_ENTRIES = 1000
 
+// JSON缓存文件路径
+const jsonCachePathEN = './plugins/eso/custome_resources/cache/database-en.json'
+const jsonCachePathCN = './plugins/eso/custome_resources/cache/database-cn.json'
+const jsonCacheMD5PathEN = './plugins/eso/custome_resources/cache/database-en.md5'
+const jsonCacheMD5PathCN = './plugins/eso/custome_resources/cache/database-cn.md5'
+
+// JSON缓存文件路径
+const jsonDataPathEN = './plugins/eso/resources/data/database-en.json'
+const jsonDataPathCN = './plugins/eso/resources/data/database-cn.json'
+const jsonDataMD5PathEN = './plugins/eso/resources/data/database-en.md5'
+const jsonDataMD5PathCN = './plugins/eso/resources/data/database-cn.md5'
+
 // 数据文件的 MD5 值
 let currentMD5 = null
 
@@ -31,6 +43,95 @@ function calculateMD5(filePath) {
   } catch (error) {
     logger.error(`[ESO:图鉴] 计算MD5失败: ${error.message}`)
     return null
+  }
+}
+
+// 快速计算文件的 MD5 (大文件优化版)
+function calculateMD5Fast(filePath) {
+  try {
+    const stats = fs.statSync(filePath)
+    // 使用文件大小和前1MB数据来计算MD5
+    const fileHandle = fs.openSync(filePath, 'r')
+    const buffer = Buffer.allocUnsafe(1024 * 1024) // 1MB
+    const bytesRead = fs.readSync(fileHandle, buffer, 0, buffer.length, 0)
+    fs.closeSync(fileHandle)
+    
+    const sizeHash = md5(stats.size.toString())
+    const contentHash = md5(buffer.slice(0, bytesRead).toString())
+    return md5(sizeHash + contentHash)
+  } catch (error) {
+    logger.error(`[ESO:图鉴] 快速计算MD5失败: ${error.message}`)
+    return null
+  }
+}
+
+// 内存优化的Lua文件解析函数
+async function parseLuaFileWithMemoryControl(luaFilePath, jsonCachePath, md5FilePath, typeName) {
+  try {
+    const startTime = Date.now()
+    const maxMemoryMB = 500 // 最大内存限制500MB
+    const memoryThreshold = maxMemoryMB * 1024 * 1024 * 0.8 // 80%阈值
+    
+    logger.info(`[ESO:图鉴] 开始解析${typeName}文件（内存限制：${maxMemoryMB}MB）...`)
+    
+    // 读取文件并解析
+    const luaToJson = require('lua-to-json')
+    logger.info(`[ESO:图鉴] 正在读取${typeName}文件...`)
+    
+    // 直接读取文件（使用readFile比流式读取更简单，但对大文件需要内存限制）
+    let luaSrc = await fs.promises.readFile(luaFilePath, 'utf8')
+    const fileSizeMB = (luaSrc.length / 1024 / 1024).toFixed(2)
+    logger.info(`[ESO:图鉴] 文件读取完成，大小: ${fileSizeMB}MB`)
+    
+    // 检查内存使用
+    if (Buffer.byteLength(luaSrc, 'utf8') > memoryThreshold) {
+      logger.warn(`[ESO:图鉴] 文件较大，内存使用可能超过限制，请耐心等待...`)
+    }
+    
+    logger.info(`[ESO:图鉴] 开始解析Lua文件...`)
+    const parseStartTime = Date.now()
+    
+    // 解析Lua代码
+    const lua_code = luaToJson(luaSrc)
+    
+    const parseTime = ((Date.now() - parseStartTime) / 1000).toFixed(2)
+    logger.info(`[ESO:图鉴] ${typeName}解析完成，耗时: ${parseTime}秒`)
+    
+    // 立即释放源字符串内存
+    const srcLength = luaSrc.length
+    luaSrc = null // 标记为可回收
+    if (global.gc) {
+      global.gc()
+      logger.info(`[ESO:图鉴] 已释放源文件内存（${(srcLength / 1024 / 1024).toFixed(2)}MB）`)
+    }
+    
+    // 保存缓存（使用流式写入以控制内存）
+    logger.info(`[ESO:图鉴] 正在保存缓存...`)
+    const jsonStr = JSON.stringify(lua_code)
+    const jsonSizeMB = (Buffer.byteLength(jsonStr, 'utf8') / 1024 / 1024).toFixed(2)
+    logger.info(`[ESO:图鉴] JSON大小: ${jsonSizeMB}MB`)
+    
+    await fs.promises.writeFile(jsonCachePath, jsonStr, 'utf8')
+    
+    // 计算并保存MD5
+    const currentMD5 = calculateMD5Fast(luaFilePath)
+    await fs.promises.writeFile(md5FilePath, currentMD5, 'utf8')
+    
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2)
+    logger.info(`[ESO:图鉴] ${typeName}缓存保存完成，总耗时: ${totalTime}秒`)
+    
+    // 强制垃圾回收（如果可用）
+    if (global.gc) {
+      global.gc()
+    }
+    
+    return lua_code
+  } catch (error) {
+    logger.error(`[ESO:图鉴] 解析${typeName}失败: ${error.message}`)
+    if (error.stack) {
+      logger.error(`[ESO:图鉴] 错误堆栈: ${error.stack}`)
+    }
+    throw error
   }
 }
 
@@ -413,26 +514,6 @@ let tagColor = [
   "rgb(26, 188, 156)"   // 浅绿色，清新且舒适
 ];
 
-export let setType = [
-  "竞技场",
-  "PvP",
-  "制造",
-  "PvP",
-  "PvP",
-
-  "副本",
-  "PvP",
-  "怪物",
-  "区域",
-  "废弃",
-
-  "试炼",
-  "神话",
-  "怪物",
-  "怪物",
-  "职业专属"
-  ]
-
 let setsBlackList = [
   "Armor of the Code",
   "Arms of the Ancestors",
@@ -724,6 +805,32 @@ var translate_skills = [
   {"en_name": "xxxx", "log_name": "xxx"}
 ];
 
+
+export let setType = [
+  "竞技场",
+  "PvP",
+  "制造",
+  "PvP",
+  "PvP",
+
+  "副本",
+  "PvP",
+  "怪物",
+  "区域",
+  "废弃",
+
+  "试炼",
+  "神话",
+  "怪物",
+  "怪物",
+  "职业专属"
+  ]
+
+var extra_set_data = {
+  "845": { type: 12, place: { '1': 'Solstice'}, place_cn: { '1': '至日岛'}, categoryName: 'Solstice', categoryName_cn: '至日岛'},
+  "846": { type: 9, place: { '1': 'Solstice'}, place_cn: { '1': '至日岛'}, categoryName: 'Solstice', categoryName_cn: '至日岛'}
+}
+
 class database {
   async isInList (keyword, objectList) {
     var index = 0
@@ -901,6 +1008,7 @@ class database {
       }
       else
       {
+          logger.info(setsData[setKey])
           loot_place_cn = setsDataCN[setsData[setKey].id].place[0]
           zone_place_cn = setsDataCN[setsData[setKey].id].place[0]
           cate_place_cn = setsDataCN[setsData[setKey].id].categoryName
@@ -956,6 +1064,9 @@ class database {
     var numSets = keysSet.length
 
     for (let setKey of keysSet) {
+      //logger.info('---------------------------')
+      //logger.info(setsData[setKey])
+      //logger.info('---------------------------')
       if(setsData[setKey].name == "Undaunted Bastion")
       {
         if (setsData[setKey].styles.Apparel.Head.Light)
@@ -994,6 +1105,38 @@ class database {
         //logger.info(setsData[setKey])
         //logger.info(setsDataCN[setsData[setKey].id])
       }
+
+      if(setsData[setKey].name == "Huntsman's Warmask")
+      {
+        if(setsDataCN[setsData[setKey].id].bonuses['5']['1'].includes('Huntsman'))
+        {
+          setsDataCN[setsData[setKey].id].bonuses['5']['1'] = "（1件套）[ESOBOT改]用猛击或完全蓄力的重击造成伤害时，将海尔辛的印记施加于目标身上，持续|cffffff1|r分钟。印记存在期间，你获得次级狂怒，造成的伤害提升|cffffff5|r%，对该目标造成的伤害提升|cffffff15|r%，但对其他所有敌人造成的伤害降低|cffffff50|r%。若被标记的敌人死亡，你恢复|cffffff2418|r点耐力或魔力，取决于你当前最高的资源上限。该效果每|cffffff10|r秒最多触发一次。"
+        }
+      }
+
+      // 检查并修复缺失的数据
+      if(setsData[setKey].type == undefined || setsData[setKey].place == undefined || !setsDataCN[setsData[setKey].id] || setsDataCN[setsData[setKey].id].place == undefined)
+      {
+        if(extra_set_data[setKey])
+        {
+          setsData[setKey].type = extra_set_data[setKey].type
+          setsData[setKey].place = extra_set_data[setKey].place
+          if(setsDataCN[setsData[setKey].id]) {
+            setsDataCN[setsData[setKey].id].place = extra_set_data[setKey].place_cn
+            setsDataCN[setsData[setKey].id].categoryName = extra_set_data[setKey].categoryName_cn
+          }
+          setsData[setKey].categoryName = extra_set_data[setKey].categoryName
+        }
+        else
+        {
+          setsData[setKey].place = ''
+          setsData[setKey].categoryName = ''
+          if(setsDataCN[setsData[setKey].id]) {
+            setsDataCN[setsData[setKey].id].place = ''
+            setsDataCN[setsData[setKey].id].categoryName = ''
+          }
+        }
+      }
       
       var indexInList = await this.isInList(setsData[setKey].name, setsBlackList)
       if(indexInList > -1)
@@ -1022,7 +1165,7 @@ class database {
     skillLineBuffs = {}
 
     for (let lineKey of keysLine) {
-      if(lineKey == 9)
+      if(lineKey == 9 || allSkillData[lineKey].name == undefined)
       {
         continue
       }
@@ -1035,6 +1178,7 @@ class database {
           continue
         }
 
+        //logger.info('  ' + allSkillData[lineKey][classKey].name)
         var keysSkill = Object.keys(allSkillData[lineKey][classKey].skills)
         var numSkill = keysSkill.length
         for (let skillKey of keysSkill) {
@@ -1388,10 +1532,64 @@ class database {
         return
       }
 
-      //logger.info("正在加载英文数据库...")
-      const luaToJson = require('lua-to-json')
-      const luaSrc = await fs.promises.readFile(dataExtractorENPath, 'utf8')
-      const lua_code = luaToJson(luaSrc)
+      logger.info('[ESO:图鉴] 正在加载英文数据库...')
+      
+      // 检查缓存目录
+      if (!fs.existsSync(cachePath)) {
+        fs.mkdirSync(cachePath, { recursive: true })
+      }
+
+      // 计算源文件MD5
+      const currentMD5 = calculateMD5Fast(dataExtractorENPath)
+      let lua_code = null
+      let cacheFound = false
+
+      // 三级缓存查找策略
+      // 1. 优先查找 custome_resources/cache 下的缓存
+      if (fs.existsSync(jsonCachePathEN) && fs.existsSync(jsonCacheMD5PathEN)) {
+        try {
+          const cachedMD5 = (await fs.promises.readFile(jsonCacheMD5PathEN, 'utf8')).trim()
+          if (cachedMD5 === currentMD5) {
+            logger.info('[ESO:图鉴] 使用缓存加载英文数据库（custome_resources/cache）...')
+            const cachedData = await fs.promises.readFile(jsonCachePathEN, 'utf8')
+            lua_code = JSON.parse(cachedData)
+            cacheFound = true
+          }
+        } catch (error) {
+          logger.warn(`[ESO:图鉴] 读取缓存MD5失败: ${error.message}`)
+        }
+      }
+
+      // 2. 如果没找到，查找 resources 下的备份缓存
+      if (!cacheFound && fs.existsSync(jsonDataPathEN) && fs.existsSync(jsonDataMD5PathEN)) {
+        try {
+          const cachedMD5 = (await fs.promises.readFile(jsonDataMD5PathEN, 'utf8')).trim()
+          if (cachedMD5 === currentMD5) {
+            logger.info('[ESO:图鉴] 使用备份缓存加载英文数据库（resources）...')
+            const cachedData = await fs.promises.readFile(jsonDataPathEN, 'utf8')
+            lua_code = JSON.parse(cachedData)
+            cacheFound = true
+            
+            // 将备份缓存复制到主缓存位置
+            await fs.promises.copyFile(jsonDataPathEN, jsonCachePathEN)
+            await fs.promises.copyFile(jsonDataMD5PathEN, jsonCacheMD5PathEN)
+            logger.info('[ESO:图鉴] 已将备份缓存复制到主缓存位置')
+          }
+        } catch (error) {
+          logger.warn(`[ESO:图鉴] 读取备份缓存失败: ${error.message}`)
+        }
+      }
+
+      // 3. 如果都没找到，解析Lua文件并生成缓存
+      if (!cacheFound) {
+        logger.info('[ESO:图鉴] 缓存未找到，开始解析Lua文件...')
+        lua_code = await parseLuaFileWithMemoryControl(
+          dataExtractorENPath,
+          jsonCachePathEN,
+          jsonCacheMD5PathEN,
+          '英文数据库'
+        )
+      }
       
       if (!lua_code?.DataExtractorSavedVariables?.Default) {
         logger.error('[ESO:图鉴] 英文数据文件格式错误')
@@ -1424,9 +1622,12 @@ class database {
       // 加载技能数据
       skillsData = accountData['dataSkills'] || [{}]
 
-      //logger.info('[ESO:图鉴] 英文数据库加载完成')
+      logger.info('[ESO:图鉴] 英文数据库加载完成')
     } catch (error) {
-      logger.error(`[ESO:图鉴] 加载英文数据库失败: ${error}`)
+      logger.error(`[ESO:图鉴] 加载英文数据库失败: ${error.message}`)
+      if (error.stack) {
+        logger.error(`[ESO:图鉴] 错误堆栈: ${error.stack}`)
+      }
     }
   }
 
@@ -1443,10 +1644,65 @@ class database {
         return
       }
 
-      //logger.info("正在加载中文数据库...")
-      const luaToJson = require('lua-to-json')
-      const luaSrc = await fs.promises.readFile(dataExtractorCNPath, 'utf8')
-      const lua_code = luaToJson(luaSrc)
+      logger.info('[ESO:图鉴] 正在加载中文数据库...')
+      
+      // 检查缓存目录
+      if (!fs.existsSync(cachePath)) {
+        fs.mkdirSync(cachePath, { recursive: true })
+      }
+
+      // 计算源文件MD5
+      const currentMD5 = calculateMD5Fast(dataExtractorCNPath)
+      let lua_code = null
+      let cacheFound = false
+
+      // 三级缓存查找策略
+      // 1. 优先查找 custome_resources/cache 下的缓存
+      if (fs.existsSync(jsonCachePathCN) && fs.existsSync(jsonCacheMD5PathCN)) {
+        try {
+          const cachedMD5 = (await fs.promises.readFile(jsonCacheMD5PathCN, 'utf8')).trim()
+          if (cachedMD5 === currentMD5) {
+            logger.info('[ESO:图鉴] 使用缓存加载中文数据库（custome_resources/cache）...')
+            const cachedData = await fs.promises.readFile(jsonCachePathCN, 'utf8')
+            lua_code = JSON.parse(cachedData)
+            cacheFound = true
+          }
+        } catch (error) {
+          logger.warn(`[ESO:图鉴] 读取缓存MD5失败: ${error.message}`)
+        }
+      }
+
+
+      // 2. 如果没找到，查找 resources 下的备份缓存
+      if (!cacheFound && fs.existsSync(jsonDataPathCN) && fs.existsSync(jsonDataMD5PathCN)) {
+        try {
+          const cachedMD5 = (await fs.promises.readFile(jsonDataMD5PathCN, 'utf8')).trim()
+          if (cachedMD5 === currentMD5) {
+            logger.info('[ESO:图鉴] 使用备份缓存加载中文数据库（resources）...')
+            const cachedData = await fs.promises.readFile(jsonDataPathCN, 'utf8')
+            lua_code = JSON.parse(cachedData)
+            cacheFound = true
+            
+            // 将备份缓存复制到主缓存位置
+            await fs.promises.copyFile(jsonDataPathCN, jsonCachePathCN)
+            await fs.promises.copyFile(jsonDataMD5PathCN, jsonCacheMD5PathCN)
+            logger.info('[ESO:图鉴] 已将备份缓存复制到主缓存位置')
+          }
+        } catch (error) {
+          logger.warn(`[ESO:图鉴] 读取备份缓存失败: ${error.message}`)
+        }
+      }
+
+      // 3. 如果都没找到，解析Lua文件并生成缓存
+      if (!cacheFound) {
+        logger.info('[ESO:图鉴] 缓存未找到，开始解析Lua文件...')
+        lua_code = await parseLuaFileWithMemoryControl(
+          dataExtractorCNPath,
+          jsonCachePathCN,
+          jsonCacheMD5PathCN,
+          '中文数据库'
+        )
+      }
       
       if (!lua_code?.DataExtractorSavedVariables?.Default) {
         logger.error('[ESO:图鉴] 中文数据文件格式错误')
@@ -1479,9 +1735,12 @@ class database {
       // 加载技能数据
       skillsDataCN = accountData['dataSkills'] || [{}]
 
-      //logger.info('[ESO:图鉴] 中文数据库加载完成')
+      logger.info('[ESO:图鉴] 中文数据库加载完成')
     } catch (error) {
-      logger.error(`[ESO:图鉴] 加载中文数据库失败: ${error}`)
+      logger.error(`[ESO:图鉴] 加载中文数据库失败: ${error.message}`)
+      if (error.stack) {
+        logger.error(`[ESO:图鉴] 错误堆栈: ${error.stack}`)
+      }
     }
   }
 
@@ -1785,6 +2044,11 @@ class database {
     allList = ''
     for (let lineKey of keysLine) {
       if(lineKey == 9)
+      {
+        continue
+      }
+
+      if(allSkillData[lineKey].name == undefined)
       {
         continue
       }
