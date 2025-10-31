@@ -4,6 +4,9 @@ import fetch from 'node-fetch'
 import moment from 'moment'
 import ServerStatus from '../model/serverstatus.js'
 import md5 from 'md5'
+import * as cheerio from 'cheerio'
+
+const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 
 // 辅助函数：获取月份数字
 function getMonthNumber(monthName) {
@@ -245,6 +248,119 @@ const parseMaintenanceFunctions = {
         }
     }
 };
+
+function normalizeMaintenanceMessage(htmlContent) {
+    if (!htmlContent) {
+        return '';
+    }
+
+    const $ = cheerio.load(`<div>${htmlContent}</div>`);
+    const text = $.text()
+        .replace(/\r/g, '')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .join('\n');
+
+    return text;
+}
+
+async function fetchMaintenanceMessage() {
+    const url = 'https://forums.elderscrollsonline.com/en/categories/official-news';
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': DEFAULT_USER_AGENT
+            }
+        });
+
+        if (!response || !response.ok) {
+            logger.warn(`[ESO:服务器状态] 获取维护公告失败，状态码: ${response ? response.status : '未知'}`);
+            return '';
+        }
+
+        const html = await response.text();
+        const $ = cheerio.load(html);
+        const dismissMessage = $('.DismissMessage');
+
+        if (!dismissMessage || dismissMessage.length === 0) {
+            logger.warn('[ESO:服务器状态] 未能在官方论坛页面找到维护公告内容');
+            return '';
+        }
+
+        const normalized = normalizeMaintenanceMessage(dismissMessage.html());
+        return normalized;
+    } catch (error) {
+        logger.error('[ESO:服务器状态] 拉取维护公告时出现异常:', error);
+        return '';
+    }
+}
+
+async function fetchServerStatusRaw() {
+    const url = 'https://esolog.uesp.net/getEsoServerStatus.php';
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': DEFAULT_USER_AGENT
+            }
+        });
+
+        if (!response || !response.ok) {
+            logger.warn(`[ESO:服务器状态] 获取服务器状态失败，状态码: ${response ? response.status : '未知'}`);
+            return null;
+        }
+
+        const raw = await response.text();
+        //logger.info(`[ESO:服务器状态] 服务器状态原始数据: ${raw}`);
+        const $ = cheerio.load(raw);
+        const statusKeyMap = {
+            'pc - na': 'pcNA',
+            'pc - eu': 'pcEU',
+            'pts': 'pcPTS',
+            'xbox - na': 'xbNA',
+            'xbox - eu': 'xbEU',
+            'playstation - na': 'psNA',
+            'playstation - eu': 'psEU'
+        };
+
+        const displayNameMap = serverList.reduce((acc, item) => {
+            acc[item[0]] = item[1];
+            return acc;
+        }, {});
+
+        $('.uespEsoServer').each((_, element) => {
+            const titleText = $(element).find('.uespEsoServerTitle').text().replace(':', '').trim();
+            if (!titleText) return;
+
+            const normalizedTitle = titleText.toLowerCase();
+            const key = statusKeyMap[normalizedTitle];
+            const statusElement = $(element).find("[class^='uespEsoStatus']");
+            const statusClass = statusElement.attr('class') || '';
+            const statusText = statusElement.text().trim();
+            const isUp = statusClass.toLowerCase().includes('up') || statusText.toLowerCase() === 'up' || statusText.toLowerCase() === 'online';
+            const statusValue = isUp ? 1 : 0;
+
+            if (key && Object.prototype.hasOwnProperty.call(status, key)) {
+                status[key] = statusValue;
+            } else {
+                logger.info(`[ESO:服务器状态] 未识别的服务器条目: ${titleText}`);
+            }
+        });
+
+        const lastUpdatedText = $('.uespEsoServerUpdated').text().replace('Last Updated', '').replace(':', '').trim();
+
+        return {
+            raw,
+            lastUpdated: lastUpdatedText,
+            displayNames: displayNameMap
+        };
+    } catch (error) {
+        logger.error('[ESO:服务器状态] 拉取服务器状态数据时出现异常:', error);
+        return null;
+    }
+}
 
 // 维护信息处理函数
 function processMaintenanceInfo(maintenanceMessage) {
@@ -510,84 +626,14 @@ export class serverStatus extends plugin {
    * @更新服务器状态
    */
   async updateESOStatus (e) {
-  	/** 服务器状态接口地址 */
-    let url = 'https://esoserverstatus.net/'
-    /** 调用接口获取数据 */
-    let res = await fetch(url)
-
-    /** 判断接口是否请求成功 */
-    if (!res) {
-      logger.error('[服务器状态] 接口请求失败')
-      return await this.reply('由于网络波动，更新服务器状态失败，请稍后重试')
+  	const maintenanceMessage = await fetchMaintenanceMessage()
+    if (maintenanceMessage) {
+      status.msg = maintenanceMessage
+    } else if (!status.msg || status.msg.length === 0) {
+      status.msg = 'Maintenance information unavailable'
     }
 
-    //logger.info('[服务器公告] 更新服务器公告')
-    let notesData = await res.text()
-    let tempData = notesData.split('id="alert-box"')[1]
-    tempData = tempData.split('align="center"')[0]
-    tempData = tempData.split('status-text">')[1]
-    tempData = tempData.split('</div>')[0]
-
-    let msg = []
-    var msgIndex = 0
-    let srcMsgs = tempData.split('<br/>')
-    for (let oneMsg of srcMsgs) {
-      msg = msg + oneMsg
-      msgIndex = msgIndex + 1
-    }
-
-    tempData = msg
-    status.msg = []
-    msgIndex = 0
-    srcMsgs = tempData.split('<br />')
-    for (let oneMsg of srcMsgs) {
-      status.msg = status.msg + oneMsg
-      msgIndex = msgIndex + 1
-    }
-
-    //logger.info('[服务器状态] 更新服务器状态')
-    /** 接口结果，分别解析出每个服务器的状态 */
-    let statusData = notesData
-    tempData = statusData.split('PC-NA')[1]
-    tempData = tempData.split('PC-PTS')[0]
-    tempData = tempData.split('<b>')[1]
-    tempData = tempData.split('</b>')[0]
-    if(tempData == "Offline"){status.pcNA = 0}else{status.pcNA = 1}
-
-    tempData = statusData.split('PC-EU')[1]
-    tempData = tempData.split('PC-NA')[0]
-    tempData = tempData.split('<b>')[1]
-    tempData = tempData.split('</b>')[0]
-    if(tempData == "Offline"){status.pcEU = 0}else{status.pcEU = 1}
-
-    tempData = statusData.split('PC-PTS')[1]
-    tempData = tempData.split('XBOX-EU')[0]
-    tempData = tempData.split('<b>')[1]
-    tempData = tempData.split('</b>')[0]
-    if(tempData == "Offline"){status.pcPTS = 0}else{status.pcPTS = 1}
-
-    tempData = statusData.split('XBOX-EU')[1]
-    tempData = tempData.split('XBOX-NA')[0]
-    tempData = tempData.split('<b>')[1]
-    tempData = tempData.split('</b>')[0]
-    if(tempData == "Offline"){status.xbEU = 0}else{status.xbEU = 1}
-
-    tempData = statusData.split('XBOX-NA')[1]
-    tempData = tempData.split('PS4-EU')[0]
-    tempData = tempData.split('<b>')[1]
-    tempData = tempData.split('</b>')[0]
-    if(tempData == "Offline"){status.xbNA = 0}else{status.xbNA = 1}
-
-    tempData = statusData.split('PS4-EU')[1]
-    tempData = tempData.split('PS4-NA')[0]
-    tempData = tempData.split('<b>')[1]
-    tempData = tempData.split('</b>')[0]
-    if(tempData == "Offline"){status.psEU = 0}else{status.psEU = 1}
-
-    tempData = statusData.split('PS4-NA')[1]
-	  tempData = tempData.split('<b>')[1]
-    tempData = tempData.split('</b>')[0]
-    if(tempData == "Offline"){status.psNA = 0}else{status.psNA = 1}
+    await fetchServerStatusRaw()
   }
 
 
