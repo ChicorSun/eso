@@ -28,19 +28,14 @@ function getMonthName(monthName) {
   return months[monthName] || '1月';
 }
 
-// 辅助函数：将EDT时间转换为北京时间
-function convertEDTtoBeijing(time, ampm) {
-  let [hours, minutes] = time.split(':').map(Number);
+// 辅助函数：将UTC时间转换为北京时间
+// 输入：UTC时间（HH:MM格式，24小时制），如 "9:00" 或 "17:00"
+// 输出：北京时间（HH:MM格式，24小时制）
+function convertUTCtoBeijing(utcTime) {
+  let [hours, minutes] = utcTime.split(':').map(Number);
   
-  // 转换为24小时制
-  if (ampm === 'PM' && hours !== 12) {
-    hours += 12;
-  } else if (ampm === 'AM' && hours === 12) {
-    hours = 0;
-  }
-  
-  // EDT比北京时间慢12小时，所以加12小时
-  hours += 12;
+  // UTC + 8小时 = 北京时间
+  hours += 8;
   
   // 处理跨日
   if (hours >= 24) {
@@ -109,23 +104,43 @@ const parseMaintenanceFunctions = {
     },
 
     parseSingleTime(line) {
-        const singleTimeRegex = /(\d{1,2}:\d{2})\s*(AM|PM)\s*EDT/i;
-        const singleTimeMatch = line.match(singleTimeRegex);
+        // 优先查找UTC时间（格式：(9:00 UTC) 或 (09:00 UTC)）
+        const utcTimeRegex = /\((\d{1,2}:\d{2})\s*UTC\)/i;
+        const utcTimeMatch = line.match(utcTimeRegex);
         
-        if (singleTimeMatch) {
-            const maintenanceDateMatch = line.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})/);
+        if (utcTimeMatch) {
+            // 日期格式支持 "November 3," 或 "November 3"
+            const maintenanceDateMatch = line.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?/);
             const maintenanceMonth = maintenanceDateMatch ? getMonthName(maintenanceDateMatch[1]) : '';
             const maintenanceDay = maintenanceDateMatch ? maintenanceDateMatch[2] : '';
             
-            const localTime = convertEDTtoBeijing(singleTimeMatch[1], singleTimeMatch[2]);
+            // 使用UTC时间计算北京时间
+            const utcTime = utcTimeMatch[1];
+            const localTime = convertUTCtoBeijing(utcTime);
             return ` 北京时间${maintenanceMonth}${maintenanceDay}日 ${localTime}`;
+        }
+        
+        // 如果没有UTC时间，尝试使用EST/EDT时间（向后兼容）
+        const singleTimeRegex = /(\d{1,2}:\d{2})\s*(AM|PM)\s*E(D|S)T/i;
+        const singleTimeMatch = line.match(singleTimeRegex);
+        
+        if (singleTimeMatch) {
+            // 日期格式支持 "November 3," 或 "November 3"
+            const maintenanceDateMatch = line.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?/);
+            const maintenanceMonth = maintenanceDateMatch ? getMonthName(maintenanceDateMatch[1]) : '';
+            const maintenanceDay = maintenanceDateMatch ? maintenanceDateMatch[2] : '';
+            
+            //logger.warn('[ESO:服务器状态] parseSingleTime 未找到UTC时间，使用EST/EDT时间，但建议使用UTC时间');
+            // 如果没有UTC时间，返回空（用户要求使用UTC时间）
+            return '';
         }
         
         return '';
     },
 
     parseTimeMatch(timeMatch, isEdtFirst, line) {
-        const startDateMatch = line.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})/);
+        // 日期格式支持 "November 3," 或 "November 3"
+        const startDateMatch = line.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?/);
         const startMonth = startDateMatch ? getMonthName(startDateMatch[1]) : '';
         const startDay = startDateMatch ? startDateMatch[2] : '';
 
@@ -134,23 +149,28 @@ const parseMaintenanceFunctions = {
         let endDay = startDay;
         
         if (isEdtFirst) {
-            startLocalTime = convertEDTtoBeijing(timeMatch[1], timeMatch[2]);
-            endLocalTime = convertEDTtoBeijing(timeMatch[4], timeMatch[5]);
-            startUTC = timeMatch[3];
-            endUTC = timeMatch[6];
+            // EDT/EST格式：(\d{1,2}:\d{2})\s*(AM|PM)\s*E(D|S)T\s*\((\d{1,2}:\d{2})\s*UTC\)\s*-\s*(\d{1,2}:\d{2})\s*(AM|PM)\s*E(D|S)T\s*\((\d{1,2}:\d{2})\s*UTC\)
+            // 组索引：[1]=开始时间 [2]=开始AM/PM [3]=EST/EDT的D/S [4]=开始UTC [5]=结束时间 [6]=结束AM/PM [7]=EST/EDT的D/S [8]=结束UTC
+            // 直接使用UTC时间计算北京时间
+            startUTC = timeMatch[4];
+            endUTC = timeMatch[8];
+            startLocalTime = convertUTCtoBeijing(startUTC);
+            endLocalTime = convertUTCtoBeijing(endUTC);
         } else {
-            startLocalTime = convertEDTtoBeijing(timeMatch[2], timeMatch[3]);
+            // UTC格式：(\d{1,2}:\d{2})\s*UTC\s*\((\d{1,2}:\d{2})\s*(AM|PM)\s*E(D|S)T\)\s*-\s*(?:(January|...)\s+(\d{1,2}),?\s+)?(\d{1,2}:\d{2})\s*UTC\s*\((\d{1,2}:\d{2})\s*(AM|PM)\s*E(D|S)T\)
+            // 组索引：[1]=开始UTC [2]=开始时间 [3]=开始AM/PM [4]=EST/EDT的D/S [5]=结束月份 [6]=结束日期 [7]=结束UTC [8]=结束时间 [9]=结束AM/PM [10]=EST/EDT的D/S
+            // 直接使用UTC时间计算北京时间
             startUTC = timeMatch[1];
+            startLocalTime = convertUTCtoBeijing(startUTC);
             
-            if (timeMatch[4] && timeMatch[5]) {
-                endMonth = getMonthName(timeMatch[4]);
-                endDay = timeMatch[5];
-                endLocalTime = convertEDTtoBeijing(timeMatch[7], timeMatch[8]);
-                endUTC = timeMatch[6];
+            if (timeMatch[5] && timeMatch[6]) {
+                endMonth = getMonthName(timeMatch[5]);
+                endDay = timeMatch[6];
+                endUTC = timeMatch[7];
             } else {
-                endLocalTime = convertEDTtoBeijing(timeMatch[7], timeMatch[8]);
-                endUTC = timeMatch[6];
+                endUTC = timeMatch[7];
             }
+            endLocalTime = convertUTCtoBeijing(endUTC);
         }
 
         
@@ -162,39 +182,68 @@ const parseMaintenanceFunctions = {
     },
 
     parseMaintenanceTime(line) {
+//logger.info(`[ESO:服务器状态] parseMaintenanceTime 输入: "${line}"`);
+        
         if (line.includes('No maintenance')) {
+//logger.info('[ESO:服务器状态] 检测到无需维护');
             return '';
         }
 
-        const edtFirstRegex = /(\d{1,2}:\d{2})\s*(AM|PM)\s*EDT\s*\((\d{1,2}:\d{2})\s*UTC\)\s*-\s*(\d{1,2}:\d{2})\s*(AM|PM)\s*EDT\s*\((\d{1,2}:\d{2})\s*UTC\)/i;
-        const utcFirstRegex = /(\d{1,2}:\d{2})\s*UTC\s*\((\d{1,2}:\d{2})\s*(AM|PM)\s*EDT\)\s*-\s*(?:(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+)?(\d{1,2}:\d{2})\s*UTC\s*\((\d{1,2}:\d{2})\s*(AM|PM)\s*EDT\)/i;
+        // 支持 EST 和 EDT，格式：4:00AM EST (9:00 UTC) - 12:00PM EST (17:00 UTC)
+        const edtFirstRegex = /(\d{1,2}:\d{2})\s*(AM|PM)\s*E(D|S)T\s*\((\d{1,2}:\d{2})\s*UTC\)\s*-\s*(\d{1,2}:\d{2})\s*(AM|PM)\s*E(D|S)T\s*\((\d{1,2}:\d{2})\s*UTC\)/i;
+        // 支持 EST 和 EDT，格式：9:00 UTC (4:00AM EST) - 17:00 UTC (12:00PM EST)
+        const utcFirstRegex = /(\d{1,2}:\d{2})\s*UTC\s*\((\d{1,2}:\d{2})\s*(AM|PM)\s*E(D|S)T\)\s*-\s*(?:(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+)?(\d{1,2}:\d{2})\s*UTC\s*\((\d{1,2}:\d{2})\s*(AM|PM)\s*E(D|S)T\)/i;
         
         let timeMatch = line.match(edtFirstRegex);
         let isEdtFirst = true;
         
-        if (!timeMatch) {
+        if (timeMatch) {
+//logger.info('[ESO:服务器状态] EDT/EST格式匹配成功:', timeMatch);
+        } else {
             timeMatch = line.match(utcFirstRegex);
             isEdtFirst = false;
+            if (timeMatch) {
+//logger.info('[ESO:服务器状态] UTC格式匹配成功:', timeMatch);
+            } else {
+//logger.warn('[ESO:服务器状态] 时间格式未匹配到，尝试parseSingleTime');
+            }
         }
 
         if (timeMatch) {
-            return this.parseTimeMatch(timeMatch, isEdtFirst, line);
+            const result = this.parseTimeMatch(timeMatch, isEdtFirst, line);
+//logger.info('[ESO:服务器状态] parseTimeMatch 结果:', result);
+            return result;
         } else {
-            return this.parseSingleTime(line);
+            const result = this.parseSingleTime(line);
+//logger.info('[ESO:服务器状态] parseSingleTime 结果:', result);
+            return result;
         }
     },
 
     parseMaintenanceLine(line) {
-        const status = this.getMaintenanceStatus(line);
-        const platformInfo = this.getPlatformInfo(line);
+//logger.info(`[ESO:服务器状态] parseMaintenanceLine 输入: "${line}"`);
         
-        if (!platformInfo.isValid) return null;
+        const status = this.getMaintenanceStatus(line);
+//logger.info('[ESO:服务器状态] 解析状态:', status);
+        
+        const platformInfo = this.getPlatformInfo(line);
+//logger.info('[ESO:服务器状态] 解析平台信息:', JSON.stringify(platformInfo));
+        
+        if (!platformInfo.isValid) {
+//logger.warn('[ESO:服务器状态] 平台信息无效，返回null');
+            return null;
+        }
 
         const serverRegion = this.getServerRegion(line);
+//logger.info('[ESO:服务器状态] 解析服务器区域:', serverRegion);
+        
         const maintenanceType = this.getMaintenanceType(line);
+//logger.info('[ESO:服务器状态] 解析维护类型:', maintenanceType);
+        
         const translatedTime = this.parseMaintenanceTime(line);
+//logger.info('[ESO:服务器状态] 解析翻译时间:', translatedTime);
 
-        return {
+        const result = {
             status,
             platform: platformInfo.platform,
             isPlatformSpecific: platformInfo.isPlatformSpecific,
@@ -202,9 +251,15 @@ const parseMaintenanceFunctions = {
             maintenanceType,
             translatedTime
         };
+        
+//logger.info('[ESO:服务器状态] parseMaintenanceLine 最终结果:', JSON.stringify(result, null, 2));
+        return result;
     },
 
     assignToPlatform(finalLines, maintenanceInfo, line) {
+//logger.info(`[ESO:服务器状态] assignToPlatform 输入:`, JSON.stringify(maintenanceInfo, null, 2));
+//logger.info(`[ESO:服务器状态] assignToPlatform 原始行: "${line}"`);
+        
         const { status, platform, isPlatformSpecific, serverRegion, maintenanceType, translatedTime } = maintenanceInfo;
         
         // 根据状态确定颜色
@@ -218,12 +273,16 @@ const parseMaintenanceFunctions = {
         }
         
         const newLine = `${status} ${platform}：${serverRegion}${maintenanceType}${translatedTime ? ` -${translatedTime}` : ''}`;
+//logger.info('[ESO:服务器状态] 生成的文本行:', newLine);
+//logger.info('[ESO:服务器状态] 分配的颜色:', statusColor);
+        
         const lineObject = {
             text: newLine,
             color: statusColor
         };
         
         if (isPlatformSpecific) {
+//logger.info('[ESO:服务器状态] 平台特定信息，isPlatformSpecific:', isPlatformSpecific);
             if (line.includes('PC/Mac')) {
                 const pcLine = { ...lineObject };
                 pcLine.text = newLine.replace('PC/Mac', 'PC');
@@ -235,35 +294,25 @@ const parseMaintenanceFunctions = {
                 if (!finalLines["Mac"]) finalLines["Mac"] = [];
                 finalLines["PC"].push(pcLine);
                 finalLines["Mac"].push(macLine);
+//logger.info('[ESO:服务器状态] 已分配到PC和Mac平台');
             } else if (line.includes('Xbox')) {
                 if (!finalLines["Xbox"]) finalLines["Xbox"] = [];
                 finalLines["Xbox"].push(lineObject);
+//logger.info('[ESO:服务器状态] 已分配到Xbox平台');
             } else if (line.includes('PlayStation')) {
                 if (!finalLines["PlayStation"]) finalLines["PlayStation"] = [];
                 finalLines["PlayStation"].push(lineObject);
+//logger.info('[ESO:服务器状态] 已分配到PlayStation平台');
             }
         } else {
+//logger.info('[ESO:服务器状态] 通用信息，分配到PC平台');
             if (!finalLines["PC"]) finalLines["PC"] = [];
             finalLines["PC"].push(lineObject);
         }
+        
+//logger.info('[ESO:服务器状态] assignToPlatform 当前finalLines状态:', JSON.stringify(finalLines, null, 2));
     }
 };
-
-function normalizeMaintenanceMessage(htmlContent) {
-    if (!htmlContent) {
-        return '';
-    }
-
-    const $ = cheerio.load(`<div>${htmlContent}</div>`);
-    const text = $.text()
-        .replace(/\r/g, '')
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .join('\n');
-
-    return text;
-}
 
 async function fetchMaintenanceMessage() {
     const url = 'https://forums.elderscrollsonline.com/en/categories/official-news';
@@ -276,23 +325,34 @@ async function fetchMaintenanceMessage() {
         });
 
         if (!response || !response.ok) {
-            logger.warn(`[ESO:服务器状态] 获取维护公告失败，状态码: ${response ? response.status : '未知'}`);
+//logger.warn(`[ESO:服务器状态] 获取维护公告失败，状态码: ${response ? response.status : '未知'}`);
             return '';
         }
 
         const html = await response.text();
+        
+        // 检查是否包含 DismissMessage（与 maintenance.js 逻辑一致）
+        if (!html.includes("DismissMessage")) {
+//logger.warn('[ESO:服务器状态] 未能在官方论坛页面找到维护公告内容');
+            return '';
+        }
+
         const $ = cheerio.load(html);
         const dismissMessage = $('.DismissMessage');
 
         if (!dismissMessage || dismissMessage.length === 0) {
-            logger.warn('[ESO:服务器状态] 未能在官方论坛页面找到维护公告内容');
+//logger.warn('[ESO:服务器状态] 未能在官方论坛页面找到维护公告内容');
             return '';
         }
 
-        const normalized = normalizeMaintenanceMessage(dismissMessage.html());
-        return normalized;
+        // 直接使用 .text().trim() 获取文本，与 maintenance.js 保持一致
+        const maintenanceMessage = dismissMessage.text().trim();
+//logger.info('[ESO:服务器状态] 获取到的维护公告原始文本:');
+//logger.info(maintenanceMessage);
+//logger.info('[ESO:服务器状态] 维护公告原始文本长度:', maintenanceMessage.length);
+        return maintenanceMessage;
     } catch (error) {
-        logger.error('[ESO:服务器状态] 拉取维护公告时出现异常:', error);
+//logger.error('[ESO:服务器状态] 拉取维护公告时出现异常:', error);
         return '';
     }
 }
@@ -308,12 +368,14 @@ async function fetchServerStatusRaw() {
         });
 
         if (!response || !response.ok) {
-            logger.warn(`[ESO:服务器状态] 获取服务器状态失败，状态码: ${response ? response.status : '未知'}`);
+//logger.warn(`[ESO:服务器状态] 获取服务器状态失败，状态码: ${response ? response.status : '未知'}`);
             return null;
         }
 
         const raw = await response.text();
-        //logger.info(`[ESO:服务器状态] 服务器状态原始数据: ${raw}`);
+//logger.info(`[ESO:服务器状态] fetchServerStatusRaw 获取到的原始HTML数据:`);
+//logger.info(raw);
+        
         const $ = cheerio.load(raw);
         const statusKeyMap = {
             'pc - na': 'pcNA',
@@ -330,6 +392,9 @@ async function fetchServerStatusRaw() {
             return acc;
         }, {});
 
+//logger.info('[ESO:服务器状态] fetchServerStatusRaw 开始解析服务器状态');
+        const serverStatusResults = [];
+
         $('.uespEsoServer').each((_, element) => {
             const titleText = $(element).find('.uespEsoServerTitle').text().replace(':', '').trim();
             if (!titleText) return;
@@ -343,34 +408,76 @@ async function fetchServerStatusRaw() {
             const statusValue = isUp ? 1 : 0;
 
             if (key && Object.prototype.hasOwnProperty.call(status, key)) {
+                const oldValue = status[key];
                 status[key] = statusValue;
+                const displayName = displayNameMap[key] || titleText;
+                
+                const serverInfo = {
+                    key,
+                    displayName,
+                    titleText,
+                    statusClass,
+                    statusText,
+                    isUp,
+                    statusValue,
+                    oldValue,
+                    changed: oldValue !== statusValue
+                };
+                serverStatusResults.push(serverInfo);
+                
+//logger.info(`[ESO:服务器状态] 服务器 ${displayName} (${key}): ${statusText} (${statusClass}) -> 状态值: ${statusValue}${serverInfo.changed ? ` (从 ${oldValue} 变更)` : ''}`);
             } else {
-                logger.info(`[ESO:服务器状态] 未识别的服务器条目: ${titleText}`);
+//logger.info(`[ESO:服务器状态] 未识别的服务器条目: ${titleText}`);
             }
         });
 
         const lastUpdatedText = $('.uespEsoServerUpdated').text().replace('Last Updated', '').replace(':', '').trim();
+//logger.info(`[ESO:服务器状态] fetchServerStatusRaw 最后更新时间: ${lastUpdatedText}`);
+//logger.info(`[ESO:服务器状态] fetchServerStatusRaw 解析到的服务器状态总数: ${serverStatusResults.length}`);
+//logger.info(`[ESO:服务器状态] fetchServerStatusRaw 当前status对象状态:`);
+//logger.info(JSON.stringify({
+//            pcNA: status.pcNA,
+//            pcEU: status.pcEU,
+//            pcPTS: status.pcPTS,
+//            xbNA: status.xbNA,
+//            xbEU: status.xbEU,
+//            psNA: status.psNA,
+//            psEU: status.psEU
+//        }, null, 2));
 
         return {
             raw,
             lastUpdated: lastUpdatedText,
-            displayNames: displayNameMap
+            displayNames: displayNameMap,
+            serverStatusResults
         };
     } catch (error) {
-        logger.error('[ESO:服务器状态] 拉取服务器状态数据时出现异常:', error);
+//logger.error('[ESO:服务器状态] 拉取服务器状态数据时出现异常:', error);
         return null;
     }
 }
 
 // 维护信息处理函数
 function processMaintenanceInfo(maintenanceMessage) {
+//logger.info('[ESO:服务器状态] processMaintenanceInfo 输入:');
+//logger.info(maintenanceMessage);
+    
     const lines = maintenanceMessage.trim().split('\n').filter(line => line.trim() !== '');
+//logger.info('[ESO:服务器状态] 分割后的行数:', lines.length);
+//logger.info('[ESO:服务器状态] 分割后的每行内容:');
+    lines.forEach((line, index) => {
+//logger.info(`  行${index + 1}: "${line}"`);
+    });
+    
     const finalLines = {};
     const currentYear = new Date().getFullYear();
 
     const firstLine = lines[0];
-    const dateMatch = firstLine.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})/);
+//logger.info('[ESO:服务器状态] 第一行内容:', firstLine);
+    // 日期格式支持 "November 3," 或 "November 3"
+    const dateMatch = firstLine.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?/);
     if (dateMatch) {
+//logger.info('[ESO:服务器状态] 日期匹配成功:', dateMatch);
         const monthName = dateMatch[1];
         const day = dateMatch[2];
         const monthNumber = getMonthNumber(monthName);
@@ -378,18 +485,28 @@ function processMaintenanceInfo(maintenanceMessage) {
             text: `${currentYear}-${monthNumber}-${day} 当周服务器维护信息`,
             color: 'rgb(58, 146, 254)' // 蓝色标题
         };
+//logger.info('[ESO:服务器状态] 生成的标题:', finalLines["header"]);
+    } else {
+//logger.warn('[ESO:服务器状态] 第一行未匹配到日期格式');
     }
 
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
 
+//logger.info(`[ESO:服务器状态] 处理第${i + 1}行: "${line}"`);
         const maintenanceInfo = parseMaintenanceFunctions.parseMaintenanceLine(line);
-        if (!maintenanceInfo) continue;
-
+        if (!maintenanceInfo) {
+//logger.warn(`[ESO:服务器状态] 第${i + 1}行解析失败，返回null`);
+            continue;
+        }
+        
+//logger.info(`[ESO:服务器状态] 第${i + 1}行解析结果:`, JSON.stringify(maintenanceInfo, null, 2));
         parseMaintenanceFunctions.assignToPlatform(finalLines, maintenanceInfo, line);
     }
     
+//logger.info('[ESO:服务器状态] processMaintenanceInfo 最终结果:');
+//logger.info(JSON.stringify(finalLines, null, 2));
     return finalLines;
 }
 
@@ -512,20 +629,27 @@ export class serverStatus extends plugin {
     	let ssData = await ServerStatus.get(this.e, 'eso', 'serverStatus', 'serverStatus')
         if (!ssData)
         {
-        	logger.error('[ESO:服务器状态] 初始化结构体失败')
+//logger.error('[ESO:服务器状态] 初始化结构体失败')
             return
         }
         serverData = ssData
     }
 
     // 处理维护信息
+//logger.info('[ESO:服务器状态] sendStatus 开始处理维护信息');
+//logger.info('[ESO:服务器状态] sendStatus 当前status.msg:', status.msg);
+    
     let maintenanceInfo = [];
     try {
       const maintenanceData = processMaintenanceInfo(status.msg);
+//logger.info('[ESO:服务器状态] sendStatus processMaintenanceInfo 返回结果:', JSON.stringify(maintenanceData, null, 2));
+      
       if (maintenanceData.header) {
+//logger.info('[ESO:服务器状态] sendStatus 添加标题:', maintenanceData.header);
         maintenanceInfo.push(maintenanceData.header);
       }
       if (maintenanceData.PC) {
+//logger.info('[ESO:服务器状态] sendStatus PC平台信息:', maintenanceData.PC);
         if (Array.isArray(maintenanceData.PC)) {
           maintenanceInfo.push(...maintenanceData.PC);
         } else {
@@ -533,6 +657,7 @@ export class serverStatus extends plugin {
         }
       }
       if (maintenanceData.Mac) {
+//logger.info('[ESO:服务器状态] sendStatus Mac平台信息:', maintenanceData.Mac);
         if (Array.isArray(maintenanceData.Mac)) {
           maintenanceInfo.push(...maintenanceData.Mac);
         } else {
@@ -540,6 +665,7 @@ export class serverStatus extends plugin {
         }
       }
       if (maintenanceData.Xbox) {
+//logger.info('[ESO:服务器状态] sendStatus Xbox平台信息:', maintenanceData.Xbox);
         if (Array.isArray(maintenanceData.Xbox)) {
           maintenanceInfo.push(...maintenanceData.Xbox);
         } else {
@@ -547,14 +673,17 @@ export class serverStatus extends plugin {
         }
       }
       if (maintenanceData.PlayStation) {
+//logger.info('[ESO:服务器状态] sendStatus PlayStation平台信息:', maintenanceData.PlayStation);
         if (Array.isArray(maintenanceData.PlayStation)) {
           maintenanceInfo.push(...maintenanceData.PlayStation);
         } else {
           maintenanceInfo.push(maintenanceData.PlayStation);
         }
       }
+//logger.info('[ESO:服务器状态] sendStatus 最终maintenanceInfo数组:', JSON.stringify(maintenanceInfo, null, 2));
     } catch (error) {
-      logger.error('[ESO:服务器状态] 处理维护信息失败:', error);
+//logger.error('[ESO:服务器状态] 处理维护信息失败:', error);
+//logger.error('[ESO:服务器状态] 错误堆栈:', error.stack);
     }
 
     serverData.serverData[1].msg = []
@@ -573,8 +702,20 @@ export class serverStatus extends plugin {
       serverData.serverData[1].msg[msgIndex] = oneMsg
       msgIndex = msgIndex + 1
     }
-    //logger.info(serverData.serverData[1].msg)
+//logger.info('[ESO:服务器状态] sendStatus 准备生成服务器状态信息');
+//logger.info(`[ESO:服务器状态] sendStatus 当前status对象状态:`);
+//logger.info(JSON.stringify({
+//        pcNA: status.pcNA,
+//        pcEU: status.pcEU,
+//        pcPTS: status.pcPTS,
+//        xbNA: status.xbNA,
+//        xbEU: status.xbEU,
+//        psNA: status.psNA,
+//        psEU: status.psEU
+//    }, null, 2));
+    
     serverData.serverData[1].servers = []
+//logger.info('[ESO:服务器状态] sendStatus 开始生成服务器显示信息');
     for (let server of serverList) {
     	let oneServer = {
     		name: `PC-NA`,
@@ -593,11 +734,19 @@ export class serverStatus extends plugin {
     		oneServer.color = `rgb(19, 217, 98)`
     	}
         serverData.serverData[1].servers.push(oneServer);
+//logger.info(`[ESO:服务器状态] sendStatus 服务器 ${oneServer.name} (${server[0]}): 状态=${oneServer.status}, 颜色=${oneServer.color}, 原始值=${status[server[0]]}`);
     }
 
-    //logger.info(serverData.serverData[0])
-    //logger.info(serverData.serverData[1])
+//logger.info('[ESO:服务器状态] sendStatus 最终生成的服务器列表:');
+//logger.info(JSON.stringify(serverData.serverData[1].servers, null, 2));
+//logger.info('[ESO:服务器状态] sendStatus 最终生成的完整serverData:');
+//logger.info(JSON.stringify({
+//        msg: serverData.serverData[1].msg,
+//        servers: serverData.serverData[1].servers
+//    }, null, 2));
+    
 	let img = await this.cache(serverData, serverImg)
+//logger.info('[ESO:服务器状态] sendStatus 图片生成完成，准备发送回复');
     await this.e.reply(img)
   }
 
@@ -626,14 +775,65 @@ export class serverStatus extends plugin {
    * @更新服务器状态
    */
   async updateESOStatus (e) {
+//logger.info('[ESO:服务器状态] updateESOStatus 开始更新服务器状态');
   	const maintenanceMessage = await fetchMaintenanceMessage()
+//logger.info('[ESO:服务器状态] updateESOStatus 获取到的维护消息:', maintenanceMessage);
+    
     if (maintenanceMessage) {
       status.msg = maintenanceMessage
+//logger.info('[ESO:服务器状态] updateESOStatus 已将维护消息写入status.msg');
     } else if (!status.msg || status.msg.length === 0) {
       status.msg = 'Maintenance information unavailable'
+//logger.warn('[ESO:服务器状态] updateESOStatus 未获取到维护消息，使用默认值');
+    } else {
+//logger.info('[ESO:服务器状态] updateESOStatus 未获取到维护消息，保留原有status.msg:', status.msg);
     }
 
-    await fetchServerStatusRaw()
+//logger.info('[ESO:服务器状态] updateESOStatus 当前status.msg值:', status.msg);
+    
+//logger.info('[ESO:服务器状态] updateESOStatus 更新前的服务器状态:');
+//logger.info(JSON.stringify({
+//        pcNA: status.pcNA,
+//        pcEU: status.pcEU,
+//        pcPTS: status.pcPTS,
+//        xbNA: status.xbNA,
+//        xbEU: status.xbEU,
+//        psNA: status.psNA,
+//        psEU: status.psEU
+//    }, null, 2));
+    
+    const serverStatusData = await fetchServerStatusRaw()
+    
+    if (serverStatusData) {
+//logger.info('[ESO:服务器状态] updateESOStatus 服务器状态数据获取成功');
+        if (serverStatusData.serverStatusResults && serverStatusData.serverStatusResults.length > 0) {
+//logger.info(`[ESO:服务器状态] updateESOStatus 共更新了 ${serverStatusData.serverStatusResults.length} 个服务器状态`);
+            const changedServers = serverStatusData.serverStatusResults.filter(s => s.changed);
+            if (changedServers.length > 0) {
+//logger.info(`[ESO:服务器状态] updateESOStatus 状态发生变更的服务器数量: ${changedServers.length}`);
+                changedServers.forEach(server => {
+//logger.info(`[ESO:服务器状态] updateESOStatus 服务器 ${server.displayName} (${server.key}) 状态变更: ${server.oldValue} -> ${server.statusValue}`);
+                });
+            } else {
+//logger.info('[ESO:服务器状态] updateESOStatus 所有服务器状态均无变更');
+            }
+        }
+    } else {
+//logger.warn('[ESO:服务器状态] updateESOStatus 服务器状态数据获取失败');
+    }
+    
+//logger.info('[ESO:服务器状态] updateESOStatus 更新后的服务器状态:');
+//logger.info(JSON.stringify({
+//        pcNA: status.pcNA,
+//        pcEU: status.pcEU,
+//        pcPTS: status.pcPTS,
+//        xbNA: status.xbNA,
+//        xbEU: status.xbEU,
+//        psNA: status.psNA,
+//        psEU: status.psEU
+//    }, null, 2));
+    
+//logger.info('[ESO:服务器状态] updateESOStatus 更新完成');
   }
 
 
@@ -647,7 +847,7 @@ export class serverStatus extends plugin {
     {
       if((lastStatus.pcNA == 1) && (status.pcNA == 0))//美服进入维护
       {
-        logger.info('美服维护了！')
+//logger.info('美服维护了！')
         if (!isInCooldown('pcNA_maintenance')) {
           message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服维护了！' }]
           await this.e.reply(message, false, { recallMsg: -1 })
@@ -656,7 +856,7 @@ export class serverStatus extends plugin {
       }
       if((lastStatus.pcNA == 0) && (status.pcNA == 1))//美服完成维护
       {
-        logger.info('美服开服了！')
+//logger.info('美服开服了！')
         if (!isInCooldown('pcNA_online')) {
           message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服开服了！' }]
           await this.e.reply(message, false, { recallMsg: -1 })
@@ -665,7 +865,7 @@ export class serverStatus extends plugin {
       }
       if((lastStatus.pcEU == 1) && (status.pcEU == 0))//欧服进入维护
       {
-        logger.info('欧服维护了！')
+//logger.info('欧服维护了！')
         if (!isInCooldown('pcEU_maintenance')) {
           message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '欧服维护了！' }]
           await this.e.reply(message, false, { recallMsg: -1 })
@@ -674,7 +874,7 @@ export class serverStatus extends plugin {
       }
       if((lastStatus.pcEU == 0) && (status.pcEU == 1))//欧服完成维护
       {
-        logger.info('欧服开服了！')
+//logger.info('欧服开服了！')
         if (!isInCooldown('pcEU_online')) {
           message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '欧服开服了！' }]
           await this.e.reply(message, false, { recallMsg: -1 })
