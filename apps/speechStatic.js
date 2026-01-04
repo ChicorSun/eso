@@ -31,28 +31,40 @@ export class speechStatic extends plugin {
             fnc: 'snots',
             log: false
           }, {
-            reg: '^#发言榜(日榜|月榜)?$',
+            reg: '^#发言榜(日榜|月榜|年榜)?$',
             fnc: 'speechTally'
           }
         ]
       })
     }
     async speechTally(e) {
-        let user_msg = e.msg.match(/^#发言榜(日榜|月榜)?$/)
+        let user_msg = e.msg.match(/^#发言榜(日榜|月榜|年榜)?$/)
         let data
+        let isYear = user_msg[1] == '年榜'
+        
         try {
-            if(!user_msg[1] || user_msg[1] == `日榜`) {
+            if(isYear) {
+                // 处理12个月数据
+                data = await this.getYearData(e.group_id)
+            } else if(!user_msg[1] || user_msg[1] == `日榜`) {
                 let date = await gettoday()
                 data = fs.readFileSync(`./data/${e.group_id}_snots/${date}.json`, `utf-8`)
+                data = JSON.parse(data)
             } else {
                 let month = await getmonth()
                 data = fs.readFileSync(`./data/${e.group_id}_snots/${month}.json`, `utf-8`)
+                data = JSON.parse(data)
             }
-            data = JSON.parse(data)
         } catch {
             e.reply(`本群好像还没人说过话呢~`)
             return true
         }
+        
+        if(!data || data.length === 0) {
+            e.reply(`本群好像还没人说过话呢~`)
+            return true
+        }
+        
         data.sort((a, b) => b.number - a.number)
         data = data.slice(0, lul)
         
@@ -67,7 +79,11 @@ export class speechStatic extends plugin {
             speechData = spData
             //logger.info('[ESO:图鉴] 初始化结构体变量')
         }
-        if(!user_msg[1] || user_msg[1] == `日榜`)
+        if(isYear)
+        {
+            speechData.speechData[1].type = '(Last 12 Months)'
+        }
+        else if(!user_msg[1] || user_msg[1] == `日榜`)
         {
             speechData.speechData[1].type = '(Today)'
         }
@@ -79,7 +95,7 @@ export class speechStatic extends plugin {
         //logger.info(data)
         speechData.speechData[1].person = []
 
-        let msg = [`本群发言榜${user_msg[1] || `日榜`}如下:\n--------`]
+        let msg = [`本群发言榜${isYear ? '年榜' : (user_msg[1] || `日榜`)}如下:\n--------`]
         let paiming = 0
         let maxValue = 1
         for (let item of data) {
@@ -132,7 +148,7 @@ export class speechStatic extends plugin {
             
             speechData.speechData[1].person.push(onePerson);
             paiming++
-            msg.push(`\n第${paiming}名：${item.nickname}·${item.number}次`)
+            msg.push(`\n第${paiming}名：${onePerson.name}·${item.number}次`)
         }
         //await e.reply(msg)
 
@@ -140,6 +156,15 @@ export class speechStatic extends plugin {
         let img = await this.cache(speechData, speechImg)
         await this.reply(img)
         return true
+    }
+    
+    /**
+     * 获取最近12个月的数据
+     * @param {string} groupId 群号
+     * @returns {Array} 合并后的数据数组
+     */
+    async getYearData(groupId) {
+        return await getYearData(groupId);
     }
     async snots(e){
         if(!fs.existsSync(`./data/${e.group_id}_snots`)) {
@@ -262,4 +287,70 @@ async function getmonth() {
     const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
     const date_time = `${year}-${month}`;
     return date_time;
+}
+
+/**
+ * 获取最近12个月的月份列表
+ * @returns {Array<string>} 月份数组，格式：['YYYY-MM', ...]
+ */
+async function getLastTwelveMonths() {
+    const months = [];
+    const currentDate = new Date();
+    
+    for (let i = 0; i < 12; i++) {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        months.push(`${year}-${month}`);
+    }
+    
+    return months;
+}
+
+/**
+ * 合并12个月的数据
+ * @param {string} groupId 群号
+ * @returns {Array} 合并后的数据数组
+ */
+async function getYearData(groupId) {
+    const months = await getLastTwelveMonths();
+    const userMap = new Map(); // 使用Map来累加每个用户的发言次数
+    
+    // 遍历每个月的文件
+    for (const month of months) {
+        const filePath = `./data/${groupId}_snots/${month}.json`;
+        try {
+            if (fs.existsSync(filePath)) {
+                const data = fs.readFileSync(filePath, 'utf-8');
+                const monthData = JSON.parse(data);
+                
+                // 累加每个用户的数据
+                for (const item of monthData) {
+                    if (userMap.has(item.user_id)) {
+                        // 如果用户已存在，累加发言次数，更新昵称（使用最新的）
+                        const existing = userMap.get(item.user_id);
+                        existing.number += item.number;
+                        // 如果新数据有昵称且旧数据没有，或者新数据昵称不是默认的，则更新
+                        if (item.nickname && (!existing.nickname || existing.nickname.startsWith('qq') || existing.nickname.startsWith('用户'))) {
+                            existing.nickname = item.nickname;
+                        }
+                    } else {
+                        // 新用户，直接添加
+                        userMap.set(item.user_id, {
+                            user_id: item.user_id,
+                            nickname: item.nickname || `用户${item.user_id}`,
+                            number: item.number
+                        });
+                    }
+                }
+            }
+            // 如果文件不存在，不处理（相当于该月数据为0，用户不会出现在结果中）
+        } catch (error) {
+            // 文件读取失败，跳过该月（相当于该月数据为0）
+            continue;
+        }
+    }
+    
+    // 将Map转换为数组
+    return Array.from(userMap.values());
 }
