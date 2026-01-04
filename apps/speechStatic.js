@@ -18,6 +18,12 @@ let speechImg = {
   img: ''
 }
 
+//cacheData to save chart img
+let speechChartImg = {
+  md5: '',
+  img: ''
+}
+
 export class speechStatic extends plugin {
     constructor () {
       super({
@@ -33,6 +39,9 @@ export class speechStatic extends plugin {
           }, {
             reg: '^#发言榜(日榜|月榜|年榜)?$',
             fnc: 'speechTally'
+          }, {
+            reg: '^#发言统计$',
+            fnc: 'speechStatistics'
           }
         ]
       })
@@ -166,6 +175,205 @@ export class speechStatic extends plugin {
     async getYearData(groupId) {
         return await getYearData(groupId);
     }
+    
+    /**
+     * 发言统计 - 统计最近12个月中进入过前lul名的用户数据
+     * @param {*} e 事件对象
+     */
+    async speechStatistics(e) {
+        try {
+            const months = await getLastTwelveMonths();
+            const topUserIds = new Set(); // 用于存储所有进入过前lul名的用户ID（去重）
+            const monthlyData = {}; // 存储每个月的数据
+            
+            // 第一步：遍历12个月，收集每个月前lul名用户的ID
+            for (const month of months) {
+                const filePath = `./data/${e.group_id}_snots/${month}.json`;
+                try {
+                    if (fs.existsSync(filePath)) {
+                        let data = fs.readFileSync(filePath, 'utf-8');
+                        data = JSON.parse(data);
+                        
+                        // 排序并取前lul名
+                        data.sort((a, b) => b.number - a.number);
+                        const topUsers = data.slice(0, lul);
+                        
+                        // 记录前lul名用户的ID
+                        for (const user of topUsers) {
+                            topUserIds.add(user.user_id);
+                        }
+                        
+                        // 保存该月的完整数据
+                        monthlyData[month] = data;
+                    } else {
+                        // 文件不存在，该月数据为空
+                        monthlyData[month] = [];
+                    }
+                } catch (error) {
+                    //logger.warn(`[ESO:发言统计] 读取${month}.json失败: ${error.message}`);
+                    monthlyData[month] = [];
+                }
+            }
+            
+            // 第二步：统计每个ID在12个月中的发言数据
+            const userIds = Array.from(topUserIds);
+            const statistics = [];
+            
+            for (const userId of userIds) {
+                const userStats = {
+                    user_id: userId,
+                    nickname: '',
+                    monthly_data: {}
+                };
+                
+                // 遍历12个月，统计该用户每个月的发言次数
+                for (const month of months) {
+                    const monthData = monthlyData[month] || [];
+                    const userData = monthData.find(item => item.user_id === userId);
+                    
+                    if (userData) {
+                        userStats.monthly_data[month] = userData.number;
+                        // 使用最新的昵称
+                        if (userData.nickname && (!userStats.nickname || userStats.nickname.startsWith('qq') || userStats.nickname.startsWith('用户'))) {
+                            userStats.nickname = userData.nickname;
+                        }
+                    } else {
+                        userStats.monthly_data[month] = 0;
+                    }
+                    
+                    // 如果没有昵称，设置默认值
+                    if (!userStats.nickname) {
+                        userStats.nickname = `用户${userId}`;
+                    }
+                }
+                
+                statistics.push(userStats);
+            }
+            
+            // 第三步：使用logger.info打印结果
+            //logger.info('========== 发言统计结果 ==========');
+            //logger.info(`统计时间范围: 最近12个月`);
+            //logger.info(`统计用户数量: ${userIds.length}人（这些用户至少在某个月进入过前${lul}名）`);
+            //logger.info(`月份列表: ${months.join(', ')}`);
+            //logger.info('');
+            
+            for (const stat of statistics) {
+                //logger.info(`用户ID: ${stat.user_id}`);
+                //logger.info(`用户昵称: ${stat.nickname}`);
+                //logger.info('各月发言次数:');
+                
+                for (const month of months) {
+                    const count = stat.monthly_data[month] || 0;
+                    //logger.info(`  ${month}: ${count}次`);
+                }
+                
+                // 计算总计
+                const total = Object.values(stat.monthly_data).reduce((sum, count) => sum + count, 0);
+                //logger.info(`总计: ${total}次`);
+                //logger.info('---');
+            }
+            
+            //logger.info('========== 统计结束 ==========');
+            
+            // 第四步：准备折线图数据并生成图片
+            if (statistics.length > 0) {
+                // 准备月份标签（反转顺序，从最早到最新）
+                const monthsReversed = [...months].reverse()
+                const monthLabels = monthsReversed.map(month => {
+                    const date = new Date(month + '-01')
+                    const year = date.getFullYear()
+                    const monthNum = date.getMonth() + 1
+                    return `${year}-${monthNum.toString().padStart(2, '0')}`
+                })
+                
+                // 准备用户数据（每个用户一条折线）
+                const usersData = []
+                const colors = [
+                    'rgb(58, 146, 254)',   // 蓝色
+                    'rgb(255, 99, 132)',   // 红色
+                    'rgb(75, 192, 192)',   // 青色
+                    'rgb(255, 206, 86)',   // 黄色
+                    'rgb(153, 102, 255)',  // 紫色
+                    'rgb(255, 159, 64)',   // 橙色
+                    'rgb(54, 162, 235)',   // 蓝色2
+                    'rgb(201, 203, 207)',  // 灰色
+                    'rgb(255, 99, 255)',   // 粉色
+                    'rgb(99, 255, 132)',   // 绿色
+                    'rgb(255, 192, 203)',  // 浅粉色
+                    'rgb(173, 216, 230)',  // 浅蓝色
+                    'rgb(255, 218, 185)',  // 浅橙色
+                    'rgb(221, 160, 221)',  // 浅紫色
+                    'rgb(152, 251, 152)',  // 浅绿色
+                    'rgb(255, 228, 196)',  // 浅黄色
+                    'rgb(176, 224, 230)',  // 浅青色
+                    'rgb(240, 128, 128)',  // 浅红色
+                    'rgb(144, 238, 144)',  // 浅绿色2
+                    'rgb(255, 182, 193)'   // 浅粉色2
+                ]
+                
+                for (let i = 0; i < statistics.length; i++) {
+                    const stat = statistics[i]
+                    // 获取用户头像路径（与speechTally保持一致）
+                    let imgPath = await getimgs.realpath(stat.user_id, "avatar")
+                    // 提取文件名（去掉路径前缀，只保留文件名部分）
+                    // getimgs.realpath 返回格式：./plugins/eso/resources/img/avatar/123456 或 ./plugins/eso/custome_resources/img/avatar/123456
+                    // 需要提取出文件名部分，以便在模板中使用 {{pluResPath}}img/avatar/{{avatar}}.png 格式
+                    let avatarFileName = imgPath.replace(/^.*[\\\/]/, '') // 提取文件名
+                    // 如果提取失败或为空，使用stdin作为默认值
+                    if (!avatarFileName || avatarFileName === '') {
+                        avatarFileName = 'stdin'
+                    }
+                    
+                    const userData = {
+                        name: stat.nickname.length > 15 ? stat.nickname.substring(0, 15) + '...' : stat.nickname,
+                        data: monthsReversed.map(month => stat.monthly_data[month] || 0),
+                        color: colors[i % colors.length],
+                        avatar: avatarFileName,
+                        userId: stat.user_id
+                    }
+                    usersData.push(userData)
+                }
+                
+                // 构建speechData结构
+                const chartSpeechData = {
+                    init: 'done',
+                    saveId: 'speechChart',
+                    cwd: process.cwd().replace(/\\/g, '/'),
+                    tplFile: `./plugins/eso/resources/html/speech/speechChart.html`,
+                    pluResPath: `${process.cwd().replace(/\\/g, '/')}/plugins/eso/resources/`,
+                    headStyle: ``,
+                    speechData: [
+                        {
+                            pic: 'bg2',
+                            des: '发言统计'
+                        },
+                        {
+                            title: 'Discussion Statistics',
+                            type: '(Last 12 Months)',
+                            months: monthLabels,
+                            users: usersData
+                        }
+                    ]
+                }
+                
+                // 生成图片
+                let img = await this.cache(chartSpeechData, speechChartImg)
+                await e.reply(img)
+            } else {
+                e.reply(`本群好像还没人说过话呢~`)
+            }
+            
+            return true;
+        } catch (error) {
+            //logger.error(`[ESO:发言统计] 统计失败: ${error.message}`);
+            if (error.stack) {
+                //logger.error(`[ESO:发言统计] 错误堆栈: ${error.stack}`);
+            }
+            e.reply(`发言统计失败: ${error.message}`);
+            return true;
+        }
+    }
+    
     async snots(e){
         if(!fs.existsSync(`./data/${e.group_id}_snots`)) {
             fs.mkdirSync(`./data/${e.group_id}_snots`)
