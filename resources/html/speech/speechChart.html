@@ -42,6 +42,9 @@
   </div>
 
   <script>
+    // 标记图表已渲染完成
+    window.chartReady = false;
+    
     const ctx = document.getElementById('speechChart');
     const pluResPath = '{{pluResPath}}';
     const chartData = {
@@ -55,72 +58,111 @@
           backgroundColor: '{{user.color}}33',
           borderWidth: 2,
           fill: false,
-          tension: 0.4,
+          tension: 0.3,
           pointRadius: 0,
-          pointHoverRadius: 5,
+          pointHoverRadius: 0,
+          pointHoverBackgroundColor: 'transparent',
+          pointHoverBorderColor: 'transparent',
+          pointHoverBorderWidth: 0,
           avatar: '{{pluResPath}}img/avatar/{{user.avatar}}.png'
         }{{if !$last}},{{/if}}
         {{/each}}
       ]
     };
 
-    new Chart(ctx, {
-      type: 'line',
-      data: chartData,
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
+    // 优化配置，仅保留静态渲染（用于截图）
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      // 完全禁用动画
+      animation: false,
+      // 禁用所有交互
+      interaction: {
+        intersect: false,
+        mode: 'nearest',
+        // 禁用所有鼠标交互
+        events: []
+      },
+      // 禁用悬停效果
+      onHover: null,
+      plugins: {
+        legend: {
+          display: false
+        },
+        // 完全禁用tooltip
+        tooltip: {
+          enabled: false
+        },
+        // 禁用所有插件交互
+        decimation: {
+          enabled: false
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: {
+            display: false  // 禁用网格线，减少绘制
           },
-          tooltip: {
-            mode: 'index',
-            intersect: false,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            titleColor: '#fff',
-            bodyColor: '#fff',
-            borderColor: '#666',
-            borderWidth: 1,
-            padding: 10,
-            callbacks: {
-              label: function(context) {
-                return context.dataset.label + ': ' + context.parsed.y + '次';
-              }
-            }
+          ticks: {
+            color: '#CCCCCC',
+            font: {
+              size: 10
+            },
+            maxRotation: 45,
+            minRotation: 45,
+            maxTicksLimit: 12  // 限制刻度数量
           }
         },
-        scales: {
-          x: {
-            display: true,
-            grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
-            },
-            ticks: {
-              color: '#CCCCCC',
-              font: {
-                size: 10
-              },
-              maxRotation: 45,
-              minRotation: 45
-            }
+        y: {
+          display: true,
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)',
+            drawBorder: false
           },
-          y: {
-            display: true,
-            beginAtZero: true,
-            grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
+          ticks: {
+            color: '#CCCCCC',
+            font: {
+              size: 12
             },
-            ticks: {
-              color: '#CCCCCC',
-              font: {
-                size: 12
-              }
-            }
+            maxTicksLimit: 8  // 限制Y轴刻度数量
           }
         }
+      },
+      // 禁用所有事件监听
+      events: []
+    };
+
+    try {
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: chartOptions
+      });
+      
+      // 等待图表渲染完成
+      chart.update('none');  // 立即更新，不使用动画
+      
+      // 标记图表已准备好
+      window.chartReady = true;
+      
+      // 通知父窗口（如果使用iframe）
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'chartReady' }, '*');
       }
-    });
+    } catch (error) {
+      console.error('Chart rendering error:', error);
+      window.chartReady = true;  // 即使出错也标记为完成，避免无限等待
+    }
+    
+    // 设置超时保护，确保页面不会无限等待
+    setTimeout(() => {
+      if (!window.chartReady) {
+        window.chartReady = true;
+        console.warn('Chart rendering timeout');
+      }
+    }, 10000);  // 10秒超时
   </script>
 </body>
 </html>

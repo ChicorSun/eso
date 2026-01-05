@@ -70,6 +70,10 @@ body {
   height: 400px;
   margin: 10px 0px;
   position: relative;
+  /* 优化渲染性能 */
+  will-change: contents;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .legend {
@@ -94,6 +98,9 @@ body {
   display: inline-block;
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.3);
+  /* 优化图片渲染 */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 .legend-color {
