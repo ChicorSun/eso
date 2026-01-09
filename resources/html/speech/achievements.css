@@ -1,0 +1,266 @@
+@font-face {
+  font-family: "tttgbnumber";
+  src: url("../../../../../resources/font/tttgbnumber.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+body {
+  font-family: "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  width: 1200px;
+  color: #1e1f20;
+  transform: scale(1);
+  transform-origin: 0 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+  width: 1200px;
+  padding: 10px;
+  text-align: center;
+  background-color: #f5f6fb;
+}
+
+.box {
+  margin: 0;
+}
+
+.item {
+  padding: 0;
+  margin: 0;
+}
+
+.achievements-container {
+  background-color: rgba(13, 10, 14, 0.68);
+  color: #CCCCCC;
+  border-radius: 8px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+.top {
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 10px;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #FFFFFF;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.user-name {
+  font-size: 14px;
+  color: #FFFFFF;
+  font-weight: normal;
+}
+
+.subtitle {
+  font-size: 11px;
+  color: #AAAAAA;
+}
+
+.progress-info {
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #CCCCCC;
+  margin-bottom: 5px;
+}
+
+.progress-number {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.progress-total {
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+.display-achievement {
+  font-size: 11px;
+  margin-top: 5px;
+}
+
+.display-label {
+  color: #AAAAAA;
+}
+
+.display-name {
+  color: #FFD700;
+  font-weight: bold;
+  margin-left: 5px;
+}
+
+.section {
+  margin-bottom: 12px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.section-icon {
+  font-size: 14px;
+  margin-right: 6px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #FFFFFF;
+}
+
+.achievements-list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  /* 移除max-height限制，显示全部成就 */
+}
+
+.achievement-item {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 8px 5px;
+  border-left: 3px solid;
+  transition: background-color 0.2s;
+  min-height: 75px;
+  display: flex;
+  flex-direction: column;
+}
+
+.achievement-item.unlocked {
+  border-left-color: #4CAF50;
+}
+
+.achievement-item.locked {
+  border-left-color: #666666;
+  opacity: 0.7;
+}
+
+.achievement-item.common {
+  border-left-color: #EEEDEE;
+}
+
+.achievement-item.uncommon {
+  border-left-color: #2CBC0C;
+}
+
+.achievement-item.rare {
+  border-left-color: #3992FE;
+}
+
+.achievement-item.epic {
+  border-left-color: #9F2DF6;
+}
+
+.achievement-item.legendary {
+  border-left-color: #E4C228;
+}
+
+.achievement-item.festival {
+  border-left-color: #FF6E00;
+}
+
+.achievement-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
+}
+
+.achievement-status {
+  font-size: 15px;
+  margin-right: 4px;
+  font-weight: bold;
+}
+
+.achievement-emoji {
+  font-size: 17px;
+  margin-right: 4px;
+}
+
+.achievement-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #FFFFFF; /* 默认颜色，会被内联样式覆盖 */
+  flex: 1;
+  word-break: break-word;
+  line-height: 1.5;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.3px;
+}
+
+.achievement-description {
+  font-size: 13px;
+  color: #CCCCCC;
+  margin-top: 5px;
+  line-height: 1.5;
+  word-break: break-word;
+  flex: 1;
+  font-weight: 500;
+}
+
+.achievement-meta {
+  font-size: 12px;
+  color: #AAAAAA;
+  margin-top: 5px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.logo {
+  text-align: center;
+  color: #999;
+  font-size: 10px;
+  margin-top: 10px;
+  padding: 5px;
+}

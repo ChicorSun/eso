@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/speech/achievements.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    {{each speechData val index}}
+    {{if index==0}}
+    <style> .container { background: url("{{pluResPath}}img/background/{{val.pic}}.png") #fff; background-repeat: no-repeat; background-size: 100% 100%; }</style>
+    {{else}}
+    <div class="item">
+      <div class="box">
+        <div class="achievements-container">
+          <div class="top">
+            <div class="title-row">
+              <div class="title">{{val.title}}</div>
+              {{if val.userNickname}}
+              <div class="user-info">
+                <img class="user-avatar" src="{{pluResPath}}img/avatar/{{val.userAvatar}}.png" alt="{{val.userNickname}}" />
+                <span class="user-name">{{val.userNickname}}</span>
+              </div>
+              {{/if}}
+            </div>
+            <div class="subtitle">{{val.subtitle}}</div>
+          </div>
+          
+          <div class="progress-info">
+            <div class="progress-text">解锁进度: <span class="progress-number">{{val.unlockedCount}}</span> / <span class="progress-total">{{val.totalCount}}</span></div>
+            {{if val.displayAchievement}}
+            <div class="display-achievement">
+              <span class="display-label">当前佩戴:</span>
+              <span class="display-name {{val.displayAchievement.rarity}}">{{val.displayAchievement.emoji}} {{val.displayAchievement.name}}</span>
+            </div>
+            {{/if}}
+          </div>
+
+          {{if val.unlockedAchievements && val.unlockedAchievements.length > 0}}
+          <div class="section">
+            <div class="section-header">
+              <span class="section-icon">✅</span>
+              <span class="section-title">已解锁成就 ({{val.unlockedAchievements.length}}个)</span>
+            </div>
+            <div class="achievements-list">
+              {{each val.unlockedAchievements item}}
+              <div class="achievement-item unlocked {{item.rarity}}">
+                <div class="achievement-header">
+                  <span class="achievement-status">✅</span>
+                  <span class="achievement-emoji">{{item.emoji}}</span>
+                  <span class="achievement-name" style="color: {{item.color}};">{{item.name}}{{if item.isDisplayed}} ⭐{{/if}}</span>
+                </div>
+                <div class="achievement-description">{{item.description}}</div>
+                {{if item.unlockTime}}
+                <div class="achievement-meta">解锁于: {{item.unlockTime}}</div>
+                {{/if}}
+              </div>
+              {{/each}}
+            </div>
+          </div>
+          {{/if}}
+
+          {{if val.lockedAchievements && val.lockedAchievements.length > 0}}
+          <div class="section">
+            <div class="section-header">
+              <span class="section-icon">🔒</span>
+              <span class="section-title">未解锁成就 ({{val.lockedAchievements.length}}个)</span>
+            </div>
+            <div class="achievements-list">
+              {{each val.lockedAchievements item}}
+              <div class="achievement-item locked {{item.rarity}}">
+                <div class="achievement-header">
+                  <span class="achievement-status">🔒</span>
+                  <span class="achievement-emoji">{{item.emoji}}</span>
+                  <span class="achievement-name" style="color: {{item.color}};">{{item.name}}</span>
+                </div>
+                <div class="achievement-description">{{item.description}}</div>
+              </div>
+              {{/each}}
+            </div>
+          </div>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+    <div class="logo">Created By ESO-Bot</div>
+  </div>
+</body>
+</html>

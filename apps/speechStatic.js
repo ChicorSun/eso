@@ -4,6 +4,10 @@ import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import Speech from '../model/speech.js'
 import getimgs from '../model/getimgs.js'
 import md5 from 'md5'
+import AchievementService from '../model/AchievementService.js'
+import AchievementDataAdapter from '../model/AchievementDataAdapter.js'
+import { TimeUtils } from '../model/TimeUtils.js'
+import { AchievementUtils } from '../model/AchievementUtils.js'
 
 //发言榜榜单上限人数
 let lul = 20
@@ -20,6 +24,12 @@ let speechImg = {
 
 //cacheData to save chart img
 let speechChartImg = {
+  md5: '',
+  img: ''
+}
+
+//cacheData to save achievements img
+let achievementsImg = {
   md5: '',
   img: ''
 }
@@ -42,9 +52,37 @@ export class speechStatic extends plugin {
           }, {
             reg: '^#发言统计$',
             fnc: 'speechStatistics'
+          }, {
+            reg: '^#发言成就(列表)?$',
+            fnc: 'showAchievementList'
+          }, {
+            reg: '^#发言设置显示成就\\s+(.+)$',
+            fnc: 'setDisplayAchievement'
           }
         ]
       })
+      
+      // 延迟初始化成就系统（减少启动开销）
+      this.achievementService = null
+      this.dataAdapter = null
+      this.achievementCheckQueue = new Set()
+      this.achievementCheckTimer = null
+    }
+    
+    /**
+     * 获取成就服务实例（延迟初始化）
+     */
+    getAchievementService() {
+      if (!this.achievementService) {
+        try {
+          this.dataAdapter = new AchievementDataAdapter()
+          this.achievementService = new AchievementService(this.dataAdapter)
+        } catch (error) {
+          logger.error('[ESO:发言统计] 初始化成就系统失败:', error)
+          return null
+        }
+      }
+      return this.achievementService
     }
     async speechTally(e) {
         let user_msg = e.msg.match(/^#发言榜(日榜|月榜|年榜)?$/)
@@ -391,8 +429,13 @@ export class speechStatic extends plugin {
     
     async snots(e){
         if(!fs.existsSync(`./data/${e.group_id}_snots`)) {
-            fs.mkdirSync(`./data/${e.group_id}_snots`)
+            fs.mkdirSync(`./data/${e.group_id}_snots`, { recursive: true })
         }
+        
+        // 提取消息文本和计算字数
+        const messageText = this.extractMessageText(e)
+        const wordCount = this.calculateWordCount(messageText)
+        
         let data;
         let date = await gettoday()
         try {
@@ -407,12 +450,15 @@ export class speechStatic extends plugin {
         }
         if (temp_data.length > 0) {
             await deljson(temp_data[0], `./data/${e.group_id}_snots/${date}.json`)
+            temp_data[0].number++
+            temp_data[0].words = (temp_data[0].words || 0) + wordCount
             await autochuli(temp_data, `./data/${e.group_id}_snots/${date}.json`)
         } else {
             let user_data = {
                 user_id: e.user_id,
                 nickname: e.sender.card || e.sender.nickname || `用户${e.user_id}`,
-                number: 1
+                number: 1,
+                words: wordCount
             }
             data.push(user_data)
             data = JSON.stringify(data, null, 3)
@@ -431,18 +477,534 @@ export class speechStatic extends plugin {
         }
         if(temp_data.length > 0) { 
             await deljson(temp_data[0], `./data/${e.group_id}_snots/${month}.json`)
+            temp_data[0].number++
+            temp_data[0].words = (temp_data[0].words || 0) + wordCount
             await autochuli(temp_data, `./data/${e.group_id}_snots/${month}.json`)
         } else {
             let user_data = {
                 user_id: e.user_id,
                 nickname: e.sender.card || e.sender.nickname || `用户${e.user_id}`,
-                number: 1
+                number: 1,
+                words: wordCount
             }
             data.push(user_data)
             data = JSON.stringify(data, null, 3)
             fs.writeFileSync(`./data/${e.group_id}_snots/${month}.json`, data, `utf-8`)
         }
+        
+        // 成就系统检查（异步，不阻塞消息处理）
+        this.checkAchievements(e, messageText).catch(err => {
+            logger.error('[ESO:发言统计] 成就检查失败:', err)
+        })
+        
         return false
+    }
+    
+    /**
+     * 提取消息文本
+     */
+    extractMessageText(e) {
+        if (typeof e.msg === 'string') return e.msg
+        if (Array.isArray(e.msg)) {
+            return e.msg.filter(item => item.type === 'text')
+                .map(item => item.text || '').join('')
+        }
+        return ''
+    }
+    
+    /**
+     * 计算字数（简化版）
+     */
+    calculateWordCount(text) {
+        if (!text || typeof text !== 'string') return 0
+        // 移除空白字符后计算长度
+        return text.trim().length
+    }
+    
+    /**
+     * 检查成就（批量处理，减少开销）
+     */
+    async checkAchievements(e, messageText) {
+        const achievementService = this.getAchievementService()
+        if (!achievementService || !this.dataAdapter) {
+            return
+        }
+        
+        const groupId = String(e.group_id)
+        const userId = String(e.user_id)
+        
+        // 保存最新消息文本（用于文本匹配成就）
+        this.dataAdapter.saveRecentMessage(groupId, userId, messageText)
+        
+        // 添加到检查队列（批量处理）
+        this.achievementCheckQueue.add(`${groupId}_${userId}`)
+        
+        // 延迟检查（1秒后批量处理，减少频繁检查）
+        if (this.achievementCheckTimer) {
+            return
+        }
+        
+        this.achievementCheckTimer = setTimeout(async () => {
+            this.achievementCheckTimer = null
+            const queue = Array.from(this.achievementCheckQueue)
+            this.achievementCheckQueue.clear()
+            
+            for (const key of queue) {
+                try {
+                    const [gId, uId] = key.split('_')
+                    const userData = await this.dataAdapter.getUserData(gId, uId)
+                    if (userData) {
+                        const newAchievements = await achievementService.checkAndUpdateAchievements(
+                            gId, uId, userData
+                        )
+                        
+                        // 输出成就解锁日志
+                        if (newAchievements.length > 0) {
+                            for (const achievement of newAchievements) {
+                                logger.mark(`[ESO:发言统计] 🏆 ${userData.nickname || uId}(${uId}) 解锁成就: ${achievement.name || achievement.id}`)
+                            }
+                        }
+                    }
+                } catch (err) {
+                    logger.error(`[ESO:发言统计] 成就检查失败 ${key}:`, err)
+                }
+            }
+        }, 1000)
+    }
+    
+    /**
+     * 解析@用户信息
+     */
+    parseMentionedUser(e) {
+        // 检查 e.at 属性（Yunzai-Bot 可能提供的简化属性）
+        if (e.at && e.at !== e.user_id) {
+            return {
+                userId: String(e.at),
+                isMentioned: true
+            }
+        }
+        
+        // 检查 e.message 数组中的 @ 消息
+        if (e.message && Array.isArray(e.message)) {
+            for (const item of e.message) {
+                if (item.type === 'at' && item.qq && item.qq !== e.user_id) {
+                    return {
+                        userId: String(item.qq),
+                        isMentioned: true
+                    }
+                }
+            }
+        }
+        
+        // 默认返回发送者
+        return {
+            userId: String(e.user_id),
+            isMentioned: false
+        }
+    }
+    
+    /**
+     * 获取用户显示名称
+     */
+    getUserDisplayName(userId, groupId, userData) {
+        let displayName = userData?.nickname || `用户${userId}`
+        
+        try {
+            // 尝试从群成员列表中获取用户信息
+            if (typeof Bot !== 'undefined' && Bot.gml) {
+                const userList = Bot.gml.get(groupId)
+                if (userList) {
+                    const userInfo = userList.get(userId)
+                    if (userInfo) {
+                        displayName = userInfo.card || userInfo.nickname || userData?.nickname || `用户${userId}`
+                        // 清理不可见字符
+                        displayName = displayName.replace(/[^\p{L}\p{N}\p{P}\p{S}\p{Z}]/gu, '').trim()
+                        if (!displayName) {
+                            displayName = userData?.nickname || `用户${userId}`
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            // 如果获取失败，使用默认名称
+            displayName = userData?.nickname || `用户${userId}`
+        }
+        
+        return displayName
+    }
+    
+    /**
+     * 显示成就列表
+     */
+    async showAchievementList(e) {
+        try {
+            const achievementService = this.getAchievementService()
+            if (!achievementService || !this.dataAdapter) {
+                return e.reply('成就系统未初始化')
+            }
+            
+            const groupId = String(e.group_id)
+            
+            // 解析目标用户（支持@用户）
+            const targetUser = this.parseMentionedUser(e)
+            const targetUserId = targetUser.userId
+            
+            // 获取用户数据（用于显示昵称）
+            const userData = await this.dataAdapter.getUserData(groupId, targetUserId)
+            const userNickname = this.getUserDisplayName(targetUserId, groupId, userData)
+            
+            // 获取所有成就定义
+            const allDefinitions = achievementService.getAllAchievementDefinitions(groupId)
+            
+            // 获取用户的成就数据
+            const userAchievements = await achievementService.getUserAchievements(groupId, targetUserId)
+            
+            // 获取显示成就信息
+            const displayAchievement = userAchievements.displayAchievement
+            
+            // 分离已解锁和未解锁的成就
+            const unlockedAchievements = []
+            const lockedAchievements = []
+            
+            // 稀有度图标映射
+            const rarityEmoji = {
+                common: '🥉',
+                uncommon: '🥈',
+                rare: '🥇',
+                epic: '💎',
+                legendary: '👑',
+                festival: '🎉'
+            }
+            
+            for (const [id, definition] of Object.entries(allDefinitions)) {
+                const achievementData = userAchievements.achievements[id]
+                const isUnlocked = achievementData?.unlocked || false
+                const unlockTime = achievementData?.unlocked_at || null
+                
+                const emoji = rarityEmoji[definition.rarity] || '🏆'
+                const isDisplayed = displayAchievement && displayAchievement.id === id
+                
+                if (isUnlocked) {
+                    // 格式化解锁时间
+                    let formattedTime = ''
+                    if (unlockTime) {
+                        try {
+                            const date = new Date(unlockTime)
+                            const month = String(date.getMonth() + 1).padStart(2, '0')
+                            const day = String(date.getDate()).padStart(2, '0')
+                            const hour = String(date.getHours()).padStart(2, '0')
+                            const minute = String(date.getMinutes()).padStart(2, '0')
+                            formattedTime = `${month}-${day} ${hour}:${minute}`
+                        } catch (err) {
+                            formattedTime = unlockTime
+                        }
+                    }
+                    
+                    unlockedAchievements.push({
+                        id,
+                        name: definition.name,
+                        description: definition.description || '暂无描述',
+                        rarity: definition.rarity || 'common',
+                        emoji: emoji,
+                        unlockTime: formattedTime,
+                        isDisplayed: isDisplayed
+                    })
+                } else {
+                    lockedAchievements.push({
+                        id,
+                        name: definition.name,
+                        description: definition.description || '暂无描述',
+                        rarity: definition.rarity || 'common',
+                        emoji: emoji
+                    })
+                }
+            }
+            
+            // 已解锁成就排序：先按稀有度（低到高），再按解锁时间（新到旧）
+            unlockedAchievements.sort((a, b) => {
+                const orderA = AchievementUtils.getRarityOrder(a.rarity)
+                const orderB = AchievementUtils.getRarityOrder(b.rarity)
+                
+                // 先按排序值升序
+                if (orderA !== orderB) {
+                    return orderA - orderB
+                }
+                
+                // 排序值相同（如 legendary 和 festival），legendary 优先于 festival
+                const rarityA = (a.rarity || '').toLowerCase()
+                const rarityB = (b.rarity || '').toLowerCase()
+                if (rarityA !== rarityB) {
+                    // legendary 应该排在 festival 之前
+                    if (rarityA === 'legendary' && rarityB === 'festival') {
+                        return -1
+                    }
+                    if (rarityA === 'festival' && rarityB === 'legendary') {
+                        return 1
+                    }
+                    // 其他情况按字母顺序
+                    return rarityA.localeCompare(rarityB, 'en')
+                }
+                
+                // 稀有度相同，按解锁时间倒序（新的在前）
+                let timeA = 0
+                let timeB = 0
+                if (a.unlockTime) {
+                    const dateA = new Date(a.unlockTime)
+                    if (!isNaN(dateA.getTime())) {
+                        timeA = dateA.getTime()
+                    }
+                }
+                if (b.unlockTime) {
+                    const dateB = new Date(b.unlockTime)
+                    if (!isNaN(dateB.getTime())) {
+                        timeB = dateB.getTime()
+                    }
+                }
+                return timeB - timeA
+            })
+            
+            // 未解锁成就排序：按稀有度（低到高），稀有度相同时按名称
+            lockedAchievements.sort((a, b) => {
+                const orderA = AchievementUtils.getRarityOrder(a.rarity)
+                const orderB = AchievementUtils.getRarityOrder(b.rarity)
+                
+                // 先按排序值升序
+                if (orderA !== orderB) {
+                    return orderA - orderB
+                }
+                
+                // 排序值相同（如 legendary 和 festival），legendary 优先于 festival
+                const rarityA = (a.rarity || '').toLowerCase()
+                const rarityB = (b.rarity || '').toLowerCase()
+                if (rarityA !== rarityB) {
+                    // legendary 应该排在 festival 之前
+                    if (rarityA === 'legendary' && rarityB === 'festival') {
+                        return -1
+                    }
+                    if (rarityA === 'festival' && rarityB === 'legendary') {
+                        return 1
+                    }
+                    // 其他情况按字母顺序
+                    return rarityA.localeCompare(rarityB, 'en')
+                }
+                
+                // 稀有度相同，按名称排序
+                return (a.name || '').localeCompare(b.name || '', 'zh-CN')
+            })
+            
+            // 准备显示成就数据
+            let displayAchievementData = null
+            if (displayAchievement) {
+                displayAchievementData = {
+                    name: displayAchievement.name,
+                    rarity: displayAchievement.rarity || 'common',
+                    emoji: rarityEmoji[displayAchievement.rarity] || '🏆'
+                }
+            }
+            
+            // 获取用户头像（参考#发言榜和#发言统计的做法）
+            let avatarFileName = 'stdin'
+            try {
+                let imgPath = await getimgs.realpath(targetUserId, "avatar")
+                // 提取文件名（去掉路径前缀，只保留文件名部分）
+                avatarFileName = imgPath.replace(/^.*[\\\/]/, '')
+                if (!avatarFileName || avatarFileName === '') {
+                    avatarFileName = 'stdin'
+                }
+            } catch (error) {
+                logger.warn('[ESO:发言统计] 获取用户头像失败:', error)
+            }
+            
+            // 读取成就配置，获取每个等级的颜色
+            let rarityColors = {}
+            try {
+                const configPath = './plugins/eso/config/achievements-config.json'
+                if (fs.existsSync(configPath)) {
+                    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+                    if (config.rarities) {
+                        for (const [rarity, data] of Object.entries(config.rarities)) {
+                            rarityColors[rarity] = data.color || '#EEEDEE'
+                        }
+                    }
+                }
+            } catch (error) {
+                logger.warn('[ESO:发言统计] 读取成就配置失败:', error)
+                // 使用默认颜色
+                rarityColors = {
+                    common: '#EEEDEE',
+                    uncommon: '#2CBC0C',
+                    rare: '#3992FE',
+                    epic: '#9F2DF6',
+                    legendary: '#E4C228',
+                    festival: '#FF6E00'
+                }
+            }
+            
+            // 为每个成就添加颜色信息
+            unlockedAchievements.forEach(achievement => {
+                achievement.color = rarityColors[achievement.rarity] || '#EEEDEE'
+            })
+            lockedAchievements.forEach(achievement => {
+                achievement.color = rarityColors[achievement.rarity] || '#EEEDEE'
+            })
+            
+            // 构建speechData结构（用于HTML模板）
+            const achievementsSpeechData = {
+                init: 'done',
+                saveId: 'achievements',
+                cwd: process.cwd().replace(/\\/g, '/'),
+                tplFile: `./plugins/eso/resources/html/speech/achievements.html`,
+                pluResPath: `${process.cwd().replace(/\\/g, '/')}/plugins/eso/resources/`,
+                headStyle: `
+                    <style>
+                        * {
+                            -webkit-font-smoothing: antialiased;
+                            -moz-osx-font-smoothing: grayscale;
+                            text-rendering: optimizeLegibility;
+                        }
+                    </style>
+                `,
+                speechData: [
+                    {
+                        pic: 'bg2',
+                        des: '成就列表'
+                    },
+                    {
+                        title: '🏆 成就列表',
+                        userNickname: userNickname,
+                        userAvatar: avatarFileName,
+                        subtitle: `群 ${groupId}`,
+                        unlockedCount: userAchievements.unlockedCount,
+                        totalCount: Object.keys(allDefinitions).length,
+                        displayAchievement: displayAchievementData,
+                        unlockedAchievements: unlockedAchievements,
+                        lockedAchievements: lockedAchievements
+                    }
+                ]
+            }
+            
+            // 生成图片
+            try {
+                let img = await this.cache(achievementsSpeechData, achievementsImg)
+                if (targetUser.isMentioned) {
+                    return e.reply([
+                        { type: 'at', qq: targetUserId },
+                        img
+                    ])
+                } else {
+                    return e.reply(img)
+                }
+            } catch (error) {
+                logger.error('[ESO:发言统计] 生成成就列表图片失败:', error)
+                // 回退到文本模式
+                let text = `🏆 成就列表`
+                if (targetUser.isMentioned) {
+                    text += ` - ${userNickname}`
+                }
+                text += `\n\n`
+                text += `解锁进度: ${userAchievements.unlockedCount} / ${Object.keys(allDefinitions).length} 个\n`
+                
+                if (displayAchievement) {
+                    text += `当前佩戴: ${displayAchievementData.emoji} ${displayAchievement.name}\n`
+                }
+                text += `\n`
+                
+                if (unlockedAchievements.length > 0) {
+                    text += `━━━━━━━━━━━━━━━━━━━━\n`
+                    text += `✅ 已解锁成就 (${unlockedAchievements.length}个)\n`
+                    text += `━━━━━━━━━━━━━━━━━━━━\n\n`
+                    
+                    for (const achievement of unlockedAchievements) {
+                        text += `✅ ${achievement.emoji} ${achievement.name}${achievement.isDisplayed ? ' ⭐' : ''}\n`
+                        text += `   ${achievement.description}\n`
+                        if (achievement.unlockTime) {
+                            text += `   解锁于: ${achievement.unlockTime}\n`
+                        }
+                        text += `\n`
+                    }
+                }
+                
+                if (lockedAchievements.length > 0) {
+                    text += `━━━━━━━━━━━━━━━━━━━━\n`
+                    text += `🔒 未解锁成就 (${lockedAchievements.length}个)\n`
+                    text += `━━━━━━━━━━━━━━━━━━━━\n\n`
+                    
+                    for (const achievement of lockedAchievements) {
+                        text += `🔒 ${achievement.emoji} ${achievement.name}\n`
+                        text += `   ${achievement.description}\n\n`
+                    }
+                }
+                
+                if (targetUser.isMentioned) {
+                    return e.reply([
+                        { type: 'at', qq: targetUserId },
+                        { type: 'text', text: `\n${text}` }
+                    ])
+                } else {
+                    return e.reply(text)
+                }
+            }
+        } catch (error) {
+            logger.error('[ESO:发言统计] 显示成就列表失败:', error)
+            return e.reply('查询失败，请稍后重试')
+        }
+    }
+    
+    /**
+     * 设置显示成就
+     */
+    async setDisplayAchievement(e) {
+        try {
+            const achievementService = this.getAchievementService()
+            if (!achievementService) {
+                return e.reply('成就系统未初始化')
+            }
+            
+            const match = e.msg.match(/^#发言设置显示成就\s+(.+)$/)
+            if (!match) {
+                return e.reply('格式错误，正确格式：#发言设置显示成就 [成就名]')
+            }
+            
+            const achievementName = match[1].trim()
+            const groupId = String(e.group_id)
+            const userId = String(e.user_id)
+            
+            // 查找成就
+            const definitions = achievementService.getAllAchievementDefinitions(groupId)
+            let foundAchievement = null
+            
+            for (const [id, def] of Object.entries(definitions)) {
+                if (def.name === achievementName || id === achievementName) {
+                    foundAchievement = { id, ...def }
+                    break
+                }
+            }
+            
+            if (!foundAchievement) {
+                return e.reply(`未找到成就: ${achievementName}`)
+            }
+            
+            // 检查是否已解锁
+            const achievementData = await achievementService.getUserAchievements(groupId, userId)
+            if (!achievementData.achievements[foundAchievement.id]?.unlocked) {
+                return e.reply(`你尚未解锁成就: ${foundAchievement.name}`)
+            }
+            
+            // 设置显示成就
+            await achievementService.setDisplayAchievement(
+                groupId,
+                userId,
+                foundAchievement.id,
+                foundAchievement.name,
+                foundAchievement.rarity || 'common',
+                true
+            )
+            
+            return e.reply(`✅ 已设置显示成就: ${foundAchievement.name}`)
+        } catch (error) {
+            logger.error('[ESO:发言统计] 设置显示成就失败:', error)
+            return e.reply('设置失败，请稍后重试')
+        }
     }
 
     async cache (data, cachedata) {
@@ -458,7 +1020,7 @@ export class speechStatic extends plugin {
 }
 
 async function autochuli(data, filePath) {
-    data[0].number++
+    // number已在调用前递增，这里不需要再次递增
     let new_data = fs.readFileSync(filePath, `utf-8`)
     new_data = JSON.parse(new_data)
     new_data.push(data[0])
