@@ -40,6 +40,13 @@ export class allNotice extends plugin {
 
   /** 复读 */
   async sendAllNotice (e) {
+    // 判断触发命令的是否为机器人本身
+    // 参考 system/disablePrivate.js 和 miao-plugin 的实现方式
+    const self_id = e.self_id || e.bot?.uin
+    if (e.user_id === self_id) {
+      return false
+    }
+    
     let personID = e.user_id.toString() // 转换为字符串处理
 
     await this.loadBlackList()
@@ -71,16 +78,11 @@ export class allNotice extends plugin {
             await this.reply(message, false, { recallMsg: -1 })
         }
 
-        let myMss = await this.trimText(e)
-        myMss = myMss.replace("#全体成员", "").replace("全体成员", "")
         let message = [
-                          { type: 'text', text: '群友' },
-                          { type: 'at', qq: this.e.user_id},
-                          { type: 'at', qq: 'all', text: '@全体成员' },
-                          { type: 'text', text: '，通知大家：' },
-                        { type: 'text', text: myMss }
+                          { type: 'at', qq: 'all', text: '@全体成员' }
                         ]
-        await this.reply(message, false, { recallMsg: -1 })
+        // 回复原消息，在回复内容中通知全体成员
+        await e.reply(message, true, { recallMsg: -1 })
       }
     }
     else
