@@ -1,5 +1,9 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import moment from 'moment'
+import fs from 'node:fs'
+
+// 配置文件路径
+const CONFIG_PATH = './plugins/eso/custome_resources/config/warningTips.json'
 
 let logs = {
   date: '2023-01-01',
@@ -24,6 +28,22 @@ export class warningTips extends plugin {
           reg: '^#*(群昵称格式)$',
           fnc: 'sendNickRule'
         },
+        {
+          reg: '^#*(开启群昵称检查)$',
+          fnc: 'nicknameEnable'
+        },
+        {
+          reg: '^#*(关闭群昵称检查)$',
+          fnc: 'nicknameDisable'
+        },
+        {
+          reg: '^#*(开启违规词检查)$',
+          fnc: 'keywordEnable'
+        },
+        {
+          reg: '^#*(关闭违规词检查)$',
+          fnc: 'keywordDisable'
+        },
         /*
         {
           reg: '',
@@ -32,6 +52,48 @@ export class warningTips extends plugin {
         */
       ]
     })
+    // 首次加载时读取配置
+    this.loadConfig()
+  }
+
+  // 从文件加载配置
+  async loadConfig() {
+    try {
+      if (fs.existsSync(CONFIG_PATH)) {
+        const data = fs.readFileSync(CONFIG_PATH, 'utf8')
+        const config = JSON.parse(data)
+        keywordEnable = config.keywordEnable !== undefined ? config.keywordEnable : 0
+        NicknameEnable = config.NicknameEnable !== undefined ? config.NicknameEnable : 0
+      } else {
+        // 如果文件不存在，创建默认配置
+        const configDir = './plugins/eso/custome_resources/config'
+        if (!fs.existsSync(configDir)) {
+          fs.mkdirSync(configDir, { recursive: true })
+        }
+        const defaultConfig = { keywordEnable: 0, NicknameEnable: 0 }
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(defaultConfig, null, 4))
+        keywordEnable = 0
+        NicknameEnable = 0
+      }
+    } catch (error) {
+      logger.error(`[ESO:违规检查] 加载配置失败: ${error.message}`)
+      keywordEnable = 0
+      NicknameEnable = 0
+    }
+  }
+
+  // 保存配置到文件
+  async saveConfig() {
+    try {
+      const configDir = './plugins/eso/custome_resources/config'
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true })
+      }
+      const config = { keywordEnable, NicknameEnable }
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 4))
+    } catch (error) {
+      logger.error(`[ESO:违规检查] 保存配置失败: ${error.message}`)
+    }
   }
 
   async sendWarning (e) {
@@ -40,6 +102,9 @@ export class warningTips extends plugin {
     {
         return 0
     }
+
+    // 确保使用最新的配置
+    await this.loadConfig()
 
     if(NicknameEnable == 1)
     {
@@ -115,31 +180,51 @@ export class warningTips extends plugin {
     }
 
     //读取群昵称并判断是否合规
-    let userinfo = await Bot.pickMember(e.group_id, e.user_id).getSimpleInfo()
-    userinfo.group_info = await Bot.pickMember(e.group_id, e.user_id).info
-    userinfo.is_owner = await Bot.pickMember(e.group_id, e.user_id).is_owner
-    userinfo.is_admin = await Bot.pickMember(e.group_id, e.user_id).is_admin
-
-    if(typeof(userinfo.group_info) != "undefined")
-    {
-      userinfo.is_correct_groupname = await this.myIn('@', userinfo.group_info.card)
-      //logger.info('----------[违规]------------')
-      //logger.info(userinfo)//用户群内资料
-      //logger.info(userinfo.group_info.card)//用户群内资料
-      //logger.info(userinfo.is_correct_groupname)//用户群内资料
-      if(userinfo.is_correct_groupname)
-      {
-        time = 0
-        logs[id] = 0
+    let groupCard = ''
+    try {
+      // 优先使用 e.sender.card（参考 speechStatic.js 的实现方式）
+      if (e.sender) {
+        groupCard = e.sender.card || e.sender.nickname || ''
+      }
+      
+      // 如果 e.sender 没有，尝试从 Bot.gml 获取（备用方案）
+      if (!groupCard && typeof Bot !== 'undefined' && Bot.gml) {
+        const userList = Bot.gml.get(e.group_id)
+        if (userList) {
+          const userInfo = userList.get(e.user_id)
+          if (userInfo) {
+            groupCard = userInfo.card || userInfo.nickname || ''
+          }
+        }
+      }
+      
+      // 清理不可见字符（参考 speechStatic.js 的 getUserDisplayName 方法）
+      if (groupCard) {
+        groupCard = groupCard.replace(/[^\p{L}\p{N}\p{P}\p{S}\p{Z}]/gu, '').trim()
+      }
+      
+      if (groupCard) {
+        const is_correct_groupname = await this.myIn('@', groupCard)
+        //logger.info('----------[违规]------------')
+        //logger.info('群昵称:', groupCard)
+        //logger.info('是否合规:', is_correct_groupname)
+        if(is_correct_groupname)
+        {
+          time = 0
+          logs[id] = 0
+        }
+        else
+        {
+          logs[id] = time-1
+        }
       }
       else
       {
-        logs[id] = time-1
+        logger.error("取群成员资料失败！")
+        time = 0
       }
-    }
-    else
-    {
-      logger.error("取群成员资料失败！")
+    } catch (error) {
+      logger.error(`[ESO:违规检查] 获取群昵称失败: ${error.message}`)
       time = 0
     }
 
@@ -345,5 +430,45 @@ export class warningTips extends plugin {
     }
 
     return ret
+  }
+
+  // 开启群昵称检查
+  async nicknameEnable(e) {
+    await this.loadConfig()
+    if(NicknameEnable == 1) return e.reply('群昵称检查本就开着啊', true)
+    if (!e.member.is_owner && !e.member.is_admin) return e.reply('请联系管理员才能开启群昵称检查', true)
+    NicknameEnable = 1
+    await this.saveConfig()
+    await this.e.reply('群昵称检查功能已开启')
+  }
+
+  // 关闭群昵称检查
+  async nicknameDisable(e) {
+    await this.loadConfig()
+    if(NicknameEnable == 0) return e.reply('群昵称检查本就关着啊', true)
+    if (!e.member.is_owner && !e.member.is_admin) return e.reply('请联系管理员才能关闭群昵称检查', true)
+    NicknameEnable = 0
+    await this.saveConfig()
+    await this.e.reply('群昵称检查功能已关闭')
+  }
+
+  // 开启违规词检查
+  async keywordEnable(e) {
+    await this.loadConfig()
+    if(keywordEnable == 1) return e.reply('违规词检查本就开着啊', true)
+    if (!e.member.is_owner && !e.member.is_admin) return e.reply('请联系管理员才能开启违规词检查', true)
+    keywordEnable = 1
+    await this.saveConfig()
+    await this.e.reply('违规词检查功能已开启')
+  }
+
+  // 关闭违规词检查
+  async keywordDisable(e) {
+    await this.loadConfig()
+    if(keywordEnable == 0) return e.reply('违规词检查本就关着啊', true)
+    if (!e.member.is_owner && !e.member.is_admin) return e.reply('请联系管理员才能关闭违规词检查', true)
+    keywordEnable = 0
+    await this.saveConfig()
+    await this.e.reply('违规词检查功能已关闭')
   }
 }
