@@ -15,6 +15,7 @@ let newlogs = {
 
 let keywordEnable = 0
 let NicknameEnable = 0
+let nicknameViolationMuteTime = 0
 
 export class warningTips extends plugin {
   constructor (e) {
@@ -44,7 +45,10 @@ export class warningTips extends plugin {
           reg: '^#*(关闭违规词检查)$',
           fnc: 'keywordDisable'
         },
-        
+        {
+          reg: '^#*(设置群昵称违规禁言时长)\\s*(\\d+)$',
+          fnc: 'setNicknameViolationMuteTime'
+        },
         {
           reg: '',
           fnc: 'sendWarning'
@@ -64,21 +68,24 @@ export class warningTips extends plugin {
         const config = JSON.parse(data)
         keywordEnable = config.keywordEnable !== undefined ? config.keywordEnable : 0
         NicknameEnable = config.NicknameEnable !== undefined ? config.NicknameEnable : 0
+        nicknameViolationMuteTime = config.nicknameViolationMuteTime !== undefined ? config.nicknameViolationMuteTime : 0
       } else {
         // 如果文件不存在，创建默认配置
         const configDir = './plugins/eso/custome_resources/config'
         if (!fs.existsSync(configDir)) {
           fs.mkdirSync(configDir, { recursive: true })
         }
-        const defaultConfig = { keywordEnable: 0, NicknameEnable: 0 }
+        const defaultConfig = { keywordEnable: 0, NicknameEnable: 0, nicknameViolationMuteTime: 0 }
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(defaultConfig, null, 4))
         keywordEnable = 0
         NicknameEnable = 0
+        nicknameViolationMuteTime = 0
       }
     } catch (error) {
       logger.error(`[ESO:违规检查] 加载配置失败: ${error.message}`)
       keywordEnable = 0
       NicknameEnable = 0
+      nicknameViolationMuteTime = 0
     }
   }
 
@@ -89,7 +96,7 @@ export class warningTips extends plugin {
       if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true })
       }
-      const config = { keywordEnable, NicknameEnable }
+      const config = { keywordEnable, NicknameEnable, nicknameViolationMuteTime }
       fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 4))
     } catch (error) {
       logger.error(`[ESO:违规检查] 保存配置失败: ${error.message}`)
@@ -114,6 +121,17 @@ export class warningTips extends plugin {
     		let message = [{ type: 'at', qq: e.user_id},{ type: 'text', text: '\n请按规范修改群昵称'},
     			{ type: 'image', file: './plugins/eso/resources/img/tips/nameTips.jpg', asface: false}]
       		await this.reply(message, false, { recallMsg: -1 })
+      		
+      		// 如果设置了禁言时长，执行禁言
+      		await this.loadConfig()
+      		if(nicknameViolationMuteTime > 0)
+      		{
+      			try {
+      				await e.group.muteMember(e.user_id, nicknameViolationMuteTime)
+      			} catch (error) {
+      				//logger.error(`[ESO:违规检查] 禁言失败: ${error.message}`)
+      			}
+      		}
     	}
     }
     
@@ -470,5 +488,31 @@ export class warningTips extends plugin {
     keywordEnable = 0
     await this.saveConfig()
     await this.e.reply('违规词检查功能已关闭')
+  }
+
+  // 设置群昵称违规禁言时长
+  async setNicknameViolationMuteTime(e) {
+    if (!e.member.is_owner && !e.member.is_admin) return e.reply('请联系管理员才能设置禁言时长', true)
+    
+    // 从消息中提取数字（支持有空格或没有空格）
+    const match = e.msg.match(/设置群昵称违规禁言时长\s*(\d+)/)
+    if (!match) {
+      return e.reply('格式错误，正确格式：#设置群昵称违规禁言时长 [秒数]，例如：#设置群昵称违规禁言时长 60', true)
+    }
+    
+    const muteTime = parseInt(match[1])
+    if (isNaN(muteTime) || muteTime < 0) {
+      return e.reply('禁言时长必须是非负整数（秒），设置为0表示不禁言', true)
+    }
+    
+    await this.loadConfig()
+    nicknameViolationMuteTime = muteTime
+    await this.saveConfig()
+    
+    if (muteTime === 0) {
+      await this.e.reply('已设置：群昵称违规时不禁言')
+    } else {
+      await this.e.reply(`已设置：群昵称违规时禁言 ${muteTime} 秒`)
+    }
   }
 }
