@@ -44,12 +44,12 @@ export class warningTips extends plugin {
           reg: '^#*(关闭违规词检查)$',
           fnc: 'keywordDisable'
         },
-        /*
+        
         {
           reg: '',
           fnc: 'sendWarning'
         }
-        */
+        
       ]
     })
     // 首次加载时读取配置
@@ -104,7 +104,7 @@ export class warningTips extends plugin {
     }
 
     // 确保使用最新的配置
-    await this.loadConfig()
+    //await this.loadConfig()
 
     if(NicknameEnable == 1)
     {
@@ -184,7 +184,7 @@ export class warningTips extends plugin {
     try {
       // 优先使用 e.sender.card（参考 speechStatic.js 的实现方式）
       if (e.sender) {
-        groupCard = e.sender.card || e.sender.nickname || ''
+        groupCard = e.sender.card
       }
       
       // 如果 e.sender 没有，尝试从 Bot.gml 获取（备用方案）
