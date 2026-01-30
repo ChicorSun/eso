@@ -25,19 +25,78 @@ export class example extends plugin {
     if (!e.group.is_owner && !e.group.is_admin) {
       return false;
     }
-    //检查是否存在e.source.seq属性
-    if ("source" in e === false) {
+    
+    // NTQQ适配：检查回复消息的多种可能属性
+    // 调试输出（可选，用于查看实际的事件对象结构）
+    // console.log('事件对象:', JSON.stringify(e, null, 2));
+    // console.log('source属性:', e.source);
+    // console.log('quote属性:', e.quote);
+    // console.log('reply属性:', e.reply);
+    
+    let sourceSeq = null;
+    let sourceMsgId = null;
+    
+    // 尝试多种方式获取回复消息的标识
+    if (e.source && e.source.seq) {
+      // 传统方式：使用 source.seq
+      sourceSeq = e.source.seq;
+    } else if (e.source && e.source.id) {
+      // NTQQ可能使用 source.id
+      sourceSeq = e.source.id;
+    } else if (e.quote && e.quote.id) {
+      // 某些框架使用 quote.id
+      sourceSeq = e.quote.id;
+      sourceMsgId = e.quote.id;
+    } else if (e.reply && e.reply.message_id) {
+      // 某些框架使用 reply.message_id
+      sourceMsgId = e.reply.message_id;
+    } else if (e.source && e.source.message_id) {
+      // 某些框架使用 source.message_id
+      sourceMsgId = e.source.message_id;
+    }
+    
+    // 如果无法获取回复消息标识，提示用户
+    if (!sourceSeq && !sourceMsgId) {
       e.reply(`请回复需要撤回的消息`);
       return false;
     }
-    let sourceSeq = e.source.seq;
-    let sourceMsg = await e.group.getChatHistory(sourceSeq, 1);
+    
+    let sourceMsg = null;
+    
+    // 优先使用 message_id 获取消息（更可靠，适用于NTQQ）
+    if (sourceMsgId) {
+      try {
+        // 尝试直接通过 message_id 获取消息
+        sourceMsg = await e.group.getMsg(sourceMsgId);
+        if (!sourceMsg) {
+          // 如果直接获取失败，尝试从历史消息中查找（最多查找最近50条）
+          const history = await e.group.getChatHistory(1, 50);
+          if (history && Array.isArray(history)) {
+            sourceMsg = history.find(msg => msg && msg.message_id === sourceMsgId);
+          }
+        }
+      } catch (error) {
+        logger.error(`[ESO:投票撤回] 通过message_id获取消息失败: ${error.message}`);
+      }
+    }
+    
+    // 如果通过 message_id 获取失败，尝试使用 seq
+    if (!sourceMsg && sourceSeq) {
+      try {
+        const history = await e.group.getChatHistory(sourceSeq, 1);
+        if (history && Array.isArray(history) && history.length > 0) {
+          sourceMsg = history[0];
+        }
+      } catch (error) {
+        logger.error(`[ESO:投票撤回] 通过seq获取消息失败: ${error.message}`);
+      }
+    }
+    
     //检查消息是否存在
     if (!sourceMsg) {
-      e.reply(`无法获取历史消息`);
+      e.reply(`无法获取历史消息，请确保回复的消息在最近50条消息内`);
       return false;
     }
-    sourceMsg = sourceMsg[0];
 
     let sourceMember = e.group.pickMember(sourceMsg.sender.user_id);
 
