@@ -2849,6 +2849,17 @@ class database {
     let imgPath = await getimgs.realpath(setData.atlasData[1].icon, "sets")
     setData.atlasData[1].icon = `../../../../../` + imgPath
 
+    // 默认颜色与CSS中一致
+    let name_color = '#FFE62D'
+
+    if(setData.atlasData[1].type == "神话")
+    {
+      name_color = 'rgb(255, 110, 0)'
+    }
+    
+    // 设置name_color到数据中（用于HTML模板）
+    setData.atlasData[1].name_color = name_color
+
     return setData
   }
 
@@ -3254,6 +3265,33 @@ class database {
     
     foodData.atlasData[1].p_name = []
     foodData.atlasData[1].p_value = []
+    
+    // 默认颜色与CSS中一致
+    let name_color = '#FFE62D'
+
+    if(foodsDataCN[objects]["quality"] == "普通")
+    {
+      name_color = '#EEEDEE'
+    }
+    else if(foodsDataCN[objects]["quality"] == "优良")
+    {
+      name_color = '#2CBC0C'
+    }
+    else if(foodsDataCN[objects]["quality"] == "上乘")
+    {
+      name_color = '#3992FE'
+    }
+    else if(foodsDataCN[objects]["quality"] == "史诗")
+    {
+      name_color = '#9F2DF6'
+    }
+    else if(foodsDataCN[objects]["quality"] == "传说")
+    {
+      name_color = '#FFE62D'
+    }
+
+    // 设置name_color到数据中（用于HTML模板）
+    foodData.atlasData[1].name_color = name_color
     
     return foodData
   }

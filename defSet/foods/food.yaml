@@ -7,6 +7,7 @@
   src_en_name: "<技能英文名>"
   new_cn_name: "技能中文名"
   new_en_name: "<技能英文名>"
+  name_color: "#FFE62D"
 
   type_cn: "类型中文"
   type_en: "类型英文"

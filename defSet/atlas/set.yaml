@@ -4,6 +4,7 @@
 - icon: gear_dunmer_heavy_head_d
   name: "中士的锁甲"
   name_en: "<Sergeant's Mail>"
+  name_color: "#FFE62D"
   item_class: item_dungeon
   weight: "重甲"
   type: "副本"
