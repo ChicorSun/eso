@@ -1215,42 +1215,42 @@ class database {
             baseIndex = 1
             if(allSkillData[lineKey][classKey].skills['1'].ultimate)
             {
-              if(allSkillData[lineKey][classKey].skills['2'].id)
+              if(allSkillData[lineKey][classKey].skills['2'].id && (allSkillData[lineKey][classKey].skills['2'].IsCrafted == false))
               {
                 baseIndex = 1
               }
-              else if(allSkillData[lineKey][classKey].skills['3'].id)
+              else if(allSkillData[lineKey][classKey].skills['3'].id && (allSkillData[lineKey][classKey].skills['3'].IsCrafted == false))
               {
                 baseIndex = 2
               }
-              else if(allSkillData[lineKey][classKey].skills['4'].id)
+              else if(allSkillData[lineKey][classKey].skills['4'].id && (allSkillData[lineKey][classKey].skills['4'].IsCrafted == false))
               {
                 baseIndex = 3
               }
-              else if(allSkillData[lineKey][classKey].skills['5'].id)
+              else if(allSkillData[lineKey][classKey].skills['5'].id && (allSkillData[lineKey][classKey].skills['5'].IsCrafted == false))
               {
                 baseIndex = 4
               }
             }
             else
             {
-              if(allSkillData[lineKey][classKey].skills['1'].id)
+              if(allSkillData[lineKey][classKey].skills['1'].id && (allSkillData[lineKey][classKey].skills['1'].IsCrafted == false))
               {
                 baseIndex = 0
               }
-              else if(allSkillData[lineKey][classKey].skills['2'].id)
+              else if(allSkillData[lineKey][classKey].skills['2'].id && (allSkillData[lineKey][classKey].skills['2'].IsCrafted == false))
               {
                 baseIndex = 1
               }
-              else if(allSkillData[lineKey][classKey].skills['3'].id)
+              else if(allSkillData[lineKey][classKey].skills['3'].id && (allSkillData[lineKey][classKey].skills['3'].IsCrafted == false))
               {
                 baseIndex = 2
               }
-              else if(allSkillData[lineKey][classKey].skills['4'].id)
+              else if(allSkillData[lineKey][classKey].skills['4'].id && (allSkillData[lineKey][classKey].skills['4'].IsCrafted == false))
               {
                 baseIndex = 3
               }
-              else if(allSkillData[lineKey][classKey].skills['5'].id)
+              else if(allSkillData[lineKey][classKey].skills['5'].id && (allSkillData[lineKey][classKey].skills['5'].IsCrafted == false))
               {
                 baseIndex = 4
               }
@@ -1311,6 +1311,10 @@ class database {
             //logger.info('       ' +  classKey + '|---' + allSkillData[lineKey][classKey].name + '[' + skillLine2class[allSkillData[lineKey][classKey].name].class_name + ']' + oneSkill.name + '(' + oneSkill.icon +')')
           }
 
+          if(oneSkill.IsCrafted)
+          {
+            indexStr = '篆刻'
+          }
           if(oneSkill.ultimate)
           {
             indexStr = '大招'
@@ -3007,9 +3011,28 @@ class database {
     /*---------------------------------------------------------------*/
     skillData.atlasData[1].p_name[index] = '消耗'
     skillData.atlasData[1].p_color[index] = "rgb(204, 204, 204)"
+    let cost = '0'
+    let costPerTick = false
+    if(newCNSkillData.cost != 0)
+    {
+      cost = newCNSkillData.cost
+    }
+    else if(newCNSkillData.costPerTick['1'] != 0)
+    {
+      cost = newCNSkillData.costPerTick['1']
+      costPerTick = true
+    }
+
     if(newCNSkillData.ultimate)
     {
-      skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 终极点'
+      if(costPerTick)
+      {
+        skillData.atlasData[1].p_value[index] = cost + ' 终极点'+ '/' + newCNSkillData.costPerTick['2']/1000 + '秒'
+      }
+      else
+      {
+        skillData.atlasData[1].p_value[index] = cost + ' 终极点'
+      } 
       skillData.atlasData[1].p_color[index] = "rgb(240, 240, 240)"
       index++
     }
@@ -3019,7 +3042,14 @@ class database {
       {
         //logger.info(newCNSkillData.powerTypes)
         if(newCNSkillData.powerTypes['1'] > -1) {
-          skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 魔力'
+          if(costPerTick)
+          {
+            skillData.atlasData[1].p_value[index] = cost + ' 魔力'+ '/' + newCNSkillData.costPerTick['2']/1000 + '秒'
+          }
+          else
+          {
+            skillData.atlasData[1].p_value[index] = cost + ' 魔力'
+          }
           skillData.atlasData[1].p_color[index] = "rgb(58, 146, 254)"
           if(index)
           {
@@ -3028,7 +3058,14 @@ class database {
           index++
         }
         if(newCNSkillData.powerTypes['4'] > -1) {
-          skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 耐力'
+          if(costPerTick)
+          {
+            skillData.atlasData[1].p_value[index] = cost + ' 耐力'+ '/' + newCNSkillData.costPerTick['2']/1000 + '秒'
+          }
+          else
+          {
+            skillData.atlasData[1].p_value[index] = cost + ' 耐力'
+          }
           skillData.atlasData[1].p_color[index] = "rgb(47, 213, 14)"
           if(index)
           {
@@ -3037,7 +3074,14 @@ class database {
           index++
         }
         if(newCNSkillData.powerTypes['32'] > -1) {
-          skillData.atlasData[1].p_value[index] = newCNSkillData.cost + ' 生命'
+          if(costPerTick)
+          {
+            skillData.atlasData[1].p_value[index] = cost + ' 生命'+ '/' + newCNSkillData.costPerTick['2']/1000 + '秒'
+          }
+          else
+          {
+            skillData.atlasData[1].p_value[index] = cost + ' 生命'
+          }
           skillData.atlasData[1].p_color[index] = "rgb(227, 36, 33)"
           if(index)
           {
@@ -3047,13 +3091,27 @@ class database {
         }
 
         if(!index) {
-          skillData.atlasData[1].p_value[index] = newCNSkillData.cost
+          if(costPerTick)
+          {
+            skillData.atlasData[1].p_value[index] = cost + '/' + newCNSkillData.costPerTick['2']/1000 + '秒'
+          }
+          else
+          {
+            skillData.atlasData[1].p_value[index] = cost
+          }
           index++
         }
       }
       else
       {
-        skillData.atlasData[1].p_value[index] = newCNSkillData.cost
+        if(costPerTick)
+        {
+          skillData.atlasData[1].p_value[index] = cost + '/' + newCNSkillData.costPerTick['2']/1000 + '秒'
+        }
+        else
+        {
+          skillData.atlasData[1].p_value[index] = cost
+        }
         index++
       }
     }

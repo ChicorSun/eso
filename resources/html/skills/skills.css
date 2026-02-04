@@ -202,7 +202,7 @@ body {
 }
 
 .parameters_names {
-  width: 100px;
+  width: 60px;
   text-align: left;
   display: inline-block;
   position: relative;
@@ -210,7 +210,7 @@ body {
 }
 
 .parameters_values {
-  width: 100px;
+  width: 140px;
   text-align: right;
   display: inline-block;
   position: relative;
