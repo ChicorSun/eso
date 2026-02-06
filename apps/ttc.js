@@ -116,8 +116,8 @@ const GUILD_NPC_SEARCH_ITEMS = [
 // ===========================================
 // 需要查询位置的公会名称列表
 const GUILD_LIST = [
-  'Splendid Achievers',
-  'Ebony Furnace'
+  'Splendid Achievers'//,
+  //'Ebony Furnace'
 ]
 
 // ===========================================
@@ -402,6 +402,12 @@ export class ttc extends plugin {
           reg: '^#*(拍卖行在哪里|拍卖行|工会商人|公会商人|公会商人在哪里|工会商人在哪里)$',
           /** 执行方法 */
           fnc: 'findTheGuildNPC'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(更新拍卖行位置)$',
+          /** 执行方法 */
+          fnc: 'updateGuildNPCLocation'
         }
       ]
     })
@@ -1171,7 +1177,7 @@ export class ttc extends plugin {
   }
 
   /** 查找公会商人位置 */
-  async findTheGuildNPC(e) {
+  async findTheGuildNPC(e, forceScan = false) {
     try {
       const userId = e.user_id
       
@@ -1188,15 +1194,21 @@ export class ttc extends plugin {
       let needUpdate = true
       let cachedLocations = {}
 
-      // 检查缓存是否有效
-      if (cacheData && cacheData.timestamp) {
-        if (cacheData.timestamp >= refreshTime) {
-          // 缓存有效，使用缓存数据
-          needUpdate = false
-          cachedLocations = cacheData.locations || {}
-          logger.info(`[TTC] 使用缓存数据，缓存时间: ${new Date(cacheData.timestamp).toLocaleString('zh-CN')}`)
-        } else {
-          logger.info(`[TTC] 缓存已过期，需要更新。缓存时间: ${new Date(cacheData.timestamp).toLocaleString('zh-CN')}, 刷新时间: ${new Date(refreshTime).toLocaleString('zh-CN')}`)
+      // 如果 forceScan 为 true，强制更新，不从缓存读取
+      if (forceScan) {
+        logger.info(`[TTC] 强制扫描模式，跳过缓存检查`)
+        needUpdate = true
+      } else {
+        // 检查缓存是否有效
+        if (cacheData && cacheData.timestamp) {
+          if (cacheData.timestamp >= refreshTime) {
+            // 缓存有效，使用缓存数据
+            needUpdate = false
+            cachedLocations = cacheData.locations || {}
+            logger.info(`[TTC] 使用缓存数据，缓存时间: ${new Date(cacheData.timestamp).toLocaleString('zh-CN')}`)
+          } else {
+            logger.info(`[TTC] 缓存已过期，需要更新。缓存时间: ${new Date(cacheData.timestamp).toLocaleString('zh-CN')}, 刷新时间: ${new Date(refreshTime).toLocaleString('zh-CN')}`)
+          }
         }
       }
 
@@ -1304,6 +1316,23 @@ export class ttc extends plugin {
     } catch (error) {
       logger.error(`[TTC] 查找公会商人位置失败: ${error.message}`)
       return await this.reply('查找公会商人位置失败，请稍后重试')
+    }
+  }
+
+  /** 更新拍卖行位置（强制扫描） */
+  async updateGuildNPCLocation(e) {
+    try {
+      // 检查权限（只有主人可以更新）
+      if (!e.isMaster) {
+        return await this.reply('只有主人才能更新拍卖行位置')
+      }
+
+      // 调用 findTheGuildNPC，传入 forceScan = true
+      return await this.findTheGuildNPC(e, true)
+
+    } catch (error) {
+      logger.error(`[TTC] 更新拍卖行位置失败: ${error.message}`)
+      return await this.reply('更新拍卖行位置失败，请稍后重试')
     }
   }
 
