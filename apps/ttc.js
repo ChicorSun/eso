@@ -96,34 +96,30 @@ const CAPTCHA_SERVICES = {
 }
 
 // ===========================================
-// 公会位置查询物品配置
-// ===========================================
-// 用于查询公会商人位置的物品列表，按优先级排序
-// 每个物品包含：物品名称和最大可搜索页数
-const GUILD_NPC_SEARCH_ITEMS = [
-  {
-    itemName: '篆刻祭坛',
-    maxPages: 10
-  },
-  {
-    itemName: '打磨过的榉木',
-    maxPages: 20
-  }
-]
-
-// ===========================================
 // 公会列表配置
 // ===========================================
 // 需要查询位置的公会名称列表
 const GUILD_LIST = [
-  'Splendid Achievers'//,
-  //'Ebony Furnace'
+  'Splendid Achievers',
+  'Ebony Furnace',
+  'Hearthfire Club',
+  'Niubis Help Newbies',
+  'Lost Ark'
 ]
 
 // ===========================================
 // 公会位置缓存文件路径
 // ===========================================
 const PLACE_PATH = './plugins/eso/custome_resources/ttc/data/place.json'
+
+// ===========================================
+// 公会位置查询固定URL
+// ===========================================
+// 用于查询公会商人位置的固定URL（美服）
+const GUILD_NPC_SEARCH_URL_US = 'https://us.tamrieltradecentre.com/pc/Trade/SearchResult?IconName=gearslot_head.png&ItemID=6886&ItemNamePattern=%E5%86%8D%E5%88%86%E9%85%8D%E8%80%85%E5%A4%B4%E7%9B%94&ItemCategory1ID=1&ItemCategory2ID=3&ItemCategory3ID=22&ItemQualityID=1&lang=zh-CN'
+// 用于查询公会商人位置的固定URL（欧服）
+const GUILD_NPC_SEARCH_URL_EU = 'https://eu.tamrieltradecentre.com/pc/Trade/SearchResult?IconName=gearslot_head.png&ItemID=6886&ItemNamePattern=%E5%86%8D%E5%88%86%E9%85%8D%E8%80%85%E5%A4%B4%E7%9B%94&ItemCategory1ID=1&ItemCategory2ID=3&ItemCategory3ID=22&ItemQualityID=1&lang=zh-CN'
+
 // NA服务器价格表文件（存放在data目录）
 const TTC_PRICE_TABLE_JSON_NA = path.join(TTC_DATA_PATH, 'PriceTableNA.json')
 const TTC_PRICE_TABLE_LUA_NA = path.join(TTC_DATA_PATH, 'PriceTableNA.lua')
@@ -1051,6 +1047,161 @@ export class ttc extends plugin {
     }
   }
 
+  /** 在固定URL中搜索公会商人位置（分析页数并依次访问） */
+  async searchGuildNPCInFixedURL(serverType, guildList) {
+    // 为每个公会存储一个位置和最后看见时间（只保留最新的，即第一个找到的）
+    const guildLocations = {}
+    guildList.forEach(guild => {
+      guildLocations[guild] = null // 使用null表示还未找到位置，找到后存储 {location, lastSeen}
+    })
+    
+    let hasCaptcha = false
+    let actualTotalPages = null // 实际总页数，从第一页获取
+    let baseUrl = ''
+    
+    // 根据服务器类型选择URL
+    if (serverType === 'eu') {
+      baseUrl = GUILD_NPC_SEARCH_URL_EU
+    } else {
+      baseUrl = GUILD_NPC_SEARCH_URL_US
+    }
+    
+    // 先访问第一页，获取总页数
+    let page = 1
+    while (true) {
+      try {
+        // 如果已经知道总页数，且当前页超过总页数，停止查询
+        if (actualTotalPages !== null && page > actualTotalPages) {
+          logger.info(`[TTC] 当前页 ${page} 已超过总页数 ${actualTotalPages}，停止搜索`)
+          break
+        }
+
+        // 构建带页码的URL
+        const urlWithPage = `${baseUrl}&page=${page}`
+        
+        // 调用fetchTradePageData获取交易数据
+        const htmlData = await this.fetchTradePageData(urlWithPage, '再分配者头盔', page, serverType)
+
+        // 检查是否有错误
+        if (htmlData && htmlData.hasError) {
+          // 如果是验证码错误，标记并停止搜索
+          if (htmlData.error && htmlData.error.includes('偶遇验证码')) {
+            logger.warn(`[TTC] 搜索第 ${page} 页时遇到验证码`)
+            hasCaptcha = true
+            break
+          }
+          // 如果是"没有符合条件的交易"，继续下一页
+          if (htmlData.error && htmlData.error.includes('没有符合条件的交易')) {
+            // 如果已经知道总页数，说明已经到最后一页了
+            if (actualTotalPages !== null) {
+              break
+            }
+            continue
+          }
+          // 其他错误，记录但继续
+          logger.warn(`[TTC] 搜索第 ${page} 页时出错: ${htmlData.error}`)
+          // 如果已经知道总页数，继续下一页；否则可能已经到最后一页
+          if (actualTotalPages === null) {
+            break
+          }
+          page++
+          continue
+        }
+
+        // 检查是否有数据
+        if (!htmlData || !htmlData.data || !Array.isArray(htmlData.data) || htmlData.data.length === 0) {
+          // 如果当前页没有数据，可能已经到最后一页了
+          if (actualTotalPages === null) {
+            // 如果还没获取总页数，说明可能只有一页或没有数据
+            break
+          }
+          // 如果已经知道总页数，继续下一页
+          page++
+          continue
+        }
+
+        // 从第一页获取总页数信息
+        if (actualTotalPages === null && htmlData.pageInfo) {
+          // pageInfo 格式：第X页/总共Y页
+          const pageInfoMatch = htmlData.pageInfo.match(/总共(\d+)页/)
+          if (pageInfoMatch) {
+            actualTotalPages = parseInt(pageInfoMatch[1])
+            logger.info(`[TTC] 实际总页数: ${actualTotalPages}`)
+          }
+        }
+
+        // 对每个公会进行检查
+        // 数据结构：[item, level, playerId, location, guild, unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl, trait]
+        guildList.forEach(targetGuild => {
+          // 如果该公会已经找到位置，跳过
+          if (guildLocations[targetGuild] !== null) {
+            return
+          }
+
+          const guildRecords = htmlData.data.filter(row => {
+            if (Array.isArray(row) && row.length > 4) {
+              const guild = row[4] // guild是第5个元素（索引4）
+              return guild && guild.trim() === targetGuild
+            }
+            return false
+          })
+
+          // 只提取第一个位置信息和最后看见时间（最新的）
+          if (guildRecords.length > 0) {
+            const firstRecord = guildRecords[0]
+            if (Array.isArray(firstRecord) && firstRecord.length > 3) {
+              const location = firstRecord[3] // location是第4个元素（索引3）
+              const lastSeen = firstRecord.length > 8 ? firstRecord[8] : null // lastSeen是第9个元素（索引8）
+              
+              if (location && location.trim() !== '未找到位置信息') {
+                guildLocations[targetGuild] = {
+                  location: location.trim(),
+                  lastSeen: lastSeen && lastSeen.trim() !== '未找到最后看见时间信息' ? lastSeen.trim() : null
+                }
+              }
+            }
+          }
+        })
+
+        // 检查是否所有公会都找到了位置
+        const allGuildsFound = guildList.every(guild => guildLocations[guild] !== null)
+        if (allGuildsFound) {
+          logger.info(`[TTC] 所有公会都已找到位置，停止搜索（当前页: ${page}）`)
+          break
+        }
+
+        // 如果已经知道总页数，且当前页已达到总页数，停止查询
+        if (actualTotalPages !== null && page >= actualTotalPages) {
+          logger.info(`[TTC] 当前页 ${page} 已达到总页数 ${actualTotalPages}，停止搜索`)
+          break
+        }
+
+        // 继续下一页
+        page++
+        
+      } catch (error) {
+        logger.error(`[TTC] 搜索第 ${page} 页失败: ${error.message}`)
+        // 如果已经知道总页数，继续下一页；否则可能已经到最后一页
+        if (actualTotalPages === null) {
+          break
+        }
+        page++
+        continue
+      }
+    }
+
+    // 将位置信息转换为数组格式（每个公会只有一个位置和最后看见时间）
+    const result = {}
+    guildList.forEach(guild => {
+      result[guild] = guildLocations[guild] !== null ? [guildLocations[guild]] : []
+    })
+
+    return {
+      guildLocations: result,
+      hasCaptcha
+    }
+  }
+
   /** 在多页中搜索公会商人位置 */
   async searchGuildNPCInPages(itemName, serverType, maxPages, guildList) {
     // 为每个公会存储一个位置和最后看见时间（只保留最新的，即第一个找到的）
@@ -1177,7 +1328,7 @@ export class ttc extends plugin {
   }
 
   /** 查找公会商人位置 */
-  async findTheGuildNPC(e, forceScan = false) {
+  async findTheGuildNPC(e, forceScan = true) {
     try {
       const userId = e.user_id
       
@@ -1214,51 +1365,39 @@ export class ttc extends plugin {
 
       // 如果需要更新，从TTC网页获取数据
       if (needUpdate) {
-        await this.reply('正在查找公会商人位置，请稍后...')
+        await this.reply('正在查找公会商人位置，可能需要几分钟时间，请稍后...')
 
         // 使用默认服务器配置
         const serverType = defaultServerConfig.server === 'NA' ? 'us' : 'eu'
 
-        // 按照配置列表顺序搜索物品
         // 为每个公会存储一个位置和最后看见时间（只保留最新的）
         let allGuildLocations = {}
         GUILD_LIST.forEach(guild => {
           allGuildLocations[guild] = null // 使用null表示还未找到位置，找到后存储 {location, lastSeen, timestamp}
         })
 
-        for (const searchItem of GUILD_NPC_SEARCH_ITEMS) {
-          logger.info(`[TTC] 开始搜索"${searchItem.itemName}"，检查前${searchItem.maxPages}页`)
-          const result = await this.searchGuildNPCInPages(searchItem.itemName, serverType, searchItem.maxPages, GUILD_LIST)
-          
-          // 如果遇到验证码，返回错误
-          if (result.hasCaptcha) {
-            return await this.reply('查询时遇到验证码，无法获取数据，请稍后重试')
-          }
-          
-          // 更新所有公会的位置信息（只保留第一个找到的，即最新的）
-          GUILD_LIST.forEach(guild => {
-            if (allGuildLocations[guild] === null && result.guildLocations[guild] && result.guildLocations[guild].length > 0) {
-              const locationInfo = result.guildLocations[guild][0]
-              // 将最后看见时间转换为时间戳
-              const timestamp = this.parseLastSeenToTimestamp(locationInfo.lastSeen)
-              allGuildLocations[guild] = {
-                location: locationInfo.location,
-                lastSeen: locationInfo.lastSeen,
-                timestamp: timestamp
-              }
-            }
-          })
-
-          // 检查是否所有公会都找到了位置
-          const allGuildsFound = GUILD_LIST.every(guild => allGuildLocations[guild] !== null)
-          if (allGuildsFound) {
-            logger.info(`[TTC] 所有公会都已找到位置，停止搜索`)
-            break
-          }
-          
-          // 如果没找到，继续搜索下一个物品
-          logger.info(`[TTC] "${searchItem.itemName}"搜索完成，继续搜索下一个物品`)
+        // 使用固定URL搜索公会位置
+        logger.info(`[TTC] 开始使用固定URL搜索公会位置`)
+        const result = await this.searchGuildNPCInFixedURL(serverType, GUILD_LIST)
+        
+        // 如果遇到验证码，返回错误
+        if (result.hasCaptcha) {
+          return await this.reply('查询时遇到验证码，无法获取数据，请稍后重试')
         }
+        
+        // 更新所有公会的位置信息（只保留第一个找到的，即最新的）
+        GUILD_LIST.forEach(guild => {
+          if (result.guildLocations[guild] && result.guildLocations[guild].length > 0) {
+            const locationInfo = result.guildLocations[guild][0]
+            // 将最后看见时间转换为时间戳
+            const timestamp = this.parseLastSeenToTimestamp(locationInfo.lastSeen)
+            allGuildLocations[guild] = {
+              location: locationInfo.location,
+              lastSeen: locationInfo.lastSeen,
+              timestamp: timestamp
+            }
+          }
+        })
 
         // 检查是否找到任何位置
         let hasAnyLocation = false
@@ -1284,39 +1423,140 @@ export class ttc extends plugin {
         cachedLocations = allGuildLocations
       }
 
-      // 构建回复消息，显示公会名、位置信息和最后看见时间（每个公会只显示一个位置）
-      let replyMsg = ''
-      let isFirst = true
-      GUILD_LIST.forEach(guild => {
-        if (cachedLocations[guild] !== null && cachedLocations[guild] !== undefined) {
-          if (!isFirst) {
-            replyMsg += '\n'
-          }
-          const locationInfo = cachedLocations[guild]
-          let lineMsg = `${guild} ${locationInfo.location}`
-          
-          // 如果有时间戳，转换为"X小时X分钟前"格式
-          if (locationInfo.timestamp) {
-            const formattedTime = this.formatTimestampToLastSeen(locationInfo.timestamp)
-            if (formattedTime) {
-              lineMsg += ` ${formattedTime}`
+      // 确定服务器类型（用于显示标题）
+      const serverType = defaultServerConfig.server === 'NA' ? 'us' : 'eu'
+      
+      // 生成HTML并截图展示
+      const imgBuffer = await this.generateGuildNPCLocationImage(cachedLocations, serverType)
+      if (imgBuffer) {
+        return await this.reply(imgBuffer)
+      } else {
+        // 如果生成图片失败，回退到文本格式
+        let replyMsg = ''
+        let isFirst = true
+        GUILD_LIST.forEach(guild => {
+          if (cachedLocations[guild] !== null && cachedLocations[guild] !== undefined) {
+            if (!isFirst) {
+              replyMsg += '\n'
             }
-          } else if (locationInfo.lastSeen) {
-            // 如果没有时间戳但有原始lastSeen，直接使用
-            lineMsg += ` ${locationInfo.lastSeen}`
+            const locationInfo = cachedLocations[guild]
+            let lineMsg = `${guild} ${locationInfo.location}`
+            
+            // 如果有时间戳，转换为"X小时X分钟前"格式
+            if (locationInfo.timestamp) {
+              const formattedTime = this.formatTimestampToLastSeen(locationInfo.timestamp)
+              if (formattedTime) {
+                lineMsg += ` ${formattedTime}`
+              }
+            } else if (locationInfo.lastSeen) {
+              // 如果没有时间戳但有原始lastSeen，直接使用
+              lineMsg += ` ${locationInfo.lastSeen}`
+            }
+            
+            replyMsg += lineMsg
+            isFirst = false
           }
-          
-          replyMsg += lineMsg
-          isFirst = false
-        }
-      })
+        })
 
-      return await this.reply(replyMsg)
+        return await this.reply(replyMsg)
+      }
 
     } catch (error) {
       logger.error(`[TTC] 查找公会商人位置失败: ${error.message}`)
       return await this.reply('查找公会商人位置失败，请稍后重试')
     }
+  }
+
+  /** 生成公会位置信息图片 */
+  async generateGuildNPCLocationImage(guildLocations, serverType = 'us') {
+    try {
+      // 准备HTML数据用于图片生成
+      const htmlData = await this.prepareGuildNPCHTMLData(guildLocations, serverType)
+      
+      // 使用ESO的模板系统生成截图
+      const imgBuffer = await this.cacheTradeImage(htmlData)
+      
+      return imgBuffer
+      
+    } catch (error) {
+      logger.error(`[TTC] 生成公会位置图片失败: ${error.message}`)
+      return null
+    }
+  }
+
+  /** 准备公会NPC HTML模板数据 */
+  async prepareGuildNPCHTMLData(guildLocations, serverType = 'us') {
+    // 转换数据格式为HTML模板需要的格式
+    const guildDataRows = []
+    
+    GUILD_LIST.forEach(guild => {
+      if (guildLocations[guild] !== null && guildLocations[guild] !== undefined) {
+        const locationInfo = guildLocations[guild]
+        
+        // 格式化时间信息
+        let timeDisplay = ''
+        if (locationInfo.timestamp) {
+          const formattedTime = this.formatTimestampToLastSeen(locationInfo.timestamp)
+          if (formattedTime) {
+            timeDisplay = formattedTime
+          }
+        } else if (locationInfo.lastSeen) {
+          timeDisplay = locationInfo.lastSeen
+        }
+        
+        // 构建位置显示文本（中文<英文>格式）
+        let locationDisplay = locationInfo.location || '未知位置'
+        if (locationInfo.locationCN && locationInfo.locationEN) {
+          locationDisplay = `${locationInfo.locationCN}<${locationInfo.locationEN}>`
+        } else if (locationInfo.location) {
+          locationDisplay = locationInfo.location
+        }
+        
+        guildDataRows.push({
+          guildName: guild,
+          location: locationDisplay,
+          timeDisplay: timeDisplay
+        })
+      }
+    })
+    
+    // 如果没有找到任何公会位置信息，添加一个提示
+    if (guildDataRows.length === 0) {
+      guildDataRows.push({
+        guildName: '未找到',
+        location: '未找到任何公会位置信息',
+        timeDisplay: ''
+      })
+    }
+    
+    // 初始化TTC公会NPC数据结构
+    if (!this.guildNPCData || this.guildNPCData.init !== 'done') {
+      this.guildNPCData = await TTC.get(this.e, 'ttc', 'ttc', 'guild-npc')
+      if (!this.guildNPCData) {
+        throw new Error('TTC公会NPC模板初始化失败')
+      }
+    }
+    
+    // 根据服务器类型设置标题
+    let title = '华人商会位置'
+    if (serverType === 'us') {
+      title = '美服华人商会位置'
+    } else if (serverType === 'eu') {
+      title = '欧服华人商会位置'
+    }
+    
+    const templateData = {
+      ...this.guildNPCData,
+      title: title,
+      ttcData: [
+        {
+          pic: 'cd1' // 背景图片
+        },
+        ...guildDataRows
+      ]
+    }
+
+    return templateData
   }
 
   /** 更新拍卖行位置（强制扫描） */

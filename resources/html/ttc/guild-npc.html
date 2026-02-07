@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/ttc/guild-npc.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    {{each ttcData val index}}
+    {{if index==0}}
+    <!-- 背景图片配置 -->
+    <style> .container { background: url("{{pluResPath}}img/background/{{val.pic}}.png") #0a0e27; background-repeat: no-repeat; background-size: 100% 100%; }</style>
+    {{/if}}
+    {{/each}}
+    
+    <div class="content-wrapper">
+      <div class="header">
+        <div class="header-decoration"></div>
+        <h1>{{title}}</h1>
+        <div class="header-line"></div>
+      </div>
+      
+      <div class="guild-list">
+        {{each ttcData val index}}
+        {{if index!=0}}
+        <div class="guild-item">
+          <div class="guild-item-header">
+            <div class="guild-icon">🏛️</div>
+            <div class="guild-name">{{val.guildName}}</div>
+          </div>
+          <div class="location-info">
+            <div class="location-label">📍 位置</div>
+            <div class="location">{{val.location}}</div>
+            {{if val.timeDisplay}}
+            <div class="time-info">
+              <span class="time-icon">🕐</span>
+              <span class="time">{{val.timeDisplay}}</span>
+            </div>
+            {{/if}}
+          </div>
+          <div class="guild-item-decoration"></div>
+        </div>
+        {{/if}}
+        {{/each}}
+      </div>
+      
+      <div class="footer">
+        <div class="logo">TTC Guild NPC Location · ESO-Bot</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

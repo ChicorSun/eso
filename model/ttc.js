@@ -14,14 +14,20 @@ export default class TTC extends base {
 
   static async get (e, app, name, file) {
     // 如果file参数是'trade'，则使用交易模板
-    let modelType = file === 'trade' ? 'trade' : 'ttc'
+    // 如果file参数是'guild-npc'，则使用公会NPC模板
+    let modelType = file === 'trade' ? 'trade' : (file === 'guild-npc' ? 'guild-npc' : 'ttc')
     let html = new TTC(e, modelType)
     return await html.getData(app, name, file)
   }
 
   get screenData () {
     // 根据模型类型选择不同的模板文件
-    const templateFile = this.modelType === 'trade' ? 'trade.html' : 'ttc.html'
+    let templateFile = 'ttc.html'
+    if (this.modelType === 'trade') {
+      templateFile = 'trade.html'
+    } else if (this.modelType === 'guild-npc') {
+      templateFile = 'guild-npc.html'
+    }
     
     return {
       saveId: this.userId,
