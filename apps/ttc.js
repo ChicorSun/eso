@@ -102,6 +102,9 @@ const CAPTCHA_SERVICES = {
 const GUILD_LIST = [
   'Splendid Achievers',
   'Ebony Furnace',
+  'Six God',
+  'ShouZhou VI',
+  'Fond Memory',
   'Hearthfire Club',
   'Niubis Help Newbies',
   'Lost Ark'
