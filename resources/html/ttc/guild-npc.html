@@ -32,11 +32,12 @@
             <div class="guild-name">{{val.guildName}}</div>
           </div>
           <div class="location-info">
-            <div class="location-label">📍 位置</div>
+            <div class="location-label">📍</div>
             <div class="location">{{val.location}}</div>
             {{if val.timeDisplay}}
             <div class="time-info">
               <span class="time-icon">🕐</span>
+              <span class="time-label">最后看见</span>
               <span class="time">{{val.timeDisplay}}</span>
             </div>
             {{/if}}
@@ -48,7 +49,7 @@
       </div>
       
       <div class="footer">
-        <div class="logo">TTC Guild NPC Location · ESO-Bot</div>
+        <div class="logo">Created by ESO-BOT @{{currentTime}}</div>
       </div>
     </div>
   </div>
