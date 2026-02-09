@@ -34,6 +34,16 @@ let foodImg = {
   img: ''
 }
 
+//家具图鉴结构体变量
+let furnitureData = {
+}
+
+//cacheData to save img
+let furnitureImg = {
+  md5: '',
+  img: ''
+}
+
 export class atlas extends plugin {
   constructor (e) {
     super({
@@ -49,6 +59,12 @@ export class atlas extends plugin {
         {
           /** 命令正则匹配 */
           reg: '^#.*$',
+          /** 执行方法 */
+          fnc: 'showAtlas'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^!.*$',
           /** 执行方法 */
           fnc: 'showAtlas'
         }
@@ -91,6 +107,14 @@ export class atlas extends plugin {
                       +`%巫母(模糊匹配)`)
   }
 
+  async showFurnitureTips (e) {
+    await this.reply(`查看家具图鉴请使用\n`
+                      +`!家具名+图鉴 的格式，如: \n`
+                      +`!棱镜太阳鸟羽毛图鉴(正常查询)\n`
+                      +`!棱镜太阳鸟羽毛(可省略"图鉴")\n`
+                      +`!音乐盒(模糊匹配)`)
+  }
+
 
   async showAtlas (e) {
     let name = await this.trimText(e)
@@ -117,6 +141,10 @@ export class atlas extends plugin {
     {
       return this.showFoodTips(e)
     }
+    if((name == "!图鉴") || (name == "!家具") || (name == "#家具") || (name == "*家具") || (name == "%家具"))
+    {
+      return this.showFurnitureTips(e)
+    }
 
     if(name.includes("#"))
     {
@@ -129,6 +157,10 @@ export class atlas extends plugin {
     else if(name.includes("%"))
     {
       await this.showFoods(e)
+    }
+    else if(name.includes("!"))
+    {
+      await this.showFurnitures(e)
     }
   }
 
@@ -497,6 +529,88 @@ export class atlas extends plugin {
       }
       
       let img = await this.cache(foodData, foodImg)
+      await this.reply(img)
+    }
+  }
+
+  async showFurnitures (e) {
+    let name = await this.trimText(e)
+    let noMaxLimit = false
+    let showEnglish = false
+    let objFurnitures = await database.name2index(name,8)
+    let furnitureNum = objFurnitures.length
+
+    //logger.info('furnitureNum:' + furnitureNum)
+    //logger.info('objFurnitures:' + objFurnitures)
+
+    if((objFurnitures[0] < 0) || (furnitureNum <= 0))
+    {
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备、以*开头查询技能或以%开头查询食物`)
+    }
+
+    if(name.includes("英文") || name.includes("英语"))
+    {
+      showEnglish = true
+    }
+
+    
+    if((furnitureNum >= 4 && furnitureNum <= 25) || noMaxLimit)
+    {
+      let msgList = '我猜您想问的是以下家具之一？'
+      for (let furnitureKey of objFurnitures) {
+        furnitureData = await database.updateData(furnitureKey, 8)
+        msgList += `\n!`+furnitureData.atlasData[1].new_cn_name+'图鉴'
+      }
+      msgList += `\n`+'图片太多，不再一一列出'
+      await this.reply(msgList)
+      for (let furnitureKey of objFurnitures) {
+        furnitureData = await database.updateData(furnitureKey, 8)
+        if(('!' + furnitureData.atlasData[1].new_cn_name) == name)
+        {
+          await this.showFurnituresInfo([furnitureKey], showEnglish)
+          break
+        }
+      }
+
+      return 1
+    }
+
+    if(furnitureNum > 1 && furnitureNum < 4)
+    {
+      let msgList = '我猜您想问的是以下家具之一？'
+      for (let furnitureKey of objFurnitures) {
+        furnitureData = await database.updateData(furnitureKey, 8)
+        msgList += `\n!`+furnitureData.atlasData[1].new_cn_name+'图鉴'
+      }
+      await this.reply(msgList)
+    }
+
+    if(furnitureNum >= 26 && noMaxLimit==0)
+    {
+      return await this.reply(`对不起，请描述的再详细一点`)
+    }
+
+    if(furnitureNum <= 0 || furnitureNum > 4)
+    {
+      return 1
+    }
+
+    await this.showFurnituresInfo(objFurnitures, showEnglish)
+  }
+  
+  async showFurnituresInfo (objFurnitures, showEnglish) {
+    for (let furnitureKey of objFurnitures) {
+      //更新家具图鉴变量
+      if(showEnglish)
+      {
+        furnitureData = await database.updateData(furnitureKey, 81)
+      }
+      else
+      {
+        furnitureData = await database.updateData(furnitureKey, 8)
+      }
+      
+      let img = await this.cache(furnitureData, furnitureImg)
       await this.reply(img)
     }
   }

@@ -2,6 +2,7 @@ import { createRequire } from 'module'
 import Atlas from './atlas.js'
 import Skills from './skills.js'
 import Foods from './foods.js'
+import Furniture from './furniture.js'
 import Builds from './builds.js'
 import Cards from './cards.js'
 import RankTable from './rank.js'
@@ -290,6 +291,10 @@ let addrSkill = [{
 
 //食物别名数据库
 let addrFood = [{
+}]
+
+//家具别名数据库
+let addrFurniture = [{
 }]
 
 //技能ID转中文序号对照表
@@ -2602,6 +2607,132 @@ class database {
     return objFoods
   }
 
+  async furnitureName2Index (keyword, mode) {
+    let objFurnitures = [-1]
+    let name = keyword
+    let enEsologMode = false
+    let enitemIDMode = false
+    let enFindByMsg = true
+    let enFindByType = false
+    let notAbbrFurniture = true
+    let index = 0
+    let isThisOne = false
+    var keysFurniture = Object.keys(furnituresData)
+    var numFurnitures = keysFurniture.length
+    let keyType = 0
+
+    if(name.includes("ITEMID"))
+    {
+      enitemIDMode = true
+      notAbbrFurniture = true
+    }
+    if(name.includes("ESOLOG"))
+    {
+      enEsologMode = true
+      notAbbrFurniture = true
+    }
+    
+    name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("%", "").replace("!", "").replace("ESOLOG", "").replace("ITEMID", "").replace("英文", "").replace("英语", "")
+    // ITEMID 模式下不转换为小写，保持原始数字字符串
+    if(!enitemIDMode)
+    {
+      name = name.toLowerCase()
+    }
+    if(name.length<4 && /^[A-Za-z]+$/.test(name))
+    {
+      notAbbrFurniture = false
+    }
+
+    if(!addrFurniture || !addrFurniture[0] || addrFurniture[0].init != 'done')
+    {
+      try {
+        let data = await Furniture.get(this.e, 'furniture', 'abbrFurniture', 'abbrFurniture')
+        if(data && data.atlasData && Array.isArray(data.atlasData))
+        {
+          addrFurniture = data.atlasData
+        }
+        else
+        {
+          addrFurniture = [{ init: 'done' }]
+        }
+        //logger.info('[ESO:图鉴] 初始化家具别名对照表')
+      } catch (error) {
+        logger.error(`[ESO:图鉴] 初始化家具别名对照表失败: ${error.message}`)
+        addrFurniture = [{ init: 'done' }]
+      }
+    }
+
+    for (let furnitureKey of keysFurniture) {
+      isThisOne = false
+      if(enitemIDMode)
+      {
+        //logger.info(furnituresData[furnitureKey]["id"])
+        // 支持字符串和数字ID匹配
+        let furnitureId = furnituresData[furnitureKey] ? furnituresData[furnitureKey]["id"] : null
+        let furnitureIdCN = furnituresDataCN[furnitureKey] ? furnituresDataCN[furnitureKey]["id"] : null
+        // 将 name 转换为数字进行比较
+        let nameNum = parseInt(name)
+        if(furnitureId && (furnitureId.toString() == name || furnitureId == nameNum))
+        {
+          isThisOne = true
+        }
+        else if(furnitureIdCN && (furnitureIdCN.toString() == name || furnitureIdCN == nameNum))
+        {
+          isThisOne = true
+        }
+      }
+      else
+      {
+        if(notAbbrFurniture && furnituresData[furnitureKey] && furnituresData[furnitureKey]["name"] && (furnituresData[furnitureKey]["name"]).toLowerCase().includes(name))
+        {
+          isThisOne = true
+        }
+        if(notAbbrFurniture && furnituresDataCN[furnitureKey] && furnituresDataCN[furnitureKey]["name"] && (furnituresDataCN[furnitureKey]["name"]).toLowerCase().includes(name))
+        {
+          isThisOne = true
+        }
+      }
+
+      let srcName = name
+      let abbrIndex = -1
+      if(!enEsologMode && addrFurniture && Array.isArray(addrFurniture))
+      {
+        for (let eachAbbr of addrFurniture) {
+          if(isThisOne)
+          {
+            break;
+          }
+          abbrIndex += 1
+          if(abbrIndex > 0 && eachAbbr && eachAbbr.abbr && Array.isArray(eachAbbr.abbr))
+          {
+            //logger.info(eachAbbr.name)
+            for (let eachAbbrName of eachAbbr.abbr) {
+              //logger.info('---'+eachAbbrName)
+              if(eachAbbrName && eachAbbrName.toLowerCase().includes(name))
+              {
+                //logger.info('------'+furnituresData[furnitureKey]["name"])
+                if(furnituresData[furnitureKey] && furnituresData[furnitureKey]["name"] && eachAbbr.name && (furnituresData[furnitureKey]["name"]).toLowerCase().includes(eachAbbr.name.toLowerCase()))
+                {
+                  isThisOne = true
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if(isThisOne)
+      {
+        objFurnitures[index] = furnitureKey
+        index++
+      }
+    }
+    let furnitureNum = index
+    
+    return objFurnitures
+  }
+
   async name2index (name, type) {
     await this.init_database()
     let ret = []
@@ -2652,6 +2783,24 @@ class database {
     if(type == 3) //this is name for foods
     {
       result = await this.foodsName2Index(name, 0)
+      cacheManager.set(name, result)
+      return result
+    }
+    if(type == 4) //this is name for furniture (保留用于兼容，实际使用 type=8)
+    {
+      result = await this.furnitureName2Index(name, 0)
+      cacheManager.set(name, result)
+      return result
+    }
+    if(type == 8) //this is name for furniture
+    {
+      result = await this.furnitureName2Index(name, 0)
+      cacheManager.set(name, result)
+      return result
+    }
+    if(type == 81) //this is name for furniture-english
+    {
+      result = await this.furnitureName2Index(name, 0)
       cacheManager.set(name, result)
       return result
     }
@@ -3294,6 +3443,159 @@ class database {
     foodData.atlasData[1].name_color = name_color
     
     return foodData
+  }
+
+  async updateFurnitureData (objects, showEnglish) {
+    let furnitureData = {
+      init: 'none',
+      atlasData: [{}, {
+        src_icon: '',
+        new_icon: '',
+        src_cn_name: '',
+        src_en_name: '',
+        new_cn_name: '',
+        new_en_name: '',
+        type_cn: '',
+        type_en: '',
+        place_cn: '',
+        place_en: '',
+        src_Skills_class: '',
+        arrow_class: '',
+        new_Skills_class: '',
+        parameter_class: '',
+        msg: [],
+        new_msg: '',
+        p_name: [],
+        p_value: []
+      }]
+    }
+
+    //logger.info(furnituresDataCN[objects])
+    //logger.info(furnituresData[objects])
+
+    if('done' != furnitureData.init)
+    {
+      let data = await Skills.get(this.e, 'skills', 'skill', 'skills')
+      if (!data)
+      {
+        logger.error('[ESO:图鉴] 初始化家具结构体失败')
+        return
+      }
+      furnitureData = JSON.parse(JSON.stringify(data))
+      //logger.info('[ESO:图鉴] 初始化家具结构体变量')
+    }
+   
+    if(furnituresDataCN[objects] && furnituresDataCN[objects]["icon"])
+    {
+      furnitureData.atlasData[1].src_icon = await this.splitStr(furnituresDataCN[objects]["icon"], 'icons/', '.dds')
+      furnitureData.atlasData[1].new_icon = await this.splitStr(furnituresDataCN[objects]["icon"], 'icons/', '.dds')
+
+      let imgPath = await getimgs.realpath(furnitureData.atlasData[1].src_icon, "furniture")
+      furnitureData.atlasData[1].src_icon = `../../../../../` + imgPath
+
+      imgPath = await getimgs.realpath(furnitureData.atlasData[1].new_icon, "furniture")
+      furnitureData.atlasData[1].new_icon = `../../../../../` + imgPath
+    }
+
+    if(furnituresDataCN[objects])
+    {
+      furnitureData.atlasData[1].src_cn_name = furnituresDataCN[objects]["name"] || ''
+      furnitureData.atlasData[1].new_cn_name = furnituresDataCN[objects]["name"] || ''
+    }
+    
+    if(furnituresData[objects])
+    {
+      furnitureData.atlasData[1].src_en_name = '<' + (furnituresData[objects]["name"] || '') + '>'
+      furnitureData.atlasData[1].new_en_name = '<' + (furnituresData[objects]["name"] || '') + '>'
+    }
+
+    if(furnituresDataCN[objects])
+    {
+      furnitureData.atlasData[1].type_cn = furnituresDataCN[objects]["category"] || ''
+      
+      if(furnituresDataCN[objects]["category"] != furnituresDataCN[objects]["subcategory"])
+      {
+        furnitureData.atlasData[1].type_en = furnituresDataCN[objects]["subcategory"] || ''
+      }
+      else
+      {
+        furnitureData.atlasData[1].type_en = furnituresDataCN[objects]["category"] || ''
+      }
+    }
+    
+
+    if(furnituresDataCN[objects])
+    {
+      furnitureData.atlasData[1].place_cn = furnituresDataCN[objects]["quality"] || ''
+    }
+
+    furnitureData.atlasData[1].place_en = ""
+
+    furnitureData.atlasData[1].src_Skills_class = 'src_Skills_middle_class'
+    furnitureData.atlasData[1].arrow_class = 'arrow_class_hide'
+    furnitureData.atlasData[1].new_Skills_class = 'new_Skills_class_hide'
+
+    furnitureData.atlasData[1].parameter_class = 'parameter_class_hide'
+    
+    if(showEnglish)
+    {
+      if(furnituresData[objects] && furnituresData[objects]["description"])
+      {
+        furnitureData.atlasData[1].msg = [await this.transColor(furnituresData[objects]["description"])]
+      }
+      else
+      {
+        furnitureData.atlasData[1].msg = []
+      }
+      furnitureData.atlasData[1].new_msg = furnituresData[objects] && furnituresData[objects]["tags"] ? furnituresData[objects]["tags"] : ''
+    }
+    else
+    {
+      if(furnituresDataCN[objects] && furnituresDataCN[objects]["description"])
+      {
+        furnitureData.atlasData[1].msg = [await this.transColor(furnituresDataCN[objects]["description"])]
+      }
+      else
+      {
+        furnitureData.atlasData[1].msg = []
+      }
+      furnitureData.atlasData[1].new_msg = furnituresDataCN[objects] && furnituresDataCN[objects]["tags"] ? furnituresDataCN[objects]["tags"] : ''
+    }
+    
+    furnitureData.atlasData[1].p_name = []
+    furnitureData.atlasData[1].p_value = []
+    
+    // 默认颜色与CSS中一致
+    let name_color = '#FFE62D'
+
+    if(furnituresDataCN[objects])
+    {
+      if(furnituresDataCN[objects]["quality"] == "普通")
+      {
+        name_color = '#EEEDEE'
+      }
+      else if(furnituresDataCN[objects]["quality"] == "优良")
+      {
+        name_color = '#2CBC0C'
+      }
+      else if(furnituresDataCN[objects]["quality"] == "上乘")
+      {
+        name_color = '#3992FE'
+      }
+      else if(furnituresDataCN[objects]["quality"] == "史诗")
+      {
+        name_color = '#9F2DF6'
+      }
+      else if(furnituresDataCN[objects]["quality"] == "传说")
+      {
+        name_color = '#FFE62D'
+      }
+    }
+
+    // 设置name_color到数据中（用于HTML模板）
+    furnitureData.atlasData[1].name_color = name_color
+    
+    return furnitureData
   }
 
   async updateBuildData (BD, cardMode) {
@@ -4294,10 +4596,18 @@ class database {
     {
       return await this.updateSkillData(setKey, 1)
     }
-    if(type == 61) //this is name for foods
+    if(type == 8) //this is name for furniture
+    {
+      return await this.updateFurnitureData(setKey, 0)
+    }
+    if(type == 61) //this is name for foods-english
     {
       await this.updateFoodData(setKey, 1)
       return foodData
+    }
+    if(type == 81) //this is name for furniture-english
+    {
+      return await this.updateFurnitureData(setKey, 1)
     }
   }
 

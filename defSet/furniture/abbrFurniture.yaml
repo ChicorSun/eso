@@ -1,0 +1,24 @@
+- version: 1000_2025_05_24
+  des: 家具别称对照表
+  init: done
+- name: "Prismatic Sunbird Feather"
+  cnName: "棱镜太阳鸟羽毛"
+  abbr:
+    - "太阳鸟羽毛"
+    - "太阳鸟"
+    - "棱镜羽毛"
+- name: "Music Box (The Jester of Jephre in Every Leaf)"
+  cnName: "音乐盒（《每片叶子中的耶弗尔》）"
+  abbr:
+    - "音乐盒耶弗尔"
+    - "耶弗尔音乐盒"
+- name: "Music Box (The Sands of Alik'r)"
+  cnName: "音乐盒（《阿里克尔之沙》）"
+  abbr:
+    - "音乐盒阿里克尔"
+    - "阿里克尔音乐盒"
+- name: "Music Box (The Rift)"
+  cnName: "音乐盒（《辛特兰》）"
+  abbr:
+    - "音乐盒辛特兰"
+    - "辛特兰音乐盒"
