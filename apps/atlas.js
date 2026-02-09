@@ -64,7 +64,7 @@ export class atlas extends plugin {
         },
         {
           /** 命令正则匹配 */
-          reg: '^!.*$',
+          reg: '^[!！].*$',
           /** 执行方法 */
           fnc: 'showAtlas'
         }
@@ -141,7 +141,7 @@ export class atlas extends plugin {
     {
       return this.showFoodTips(e)
     }
-    if((name == "!图鉴") || (name == "!家具") || (name == "#家具") || (name == "*家具") || (name == "%家具"))
+    if((name == "!图鉴") || (name == "！图鉴") || (name == "!家具") || (name == "！家具") || (name == "#家具") || (name == "*家具") || (name == "%家具"))
     {
       return this.showFurnitureTips(e)
     }
@@ -158,7 +158,7 @@ export class atlas extends plugin {
     {
       await this.showFoods(e)
     }
-    else if(name.includes("!"))
+    else if(name.includes("!") || name.includes("！"))
     {
       await this.showFurnitures(e)
     }
@@ -629,6 +629,10 @@ export class atlas extends plugin {
                     firstNonSpacePos++;
                 }
                 text = text.substring(firstNonSpacePos);
+                
+                // 将中文全角感叹号"！"转换为英文半角感叹号"!"
+                text = text.replace(/！/g, '!');
+                
                 break;
             }
         }
