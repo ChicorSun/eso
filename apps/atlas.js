@@ -44,6 +44,16 @@ let furnitureImg = {
   img: ''
 }
 
+//收藏品家具图鉴结构体变量
+let collFurnitureData = {
+}
+
+//cacheData to save img
+let collFurnitureImg = {
+  md5: '',
+  img: ''
+}
+
 export class atlas extends plugin {
   constructor (e) {
     super({
@@ -115,9 +125,18 @@ export class atlas extends plugin {
                       +`!音乐盒(模糊匹配)`)
   }
 
+  async showCollFurnitureTips (e) {
+    await this.reply(`查看收藏品家具图鉴请使用\n`
+                      +`!!收藏品家具名+图鉴 的格式，如: \n`
+                      +`!!小瓜尔兽图鉴(正常查询)\n`
+                      +`!!小瓜尔兽(可省略"图鉴")`)
+  }
+
 
   async showAtlas (e) {
     let name = await this.trimText(e)
+    // 先将全部全角感叹号换成半角感叹号（/g 会替换所有出现的 ！），便于后续统一判断
+    name = name.replace(/！/g, '!')
     //logger.info(name)
 
     if(name.includes("/"))
@@ -141,9 +160,13 @@ export class atlas extends plugin {
     {
       return this.showFoodTips(e)
     }
-    if((name == "!图鉴") || (name == "！图鉴") || (name == "!家具") || (name == "！家具") || (name == "#家具") || (name == "*家具") || (name == "%家具"))
+    if((name == "!图鉴") || (name == "!家具") || (name == "#家具") || (name == "*家具") || (name == "%家具"))
     {
       return this.showFurnitureTips(e)
+    }
+    if((name == "!!图鉴") || (name == "!!家具"))
+    {
+      return this.showCollFurnitureTips(e)
     }
 
     if(name.includes("#"))
@@ -158,9 +181,16 @@ export class atlas extends plugin {
     {
       await this.showFoods(e)
     }
-    else if(name.includes("!") || name.includes("！"))
+    else if(name.includes("!"))
     {
-      await this.showFurnitures(e)
+      if(name.startsWith("!!"))
+      {
+        await this.showCollFurnitures(e)
+      }
+      else
+      {
+        await this.showFurnitures(e)
+      }
     }
   }
 
@@ -183,7 +213,7 @@ export class atlas extends plugin {
     //logger.info('objSets:' + objSets)
     if((objSets[0] < 0) || (setNum <= 0))
     {
-      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以*开头查询技能或以%开头查询食物`)
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以*开头查询技能，以%开头查询食物，以!开头查询家具，或以!!开头查询收藏品家具`)
     }
 
     if((setNum >= 5 && setNum <= 20) || noMaxLimit)
@@ -379,7 +409,7 @@ export class atlas extends plugin {
 
     if((objSkills[0] < 0) || (skillNum <= 0))
     {
-      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备或以%开头查询食物`)
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备，以%开头查询食物，以!开头查询家具，或以!!开头查询收藏品家具`)
     }
 
     if(name.includes("英文") || name.includes("英语"))
@@ -463,7 +493,7 @@ export class atlas extends plugin {
 
     if((objFoods[0] < 0) || (foodNum <= 0))
     {
-      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备或以*开头查询技能`)
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备，以*开头查询技能，以!开头查询家具，或以!!开头查询收藏品家具`)
     }
 
     if(name.includes("英文") || name.includes("英语"))
@@ -537,7 +567,7 @@ export class atlas extends plugin {
     let name = await this.trimText(e)
     let noMaxLimit = false
     let showEnglish = false
-    let objFurnitures = await database.name2index(name,8)
+    let objFurnitures = await database.name2index(name, 4)
     let furnitureNum = objFurnitures.length
 
     //logger.info('furnitureNum:' + furnitureNum)
@@ -545,7 +575,7 @@ export class atlas extends plugin {
 
     if((objFurnitures[0] < 0) || (furnitureNum <= 0))
     {
-      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备、以*开头查询技能或以%开头查询食物`)
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备，以*开头查询技能，以%开头查询食物，或以!!开头查询收藏品家具`)
     }
 
     if(name.includes("英文") || name.includes("英语"))
@@ -611,6 +641,85 @@ export class atlas extends plugin {
       }
       
       let img = await this.cache(furnitureData, furnitureImg)
+      await this.reply(img)
+    }
+  }
+
+  async showCollFurnitures (e) {
+    let rawName = await this.trimText(e)
+    let nameForSearch = rawName.startsWith("!!") ? rawName.slice(2) : rawName
+    let noMaxLimit = false
+    let showEnglish = false
+    let objCollFurnitures = await database.name2index(nameForSearch, 5)
+    let collFurnitureNum = objCollFurnitures.length
+
+    if((objCollFurnitures[0] < 0) || (collFurnitureNum <= 0))
+    {
+      return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备，以*开头查询技能，以%开头查询食物，或以!开头查询家具`)
+    }
+
+    if(nameForSearch.includes("英文") || nameForSearch.includes("英语"))
+    {
+      showEnglish = true
+    }
+
+    if((collFurnitureNum >= 4 && collFurnitureNum <= 25) || noMaxLimit)
+    {
+      let msgList = '我猜您想问的是以下收藏品家具之一？'
+      for (let collFurnitureKey of objCollFurnitures) {
+        collFurnitureData = await database.updateData(collFurnitureKey, 9)
+        msgList += `\n!!`+collFurnitureData.atlasData[1].new_cn_name+'图鉴'
+      }
+      msgList += `\n`+'图片太多，不再一一列出'
+      await this.reply(msgList)
+      for (let collFurnitureKey of objCollFurnitures) {
+        collFurnitureData = await database.updateData(collFurnitureKey, 9)
+        if(('!!' + collFurnitureData.atlasData[1].new_cn_name == rawName) || ('!!' + collFurnitureData.atlasData[1].new_cn_name + '图鉴' == rawName))
+        {
+          await this.showCollFurnituresInfo([collFurnitureKey], showEnglish)
+          break
+        }
+      }
+
+      return 1
+    }
+
+    if(collFurnitureNum > 1 && collFurnitureNum < 4)
+    {
+      let msgList = '我猜您想问的是以下收藏品家具之一？'
+      for (let collFurnitureKey of objCollFurnitures) {
+        collFurnitureData = await database.updateData(collFurnitureKey, 9)
+        msgList += `\n!!`+collFurnitureData.atlasData[1].new_cn_name+'图鉴'
+      }
+      await this.reply(msgList)
+    }
+
+    if(collFurnitureNum >= 26 && noMaxLimit==0)
+    {
+      return await this.reply(`对不起，请描述的再详细一点`)
+    }
+
+    if(collFurnitureNum <= 0 || collFurnitureNum > 4)
+    {
+      return 1
+    }
+
+    await this.showCollFurnituresInfo(objCollFurnitures, showEnglish)
+  }
+
+
+  async showCollFurnituresInfo (objCollFurnitures, showEnglish) {
+    for (let collFurnitureKey of objCollFurnitures) {
+      if(showEnglish)
+      {
+        collFurnitureData = await database.updateData(collFurnitureKey, 91)
+      }
+      else
+      {
+        collFurnitureData = await database.updateData(collFurnitureKey, 9)
+      }
+
+      let img = await this.cache(collFurnitureData, collFurnitureImg)
       await this.reply(img)
     }
   }

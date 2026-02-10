@@ -23,8 +23,9 @@ class getimgs {
         } else if (type == `avatar`) {
           url = `https://q1.qlogo.cn/g?b=qq&nk=${name}&s=160`
         } else {
-          url = `https://eso-hub.com/storage/icons/${name}.png`
+          url = `https://esoicons.uesp.net/esoui/art/icons/${name}.png`
         }
+        logger.info(url + ' is downloading to ' + customImg + '...')
         let ret = await Bot.download(url, customImg)
       }
     }

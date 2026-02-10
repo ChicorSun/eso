@@ -11,6 +11,8 @@ import getimgs from './getimgs.js'
 import fs from 'node:fs'
 import md5 from 'md5'
 
+const updateImgMode = 1;
+
 const require = createRequire(import.meta.url);
 
 let dataExtractorENPath = './plugins/eso/resources/data/DataExtractor-en.lua'
@@ -914,6 +916,9 @@ class database {
   async enhance_database () {
     await this.enhance_setsData()
     await this.enhance_skillsData()
+    await this.enhance_foodsData()
+    await this.enhance_furnitureData()
+    await this.enhance_collFurnitureData()
     //logger.info(skillLineBuffs)
   }
 
@@ -1094,6 +1099,49 @@ class database {
       //logger.info('---------------------------')
       //logger.info(setsData[setKey])
       //logger.info('---------------------------')
+
+      if(updateImgMode == 1)
+      {
+        // 收集该套装下所有部位的图标（仅处理实际存在的部件）
+        let iconKeys = new Set()
+        const addIcon = (iconStr) => {
+          if (iconStr && typeof iconStr === 'string' && iconStr.includes('icons/')) {
+            let key = iconStr.split('.')[0].split('icons/')[1]
+            if (key) iconKeys.add(key)
+          }
+        }
+        if (setsData[setKey].icon) addIcon(setsData[setKey].icon)
+        if (setsData[setKey].styles) {
+          if (setsData[setKey].styles.Apparel) {
+            let apparel = setsData[setKey].styles.Apparel
+            if (apparel.Head) {
+              if (apparel.Head.Light?.icon) addIcon(apparel.Head.Light.icon)
+              if (apparel.Head.Medium?.icon) addIcon(apparel.Head.Medium.icon)
+              if (apparel.Head.Heavy?.icon) addIcon(apparel.Head.Heavy.icon)
+            } else {
+              for (let weight of Object.keys(apparel)) {
+                let slotMap = apparel[weight]
+                if (slotMap && typeof slotMap === 'object')
+                  for (let slot of Object.keys(slotMap))
+                    if (slotMap[slot]?.icon) addIcon(slotMap[slot].icon)
+              }
+            }
+          }
+          if (setsData[setKey].styles.Weapon) {
+            let weapon = setsData[setKey].styles.Weapon
+            for (let weight of Object.keys(weapon)) {
+              let typeMap = weapon[weight]
+              if (typeMap && typeof typeMap === 'object')
+                for (let typeKey of Object.keys(typeMap))
+                  if (typeMap[typeKey]?.icon) addIcon(typeMap[typeKey].icon)
+            }
+          }
+        }
+        for (let icon of iconKeys) {
+          await getimgs.realpath(icon, "sets")
+        }
+      }
+
       if(setsData[setKey].name == "Undaunted Bastion")
       {
         if (setsData[setKey].styles.Apparel.Head.Light)
@@ -1312,6 +1360,10 @@ class database {
           if(skillLine2class[allSkillData[lineKey][classKey].name]!= undefined)
           {
             let icon = await this.splitStr(oneSkill.icon, 'icons/', '.dds')
+            if(updateImgMode == 1)
+            {
+              let imgPath = await getimgs.realpath(icon, "skills")
+            }
             skillLineBuffs[icon] = allSkillData[lineKey][classKey].name
             //logger.info('       ' +  classKey + '|---' + allSkillData[lineKey][classKey].name + '[' + skillLine2class[allSkillData[lineKey][classKey].name].class_name + ']' + oneSkill.name + '(' + oneSkill.icon +')')
           }
@@ -1411,6 +1463,10 @@ class database {
             if(skillLine2class[allSkillData[lineKey][classKey].name]!= undefined)
             {
               let icon = await this.splitStr(oneSkill[1].icon, 'icons/', '.dds')
+              if(updateImgMode == 1)
+              {
+                let imgPath = await getimgs.realpath(icon, "skills")
+              }
               skillLineBuffs[icon] = allSkillData[lineKey][classKey].name
               //logger.info('       ' +  classKey + '|---' + allSkillData[lineKey][classKey].name + '[' + skillLine2class[allSkillData[lineKey][classKey].name].class_name + ']' + oneSkill[1].name + '(' + oneSkill[1].icon +')')
             }
@@ -1440,6 +1496,10 @@ class database {
             if(skillLine2class[allSkillData[lineKey][classKey].name]!= undefined)
             {
               let icon = await this.splitStr(oneSkill[2].icon, 'icons/', '.dds')
+              if(updateImgMode == 1)
+              {
+                let imgPath = await getimgs.realpath(icon, "skills")
+              }
               skillLineBuffs[icon] = allSkillData[lineKey][classKey].name
               //logger.info('       ' +  classKey + '|---' + allSkillData[lineKey][classKey].name + '[' + skillLine2class[allSkillData[lineKey][classKey].name].class_name + ']' + oneSkill[2].name + '(' + oneSkill[2].icon +')')
             }
@@ -1463,6 +1523,72 @@ class database {
       }
     }
     skillID2IndexCN.init = 'done'
+  }
+
+  async enhance_foodsData () {
+    if (updateImgMode != 1) return
+    const addIcon = (iconStr, set) => {
+      if (iconStr && typeof iconStr === 'string' && iconStr.includes('icons/')) {
+        let key = iconStr.split('.')[0].split('icons/')[1]
+        if (key) set.add(key)
+      }
+    }
+    let iconKeys = new Set()
+    for (let foodKey of Object.keys(foodsDataCN)) {
+      if (foodsDataCN[foodKey] && foodsDataCN[foodKey]["icon"])
+        addIcon(foodsDataCN[foodKey]["icon"], iconKeys)
+    }
+    for (let foodKey of Object.keys(foodsData)) {
+      if (foodsData[foodKey] && foodsData[foodKey]["icon"])
+        addIcon(foodsData[foodKey]["icon"], iconKeys)
+    }
+    for (let icon of iconKeys) {
+      await getimgs.realpath(icon, "foods")
+    }
+  }
+
+  async enhance_furnitureData () {
+    if (updateImgMode != 1) return
+    const addIcon = (iconStr, set) => {
+      if (iconStr && typeof iconStr === 'string' && iconStr.includes('icons/')) {
+        let key = iconStr.split('.')[0].split('icons/')[1]
+        if (key) set.add(key)
+      }
+    }
+    let iconKeys = new Set()
+    for (let furnitureKey of Object.keys(furnituresDataCN)) {
+      if (furnituresDataCN[furnitureKey] && furnituresDataCN[furnitureKey]["icon"])
+        addIcon(furnituresDataCN[furnitureKey]["icon"], iconKeys)
+    }
+    for (let furnitureKey of Object.keys(furnituresData)) {
+      if (furnituresData[furnitureKey] && furnituresData[furnitureKey]["icon"])
+        addIcon(furnituresData[furnitureKey]["icon"], iconKeys)
+    }
+    for (let icon of iconKeys) {
+      await getimgs.realpath(icon, "furniture")
+    }
+  }
+
+  async enhance_collFurnitureData () {
+    if (updateImgMode != 1) return
+    const addIcon = (iconStr, set) => {
+      if (iconStr && typeof iconStr === 'string' && iconStr.includes('icons/')) {
+        let key = iconStr.split('.')[0].split('icons/')[1]
+        if (key) set.add(key)
+      }
+    }
+    let iconKeys = new Set()
+    for (let collFurnitureKey of Object.keys(collfurnituresDataCN)) {
+      if (collfurnituresDataCN[collFurnitureKey] && collfurnituresDataCN[collFurnitureKey]["icon"])
+        addIcon(collfurnituresDataCN[collFurnitureKey]["icon"], iconKeys)
+    }
+    for (let collFurnitureKey of Object.keys(collfurnituresData)) {
+      if (collfurnituresData[collFurnitureKey] && collfurnituresData[collFurnitureKey]["icon"])
+        addIcon(collfurnituresData[collFurnitureKey]["icon"], iconKeys)
+    }
+    for (let icon of iconKeys) {
+      await getimgs.realpath(icon, "furniture")
+    }
   }
 
   async init_databaseDG () {
@@ -2733,6 +2859,70 @@ class database {
     return objFurnitures
   }
 
+  async collFurnitureName2Index (keyword, mode) {
+    let objCollFurnitures = [-1]
+    let name = keyword
+    let enitemIDMode = false
+    let notAbbrCollFurniture = true
+    let index = 0
+    let isThisOne = false
+    var keysCollFurniture = Object.keys(collfurnituresData)
+    let keyType = 0
+
+    if(name.includes("ITEMID"))
+    {
+      enitemIDMode = true
+      notAbbrCollFurniture = true
+    }
+
+    name = name.replace("图鉴", "").replace("#", "").replace("*", "").replace("%", "").replace("!!", "").replace("!", "").replace("ESOLOG", "").replace("ITEMID", "").replace("英文", "").replace("英语", "")
+    if(!enitemIDMode)
+    {
+      name = name.toLowerCase()
+    }
+    if(name.length<4 && /^[A-Za-z]+$/.test(name))
+    {
+      notAbbrCollFurniture = false
+    }
+
+    for (let collFurnitureKey of keysCollFurniture) {
+      isThisOne = false
+      if(enitemIDMode)
+      {
+        let collFurnitureId = collfurnituresData[collFurnitureKey] ? collfurnituresData[collFurnitureKey]["id"] : null
+        let collFurnitureIdCN = collfurnituresDataCN[collFurnitureKey] ? collfurnituresDataCN[collFurnitureKey]["id"] : null
+        let nameNum = parseInt(name)
+        if(collFurnitureId && (collFurnitureId.toString() == name || collFurnitureId == nameNum))
+        {
+          isThisOne = true
+        }
+        else if(collFurnitureIdCN && (collFurnitureIdCN.toString() == name || collFurnitureIdCN == nameNum))
+        {
+          isThisOne = true
+        }
+      }
+      else
+      {
+        if(notAbbrCollFurniture && collfurnituresData[collFurnitureKey] && collfurnituresData[collFurnitureKey]["name"] && (collfurnituresData[collFurnitureKey]["name"]).toLowerCase().includes(name))
+        {
+          isThisOne = true
+        }
+        if(notAbbrCollFurniture && collfurnituresDataCN[collFurnitureKey] && collfurnituresDataCN[collFurnitureKey]["name"] && (collfurnituresDataCN[collFurnitureKey]["name"]).toLowerCase().includes(name))
+        {
+          isThisOne = true
+        }
+      }
+
+      if(isThisOne)
+      {
+        objCollFurnitures[index] = collFurnitureKey
+        index++
+      }
+    }
+
+    return objCollFurnitures
+  }
+
   async name2index (name, type) {
     await this.init_database()
     let ret = []
@@ -2786,21 +2976,15 @@ class database {
       cacheManager.set(name, result)
       return result
     }
-    if(type == 4) //this is name for furniture (保留用于兼容，实际使用 type=8)
+    if(type == 4) //this is name for furniture
     {
       result = await this.furnitureName2Index(name, 0)
       cacheManager.set(name, result)
       return result
     }
-    if(type == 8) //this is name for furniture
+    if(type == 5) //this is name for collectible furniture
     {
-      result = await this.furnitureName2Index(name, 0)
-      cacheManager.set(name, result)
-      return result
-    }
-    if(type == 81) //this is name for furniture-english
-    {
-      result = await this.furnitureName2Index(name, 0)
+      result = await this.collFurnitureName2Index(name, 0)
       cacheManager.set(name, result)
       return result
     }
@@ -3596,6 +3780,120 @@ class database {
     furnitureData.atlasData[1].name_color = name_color
     
     return furnitureData
+  }
+
+  async updateCollFurnitureData (objects, showEnglish) {
+    let collFurnitureData = {
+      init: 'none',
+      atlasData: [{}, {
+        src_icon: '',
+        new_icon: '',
+        src_cn_name: '',
+        src_en_name: '',
+        new_cn_name: '',
+        new_en_name: '',
+        type_cn: '',
+        type_en: '',
+        place_cn: '',
+        place_en: '',
+        src_Skills_class: '',
+        arrow_class: '',
+        new_Skills_class: '',
+        parameter_class: '',
+        msg: [],
+        new_msg: '',
+        p_name: [],
+        p_value: []
+      }]
+    }
+
+    if('done' != collFurnitureData.init)
+    {
+      let data = await Skills.get(this.e, 'skills', 'skill', 'skills')
+      if (!data)
+      {
+        logger.error('[ESO:图鉴] 初始化收藏品家具结构体失败')
+        return
+      }
+      collFurnitureData = JSON.parse(JSON.stringify(data))
+    }
+
+    if(collfurnituresDataCN[objects] && collfurnituresDataCN[objects]["icon"])
+    {
+      collFurnitureData.atlasData[1].src_icon = await this.splitStr(collfurnituresDataCN[objects]["icon"], 'icons/', '.dds')
+      collFurnitureData.atlasData[1].new_icon = await this.splitStr(collfurnituresDataCN[objects]["icon"], 'icons/', '.dds')
+
+      let imgPath = await getimgs.realpath(collFurnitureData.atlasData[1].src_icon, "furniture")
+      collFurnitureData.atlasData[1].src_icon = `../../../../../` + imgPath
+
+      imgPath = await getimgs.realpath(collFurnitureData.atlasData[1].new_icon, "furniture")
+      collFurnitureData.atlasData[1].new_icon = `../../../../../` + imgPath
+    }
+
+    if(collfurnituresDataCN[objects])
+    {
+      collFurnitureData.atlasData[1].src_cn_name = collfurnituresDataCN[objects]["name"] || ''
+      collFurnitureData.atlasData[1].new_cn_name = collfurnituresDataCN[objects]["name"] || ''
+    }
+
+    if(collfurnituresData[objects])
+    {
+      collFurnitureData.atlasData[1].src_en_name = '<' + (collfurnituresData[objects]["name"] || '') + '>'
+      collFurnitureData.atlasData[1].new_en_name = '<' + (collfurnituresData[objects]["name"] || '') + '>'
+    }
+
+    // type_cn 固定为「收藏品家具」；type_en 为具体分类（如「无畏者半身像」）
+    collFurnitureData.atlasData[1].type_cn = '收藏品家具'
+    collFurnitureData.atlasData[1].type_en = (collfurnituresDataCN[objects] && collfurnituresDataCN[objects]["category"]) ? collfurnituresDataCN[objects]["category"] : (collfurnituresData[objects] && collfurnituresData[objects]["category"]) ? collfurnituresData[objects]["category"] : ''
+
+    // place_cn / place_en 留空
+    collFurnitureData.atlasData[1].place_cn = ''
+    collFurnitureData.atlasData[1].place_en = ''
+
+    collFurnitureData.atlasData[1].src_Skills_class = 'src_Skills_middle_class'
+    collFurnitureData.atlasData[1].arrow_class = 'arrow_class_hide'
+    collFurnitureData.atlasData[1].new_Skills_class = 'new_Skills_class_hide'
+
+    // description：描述 → msg；hint 同时放在 new_msg 展示
+    if(showEnglish)
+    {
+      if(collfurnituresData[objects] && collfurnituresData[objects]["description"])
+      {
+        collFurnitureData.atlasData[1].msg = [await this.transColor(collfurnituresData[objects]["description"])]
+      }
+      else
+      {
+        collFurnitureData.atlasData[1].msg = []
+      }
+      collFurnitureData.atlasData[1].new_msg = (collfurnituresData[objects] && collfurnituresData[objects]["hint"]) ? collfurnituresData[objects]["hint"] : ''
+    }
+    else
+    {
+      if(collfurnituresDataCN[objects] && collfurnituresDataCN[objects]["description"])
+      {
+        collFurnitureData.atlasData[1].msg = [await this.transColor(collfurnituresDataCN[objects]["description"])]
+      }
+      else
+      {
+        collFurnitureData.atlasData[1].msg = []
+      }
+      collFurnitureData.atlasData[1].new_msg = (collfurnituresDataCN[objects] && collfurnituresDataCN[objects]["hint"]) ? collfurnituresDataCN[objects]["hint"] : ''
+    }
+
+    // id、furnitureId、category 以参数表展示
+    collFurnitureData.atlasData[1].parameter_class = 'parameter_class_hide'
+    collFurnitureData.atlasData[1].p_name = ['收藏品ID', '家具ID', '分类']
+    collFurnitureData.atlasData[1].p_value = [
+      (collfurnituresDataCN[objects] && collfurnituresDataCN[objects]["id"] != null) ? String(collfurnituresDataCN[objects]["id"]) : (collfurnituresData[objects] && collfurnituresData[objects]["id"] != null) ? String(collfurnituresData[objects]["id"]) : '',
+      (collfurnituresDataCN[objects] && collfurnituresDataCN[objects]["furnitureId"] != null) ? String(collfurnituresDataCN[objects]["furnitureId"]) : (collfurnituresData[objects] && collfurnituresData[objects]["furnitureId"] != null) ? String(collfurnituresData[objects]["furnitureId"]) : '',
+      (collfurnituresDataCN[objects] && collfurnituresDataCN[objects]["category"]) ? collfurnituresDataCN[objects]["category"] : (collfurnituresData[objects] && collfurnituresData[objects]["category"]) ? collfurnituresData[objects]["category"] : ''
+    ]
+
+    // 收藏品家具无 quality 字段，使用默认名称颜色
+    let name_color = '#FFE62D'
+    collFurnitureData.atlasData[1].name_color = name_color
+
+    return collFurnitureData
   }
 
   async updateBuildData (BD, cardMode) {
@@ -4608,6 +4906,14 @@ class database {
     if(type == 81) //this is name for furniture-english
     {
       return await this.updateFurnitureData(setKey, 1)
+    }
+    if(type == 9) //this is name for collectible furniture
+    {
+      return await this.updateCollFurnitureData(setKey, 0)
+    }
+    if(type == 91) //this is name for collectible furniture-english
+    {
+      return await this.updateCollFurnitureData(setKey, 1)
     }
   }
 
