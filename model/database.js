@@ -11,7 +11,7 @@ import getimgs from './getimgs.js'
 import fs from 'node:fs'
 import md5 from 'md5'
 
-const updateImgMode = 1;
+const updateImgMode = 0;
 
 const require = createRequire(import.meta.url);
 
