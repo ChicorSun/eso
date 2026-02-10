@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/luxuryFurnisher/luxuryFurnisher.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+
+    {{each generalData val index}}
+    {{if index==0}}
+    <style> .head_box { background: url("{{pluResPath}}img/namecard/{{val.pic}}.png") #fff; background-position-x: 42px; background-repeat: no-repeat; background-size: auto 101%; }</style>
+    <div class="head_box">
+      <div class="id_text">#{{val.cmd}}</div>
+      <h2 class="day_text">{{val.des}}</h2>
+    </div>
+    {{else}}
+    <div class="data_box {{val.group_class}}">
+      <div class="tab_lable">{{val.group}}</div>
+      <div class="list">
+        {{each val.list item}}
+        <div class="item {{item.item_class}}">
+          <div class="top">
+            <div class="type"><div class="cnType">{{item.type_cn}}</div></div>
+            <div class="place"><div class="enPlace">{{item.type_en}}</div></div>
+          </div>
+          <img class="icon" src="{{pluResPath}}img/furniture/{{item.icon}}.png" />
+          <div class="title">
+            <div class="text"{{if item.name_color}} style="color: {{item.name_color}}"{{/if}}>{{item.title}}</div>
+            <div class="dec"{{if item.name_color}} style="color: {{item.name_color}}"{{/if}}>{{item.desc}}</div>
+            {{each item.msg msgItem}}
+            <div class="msg">{{msgItem}}</div>
+            {{/each}}
+            {{if item.new_msg}}
+            <div class="new_msg">{{item.new_msg}}</div>
+            {{/if}}
+          </div>
+        </div>
+        {{/each}}
+      </div>
+    </div>
+    {{/if}}
+    {{/each}}
+    {{each generalData val index}}
+    {{if index==0}}
+    <div class="logo">Created By ESO-Bot {{val.date}}</div>
+    {{/if}}
+    {{/each}}
+  </div>
+</body>
+
+</html>
