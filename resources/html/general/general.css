@@ -195,6 +195,22 @@ body {
 .list .set_info_big .title .msg{
   color: #CCCCCC;
 }
+.list .item .title .item_price{
+  font-size: 14px;
+  margin-top: 4px;
+}
+.list .item .title .item_price .price_g{
+  color: #FFE62D;
+}
+.list .item .title .item_price .price_ap{
+  color: #66FF33;
+}
+.list .item .title .item_price .price_icon{
+  height: 1em;
+  width: auto;
+  vertical-align: middle;
+  margin-left: 1px;
+}
 
 .list .item_row .title .text{
 }

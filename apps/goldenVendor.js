@@ -96,9 +96,10 @@ export class goldenVendor extends plugin {
       const setsMsg = []
       for (const it of json.data.items) {
         const setName = (it.setName || '').trim()
-        const gp = (it.gp != null && it.gp !== '') ? String(it.gp).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + 'G' : ''
-        const ap = (it.ap != null && it.ap !== '') ? String(it.ap).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' AP' : ''
-        const priceLine = [gp, ap].filter(Boolean).join(' / ')
+        const gp_str = (it.gp != null && it.gp !== '') ? String(it.gp).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + 'G' : ''
+        const ap_str = (it.ap != null && it.ap !== '') ? String(it.ap).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' AP' : ''
+        const gp_value = gp_str ? gp_str.replace(/\s*G\s*$/i, '').trim() : ''
+        const ap_value = ap_str ? ap_str.replace(/\s*AP\s*$/i, '').trim() : ''
 
         const gearInfo = await this.getGearInfoFromSetName(setName, it.icon)
         if (!gearInfo) {
@@ -118,19 +119,22 @@ export class goldenVendor extends plugin {
             icon: fallbackIcon,
             title: setName,
             desc: '<' + setName + '>',
-            msg: [priceLine],
+            msg: [],
+            gp_value,
+            ap_value,
             type: '',
             place: '',
             item_class: 'item_split2 set_info_big'
           })
           continue
         }
-        const setMsg = [priceLine, ...(gearInfo.msg || [])]
         setsMsg.push({
           icon: gearInfo.icon,
           title: gearInfo.title,
           desc: gearInfo.desc,
-          msg: setMsg,
+          msg: gearInfo.msg || [],
+          gp_value,
+          ap_value,
           type: gearInfo.type || '',
           place: gearInfo.place || '',
           item_class: gearInfo.item_class
@@ -227,17 +231,24 @@ export class goldenVendor extends plugin {
         try {
           price = oneMsg.split("-- ")[1]
           if (!price) continue
-          price = price.split("<")[0].replace("gp", "G").replace("(Bind on Equip)", "").replace("/", "|")
+          price = price.split("<")[0].replace("gp", "G").replace("(Bind on Equip)", "").replace("/", "|").trim()
         } catch (_) { continue }
+
+        const parts = price.split('|').map(s => s.trim()).filter(Boolean)
+        const gp_str = parts.find(p => p.includes('G')) || ''
+        const ap_str = parts.find(p => p.toUpperCase().includes('AP')) || ''
+        const gp_value = gp_str ? gp_str.replace(/\s*G\s*$/i, '').trim() : ''
+        const ap_value = ap_str ? ap_str.replace(/\s*AP\s*$/i, '').trim() : ''
 
         const gearInfo = await this.getGearInfo(link)
         if (gearInfo === -1) continue
-        const setMsg = [price, ...(gearInfo.msg || [])]
         setsMsg.push({
           icon: gearInfo.icon,
           title: gearInfo.title,
           desc: gearInfo.desc,
-          msg: setMsg,
+          msg: gearInfo.msg || [],
+          gp_value,
+          ap_value,
           type: gearInfo.type || '',
           place: gearInfo.place || '',
           item_class: gearInfo.item_class

@@ -108,6 +108,7 @@ export class luxuryFurnisher extends plugin {
       const nameEn = (it.name || '').trim()
       const cost = it.cost != null ? Number(it.cost) : 0
       const costStr = Number.isNaN(cost) ? '?' : cost.toLocaleString() + 'G'
+      const price_value = costStr ? costStr.replace(/\s*G\s*$/i, '').trim() : ''
 
       let title = nameEn
       let desc = '<' + nameEn + '>'
@@ -149,7 +150,7 @@ export class luxuryFurnisher extends plugin {
         desc,
         name_color: name_color || undefined,
         msg,
-        new_msg: costStr,
+        price_value,
         item_class: 'item_split2 set_info_big'
       })
     }

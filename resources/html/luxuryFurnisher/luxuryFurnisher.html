@@ -34,8 +34,8 @@
             {{each item.msg msgItem}}
             <div class="msg">{{msgItem}}</div>
             {{/each}}
-            {{if item.new_msg}}
-            <div class="new_msg">{{item.new_msg}}</div>
+            {{if item.price_value}}
+            <div class="new_msg"><span class="price_g">{{item.price_value}}</span><img class="price_icon price_icon_gold" src="{{pluResPath}}img/icon/gold.png" alt="" /></div>
             {{/if}}
           </div>
         </div>

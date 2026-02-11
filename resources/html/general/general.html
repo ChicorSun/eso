@@ -33,9 +33,14 @@
           <div class="title">
             <div class="text">{{item.title}}</div>
             <div class="dec">{{item.desc}}</div>
-            {{each item.msg item}}
-            <div class="msg">{{item}}</div>
+            {{each item.msg msgLine}}
+            <div class="msg">{{msgLine}}</div>
             {{/each}}
+            {{if item.gp_value || item.ap_value}}
+            <div class="item_price">
+              {{if item.gp_value}}<span class="price_g">{{item.gp_value}}</span><img class="price_icon price_icon_gold" src="{{pluResPath}}img/icon/gold.png" alt="" />{{/if}}{{if item.gp_value && item.ap_value}}  {{/if}}{{if item.ap_value}}<span class="price_ap">{{item.ap_value}}</span><img class="price_icon price_icon_ap" src="{{pluResPath}}img/icon/ap.png" alt="" />{{/if}}
+            </div>
+            {{/if}}
           </div>
         </div>
         {{/each}}

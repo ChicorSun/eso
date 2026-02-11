@@ -203,6 +203,15 @@ body {
   font-size: 14px;
   margin-top: 4px;
 }
+.list .set_info_big .title .new_msg .price_g{
+  color: #FFE62D;
+}
+.list .set_info_big .title .new_msg .price_icon{
+  height: 1em;
+  width: auto;
+  vertical-align: middle;
+  margin-left: 1px;
+}
 
 .list .item_row .title .text{
 }
