@@ -8,6 +8,12 @@ import * as cheerio from 'cheerio'
 
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 
+/** 1=uesp/论坛 源，2=ESOCN API 源；失败后切换并重试一次 */
+let src_mode = 1
+
+const SERVER_STATUS_API = 'https://api.esocn.com.cn/api/server-status'
+const MAINTENANCE_API = 'https://api.esocn.com.cn/api/maintenance'
+
 // 辅助函数：获取月份数字
 function getMonthNumber(monthName) {
   const months = {
@@ -457,6 +463,48 @@ async function fetchServerStatusRaw() {
     }
 }
 
+/**
+ * 从 ESOCN API 获取服务器状态与维护信息
+ * @returns {{ serverOk: boolean, maintenanceOk: boolean }} 两个接口是否都成功
+ */
+async function fetchFromESOCN() {
+    let serverOk = false
+    let maintenanceOk = false
+    try {
+        const [resStatus, resMaint] = await Promise.all([
+            fetch(SERVER_STATUS_API),
+            fetch(MAINTENANCE_API)
+        ])
+        if (resStatus && resStatus.ok) {
+            const json = await resStatus.json()
+            if (json.success && json.data) {
+                const d = json.data
+                const esocnToStatus = { PCNA: 'pcNA', PCEU: 'pcEU', PCPTS: 'pcPTS', XBOXNA: 'xbNA', XBOXEU: 'xbEU', PSNA: 'psNA', PSEU: 'psEU' }
+                for (const [apiKey, statusKey] of Object.entries(esocnToStatus)) {
+                    if (Object.prototype.hasOwnProperty.call(status, statusKey) && d[apiKey] != null) {
+                        const isOnline = String(d[apiKey]).toLowerCase() === 'online'
+                        status[statusKey] = isOnline ? 1 : 0
+                    }
+                }
+                serverOk = true
+            }
+        }
+        if (resMaint && resMaint.ok) {
+            const json = await resMaint.json()
+            if (json.success && json.data && json.data.Raw) {
+                status.msg = String(json.data.Raw).trim()
+                maintenanceOk = true
+            }
+        }
+        if (maintenanceOk === false && (!status.msg || status.msg.length === 0)) {
+            status.msg = 'Maintenance information unavailable'
+        }
+    } catch (err) {
+        logger.error('[ESO:服务器状态] ESOCN API 获取失败: ' + (err && err.message))
+    }
+    return { serverOk, maintenanceOk }
+}
+
 // 维护信息处理函数
 function processMaintenanceInfo(maintenanceMessage) {
 //logger.info('[ESO:服务器状态] processMaintenanceInfo 输入:');
@@ -599,19 +647,17 @@ export class serverStatus extends plugin {
   }
 
   /**
-   * 启动自动检查
+   * 启动自动检查；src_mode 1=1分钟，2=15分钟
    * @private
    */
   async startAutoCheck(e) {
-    // 如果定时器已经存在，先清除它
     if (this.checkInterval) {
       clearInterval(this.checkInterval)
     }
-    
-    // 设置新的定时器，每隔一段时间执行一次
+    const intervalMs = src_mode === 1 ? 1 * 60 * 1000 : 15 * 60 * 1000
     this.checkInterval = setInterval(async () => {
       await this.getESOStatus(this.e)
-    }, 1 * 60 * 1000)
+    }, intervalMs)
   }
 
   /**
@@ -755,7 +801,11 @@ export class serverStatus extends plugin {
     let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD'+'_'+'HH'+':'+'mm').replace(/是0/g, "是").replace(/点0/g, "点")
     if(now != status.time)
     {
+    	const oldMode = src_mode
     	await this.updateESOStatus()
+    	if (src_mode !== oldMode) {
+    	  await this.startAutoCheck(e)
+    	}
     	status.time = now
     	await this.checkStatusChange(e)
     	lastStatus.time = status.time
@@ -772,68 +822,39 @@ export class serverStatus extends plugin {
   }
 
   /**
-   * @更新服务器状态
+   * 使用 uesp/论坛 源更新 (src_mode 1)
    */
-  async updateESOStatus (e) {
-//logger.info('[ESO:服务器状态] updateESOStatus 开始更新服务器状态');
-  	const maintenanceMessage = await fetchMaintenanceMessage()
-//logger.info('[ESO:服务器状态] updateESOStatus 获取到的维护消息:', maintenanceMessage);
-    
+  async _updateFromUesp() {
+    const maintenanceMessage = await fetchMaintenanceMessage()
     if (maintenanceMessage) {
       status.msg = maintenanceMessage
-//logger.info('[ESO:服务器状态] updateESOStatus 已将维护消息写入status.msg');
     } else if (!status.msg || status.msg.length === 0) {
       status.msg = 'Maintenance information unavailable'
-//logger.warn('[ESO:服务器状态] updateESOStatus 未获取到维护消息，使用默认值');
-    } else {
-//logger.info('[ESO:服务器状态] updateESOStatus 未获取到维护消息，保留原有status.msg:', status.msg);
     }
-
-//logger.info('[ESO:服务器状态] updateESOStatus 当前status.msg值:', status.msg);
-    
-//logger.info('[ESO:服务器状态] updateESOStatus 更新前的服务器状态:');
-//logger.info(JSON.stringify({
-//        pcNA: status.pcNA,
-//        pcEU: status.pcEU,
-//        pcPTS: status.pcPTS,
-//        xbNA: status.xbNA,
-//        xbEU: status.xbEU,
-//        psNA: status.psNA,
-//        psEU: status.psEU
-//    }, null, 2));
-    
     const serverStatusData = await fetchServerStatusRaw()
-    
-    if (serverStatusData) {
-//logger.info('[ESO:服务器状态] updateESOStatus 服务器状态数据获取成功');
-        if (serverStatusData.serverStatusResults && serverStatusData.serverStatusResults.length > 0) {
-//logger.info(`[ESO:服务器状态] updateESOStatus 共更新了 ${serverStatusData.serverStatusResults.length} 个服务器状态`);
-            const changedServers = serverStatusData.serverStatusResults.filter(s => s.changed);
-            if (changedServers.length > 0) {
-//logger.info(`[ESO:服务器状态] updateESOStatus 状态发生变更的服务器数量: ${changedServers.length}`);
-                changedServers.forEach(server => {
-//logger.info(`[ESO:服务器状态] updateESOStatus 服务器 ${server.displayName} (${server.key}) 状态变更: ${server.oldValue} -> ${server.statusValue}`);
-                });
-            } else {
-//logger.info('[ESO:服务器状态] updateESOStatus 所有服务器状态均无变更');
-            }
-        }
-    } else {
-//logger.warn('[ESO:服务器状态] updateESOStatus 服务器状态数据获取失败');
+    return serverStatusData != null
+  }
+
+  /**
+   * 使用 ESOCN API 源更新 (src_mode 2)
+   */
+  async _updateFromESOCN() {
+    const { serverOk } = await fetchFromESOCN()
+    return serverOk
+  }
+
+  /**
+   * @更新服务器状态；按 src_mode 选源，失败则切换并重试一次
+   */
+  async updateESOStatus() {
+    let ok = src_mode === 1 ? await this._updateFromUesp() : await this._updateFromESOCN()
+    if (ok) return
+
+    src_mode = src_mode === 1 ? 2 : 1
+    ok = src_mode === 1 ? await this._updateFromUesp() : await this._updateFromESOCN()
+    if (!ok) {
+      logger.warn('[ESO:服务器状态] 两种来源均获取失败')
     }
-    
-//logger.info('[ESO:服务器状态] updateESOStatus 更新后的服务器状态:');
-//logger.info(JSON.stringify({
-//        pcNA: status.pcNA,
-//        pcEU: status.pcEU,
-//        pcPTS: status.pcPTS,
-//        xbNA: status.xbNA,
-//        xbEU: status.xbEU,
-//        psNA: status.psNA,
-//        psEU: status.psEU
-//    }, null, 2));
-    
-//logger.info('[ESO:服务器状态] updateESOStatus 更新完成');
   }
 
 
