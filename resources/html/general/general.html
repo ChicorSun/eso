@@ -23,6 +23,12 @@
       <div class="list">
         {{each val.list item}}
         <div class="item {{item.item_class}}">
+          {{if item.type || item.place}}
+          <div class="item_top">
+            <div class="item_top_type">{{item.type}}</div>
+            <div class="item_top_place">{{item.place}}</div>
+          </div>
+          {{/if}}
           <img class="icon" src="{{pluResPath}}img/sets/{{item.icon}}.png" />
           <div class="title">
             <div class="text">{{item.title}}</div>

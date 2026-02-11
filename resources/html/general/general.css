@@ -135,6 +135,23 @@ body {
   background-color:#131014;
 }
 
+.list .item .item_top {
+  font-size: 12px;
+  width: 100%;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.list .item .item_top .item_top_type {
+  text-align: left;
+  color: #CCCCCC;
+}
+.list .item .item_top .item_top_place {
+  text-align: right;
+  color: #999;
+}
+
 .list .item .icon{
   width: 24px;
   height: 24px;
