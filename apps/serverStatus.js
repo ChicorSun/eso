@@ -1,18 +1,225 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import fetch from 'node-fetch'
+import https from 'https'
 import moment from 'moment'
 import ServerStatus from '../model/serverstatus.js'
 import md5 from 'md5'
 import * as cheerio from 'cheerio'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const CONFIG_PATH = path.join(__dirname, '../custome_resources/config/serverStatus.json')
 
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 
 /** 1=uesp/论坛 源，2=ESOCN API 源；失败后切换并重试一次 */
-let src_mode = 1
+let src_mode = (() => {
+  try {
+    const dir = path.dirname(CONFIG_PATH)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    if (fs.existsSync(CONFIG_PATH)) {
+      const data = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))
+      const v = Number(data?.src_mode)
+      if (v === 1 || v === 2) return v
+    }
+  } catch (_) {}
+  return 1
+})()
+try { logger.info('[ESO:服务器状态] 加载 src_mode=' + src_mode) } catch (_) {}
+
+function saveSrcMode() {
+  try {
+    const dir = path.dirname(CONFIG_PATH)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify({ src_mode }, null, 2), 'utf8')
+  } catch (err) {
+    try { logger.error('[ESO:服务器状态] 保存 src_mode 失败: ' + (err?.message || err)) } catch (_) {}
+  }
+}
 
 const SERVER_STATUS_API = 'https://api.esocn.com.cn/api/server-status'
+const SERVER_STATUS_STREAM_API = 'https://api.esocn.com.cn/api/server-status-stream'
 const MAINTENANCE_API = 'https://api.esocn.com.cn/api/maintenance'
+
+/** ESOCN API 键名 -> status 对象键名 */
+const esocnToStatus = { PCNA: 'pcNA', PCEU: 'pcEU', PCPTS: 'pcPTS', XBOXNA: 'xbNA', XBOXEU: 'xbEU', PSNA: 'psNA', PSEU: 'psEU' }
+/** ESOCN API 键名 -> 通知显示名称 */
+const apiKeyToDisplayName = { PCNA: '美服', PCEU: '欧服', PCPTS: '测试服', XBOXNA: 'XBOX美服', XBOXEU: 'XBOX欧服', PSNA: 'PS美服', PSEU: 'PS欧服' }
+
+/** SSE 连接相关 */
+let sseReq = null
+let sseReconnectTimer = null
+const SSE_RECONNECT_DELAY_MS = 10000
+let lastEventForNotify = null
+let serverStatusPluginInstance = null
+
+function stopSSEConnection() {
+  if (sseReconnectTimer) {
+    clearTimeout(sseReconnectTimer)
+    sseReconnectTimer = null
+  }
+  if (sseReq) {
+    sseReq.destroy()
+    sseReq = null
+  }
+}
+
+async function fetchMaintenanceOnly() {
+  try {
+    const res = await fetch(MAINTENANCE_API)
+    if (res && res.ok) {
+      const json = await res.json()
+      if (json.success && json.data && json.data.Raw) {
+        status.msg = String(json.data.Raw).trim()
+        return true
+      }
+    }
+    if (!status.msg || status.msg.length === 0) {
+      status.msg = 'Maintenance information unavailable'
+    }
+  } catch (err) {
+    logger.error('[ESO:服务器状态] 获取维护信息失败: ' + (err && err.message))
+  }
+  return false
+}
+
+/**
+ * 处理 serverStatusChanged：先拉取维护信息，再更新状态并发送通知
+ */
+async function handleServerStatusChanged(eventData, pluginInstance) {
+  await fetchMaintenanceOnly()
+  const changes = eventData?.changes
+  if (!changes || typeof changes !== 'object') return
+  const now = moment().format('YYYY-MM-DD_HH:mm')
+  for (const [apiKey, change] of Object.entries(changes)) {
+    const statusKey = esocnToStatus[apiKey]
+    if (!statusKey || !Object.prototype.hasOwnProperty.call(status, statusKey)) continue
+    const prev = String(change?.previous || '').toLowerCase()
+    const curr = String(change?.current || '').toLowerCase()
+    const prevOnline = prev === 'online'
+    const currOnline = curr === 'online'
+    status[statusKey] = currOnline ? 1 : 0
+    status.time = now
+    const displayName = apiKeyToDisplayName[apiKey] || apiKey
+    const cooldownKeyMaint = `${statusKey}_maintenance`
+    const cooldownKeyOnline = `${statusKey}_online`
+    if (prevOnline && !currOnline) {
+      if (!isInCooldown(cooldownKeyMaint) && pluginInstance && lastEventForNotify) {
+        pluginInstance.e = lastEventForNotify
+        const msg = [{ type: 'at', qq: 'all', text: '@全体成员' }, { type: 'text', text: `${displayName}维护了！` }]
+        pluginInstance.e.reply(msg, false, { recallMsg: -1 }).catch(() => {})
+        updateNotifyTime(cooldownKeyMaint)
+      }
+    } else if (!prevOnline && currOnline) {
+      if (!isInCooldown(cooldownKeyOnline) && pluginInstance && lastEventForNotify) {
+        pluginInstance.e = lastEventForNotify
+        const msg = [{ type: 'at', qq: 'all', text: '@全体成员' }, { type: 'text', text: `${displayName}开服了！` }]
+        pluginInstance.e.reply(msg, false, { recallMsg: -1 }).catch(() => {})
+        updateNotifyTime(cooldownKeyOnline)
+      }
+    }
+    lastStatus[statusKey] = status[statusKey] ? 1 : 0
+  }
+  lastStatus.time = status.time
+}
+
+/**
+ * 从 /api/server-status 拉取初始状态（connected 时使用）
+ */
+async function fetchInitialStatus() {
+  try {
+    const res = await fetch(SERVER_STATUS_API)
+    if (res && res.ok) {
+      const json = await res.json()
+      if (json.success && json.data) {
+        const d = json.data
+        for (const [apiKey, statusKey] of Object.entries(esocnToStatus)) {
+          if (Object.prototype.hasOwnProperty.call(status, statusKey) && d[apiKey] != null) {
+            const isOnline = String(d[apiKey]).toLowerCase() === 'online'
+            status[statusKey] = isOnline ? 1 : 0
+            lastStatus[statusKey] = status[statusKey] ? 1 : 0
+          }
+        }
+        status.time = moment().format('YYYY-MM-DD_HH:mm')
+        lastStatus.time = status.time
+      }
+    }
+  } catch (err) {
+    logger.error('[ESO:服务器状态] 获取初始状态失败: ' + (err && err.message))
+  }
+}
+
+function handleSSEEvent(eventData, pluginInstance) {
+  const type = eventData?.type
+  logger.info('[ESO:服务器状态] 收到 SSE 推送 type=' + (type || 'unknown'))
+  if (type === 'connected') {
+    fetchInitialStatus()
+    fetchMaintenanceOnly()
+  } else if (type === 'serverStatusChanged') {
+    handleServerStatusChanged(eventData, pluginInstance)
+  } else if (type === 'heartbeat') {
+  }
+}
+
+function startSSEConnection(pluginInstance) {
+  if (src_mode !== 2) return
+  stopSSEConnection()
+  serverStatusPluginInstance = pluginInstance
+  const url = new URL(SERVER_STATUS_STREAM_API)
+  const opts = {
+    hostname: url.hostname,
+    path: url.pathname + url.search,
+    method: 'GET',
+    headers: { Accept: 'text/event-stream' }
+  }
+  sseReq = https.request(opts, (res) => {
+    if (res.statusCode !== 200) {
+      logger.warn('[ESO:服务器状态] SSE 连接异常 status=' + res.statusCode)
+      scheduleReconnect(pluginInstance)
+      return
+    }
+    let buffer = ''
+    res.on('data', (chunk) => {
+      buffer += chunk.toString()
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        if (line.startsWith('data:')) {
+          const jsonStr = line.slice(5).trim()
+          if (!jsonStr) continue
+          try {
+            const data = JSON.parse(jsonStr)
+            if (data) handleSSEEvent(data, pluginInstance)
+          } catch (_) {}
+        }
+      }
+    })
+    res.on('error', (err) => {
+      logger.error('[ESO:服务器状态] SSE 流错误: ' + (err && err.message))
+      scheduleReconnect(pluginInstance)
+    })
+    res.on('end', () => {
+      scheduleReconnect(pluginInstance)
+    })
+  })
+  sseReq.on('error', (err) => {
+    logger.error('[ESO:服务器状态] SSE 请求失败: ' + (err && err.message))
+    scheduleReconnect(pluginInstance)
+  })
+  sseReq.end()
+}
+
+function scheduleReconnect(pluginInstance) {
+  if (src_mode !== 2 || sseReconnectTimer) return
+  sseReq = null
+  sseReconnectTimer = setTimeout(() => {
+    sseReconnectTimer = null
+    startSSEConnection(pluginInstance)
+  }, SSE_RECONNECT_DELAY_MS)
+}
 
 // 辅助函数：获取月份数字
 function getMonthNumber(monthName) {
@@ -647,17 +854,24 @@ export class serverStatus extends plugin {
   }
 
   /**
-   * 启动自动检查；src_mode 1=1分钟，2=15分钟
+   * 启动自动检查；src_mode 1=1分钟轮询，2=SSE 长连接（无轮询）
    * @private
    */
   async startAutoCheck(e) {
+    lastEventForNotify = e
     if (this.checkInterval) {
       clearInterval(this.checkInterval)
+      this.checkInterval = null
     }
-    const intervalMs = src_mode === 1 ? 1 * 60 * 1000 : 15 * 60 * 1000
-    this.checkInterval = setInterval(async () => {
-      await this.getESOStatus(this.e)
-    }, intervalMs)
+    stopSSEConnection()
+    if (src_mode === 1) {
+      const intervalMs = 1 * 60 * 1000
+      this.checkInterval = setInterval(async () => {
+        await this.getESOStatus(this.e)
+      }, intervalMs)
+    } else {
+      startSSEConnection(this)
+    }
   }
 
   /**
@@ -851,6 +1065,8 @@ export class serverStatus extends plugin {
     if (ok) return
 
     src_mode = src_mode === 1 ? 2 : 1
+    saveSrcMode()
+    logger.info('[ESO:服务器状态] src_mode 已切换为 ' + src_mode)
     ok = src_mode === 1 ? await this._updateFromUesp() : await this._updateFromESOCN()
     if (!ok) {
       logger.warn('[ESO:服务器状态] 两种来源均获取失败')
