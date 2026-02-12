@@ -269,6 +269,8 @@ let foodsData = [{
 }]
 let skillsData = [{
 }]
+let dataRaids = [{
+}]
 
 let setsDataCN = [{
 }]
@@ -281,6 +283,8 @@ let collfurnituresDataCN = [{
 let foodsDataCN = [{
 }]
 let skillsDataCN = [{
+}]
+let dataRaidsCN = [{
 }]
 
 //装备别名数据库
@@ -303,6 +307,9 @@ let addrFurniture = [{
 let skillID2IndexCN = {
   init: '-1',
 }
+
+// 试炼/副本/竞技场 英文名 -> 中文名 对照表（从 Sets 的 categoryName 构建）
+let raidNameMap = {}
 
 //食物图鉴结构体变量
 
@@ -919,7 +926,21 @@ class database {
     await this.enhance_foodsData()
     await this.enhance_furnitureData()
     await this.enhance_collFurnitureData()
+    await this.enhance_raidsData()
     //logger.info(skillLineBuffs)
+  }
+
+  async enhance_raidsData () {
+    // 从 Sets 的 categoryName 构建试炼/副本/竞技场 中英对照表（保持同一引用供导出使用）
+    for (const k of Object.keys(raidNameMap)) delete raidNameMap[k]
+    const keysSet = Object.keys(setsData)
+    for (const setId of keysSet) {
+      const enCat = setsData[setId]?.categoryName
+      const cnCat = setsDataCN[setId]?.categoryName
+      if (enCat && cnCat && /[\u4e00-\u9fa5]/.test(cnCat)) {
+        raidNameMap[enCat] = cnCat
+      }
+    }
   }
 
   async get_setsPlace (setKey) {
@@ -1799,6 +1820,9 @@ class database {
       // 加载技能数据
       skillsData = accountData['dataSkills'] || [{}]
 
+      // 加载试炼/副本/竞技场数据（dataRaids 含 trial/dungeon/arena）
+      dataRaids = accountData['dataRaids'] || [{}]
+
       // 立即释放lua_code对象，只保留需要的数据
       lua_code = null
       if (global.gc) {
@@ -1823,7 +1847,9 @@ class database {
       var keysSkill = Object.keys(skillsDataCN)
       var numSkills = keysSkill.length
 
-      if (numSets > 10 && numSkills > 3) {
+      var keysRaids = Object.keys(dataRaidsCN)
+      var numRaids = keysRaids.length
+      if (numSets > 10 && numSkills > 3 && numRaids > 5) {
         //logger.info("中文数据库已加载，无需更新")
         return
       }
@@ -1933,6 +1959,9 @@ class database {
 
       // 加载技能数据
       skillsDataCN = accountData['dataSkills'] || [{}]
+
+      // 加载试炼/副本/竞技场数据（与 dataRaids 同结构，用于中英对照）
+      dataRaidsCN = accountData['dataRaids'] || [{}]
 
       // 立即释放lua_code对象，只保留需要的数据
       lua_code = null
@@ -5111,4 +5140,5 @@ class database {
   }
 }
 
+export { dataRaids, dataRaidsCN, raidNameMap }
 export default new database()
