@@ -1,0 +1,59 @@
+# 上古卷轴OL 勉励任务 中英对照表
+# 用于 /api/endeavors 返回的英文任务名转换为中文
+# 格式：英文完整描述 -> 中文翻译
+# 注：数字部分可变化，下方 patterns 用于匹配含数字的任务
+
+# 精确匹配（常见完整句式）
+exact:
+  "Complete 12 Daily Quests": "完成12个每日任务"
+  "Complete 3 stages in the Infinite Archive": "在无限档案中完成3个阶段"
+  "Complete 4 stages in the Infinite Archive with a guildmate": "与公会成员在无限档案中完成4个阶段"
+  "Earn 6 Event Tickets": "获得6张活动门票"
+  "Deconstruct 8 Items at a Blacksmithing table": "在锻造台分解8件物品"
+  "Earn 15000 Alliance Points": "获得15000联盟点"
+  "Kill 2 Dangerous Foes": "击杀2个危险敌人"
+  "Loot 2 Stealable Items of Blue Quality or Better": "拾取2件蓝色或更高品质的可偷窃物品"
+
+# 正则模式（数字用捕获组，格式：pattern: replacement，$1 $2 为捕获组）
+# 匹配后替换，如 "Complete 4 stages..." 中 4 为 $1
+patterns:
+  - pattern: "Complete (\\d+) stages in the Infinite Archive with a guildmate"
+    replace: "与公会成员在无限档案中完成 $1 个阶段"
+  - pattern: "Complete (\\d+) stages in the Infinite Archive"
+    replace: "在无限档案中完成 $1 个阶段"
+  - pattern: "Complete (\\d+) Daily Quests"
+    replace: "完成 $1 个每日任务"
+  - pattern: "Earn (\\d+) Event Tickets"
+    replace: "获得 $1 张活动门票"
+  - pattern: "Deconstruct (\\d+) Items at a Blacksmithing table"
+    replace: "在锻造台分解 $1 件物品"
+  - pattern: "Deconstruct (\\d+) Items at a Clothier table"
+    replace: "在制衣台分解 $1 件物品"
+  - pattern: "Deconstruct (\\d+) Items at a Jewelry Crafting table"
+    replace: "在珠宝制作台分解 $1 件物品"
+  - pattern: "Deconstruct (\\d+) Items at a Woodworking table"
+    replace: "在木工台分解 $1 件物品"
+  - pattern: "Earn (\\d+) Alliance Points"
+    replace: "获得 $1 联盟点"
+  - pattern: "Kill (\\d+) Dangerous Foe(s)"
+    replace: "击杀 $1 个危险敌人"
+  - pattern: "Loot (\\d+) Stealable Items of Blue Quality or Better"
+    replace: "拾取 $1 件蓝色或更高品质的可偷窃物品"
+
+# 关键词片段对照（用于未匹配时的备选）
+phrases:
+  "Infinite Archive": "无限档案"
+  "Dragonstar Arena": "龙星竞技场"
+  "Daily Quest": "每日任务"
+  "Event Ticket": "活动门票"
+  "Alliance Points": "联盟点"
+  "Blacksmithing": "锻造"
+  "Dangerous Foes": "危险敌人"
+  "Stealable Items": "可偷窃物品"
+  "Blue Quality": "蓝色品质"
+  "guildmate": "公会成员"
+  "Deconstruct": "分解"
+  "Complete": "完成"
+  "Earn": "获得"
+  "Kill": "击杀"
+  "Loot": "拾取"
