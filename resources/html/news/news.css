@@ -1,0 +1,120 @@
+@font-face {
+  font-family: "tttgbnumber";
+  src: url("../../../../../resources/font/tttgbnumber.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 14px;
+  width: 520px;
+  color: #e0e0e0;
+  background: #000;
+  transform: scale(1.5);
+  transform-origin: 0 0;
+}
+
+.container {
+  width: 520px;
+  min-height: 100vh;
+  padding: 24px 20px 20px;
+  background: #0a0a0a;
+}
+
+.header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.header .title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #d4b98c;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.header .update-time {
+  font-size: 12px;
+  color: #777;
+}
+
+.news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.news-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #111;
+  border-radius: 12px;
+  border: 1px solid #222;
+}
+
+.news-item .cover-wrap {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.news-item .cover {
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.news-item .meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #8a8a8a;
+}
+
+.news-item .meta-row .cmd-text {
+  color: #6a9;
+}
+
+.news-item .content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.news-item .name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e8e8e8;
+  line-height: 1.4;
+}
+
+.news-item .des {
+  font-size: 13px;
+  color: #999;
+  line-height: 1.5;
+}
+
+.footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #555;
+}

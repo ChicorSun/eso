@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/news/news.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+<body>
+  <div class="container" id="container">
+    <div class="header">
+      <h1 class="title">《上古卷轴OL》新闻资讯</h1>
+      <div class="update-time">更新时间：{{updateTime}}</div>
+    </div>
+    <div class="news-list">
+      {{each list item}}
+      <div class="news-item">
+        {{if item.coverPath}}
+        <div class="cover-wrap">
+          <img class="cover" src="{{item.coverPath}}" alt="" />
+        </div>
+        {{/if}}
+        <div class="meta-row">
+          <span class="date">{{item.date}}</span>
+          {{if item.cmdText}}
+          <span class="cmd-text">{{item.cmdText}}</span>
+          {{/if}}
+        </div>
+        <div class="content">
+          <h2 class="name">{{item.name}}</h2>
+          <p class="des">{{item.des}}</p>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    <div class="footer">ESO-Bot · 数据来源 esocn.com.cn</div>
+  </div>
+</body>
+</html>

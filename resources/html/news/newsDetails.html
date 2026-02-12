@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/news/newsDetails.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+<body>
+  <div class="container" id="container">
+    <div class="header">
+      <h1 class="title">{{name}}</h1>
+      <div class="meta">
+        <span class="date">{{date}}</span>
+        <span class="id-label">#新闻{{id}}</span>
+      </div>
+    </div>
+    {{if coverPath}}
+    <div class="cover-wrap">
+      <img class="cover" src="{{coverPath}}" alt="" />
+    </div>
+    {{/if}}
+    <div class="summary">
+      <p class="des">{{des}}</p>
+    </div>
+    <div class="content-box">
+      <h3 class="content-title">正文</h3>
+      <div class="content-html">{{@content}}</div>
+    </div>
+    <div class="footer">ESO-Bot · 数据来源 esocn.com.cn</div>
+  </div>
+</body>
+</html>
