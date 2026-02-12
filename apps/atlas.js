@@ -615,9 +615,10 @@ export class atlas extends plugin {
       await this.reply(msgList)
     }
 
-    if(furnitureNum >= 26 && noMaxLimit==0)
+    if(furnitureNum >= 32 && noMaxLimit==0)
     {
-      return await this.reply(`对不起，请描述的再详细一点`)
+      //logger.info('共找到匹配项：' + furnitureNum)
+      return await this.reply(`总共找到${furnitureNum}个匹配项，请描述的再详细一点`)
     }
 
     if(furnitureNum <= 0 || furnitureNum > 4)
