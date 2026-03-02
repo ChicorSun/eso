@@ -241,3 +241,28 @@ body {
   text-align: center;
   color: #7994a7;
 }
+
+/* 家具扩充包额外信息 */
+.pack_extra {
+  font-size: 12px;
+  line-height: 150%;
+  margin: 8px 10px 0px 10px;
+  text-align: left;
+  color: #CCCCCC;
+}
+.pack_picture {
+  text-align: center;
+  margin: 8px 0;
+}
+.pack_img {
+  max-width: 200px;
+  border-radius: 4px;
+}
+.pack_row {
+  margin: 4px 0;
+  word-break: break-all;
+}
+.pack_label {
+  color: #9F2DF6;
+  margin-right: 4px;
+}

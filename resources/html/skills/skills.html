@@ -73,6 +73,31 @@
         <div class="msg">{{item}}</div>
         {{/each}}
         <div class="new_msg">{{val.new_msg}}</div>
+        {{if val.hasPackPicture || val.PriceAndType || val.GetWayDiscription || val.RecipeName || val.RecipeMaterialList || val.WayToGet}}
+        <img class="line" src="{{pluResPath}}img/icon/line.png" />
+        <div class="pack_extra">
+          {{if val.hasPackPicture}}
+          <div class="pack_picture">
+            <img class="pack_img" src="{{pluResPath}}img/furniturePack/{{val.packPictureFile}}" alt="" />
+          </div>
+          {{/if}}
+          {{if val.PriceAndType}}
+          <!--div class="pack_row"><span class="pack_label">类型/价格:</span> {{val.PriceAndType}}</div-->
+          {{/if}}
+          {{if val.GetWayDiscription}}
+          <div class="pack_row"><span class="pack_label">获取方式:</span> {{val.GetWayDiscription}}</div>
+          {{/if}}
+          {{if val.RecipeName && val.RecipeName !== "" && val.RecipeName !== "无"}}
+          <div class="pack_row"><span class="pack_label">配方:</span> {{val.RecipeName}}</div>
+          {{/if}}
+          {{if val.RecipeMaterialList}}
+          <div class="pack_row"><span class="pack_label">配方材料:</span> {{val.RecipeMaterialList}}</div>
+          {{/if}}
+          {{if val.WayToGet}}
+          <!--div class="pack_row"><span class="pack_label">获取途径:</span> {{val.WayToGet}}</div-->
+          {{/if}}
+        </div>
+        {{/if}}
       </div>
     </div>
     {{/if}}

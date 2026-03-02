@@ -9,9 +9,58 @@ import RankTable from './rank.js'
 import fetch from 'node-fetch'
 import getimgs from './getimgs.js'
 import fs from 'node:fs'
+import path from 'node:path'
 import md5 from 'md5'
 
 const updateImgMode = 0;
+
+// 家具数据扩充包路径（第三方提供）
+const FURNITURE_PACK_PATH = path.join(process.cwd(), 'plugins/eso/resources/img/furniturePack/F690F8D1DC2C04C0A6384064427778433FBCF99A')
+let furniturePackCache = null
+
+/** 加载家具扩充包数据（带缓存） */
+function loadFurniturePack () {
+  if (furniturePackCache) return furniturePackCache
+  try {
+    if (fs.existsSync(FURNITURE_PACK_PATH)) {
+      const content = fs.readFileSync(FURNITURE_PACK_PATH, 'utf8')
+      const data = JSON.parse(content)
+      furniturePackCache = data.FunrnitureInfos || data.FurnitureInfos || []
+      return furniturePackCache
+    }
+  } catch (e) {
+    logger.warn('[ESO:图鉴] 加载家具扩充包失败:', e.message)
+  }
+  return []
+}
+
+/** 根据英文名从扩充包中查找家具条目 */
+function findFurniturePackEntry (enName) {
+  const list = loadFurniturePack()
+  if (!enName || !list.length) return null
+  const name = String(enName).trim()
+  return list.find(item => item.F_NameEn === name) || null
+}
+
+/** 将扩充包数据合并到 atlasData，并检查图片文件是否存在 */
+function mergeFurniturePackData (atlasDataItem, packEntry, showEnglish) {
+  if (!packEntry || !atlasDataItem) return
+  atlasDataItem.PriceAndType = packEntry.PriceAndType ?? ''
+  atlasDataItem.PictureFileName = packEntry.PictureFileName ?? ''
+  atlasDataItem.GetWayDiscription = showEnglish ? (packEntry.GetWayDiscriptionEn ?? '') : (packEntry.GetWayDiscriptionZh ?? '')
+  atlasDataItem.RecipeName = showEnglish ? (packEntry.RecipeNameEn ?? '') : (packEntry.RecipeNameZh ?? '')
+  atlasDataItem.RecipeMaterialList = packEntry.RecipeMaterialList ?? ''
+  atlasDataItem.WayToGet = packEntry.WayToGet ?? ''
+  // 检查图片文件是否存在（furniturePack 内无扩展名的 jpg 文件）
+  if (packEntry.PictureFileName) {
+    const imgPath = path.join(process.cwd(), 'plugins/eso/resources/img/furniturePack', packEntry.PictureFileName)
+    const imgPathJpg = imgPath + '.jpg'
+    if (fs.existsSync(imgPath) || fs.existsSync(imgPathJpg)) {
+      atlasDataItem.hasPackPicture = true
+      atlasDataItem.packPictureFile = packEntry.PictureFileName
+    }
+  }
+}
 
 const require = createRequire(import.meta.url);
 
@@ -3807,6 +3856,11 @@ class database {
 
     // 设置name_color到数据中（用于HTML模板）
     furnitureData.atlasData[1].name_color = name_color
+
+    // 从家具扩充包中合并额外数据（以 src_en_name 对应的英文名为关键词匹配 F_NameEn）
+    const enName = furnituresData[objects] ? furnituresData[objects]['name'] : ''
+    const packEntry = findFurniturePackEntry(enName)
+    mergeFurniturePackData(furnitureData.atlasData[1], packEntry, showEnglish)
     
     return furnitureData
   }
@@ -3921,6 +3975,11 @@ class database {
     // 收藏品家具无 quality 字段，使用默认名称颜色
     let name_color = '#FFE62D'
     collFurnitureData.atlasData[1].name_color = name_color
+
+    // 从家具扩充包中合并额外数据（以 src_en_name 对应的英文名为关键词匹配 F_NameEn）
+    const collEnName = collfurnituresData[objects] ? collfurnituresData[objects]['name'] : ''
+    const collPackEntry = findFurniturePackEntry(collEnName)
+    mergeFurniturePackData(collFurnitureData.atlasData[1], collPackEntry, showEnglish)
 
     return collFurnitureData
   }
