@@ -4150,6 +4150,17 @@ class database {
           setNum = objSets.length
           //logger.info(objSets)
         }
+        if(GI.name['link'].includes('esologs.com/reports/'))
+        {
+          //logger.info(GI.name['link'])
+          let setID = GI.name['link'].match(/reports\/(\d+)/);
+          setID[0] = setID[0].replace('reports/', '');
+          //logger.info(setID[0])
+          itemIDMode = true
+          objSets =await this.name2index('ITEMID'+setID[0],1)
+          setNum = objSets.length
+          //logger.info(objSets)
+        }
       }
       
       //logger.info(objSets)
