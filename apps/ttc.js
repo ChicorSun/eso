@@ -552,7 +552,7 @@ export class ttc extends plugin {
     this.startDailyPriceUpdate()
   }
 
-  /** 启动每日价格表更新任务（每天19点） */
+  /** 启动每日价格表更新任务（每天20点） */
   startDailyPriceUpdate() {
     // 检查是否已经调度过，避免重复调度
     if (dailyUpdateScheduled) {
@@ -564,10 +564,10 @@ export class ttc extends plugin {
       const now = new Date()
       const target = new Date()
       
-      // 设置目标时间为今天19点
-      target.setHours(19, 0, 0, 0)
+      // 设置目标时间为今天20点
+      target.setHours(20, 0, 0, 0)
       
-      // 如果当前时间已经过了今天19点，则设置为明天19点
+      // 如果当前时间已经过了今天20点，则设置为明天20点
       if (now >= target) {
         target.setDate(target.getDate() + 1)
       }
