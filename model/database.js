@@ -79,37 +79,77 @@ function parseColorTags (text) {
     return `<span style="color: #fff;">${match}</span>`
   })
 
-  // BUFF 高亮处理
+  // BUFF 高亮处理（同时处理完整名称和去掉前缀的名称）
   const buffs = loadBuffs()
   for (const buff of buffs) {
+    // 中文 BUFF 名称处理
     if (buff.name) {
+      // 完整名称匹配（如"次级破甲"）
       formattedText = formattedText.replace(
         buff.name,
         `<span style="color: #FDFF00;">${buff.name}</span>`
       )
+      // 去掉前缀后的匹配（如"破甲"）
+      const nameWithoutPrefix = buff.name.replace(/^(次级|高级)/, '')
+      if (nameWithoutPrefix && nameWithoutPrefix !== buff.name) {
+        formattedText = formattedText.replace(
+          nameWithoutPrefix,
+          `<span style="color: #FDFF00;">${nameWithoutPrefix}</span>`
+        )
+      }
     }
+    // 英文 BUFF 名称处理
     if (buff.enName) {
+      // 完整名称匹配（如"Minor Brutality"）
       formattedText = formattedText.replace(
         buff.enName,
         `<span style="color: #FDFF00;">${buff.enName}</span>`
       )
+      // 去掉前缀后的匹配（如"Brutality"）
+      const enNameWithoutPrefix = buff.enName.replace(/^(Minor|Major)\s+/i, '')
+      if (enNameWithoutPrefix && enNameWithoutPrefix !== buff.enName) {
+        formattedText = formattedText.replace(
+          enNameWithoutPrefix,
+          `<span style="color: #FDFF00;">${enNameWithoutPrefix}</span>`
+        )
+      }
     }
   }
 
-  // DEBUFF 高亮处理
+  // DEBUFF 高亮处理（同时处理完整名称和去掉前缀的名称）
   const debuffs = loadDebuffs()
   for (const debuff of debuffs) {
+    // 中文 DEBUFF 名称处理
     if (debuff.name) {
+      // 完整名称匹配
       formattedText = formattedText.replace(
         debuff.name,
         `<span style="color: #FDFF00;">${debuff.name}</span>`
       )
+      // 去掉前缀后的匹配
+      const nameWithoutPrefix = debuff.name.replace(/^(次级|高级)/, '')
+      if (nameWithoutPrefix && nameWithoutPrefix !== debuff.name) {
+        formattedText = formattedText.replace(
+          nameWithoutPrefix,
+          `<span style="color: #FDFF00;">${nameWithoutPrefix}</span>`
+        )
+      }
     }
+    // 英文 DEBUFF 名称处理
     if (debuff.enName) {
+      // 完整名称匹配
       formattedText = formattedText.replace(
         debuff.enName,
         `<span style="color: #FDFF00;">${debuff.enName}</span>`
       )
+      // 去掉前缀后的匹配
+      const enNameWithoutPrefix = debuff.enName.replace(/^(Minor|Major)\s+/i, '')
+      if (enNameWithoutPrefix && enNameWithoutPrefix !== debuff.enName) {
+        formattedText = formattedText.replace(
+          enNameWithoutPrefix,
+          `<span style="color: #FDFF00;">${enNameWithoutPrefix}</span>`
+        )
+      }
     }
   }
 
