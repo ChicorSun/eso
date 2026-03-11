@@ -31,7 +31,7 @@
         <div class="dec"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.name_en}}</div>
         <img class="line" src="{{pluResPath}}img/icon/line.png" />
         {{each val.msg item}}
-        <div class="msg">{{item}}</div>
+        <div class="msg">{{@item}}</div>
         {{/each}}
         {{if val.undauntedDates && val.undauntedDates.length > 0}}
         <div class="undaunted-section">

@@ -1,0 +1,273 @@
+{
+  "success": true,
+  "data": {
+    "buffs": [
+      {
+        "name": "高级预知",
+        "enName": "Major Prophecy",
+        "des": "法术暴击值提高2629",
+        "icon": "/esoui/art/icons/ability_buff_major_prophecy.webp"
+      },
+      {
+        "name": "高级闪避",
+        "enName": "Major Evasion",
+        "des": "受到的范围攻击伤害降低20%",
+        "icon": "/esoui/art/icons/ability_buff_major_evasion.webp"
+      },
+      {
+        "name": "高级野性",
+        "enName": "Major Savagery",
+        "des": "武器暴击值提高2629",
+        "icon": "/esoui/art/icons/ability_buff_major_savagery.webp"
+      },
+      {
+        "name": "高级迅敏",
+        "enName": "Major Expedition",
+        "des": "移动速度提高30%",
+        "icon": "/esoui/art/icons/ability_buff_major_expedition.webp"
+      },
+      {
+        "name": "高级英勇",
+        "enName": "Major Heroism",
+        "des": "每1.5秒获得3终极点",
+        "icon": "/esoui/art/icons/ability_buff_major_heroism.webp"
+      },
+      {
+        "name": "高级疾驰",
+        "enName": "Major Gallop",
+        "des": "坐骑速度提高30%",
+        "icon": "/esoui/art/icons/ability_buff_major_gallop.webp"
+      },
+      {
+        "name": "高级狂怒",
+        "enName": "Major Berserk",
+        "des": "使造成的伤害提高10%",
+        "icon": "/esoui/art/icons/ability_buff_major_berserk.webp"
+      },
+      {
+        "name": "高级活力",
+        "enName": "Major Vitality",
+        "des": "受到的治疗量和护盾量提高12%",
+        "icon": "/esoui/art/icons/ability_buff_major_vitality.webp"
+      },
+      {
+        "name": "高级残暴",
+        "enName": "Major Brutality",
+        "des": "武器伤害提高20%",
+        "icon": "/esoui/art/icons/ability_buff_major_brutality.webp"
+      },
+      {
+        "name": "高级杀戮",
+        "enName": "Major Slayer",
+        "des": "对地下城、试炼及竞技场怪物的伤害提高10%",
+        "icon": "/esoui/art/icons/ability_buff_major_slayer.webp"
+      },
+      {
+        "name": "高级智慧",
+        "enName": "Major Intellect",
+        "des": "魔力再生提高30%",
+        "icon": "/esoui/art/icons/ability_buff_major_intellect.webp"
+      },
+      {
+        "name": "高级忍耐",
+        "enName": "Major Endurance",
+        "des": "耐力再生提高30%",
+        "icon": "/esoui/art/icons/ability_buff_major_endurance.webp"
+      },
+      {
+        "name": "高级庇护",
+        "enName": "Major Aegis",
+        "des": "在地下城、试炼及竞技场中收到的怪物伤害降低10%",
+        "icon": "/esoui/art/icons/ability_buff_major_aegis.webp"
+      },
+      {
+        "name": "高级巫术",
+        "enName": "Major Sorcery",
+        "des": "法术伤害提高20%",
+        "icon": "/esoui/art/icons/ability_buff_major_sorcery.webp"
+      },
+      {
+        "name": "高级守护",
+        "enName": "Major Protection",
+        "des": "受到的伤害降低10%",
+        "icon": "/esoui/art/icons/ability_buff_major_protection.webp"
+      },
+      {
+        "name": "高级坚韧",
+        "enName": "Major Fortitude",
+        "des": "生命再生提高30%",
+        "icon": "/esoui/art/icons/ability_buff_major_fortitude.webp"
+      },
+      {
+        "name": "高级坚毅",
+        "enName": "Major Toughness",
+        "des": "生命上限提高20%",
+        "icon": "/esoui/art/icons/ability_buff_major_toughness.webp"
+      },
+      {
+        "name": "高级勇气",
+        "enName": "Major Courage",
+        "des": "武器伤害和法术伤害提高430",
+        "icon": "/esoui/art/icons/ability_buff_major_courage.webp"
+      },
+      {
+        "name": "高级力量",
+        "enName": "Major Force",
+        "des": "暴击伤害提高20%",
+        "icon": "/esoui/art/icons/ability_buff_major_force.webp"
+      },
+      {
+        "name": "高级修复",
+        "enName": "Major Mending",
+        "des": "造成的治疗量和护盾量提高12%",
+        "icon": "/esoui/art/icons/ability_buff_major_mending.webp"
+      },
+      {
+        "name": "高级信念",
+        "enName": "Major Resolve",
+        "des": "物理抗性和法术抗性提高5948",
+        "icon": "/esoui/art/icons/ability_buff_major_resolve.webp"
+      },
+      {
+        "name": "赋能",
+        "enName": "Empower",
+        "des": "对怪物的重攻击伤害提高70%",
+        "icon": "/esoui/art/icons/ability_buff_major_empower.webp"
+      },
+      {
+        "name": "次级魔力窃取",
+        "enName": "Minor Magickasteal",
+        "des": "攻击敌人每秒恢复168魔力值。",
+        "icon": "/esoui/art/icons/ability_buff_minor_magickasteal.webp"
+      },
+      {
+        "name": "次级预知",
+        "enName": "Minor Prophecy",
+        "des": "法术暴击值提高1314",
+        "icon": "/esoui/art/icons/ability_buff_minor_prophecy.webp"
+      },
+      {
+        "name": "次级闪避",
+        "enName": "Minor Evasion",
+        "des": "受到的范围攻击伤害降低10%",
+        "icon": "/esoui/art/icons/ability_buff_minor_evasion.webp"
+      },
+      {
+        "name": "次级野性",
+        "enName": "Minor Savagery",
+        "des": "武器暴击值提高1314",
+        "icon": "/esoui/art/icons/ability_buff_minor_savagery.webp"
+      },
+      {
+        "name": "次级迅敏",
+        "enName": "Minor Expedition",
+        "des": "移动速度提高15%",
+        "icon": "/esoui/art/icons/ability_buff_minor_expedition.webp"
+      },
+      {
+        "name": "次级英勇",
+        "enName": "Minor Heroism",
+        "des": "每1.5秒获得1终极点",
+        "icon": "/esoui/art/icons/ability_buff_minor_heroism.webp"
+      },
+      {
+        "name": "次级生命窃取",
+        "enName": "Minor Lifesteal",
+        "des": "攻击敌人每秒恢复600生命值。",
+        "icon": "/esoui/art/icons/ability_buff_minor_lifesteal.webp"
+      },
+      {
+        "name": "次级狂怒",
+        "enName": "Minor Berserk",
+        "des": "使造成的伤害提高 5%",
+        "icon": "/esoui/art/icons/ability_buff_minor_berserk.webp"
+      },
+      {
+        "name": "次级活力",
+        "enName": "Minor Vitality",
+        "des": "受到的治疗量和护盾量提高 6%",
+        "icon": "/esoui/art/icons/ability_buff_minor_vitality.webp"
+      },
+      {
+        "name": "次级残暴",
+        "enName": "Minor Brutality",
+        "des": "武器伤害提高10%",
+        "icon": "/esoui/art/icons/ability_buff_minor_brutality.webp"
+      },
+      {
+        "name": "次级杀戮",
+        "enName": "Minor Slayer",
+        "des": "对地下城、试炼及竞技场怪物的伤害提高 5%",
+        "icon": "/esoui/art/icons/ability_buff_minor_slayer.webp"
+      },
+      {
+        "name": "次级智慧",
+        "enName": "Minor Intellect",
+        "des": "魔力再生提高15%",
+        "icon": "/esoui/art/icons/ability_buff_minor_intellect.webp"
+      },
+      {
+        "name": "次级忍耐",
+        "enName": "Minor Endurance",
+        "des": "耐力再生提高15%",
+        "icon": "/esoui/art/icons/ability_buff_minor_endurance.webp"
+      },
+      {
+        "name": "次级庇护",
+        "enName": "Minor Aegis",
+        "des": "在地下城、试炼及竞技场中收到的怪物伤害降低 5%",
+        "icon": "/esoui/art/icons/ability_buff_minor_aegis.webp"
+      },
+      {
+        "name": "次级巫术",
+        "enName": "Minor Sorcery",
+        "des": "法术伤害提高10%",
+        "icon": "/esoui/art/icons/ability_buff_minor_sorcery.webp"
+      },
+      {
+        "name": "次级守护",
+        "enName": "Minor Protection",
+        "des": "受到的伤害降低 5%",
+        "icon": "/esoui/art/icons/ability_buff_minor_protection.webp"
+      },
+      {
+        "name": "次级坚韧",
+        "enName": "Minor Fortitude",
+        "des": "生命再生提高15%",
+        "icon": "/esoui/art/icons/ability_buff_minor_fortitude.webp"
+      },
+      {
+        "name": "次级坚毅",
+        "enName": "Minor Toughness",
+        "des": "生命上限提高10%",
+        "icon": "/esoui/art/icons/ability_buff_minor_toughness.webp"
+      },
+      {
+        "name": "次级勇气",
+        "enName": "Minor Courage",
+        "des": "武器伤害和法术伤害提高215",
+        "icon": "/esoui/art/icons/ability_buff_minor_courage.webp"
+      },
+      {
+        "name": "次级力量",
+        "enName": "Minor Force",
+        "des": "暴击伤害提高10%",
+        "icon": "/esoui/art/icons/ability_buff_minor_force.webp"
+      },
+      {
+        "name": "次级修复",
+        "enName": "Minor Mending",
+        "des": "造成的治疗量和护盾量提高 6%",
+        "icon": "/esoui/art/icons/ability_buff_minor_mending.webp"
+      },
+      {
+        "name": "次级信念",
+        "enName": "Minor Resolve",
+        "des": "物理抗性和法术抗性提高2974",
+        "icon": "/esoui/art/icons/ability_buff_minor_resolve.webp"
+      }
+    ]
+  },
+  "message": null,
+  "timestamp": "2026-03-11T06:43:18.139Z"
+}

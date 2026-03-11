@@ -1,0 +1,99 @@
+{
+  "success": true,
+  "data": {
+    "debuffs": [
+      {
+        "name": "高级虚弱",
+        "enName": "Major Brittle",
+        "des": "使受到的暴击伤害提升20%",
+        "icon": "/esoui/art/icons/ability_debuff_major_brittle.webp"
+      },
+      {
+        "name": "高级致残",
+        "enName": "Major Maim",
+        "des": "使其造成的伤害降低10%",
+        "icon": "/esoui/art/icons/ability_debuff_major_maim.webp"
+      },
+      {
+        "name": "高级脆弱",
+        "enName": "Major Vulnerability",
+        "des": "使受到的伤害提高10%",
+        "icon": "/esoui/art/icons/ability_debuff_major_vulnerability.webp"
+      },
+      {
+        "name": "高级破甲",
+        "enName": "Major Breach",
+        "des": "物理抗性、法术抗性降低5948",
+        "icon": "/esoui/art/icons/ability_debuff_major_breach.webp"
+      },
+      {
+        "name": "高级怯懦",
+        "enName": "Major Cowardice",
+        "des": "使其武器伤害和法术伤害降低430",
+        "icon": "/esoui/art/icons/ability_debuff_major_cowardice.webp"
+      },
+      {
+        "name": "高级亵渎",
+        "enName": "Major Defile",
+        "des": "使受到的治疗和生命回复降低16%",
+        "icon": "/esoui/art/icons/ability_debuff_major_defile.webp"
+      },
+      {
+        "name": "次级虚弱",
+        "enName": "Minor Brittle",
+        "des": "使受到的暴击伤害提升10%",
+        "icon": "/esoui/art/icons/ability_debuff_minor_brittle.webp"
+      },
+      {
+        "name": "次级致残",
+        "enName": "Minor Maim",
+        "des": "使其造成的伤害降低 5%",
+        "icon": "/esoui/art/icons/ability_debuff_minor_maim.webp"
+      },
+      {
+        "name": "次级脆弱",
+        "enName": "Minor Vulnerability",
+        "des": "使受到的伤害提升5%",
+        "icon": "/esoui/art/icons/ability_debuff_minor_vulnerability.webp"
+      },
+      {
+        "name": "次级破甲",
+        "enName": "Minor Breach",
+        "des": "物理抗性、法术抗性降低2974",
+        "icon": "/esoui/art/icons/ability_debuff_minor_breach.webp"
+      },
+      {
+        "name": "次级无力",
+        "enName": "Minor Enervation",
+        "des": "使其造成的暴击伤害减少10%",
+        "icon": "/esoui/art/icons/ability_debuff_minor_enervation.webp"
+      },
+      {
+        "name": "次级怯懦",
+        "enName": "Minor Cowardice",
+        "des": "使其武器伤害和法术伤害降低215",
+        "icon": "/esoui/art/icons/ability_debuff_minor_cowardice.webp"
+      },
+      {
+        "name": "次级割裂",
+        "enName": "Minor Mangle",
+        "des": "生命上限降低10%",
+        "icon": "/esoui/art/icons/ability_debuff_minor_mangle.webp"
+      },
+      {
+        "name": "次级亵渎",
+        "enName": "Minor Defile",
+        "des": "使受到的治疗和生命回复降低 8%",
+        "icon": "/esoui/art/icons/ability_debuff_minor_defile.webp"
+      },
+      {
+        "name": "失衡",
+        "enName": "Off Balance",
+        "des": "利用者天赋将对失衡敌人多造成10%伤害",
+        "icon": "/esoui/art/icons/ability_debuff_offbalance.webp"
+      }
+    ]
+  },
+  "message": null,
+  "timestamp": "2026-03-11T06:43:50.093Z"
+}

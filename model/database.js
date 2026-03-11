@@ -14,6 +14,154 @@ import md5 from 'md5'
 
 const updateImgMode = 0;
 
+// ==================== BUFF/DEBUFF 数据加载 ====================
+const BUFF_JSON_PATH = './plugins/eso/resources/buffs/buff.json'
+const DEBUFF_JSON_PATH = './plugins/eso/resources/buffs/debuff.json'
+
+let buffsCache = null
+let debuffsCache = null
+
+/** 加载 BUFF 数据（带缓存） */
+function loadBuffs () {
+  if (buffsCache) return buffsCache
+  try {
+    if (fs.existsSync(BUFF_JSON_PATH)) {
+      const content = fs.readFileSync(BUFF_JSON_PATH, 'utf8')
+      const data = JSON.parse(content)
+      buffsCache = data.data?.buffs || []
+      return buffsCache
+    }
+  } catch (e) {
+    logger.warn('[ESO:图鉴] 加载BUFF数据失败:', e.message)
+  }
+  return []
+}
+
+/** 加载 DEBUFF 数据（带缓存） */
+function loadDebuffs () {
+  if (debuffsCache) return debuffsCache
+  try {
+    if (fs.existsSync(DEBUFF_JSON_PATH)) {
+      const content = fs.readFileSync(DEBUFF_JSON_PATH, 'utf8')
+      const data = JSON.parse(content)
+      debuffsCache = data.data?.debuffs || []
+      return debuffsCache
+    }
+  } catch (e) {
+    logger.warn('[ESO:图鉴] 加载DEBUFF数据失败:', e.message)
+  }
+  return []
+}
+
+/** 解析文本颜色标签和样式
+ * @param {string} text - 原始文本
+ * @returns {string} - 处理后的HTML文本
+ */
+function parseColorTags (text) {
+  if (text === null || text === undefined) return ''
+
+  // 将换行符（包括 \r\n、\n、\r）转换为 <br> 标签以便在 HTML 中显示
+  text = text.replace(/\\r\\n/g, '<br>')  // 处理字面量的 \r\n
+  text = text.replace(/\r\n/g, '<br>')    // 处理实际的回车换行
+  text = text.replace(/\n/g, '<br>')      // 处理单独的换行
+  text = text.replace(/\r/g, '<br>')      // 处理单独的回车
+  text = text.replace(/￼/g, ' ')
+
+  // 先处理 |cFFFFFF25|r 形式的标记，还原为原始内容
+  let formattedText = text.replace(
+    /\|c([0-9a-fA-F]{6})(.*?)\|r/g,
+    (_, __, content) => content
+  )
+
+  // 处理件套字段，将其颜色设置为 #fff
+  const setEffectRegex = /（(\d+)件(完美)?套）/g
+  formattedText = formattedText.replace(setEffectRegex, (match) => {
+    return `<span style="color: #fff;">${match}</span>`
+  })
+
+  // BUFF 高亮处理
+  const buffs = loadBuffs()
+  for (const buff of buffs) {
+    if (buff.name) {
+      formattedText = formattedText.replace(
+        buff.name,
+        `<span style="color: #FDFF00;">${buff.name}</span>`
+      )
+    }
+    if (buff.enName) {
+      formattedText = formattedText.replace(
+        buff.enName,
+        `<span style="color: #FDFF00;">${buff.enName}</span>`
+      )
+    }
+  }
+
+  // DEBUFF 高亮处理
+  const debuffs = loadDebuffs()
+  for (const debuff of debuffs) {
+    if (debuff.name) {
+      formattedText = formattedText.replace(
+        debuff.name,
+        `<span style="color: #FDFF00;">${debuff.name}</span>`
+      )
+    }
+    if (debuff.enName) {
+      formattedText = formattedText.replace(
+        debuff.enName,
+        `<span style="color: #FDFF00;">${debuff.enName}</span>`
+      )
+    }
+  }
+
+  // 定义关键字和样式规则
+  const keywordRules = [
+    {
+      keywords: ['魔力恢复', '魔力回复', '魔力上限', '魔力', 'Maximum Magicka', 'Magicka Recovery', 'Magicka'],
+      color: '#0077cc'
+    },
+    {
+      keywords: ['耐力恢复', '耐力回复', '耐力上限', '耐力', 'Maximum Stamina', 'Stamina Recovery', 'Stamina'],
+      color: '#009000'
+    },
+    {
+      keywords: ['生命恢复', '生命回复', '生命上限', '生命', '治疗', 'Maximum Health', 'Health Recovery', 'Health'],
+      color: '#FF6666'
+    },
+    {
+      keywords: ['武器伤害', '物理伤害', '实体伤害', 'Weapon Damage', 'Physical Damage', 'Physical'],
+      color: '#AD4E0F'
+    },
+    {
+      keywords: ['法术伤害', '魔法伤害', 'Spell Damage', 'Magic Damage'],
+      color: '#9856FF'
+    },
+    {
+      keywords: ['护甲', 'Armor'],
+      color: '#DDD'
+    }
+  ]
+
+  // 应用关键字样式规则
+  for (const rule of keywordRules) {
+    for (const keyword of rule.keywords) {
+      // 匹配 "数值 关键字" 格式
+      const regexWithNumber = new RegExp(`([-+]?\\d*\\.?\\d+)\\s*${keyword}`, 'g')
+      formattedText = formattedText.replace(
+        regexWithNumber,
+        `<span style="color: ${rule.color};">$1 ${keyword}</span>`
+      )
+      // 单独匹配关键字（前面没有数字的情况）
+      const regexWithoutNumber = new RegExp(`(?<![-+]?\\d*\\.?\\d+\\s*)${keyword}`, 'g')
+      formattedText = formattedText.replace(
+        regexWithoutNumber,
+        `<span style="color: ${rule.color};">${keyword}</span>`
+      )
+    }
+  }
+
+  return formattedText
+}
+
 // 家具数据扩充包路径（第三方提供）
 const FURNITURE_PACK_PATH = path.join(process.cwd(), 'plugins/eso/resources/img/furniturePack/F690F8D1DC2C04C0A6384064427778433FBCF99A')
 let furniturePackCache = null
@@ -5064,8 +5212,8 @@ class database {
   }
 
   async transColor (source) {
-    let msg = []
-    var msgIndex = 0
+    let msg = ''
+    let msgIndex = 0
     let colorMsgs = source.split('|c')
 
     for (let oneColor of colorMsgs) {
@@ -5075,14 +5223,15 @@ class database {
       }
       else
       {
-        //msg = msg + "<div style=\"color:#" + oneColor.split('|r')[0].substring(0,6) + ";\">" + oneColor.split('|r')[0].slice(6) + "</div>" + oneColor.split('|r')[1]
+        // 移除颜色标记，只保留内容
         msg = msg + oneColor.split('|r')[0].slice(6) + oneColor.split('|r')[1]
       }
-      //logger.info(oneColor)
       msgIndex = msgIndex + 1
     }
 
-    //logger.info(msg)
+    // 应用颜色样式规则（BUFF/DEBUFF高亮、属性颜色等）
+    msg = parseColorTags(msg)
+
     return msg
   }
 

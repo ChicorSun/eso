@@ -70,9 +70,9 @@
           <img class="line" src="{{pluResPath}}img/icon/line.png" />
         </div>
         {{each val.msg item}}
-        <div class="msg">{{item}}</div>
+        <div class="msg">{{@item}}</div>
         {{/each}}
-        <div class="new_msg">{{val.new_msg}}</div>
+        <div class="new_msg">{{@val.new_msg}}</div>
         {{if val.hasPackPicture || val.PriceAndType || val.GetWayDiscription || val.RecipeName || val.RecipeMaterialList || val.WayToGet}}
         <img class="line" src="{{pluResPath}}img/icon/line.png" />
         <div class="pack_extra">
