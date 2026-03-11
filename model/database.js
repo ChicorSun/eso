@@ -2126,11 +2126,11 @@ class database {
         if(enFindByPlace)
         {
           let places = await this.get_setsPlace(setKey)
-          if(notAbbrSet && (places.loot_place_cn).toLowerCase().includes(name))
+          if(notAbbrSet && places?.loot_place_cn?.toLowerCase().includes(name))
           {
             isThisOne = true
           }
-          if(notAbbrSet && (places.loot_place_en).toLowerCase().includes(name))
+          if(notAbbrSet && places?.loot_place_en?.toLowerCase().includes(name))
           {
             isThisOne = true
           }
