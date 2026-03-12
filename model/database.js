@@ -79,78 +79,158 @@ function parseColorTags (text) {
     return `<span style="color: #fff;">${match}</span>`
   })
 
-  // BUFF 高亮处理（同时处理完整名称和去掉前缀的名称）
+  // ==================== BUFF/DEBUFF 智能高亮处理（重构版）====================
+  // 颜色定义：高级使用亮黄色，次级使用相同亮度但饱和度更低的黄绿色
+  const COLORS = {
+    major: '#FDFF00',    // 高级 - 亮黄色 (HSL: 60°, 100%, 50%)
+    minor: '#B8C400',    // 次级 - 相同亮度但饱和度更低的黄绿色 (HSL: 65°, 80%, 45%)
+    majorEn: '#FDFF00',  // Major - 亮黄色
+    minorEn: '#B8C400'   // Minor - 相同亮度但饱和度更低的黄绿色
+  }
+
+  // 辅助函数：转义正则特殊字符
+  function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }
+
+  // 构建 buff/debuff 查找表
   const buffs = loadBuffs()
-  for (const buff of buffs) {
-    // 中文 BUFF 名称处理
-    if (buff.name) {
-      // 完整名称匹配（如"次级破甲"）
-      formattedText = formattedText.replace(
-        buff.name,
-        `<span style="color: #FDFF00;">${buff.name}</span>`
-      )
-      // 去掉前缀后的匹配（如"破甲"）
-      const nameWithoutPrefix = buff.name.replace(/^(次级|高级)/, '')
-      if (nameWithoutPrefix && nameWithoutPrefix !== buff.name) {
-        formattedText = formattedText.replace(
-          nameWithoutPrefix,
-          `<span style="color: #FDFF00;">${nameWithoutPrefix}</span>`
-        )
+  const debuffs = loadDebuffs()
+  
+  // 创建名称到等级类型的映射
+  const nameToLevelMap = new Map() // 完整名称 -> {level, isBuff}
+  const baseNameToLevelMap = new Map() // 基础名称 -> [{level, fullName}, ...]
+  
+  function registerBuff(name, enName, levelType, isBuff) {
+    if (name) {
+      nameToLevelMap.set(name, { level: levelType, isBuff })
+      const baseName = name.replace(/^(次级|高级)/, '')
+      if (!baseNameToLevelMap.has(baseName)) {
+        baseNameToLevelMap.set(baseName, [])
       }
+      baseNameToLevelMap.get(baseName).push({ level: levelType, fullName: name })
     }
-    // 英文 BUFF 名称处理
-    if (buff.enName) {
-      // 完整名称匹配（如"Minor Brutality"）
-      formattedText = formattedText.replace(
-        buff.enName,
-        `<span style="color: #FDFF00;">${buff.enName}</span>`
-      )
-      // 去掉前缀后的匹配（如"Brutality"）
-      const enNameWithoutPrefix = buff.enName.replace(/^(Minor|Major)\s+/i, '')
-      if (enNameWithoutPrefix && enNameWithoutPrefix !== buff.enName) {
-        formattedText = formattedText.replace(
-          enNameWithoutPrefix,
-          `<span style="color: #FDFF00;">${enNameWithoutPrefix}</span>`
-        )
+    if (enName) {
+      nameToLevelMap.set(enName, { level: levelType, isBuff })
+      const baseEnName = enName.replace(/^(Minor|Major)\s+/i, '')
+      if (!baseNameToLevelMap.has(baseEnName)) {
+        baseNameToLevelMap.set(baseEnName, [])
       }
+      baseNameToLevelMap.get(baseEnName).push({ level: levelType, fullName: enName })
     }
   }
 
-  // DEBUFF 高亮处理（同时处理完整名称和去掉前缀的名称）
-  const debuffs = loadDebuffs()
+  // 注册所有 buff 和 debuff
+  for (const buff of buffs) {
+    const level = buff.name?.startsWith('次级') ? 'minor' : 'major'
+    registerBuff(buff.name, buff.enName, level, true)
+  }
   for (const debuff of debuffs) {
-    // 中文 DEBUFF 名称处理
-    if (debuff.name) {
-      // 完整名称匹配
-      formattedText = formattedText.replace(
-        debuff.name,
-        `<span style="color: #FDFF00;">${debuff.name}</span>`
-      )
-      // 去掉前缀后的匹配
-      const nameWithoutPrefix = debuff.name.replace(/^(次级|高级)/, '')
-      if (nameWithoutPrefix && nameWithoutPrefix !== debuff.name) {
-        formattedText = formattedText.replace(
-          nameWithoutPrefix,
-          `<span style="color: #FDFF00;">${nameWithoutPrefix}</span>`
-        )
-      }
+    const level = debuff.name?.startsWith('次级') ? 'minor' : 'major'
+    registerBuff(debuff.name, debuff.enName, level, false)
+  }
+
+  // 按名称长度降序排序（长的优先匹配）
+  const sortedNames = Array.from(nameToLevelMap.keys()).sort((a, b) => b.length - a.length)
+
+  // 阶段1：替换所有完整带前缀的 buff/debuff 名称
+  // 使用占位符避免重复替换
+  const placeholders = new Map() // 占位符 -> {原始文本, 颜色}
+  let placeholderId = 0
+  
+  for (const name of sortedNames) {
+    const info = nameToLevelMap.get(name)
+    const isEnglish = /^[A-Z]/i.test(name)
+    const color = info.level === 'minor' 
+      ? (isEnglish ? COLORS.minorEn : COLORS.minor) 
+      : (isEnglish ? COLORS.majorEn : COLORS.major)
+    
+    // 构建正则：确保完整词匹配
+    // 对于英文：使用单词边界确保是完整单词
+    // 对于中文：前面不能是字母数字（避免匹配英文单词的一部分），后面同理
+    // 中文buff名称前面可以是任意字符（包括汉字），因为我们按长度排序优先匹配长的
+    let regex
+    if (isEnglish) {
+      regex = new RegExp(`\\b${escapeRegex(name)}\\b`, 'g')
+    } else {
+      regex = new RegExp(`(?<![a-zA-Z0-9])${escapeRegex(name)}(?![a-zA-Z0-9])`, 'g')
     }
-    // 英文 DEBUFF 名称处理
-    if (debuff.enName) {
-      // 完整名称匹配
-      formattedText = formattedText.replace(
-        debuff.enName,
-        `<span style="color: #FDFF00;">${debuff.enName}</span>`
+    
+    formattedText = formattedText.replace(regex, () => {
+      const placeholder = `§BUFF_${placeholderId++}§`
+      placeholders.set(placeholder, { text: name, color })
+      return placeholder
+    })
+  }
+
+  // 阶段2：处理省略前缀的合并展示模式
+  // 模式：连接词后的基础名称（如"高级活力和闪避"中的"闪避"）
+  for (const [baseName, infos] of baseNameToLevelMap) {
+    if (!infos || infos.length === 0) continue
+    
+    const isEnglish = /^[A-Z]/i.test(baseName)
+    
+    // 构建匹配模式：前面必须是连接词或占位符结束
+    // 中文连接词：和、与、、及；英文连接词：and, or, ,
+    // 注意：中文连接词本身就是汉字，所以不能用 [^\u4e00-\u9fa5] 排除
+    let regex
+    if (isEnglish) {
+      const connectorPattern = '(?:(?:^|[^a-zA-Z])(?:and|or|,)\\s*|§BUFF_\\d+§\\s*)'
+      regex = new RegExp(
+        `${connectorPattern}(${escapeRegex(baseName)})(?![a-zA-Z0-9])`,
+        'gi'
       )
-      // 去掉前缀后的匹配
-      const enNameWithoutPrefix = debuff.enName.replace(/^(Minor|Major)\s+/i, '')
-      if (enNameWithoutPrefix && enNameWithoutPrefix !== debuff.enName) {
-        formattedText = formattedText.replace(
-          enNameWithoutPrefix,
-          `<span style="color: #FDFF00;">${enNameWithoutPrefix}</span>`
-        )
-      }
+    } else {
+      // 中文：前面必须是连接词（和、与、、及）或占位符，或者是字符串开头
+      // 后面不能是字母数字（避免匹配到英文单词的一部分）
+      const connectorPattern = '(?:(?:^|和|与|、|及)|§BUFF_\\d+§)'
+      regex = new RegExp(
+        `${connectorPattern}(${escapeRegex(baseName)})(?![a-zA-Z0-9])`,
+        'g'
+      )
     }
+    
+    formattedText = formattedText.replace(regex, (match, baseNameMatch, offset) => {
+      // 确定等级：检查前一个完整的 buff 是什么等级
+      let level = 'major' // 默认高级
+      
+      // 查找最近的已标记 buff（从当前位置向前查找）
+      const textBeforeMatch = formattedText.substring(0, offset)
+      const prevBuffMatch = textBeforeMatch.match(/§BUFF_(\d+)§(?!.*§BUFF_\d+§)/)
+      // 上面正则查找textBeforeMatch中最后一个§BUFF_x§
+      if (prevBuffMatch) {
+        const prevPlaceholder = `§BUFF_${prevBuffMatch[1]}§`
+        const prevInfo = placeholders.get(prevPlaceholder)
+        if (prevInfo) {
+          const prevFullName = prevInfo.text
+          const prevLevelInfo = nameToLevelMap.get(prevFullName)
+          if (prevLevelInfo) {
+            // 如果前一个 buff 有对应等级的当前 baseName，使用相同等级
+            const matchingInfo = infos.find(i => i.level === prevLevelInfo.level)
+            if (matchingInfo) {
+              level = matchingInfo.level
+            }
+          }
+        }
+      }
+      
+      const color = level === 'minor' 
+        ? (isEnglish ? COLORS.minorEn : COLORS.minor) 
+        : (isEnglish ? COLORS.majorEn : COLORS.major)
+      
+      const placeholder = `§BUFF_${placeholderId++}§`
+      placeholders.set(placeholder, { text: baseNameMatch, color })
+      
+      // 保留连接词部分（match = 连接词 + baseNameMatch）
+      const connector = match.substring(0, match.length - baseNameMatch.length)
+      return connector + placeholder
+    })
+  }
+
+  // 阶段3：将占位符替换为实际的 HTML span
+  for (const [placeholder, { text, color }] of placeholders) {
+    const regex = new RegExp(escapeRegex(placeholder), 'g')
+    formattedText = formattedText.replace(regex, `<span style="color: ${color};">${text}</span>`)
   }
 
   // 定义关键字和样式规则
