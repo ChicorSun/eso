@@ -91,6 +91,12 @@
         "enName": "Off Balance",
         "des": "利用者天赋将对失衡敌人多造成10%伤害",
         "icon": "/esoui/art/icons/ability_debuff_offbalance.webp"
+      },
+      {
+        "name": "次级胆怯",
+        "enName": "Minor Timidity",
+        "des": "每1.5秒消耗1个终极点",
+        "icon": "/esoui/art/icons/ability_debuff_minor_timidity.webp"
       }
     ]
   },

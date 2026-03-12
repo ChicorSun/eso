@@ -87,6 +87,12 @@ function parseColorTags (text) {
     majorEn: '#FDFF00',  // Major - 亮黄色
     minorEn: '#B8C400'   // Minor - 相同亮度但饱和度更低的黄绿色
   }
+  
+  // Debuff 描边定义：使用红色描边，高级更亮，次级较暗
+  const DEBUFF_OUTLINE = {
+    major: '0 0 2px #FF0000, 0 0 4px #FF0000, 0 0 6px #FF3333',  // 高级 - 亮红色描边
+    minor: '0 0 1px #CC0000, 0 0 2px #CC0000, 0 0 3px #AA0000'   // 次级 - 暗红色描边
+  }
 
   // 辅助函数：转义正则特殊字符
   function escapeRegex(str) {
@@ -135,7 +141,7 @@ function parseColorTags (text) {
 
   // 阶段1：替换所有完整带前缀的 buff/debuff 名称
   // 使用占位符避免重复替换
-  const placeholders = new Map() // 占位符 -> {原始文本, 颜色}
+  const placeholders = new Map() // 占位符 -> {原始文本, 颜色, isBuff}
   let placeholderId = 0
   
   for (const name of sortedNames) {
@@ -158,7 +164,7 @@ function parseColorTags (text) {
     
     formattedText = formattedText.replace(regex, () => {
       const placeholder = `§BUFF_${placeholderId++}§`
-      placeholders.set(placeholder, { text: name, color })
+      placeholders.set(placeholder, { text: name, color, isBuff: info.isBuff, level: info.level })
       return placeholder
     })
   }
@@ -214,12 +220,25 @@ function parseColorTags (text) {
         }
       }
       
-      const color = level === 'minor' 
+      // 确定是否是 buff（继承前一个 buff 的类型，默认认为是 buff）
+      let isBuff = true
+      let finalLevel = level
+      
+      if (prevBuffMatch) {
+        const prevPlaceholder = `§BUFF_${prevBuffMatch[1]}§`
+        const prevInfo = placeholders.get(prevPlaceholder)
+        if (prevInfo) {
+          isBuff = prevInfo.isBuff
+          finalLevel = prevInfo.level
+        }
+      }
+      
+      const color = finalLevel === 'minor' 
         ? (isEnglish ? COLORS.minorEn : COLORS.minor) 
         : (isEnglish ? COLORS.majorEn : COLORS.major)
       
       const placeholder = `§BUFF_${placeholderId++}§`
-      placeholders.set(placeholder, { text: baseNameMatch, color })
+      placeholders.set(placeholder, { text: baseNameMatch, color, isBuff, level: finalLevel })
       
       // 保留连接词部分（match = 连接词 + baseNameMatch）
       const connector = match.substring(0, match.length - baseNameMatch.length)
@@ -228,9 +247,15 @@ function parseColorTags (text) {
   }
 
   // 阶段3：将占位符替换为实际的 HTML span
-  for (const [placeholder, { text, color }] of placeholders) {
+  for (const [placeholder, { text, color, isBuff, level }] of placeholders) {
     const regex = new RegExp(escapeRegex(placeholder), 'g')
-    formattedText = formattedText.replace(regex, `<span style="color: ${color};">${text}</span>`)
+    // 对于 debuff，添加红色描边
+    let style = `color: ${color};`
+    if (!isBuff) {
+      const outline = level === 'minor' ? DEBUFF_OUTLINE.minor : DEBUFF_OUTLINE.major
+      style += ` text-shadow: ${outline};`
+    }
+    formattedText = formattedText.replace(regex, `<span style="${style}">${text}</span>`)
   }
 
   // 定义关键字和样式规则
