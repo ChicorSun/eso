@@ -1,7 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import General from '../model/general.js'
-import database from '../model/database.js'
+import database, { parseColorTags } from '../model/database.js'
 import moment from 'moment'
 import md5 from 'md5'
 
@@ -591,30 +591,7 @@ export class askUndaunted extends plugin {
     var numBonuses = keysBonuses.length
 
     for (let bonuseKey of keysBonuses) {
-      msg[msgIndex] = await this.transColor(bonuses[bonuseKey])
-      msgIndex = msgIndex + 1
-    }
-
-    //logger.info(msg)
-    return msg
-  }
-
-  async transColor (source) {
-    let msg = []
-    var msgIndex = 0
-    let colorMsgs = source.split('|c')
-
-    for (let oneColor of colorMsgs) {
-      if (msgIndex == 0)
-      {
-        msg = msg + oneColor
-      }
-      else
-      {
-        //msg = msg + "<div style=\"color:#" + oneColor.split('|r')[0].substring(0,6) + ";\">" + oneColor.split('|r')[0].slice(6) + "</div>" + oneColor.split('|r')[1]
-        msg = msg + oneColor.split('|r')[0].slice(6) + oneColor.split('|r')[1]
-      }
-      //logger.info(oneColor)
+      msg[msgIndex] = parseColorTags(bonuses[bonuseKey])
       msgIndex = msgIndex + 1
     }
 
