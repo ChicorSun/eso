@@ -9,7 +9,7 @@ import fs from 'node:fs'
 import md5 from 'md5'
 
 /** 1=ESOCN API, 2=uesp 页面；失败后切换并重试一次 */
-let src_mode = 1
+let src_mode = 2
 
 const GOLDEN_VENDOR_API = 'https://api.esocn.com.cn/api/golden-vendor'
 const UESP_GOLDEN_URL = 'http://esolog.uesp.net/goldenVendor.php'

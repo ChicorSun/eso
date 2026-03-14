@@ -34,7 +34,7 @@
             <div class="text">{{item.title}}</div>
             <div class="dec">{{item.desc}}</div>
             {{each item.msg msgLine}}
-            <div class="msg">{{msgLine}}</div>
+            <div class="msg">{{@msgLine}}</div>
             {{/each}}
             {{if item.gp_value || item.ap_value}}
             <div class="item_price">

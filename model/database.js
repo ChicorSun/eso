@@ -57,7 +57,7 @@ function loadDebuffs () {
  * @param {string} text - 原始文本
  * @returns {string} - 处理后的HTML文本
  */
-function parseColorTags (text) {
+export function parseColorTags (text) {
   if (text === null || text === undefined) return ''
 
   // 将换行符（包括 \r\n、\n、\r）转换为 <br> 标签以便在 HTML 中显示
@@ -89,9 +89,16 @@ function parseColorTags (text) {
   }
   
   // Debuff 描边定义：使用红色描边，高级更亮，次级较暗
+  // 使用较小的模糊半径，避免遮挡主体文字
   const DEBUFF_OUTLINE = {
-    major: '0 0 2px #FF0000, 0 0 4px #FF0000, 0 0 6px #FF3333',  // 高级 - 亮红色描边
-    minor: '0 0 1px #CC0000, 0 0 2px #CC0000, 0 0 3px #AA0000'   // 次级 - 暗红色描边
+    major: '0 0 1px #FF0000, 0 0 2px #FF3333',   // 高级 - 亮红色细描边
+    minor: '0 0 1px #CC0000, 0 0 2px #AA0000'    // 次级 - 暗红色细描边
+  }
+  
+  // Buff 样式：无特殊样式，仅保留颜色
+  const BUFF_STYLE = {
+    major: '',   // 高级 - 无额外样式
+    minor: ''    // 次级 - 无额外样式
   }
 
   // 辅助函数：转义正则特殊字符
@@ -249,9 +256,12 @@ function parseColorTags (text) {
   // 阶段3：将占位符替换为实际的 HTML span
   for (const [placeholder, { text, color, isBuff, level }] of placeholders) {
     const regex = new RegExp(escapeRegex(placeholder), 'g')
-    // 对于 debuff，添加红色描边
+    // 对于 buff 使用加粗样式，对于 debuff 添加红色描边
     let style = `color: ${color};`
-    if (!isBuff) {
+    if (isBuff) {
+      const buffStyle = level === 'minor' ? BUFF_STYLE.minor : BUFF_STYLE.major
+      style += ` ${buffStyle}`
+    } else {
       const outline = level === 'minor' ? DEBUFF_OUTLINE.minor : DEBUFF_OUTLINE.major
       style += ` text-shadow: ${outline};`
     }
