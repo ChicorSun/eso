@@ -270,7 +270,7 @@ export class news extends plugin {
 
     let res
     try {
-      res = await fetch(NEWS_LIST_API + '?page=1&size=10')
+      res = await fetch(NEWS_LIST_API + '?params%5Bpage%5D=1&params%5Blimit%5D=10')
     } catch (err) {
       logger.error('[新闻列表] 请求失败: ' + (err && err.message))
       if (forceRefresh) await this.reply('接口请求失败，请稍后再试。')
@@ -292,7 +292,7 @@ export class news extends plugin {
       return null
     }
 
-    if (!json.success || !json.data || !Array.isArray(json.data)) {
+    if (!json.success || !json.data || !Array.isArray(json.data.list)) {
       if (forceRefresh) await this.reply('暂无新闻数据。')
       return null
     }
@@ -300,7 +300,7 @@ export class news extends plugin {
     const savedAt = moment().toISOString()
     const cacheData = {
       savedAt,
-      list: json.data
+      list: json.data.list
     }
 
     try {
