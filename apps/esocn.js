@@ -88,13 +88,22 @@ export class esocn extends plugin {
       const accountName = cid.startsWith('@') ? cid.substring(1) : cid
       
       // 准备绑定数据
+      // 解析rank，处理空字符串情况
+      let rankValue = 0
+      if (data.rank !== undefined && data.rank !== null && data.rank !== '') {
+        const parsedRank = parseInt(data.rank)
+        if (!isNaN(parsedRank)) {
+          rankValue = parsedRank
+        }
+      }
+      
       const extraData = {
         esocnName: data.username || '',
         server: data.server || '',
         signature: data.sign || '',
         user_id: data.user_id || 0,
         avatar: data.avatar || null,
-        rank: parseInt(data.rank) || 0
+        rank: rankValue
       }
 
       // 检查是否已存在相同的cid绑定
@@ -256,7 +265,8 @@ export class esocn extends plugin {
           avatar: avatarPath,
           esocnName: binding.esocnName || '',
           server: binding.server || '',
-          signature: binding.signature || ''
+          signature: binding.signature || '',
+          rank: binding.rank || 0
         })
       }
     }
@@ -393,13 +403,22 @@ export class esocn extends plugin {
         return null
       }
 
+      // 解析rank，处理空字符串情况
+      let rankValue = 0
+      if (data.rank !== undefined && data.rank !== null && data.rank !== '') {
+        const parsedRank = parseInt(data.rank)
+        if (!isNaN(parsedRank)) {
+          rankValue = parsedRank
+        }
+      }
+      
       // 准备更新数据
       const updateData = {
         esocnName: data.username || '',
         server: data.server || '',
         signature: data.sign || '',
         avatar: data.avatar || null,
-        rank: parseInt(data.rank) || 0
+        rank: rankValue
       }
 
       // 如果 CID 变化了，也更新 accountName

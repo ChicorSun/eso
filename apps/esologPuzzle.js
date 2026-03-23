@@ -2058,13 +2058,22 @@ export class esologPuzzle extends plugin {
           continue;
         }
 
+        // 解析rank，处理空字符串情况
+        let rankValue = 0
+        if (data.rank !== undefined && data.rank !== null && data.rank !== '') {
+          const parsedRank = parseInt(data.rank)
+          if (!isNaN(parsedRank)) {
+            rankValue = parsedRank
+          }
+        }
+        
         // 准备更新数据
         const updateData = {
           esocnName: data.username || '',
           server: data.server || '',
           signature: data.sign || '',
           avatar: data.avatar || null,
-          rank: parseInt(data.rank) || 0
+          rank: rankValue
         };
 
         // 如果 CID 变化了，也更新 accountName
