@@ -4,8 +4,16 @@ import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database, { gearColor, setType } from '../model/database.js'
 import CardsList from '../model/cardslist.js'
 import RolesList from '../model/roleslist.js'
+import ESOAccount from '../model/esoAccount.js'
 import md5 from 'md5'
 import fs from 'node:fs'
+import fetch from 'node-fetch'
+
+// ESOCN API 配置
+const ESOCN_API = {
+  BASE_URL: 'https://api.esocn.com.cn',
+  TOKEN: 'ESOCN_ESOBOT_SECURE_v1_d8f2a4e9b7c10d5e3a6f8b2c4d9e0a1f72b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7'
+}
 
 // 配置文件路径
 const CONFIG_PATH = './plugins/eso/custome_resources/config/esologcfg.json'
@@ -226,6 +234,12 @@ export class esologPuzzle extends plugin {
           reg: '^#*(查询绑定|查看绑定|绑定查询|已绑定|查绑定)$',
           /** 执行方法 */
           fnc: 'queryBindings'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(切换绑定|切换主账号|设置主账号)\\s*(\\d+)$',
+          /** 执行方法 */
+          fnc: 'switchBinding'
         },
         {
           reg: '^#*设置解析速度.*$',
@@ -1778,62 +1792,19 @@ export class esologPuzzle extends plugin {
         return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
-      // 确保目录存在
-      const accountDir = './plugins/eso/custome_resources/data';
-      if (!fs.existsSync(accountDir)) {
-        fs.mkdirSync(accountDir, { recursive: true });
-      }
-
-      // 读取现有的绑定数据
-      let bindData = {};
-      if (fs.existsSync(ACCOUNT_PATH)) {
-        bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
-      }
-
-      // 初始化用户的绑定列表
-      if (!bindData[userId]) {
-        bindData[userId] = [];
-      }
-
-      // 检查是否已经存在完全相同的绑定（相同的playerName和accountName组合）
-      const existingBind = bindData[userId].find(bind => 
-        bind.accountName === accountName && 
-        bind.playerName === playerName
-      );
-
-      if (existingBind) {
+      // 使用ESOAccount模型进行绑定
+      const result = ESOAccount.bindUser(userId, accountName, playerName);
+      
+      if (!result.success) {
         let progressMsg = [
           { type: 'at', qq: this.e.user_id },
-          { type: 'text', text: `\n该角色已经绑定过了哦~`}
+          { type: 'text', text: `\n${result.message}`}
         ]
         return await this.reply(progressMsg, false, { recallMsg: -1 });
       }
 
-      // 检查用户绑定的不同AccountName数量
-      const boundAccountNames = new Set(bindData[userId].map(bind => bind.accountName));
-      if (boundAccountNames.size >= 3 && !boundAccountNames.has(accountName)) {
-        let progressMsg = [
-          { type: 'at', qq: this.e.user_id },
-          { type: 'text', text: `\n每个用户最多只能绑定3个不同的账号名称哦~\n使用 #解绑 来解绑账号`}
-        ]
-        return await this.reply(progressMsg, false, { recallMsg: -1 });
-      }
-
-      // 添加新的绑定
-      bindData[userId].push({
-        playerName,
-        accountName,
-        bindTime: new Date().toISOString()
-      });
-
-      // 保存数据
-      fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
-
-      let progressMsg = [
-        { type: 'at', qq: this.e.user_id },
-        { type: 'text', text: `\n绑定成功！`}
-      ]
-      return await this.reply(progressMsg, false, { recallMsg: -1 });
+      // 显示绑定状态图片
+      return await this.showBindStatus(e, result.bindingIndex);
 
     } catch (error) {
       logger.error(`[ESO:账号绑定] 保存绑定数据失败: ${error.message}`);
@@ -1842,6 +1813,112 @@ export class esologPuzzle extends plugin {
         { type: 'text', text: `\n绑定失败，请稍后重试`}
       ]
       return await this.reply(progressMsg, false, { recallMsg: -1 });
+    }
+  }
+
+  /**
+   * 显示绑定状态（生成图片）
+   * @param {*} e 消息对象
+   * @param {number} highlightIndex 高亮显示的绑定序号（可选）
+   * @returns 
+   */
+  async showBindStatus(e, highlightIndex = null) {
+    const userId = String(e.user_id);
+    
+    // 重新加载数据以同步最新信息
+    ESOAccount.users = ESOAccount.loadUsers();
+    
+    const bindings = ESOAccount.getAllBindings(userId);
+    
+    // 准备绑定数据
+    const bindingData = [];
+    
+    // 检查是否有自定义头像
+    const customAvatarPath = `./plugins/eso/custome_resources/img/avatar/${userId}.png`;
+    const hasCustomAvatar = fs.existsSync(customAvatarPath);
+    
+    // 导入 getimgs 用于处理 ESOCN 头像
+    const getimgs = (await import('../model/getimgs.js')).default;
+    
+    if (bindings.length > 0) {
+      for (let i = 0; i < bindings.length; i++) {
+        const binding = bindings[i];
+        const bindTime = new Date(binding.bindTime);
+        
+        // 处理头像：优先使用 ESOCN 头像，其次使用自定义头像
+        let avatarPath = null;
+        
+        if (binding.avatar) {
+          // 有 ESOCN 头像，下载并获取路径
+          try {
+            avatarPath = await getimgs.realpath(binding.avatar, 'esocn_avatar');
+          } catch (err) {
+            logger.warn(`[ESO:头像] 获取ESOCN头像失败: ${err.message}`);
+          }
+        }
+        
+        // 如果没有 ESOCN 头像，且是主账号，尝试使用自定义头像
+        if (!avatarPath && binding.isPrimary && hasCustomAvatar) {
+          avatarPath = `${process.cwd().replace(/\\/g, '/')}/plugins/eso/custome_resources/img/avatar/${userId}.png`;
+        }
+        
+        bindingData.push({
+          index: i + 1,
+          playerName: binding.playerName,
+          accountName: binding.accountName,
+          bindDate: bindTime.toLocaleDateString('zh-CN'),
+          bindTime: bindTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+          isPrimary: binding.isPrimary,
+          isNewBinding: highlightIndex === (i + 1),
+          // 头像路径
+          avatar: avatarPath,
+          // 扩展字段（从绑定数据中读取，如果不存在则使用默认值）
+          esocnName: binding.esocnName || '',
+          server: binding.server || '',
+          signature: binding.signature || '',
+          rank: binding.rank || 0
+        });
+      }
+    }
+    
+    // 生成绑定状态图片
+    const statusData = {
+      qqUser: e.sender.card || e.sender.nickname || `用户${userId}`,
+      bindings: bindingData,
+      pluResPath: `${process.cwd().replace(/\\/g, '/')}/plugins/eso/resources/`,
+      tplFile: './plugins/eso/resources/html/eso/bindStatus.html',
+      currentTime: new Date().toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    };
+    
+    try {
+      const img = await puppeteer.screenshot('eso', statusData);
+      return this.reply(img);
+    } catch (error) {
+      logger.error(`[ESO:账号绑定] 生成绑定状态图片失败: ${error.message}`);
+      // 如果图片生成失败，回退到文字回复
+      if (bindings.length === 0) {
+        return await this.reply('您还没有绑定任何角色');
+      }
+      
+      let reply = '您当前绑定的角色有：\n';
+      bindings.forEach((bind, index) => {
+        const primaryMark = bind.isPrimary ? ' [主]' : '';
+        reply += `${index + 1}. `;
+        if (bind.playerName && bind.accountName) {
+          reply += `${bind.playerName}@${bind.accountName}`;
+        } else if (bind.accountName) {
+          reply += `@${bind.accountName}`;
+        }
+        reply += `${primaryMark}\n`;
+      });
+      return await this.reply(reply.trim());
     }
   }
 
@@ -1855,45 +1932,45 @@ export class esologPuzzle extends plugin {
     const userId = String(e.user_id);
     let content = e.msg.replace(/^#*(解绑|解除绑定)/, '').trim();
 
-    if (!content) {
-      return await this.reply('请指定要解绑的角色名或账号名');
+    // 检查限流
+    if (!this.checkRateLimit(userId)) {
+      return await this.reply('操作太频繁，请稍后再试');
     }
 
     try {
-      // 读取现有的绑定数据
-      if (!fs.existsSync(ACCOUNT_PATH)) {
+      // 检查用户是否有绑定
+      if (!ESOAccount.isUserBound(userId)) {
         return await this.reply('您还没有绑定任何角色哦~');
       }
 
-      let bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      const bindings = ESOAccount.getAllBindings(userId);
+      let targetIndex = -1;
 
-      if (!bindData[userId] || bindData[userId].length === 0) {
-        return await this.reply('您还没有绑定任何角色哦~');
+      // 如果输入是纯数字，按序号解绑
+      if (/^\d+$/.test(content)) {
+        targetIndex = parseInt(content);
+      } else {
+        // 按名称查找
+        targetIndex = bindings.findIndex(bind => 
+          bind.playerName === content || 
+          bind.accountName === content.replace('@', '') ||
+          `${bind.playerName}@${bind.accountName}` === content
+        ) + 1; // 转换为1-based索引
       }
 
-      // 查找要解绑的角色
-      const index = bindData[userId].findIndex(bind => 
-        bind.playerName === content || 
-        bind.accountName === content.replace('@', '') ||
-        `${bind.playerName}@${bind.accountName}` === content
-      );
-
-      if (index === -1) {
-        return await this.reply('未找到该绑定角色');
+      if (targetIndex < 1 || targetIndex > bindings.length) {
+        return await this.reply(`未找到该绑定角色，请输入正确的序号(1-${bindings.length})或角色名`);
       }
 
-      // 移除绑定
-      bindData[userId].splice(index, 1);
-
-      // 如果用户没有任何绑定了，删除该用户的键
-      if (bindData[userId].length === 0) {
-        delete bindData[userId];
+      // 使用ESOAccount模型解绑
+      const result = ESOAccount.unbindUser(userId, targetIndex);
+      
+      if (!result.success) {
+        return await this.reply(result.message);
       }
 
-      // 保存数据
-      fs.writeFileSync(ACCOUNT_PATH, JSON.stringify(bindData, null, 2));
-
-      return await this.reply('解绑成功！');
+      // 显示更新后的绑定状态
+      return await this.showBindStatus(e);
 
     } catch (error) {
       logger.error(`[ESO:账号解绑] 解绑失败: ${error.message}`);
@@ -1910,37 +1987,179 @@ export class esologPuzzle extends plugin {
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
 
+    // 检查限流
+    if (!this.checkRateLimit(userId)) {
+      return await this.reply('操作太频繁，请稍后再试');
+    }
+
     try {
-      // 读取绑定数据
-      if (!fs.existsSync(ACCOUNT_PATH)) {
-        return await this.reply('您还没有绑定任何角色哦~');
+      // 重新加载数据以同步最新信息
+      ESOAccount.users = ESOAccount.loadUsers();
+
+      // 检查用户是否有绑定
+      if (!ESOAccount.isUserBound(userId)) {
+        // 显示空状态图片
+        return await this.showBindStatus(e);
       }
 
-      let bindData = JSON.parse(fs.readFileSync(ACCOUNT_PATH, 'utf8'));
+      // 自动刷新需要更新的角色数据
+      await this.refreshBindingsData(userId);
 
-      if (!bindData[userId] || bindData[userId].length === 0) {
-        return await this.reply('您还没有绑定任何角色哦~');
-      }
-
-      // 构建回复消息
-      let reply = '您当前绑定的角色有：\n';
-      bindData[userId].forEach((bind, index) => {
-        reply += `${index + 1}. `;
-        if (bind.playerName && bind.accountName) {
-          reply += `${bind.playerName}@${bind.accountName}`;
-        } else if (bind.playerName) {
-          reply += bind.playerName;
-        } else if (bind.accountName) {
-          reply += `@${bind.accountName}`;
-        }
-        reply += '\n';
-      });
-
-      return await this.reply(reply.trim());
+      // 显示绑定状态图片
+      return await this.showBindStatus(e);
 
     } catch (error) {
       logger.error(`[ESO:账号查询] 查询失败: ${error.message}`);
       return await this.reply('查询失败，请稍后重试');
+    }
+  }
+
+  /**
+   * 自动刷新绑定数据
+   * 对于 user_id 不为 0 且 updateTime 超过 1 分钟的角色，调用 API 刷新数据
+   * @param {string} userId 用户QQ号
+   */
+  async refreshBindingsData(userId) {
+    const bindings = ESOAccount.getAllBindings(userId);
+    const now = new Date();
+    const ONE_MINUTE = 60 * 1000; // 1分钟毫秒数
+
+    for (let i = 0; i < bindings.length; i++) {
+      const binding = bindings[i];
+      
+      // 只处理 user_id 不为 0 的角色
+      if (!binding.user_id || binding.user_id === 0) {
+        continue;
+      }
+
+      // 检查 updateTime 是否超过 1 分钟
+      const updateTime = binding.updateTime ? new Date(binding.updateTime) : new Date(0);
+      const timeDiff = now.getTime() - updateTime.getTime();
+      
+      if (timeDiff <= ONE_MINUTE) {
+        continue; // 未超过1分钟，跳过
+      }
+
+      try {
+        // 调用 ESOCN API 获取最新用户信息
+        const userInfo = await this.getUserInfoFromESOCN(binding.user_id);
+        
+        if (!userInfo.success || !userInfo.data) {
+          logger.warn(`[ESO:数据刷新] 获取用户 ${binding.user_id} 信息失败: ${userInfo.message || '未知错误'}`);
+          continue;
+        }
+
+        const data = userInfo.data;
+        const cid = data.cid || '';
+        
+        // 如果 API 返回的 CID 为空，跳过更新（用户可能已解绑角色）
+        if (!cid) {
+          logger.info(`[ESO:数据刷新] 用户 ${binding.user_id} 未绑定 ESO 角色，跳过更新`);
+          continue;
+        }
+
+        // 准备更新数据
+        const updateData = {
+          esocnName: data.username || '',
+          server: data.server || '',
+          signature: data.sign || '',
+          avatar: data.avatar || null,
+          rank: parseInt(data.rank) || 0
+        };
+
+        // 如果 CID 变化了，也更新 accountName
+        const newAccountName = cid.startsWith('@') ? cid.substring(1) : cid;
+        if (newAccountName && newAccountName !== binding.accountName) {
+          updateData.accountName = newAccountName;
+        }
+
+        // 更新绑定数据
+        const result = ESOAccount.updateBinding(userId, i + 1, updateData);
+        
+        if (result.success) {
+          logger.info(`[ESO:数据刷新] 用户 ${userId} 的角色 ${binding.accountName} 数据已更新`);
+        } else {
+          logger.warn(`[ESO:数据刷新] 更新用户 ${userId} 的角色 ${binding.accountName} 失败: ${result.message}`);
+        }
+
+      } catch (error) {
+        logger.error(`[ESO:数据刷新] 刷新用户 ${userId} 的角色 ${binding.accountName} 数据失败: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * 从 ESOCN API 获取用户信息
+   * @param {number} userId ESOCN用户ID
+   * @returns {object} API返回结果
+   */
+  async getUserInfoFromESOCN(userId) {
+    try {
+      const url = `${ESOCN_API.BASE_URL}/api/user/getUserInfo`;
+      const formattedUserId = String(userId).padStart(7, '0');
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ESOCN_API.TOKEN}`
+        },
+        body: JSON.stringify({ userId: formattedUserId })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      logger.error(`[ESO:API] 获取用户信息失败: ${error.message}`);
+      return { success: false, message: 'API请求失败' };
+    }
+  }
+
+  /**
+   * 切换主账号
+   * @param {*} e 消息对象
+   * @returns 
+   */
+  async switchBinding(e) {
+    // 获取用户QQ，转为字符串避免大数精度问题
+    const userId = String(e.user_id);
+
+    // 解析命令
+    const match = e.msg.match(/^#*(切换绑定|切换主账号|设置主账号)\s*(\d+)$/);
+    if (!match) {
+      return await this.reply('命令格式: #切换绑定 <序号>\n例如: #切换绑定 1');
+    }
+
+    const index = parseInt(match[2]);
+
+    // 检查限流
+    if (!this.checkRateLimit(userId)) {
+      return await this.reply('操作太频繁，请稍后再试');
+    }
+
+    try {
+      // 检查用户是否有绑定
+      if (!ESOAccount.isUserBound(userId)) {
+        return await this.reply('您还没有绑定任何角色哦~');
+      }
+
+      // 使用ESOAccount模型切换主账号
+      const result = ESOAccount.switchPrimary(userId, index);
+      
+      if (!result.success) {
+        return await this.reply(result.message);
+      }
+
+      // 显示更新后的绑定状态
+      await this.reply(result.message);
+      return await this.showBindStatus(e);
+
+    } catch (error) {
+      logger.error(`[ESO:账号切换] 切换主账号失败: ${error.message}`);
+      return await this.reply('切换主账号失败，请稍后重试');
     }
   }
 

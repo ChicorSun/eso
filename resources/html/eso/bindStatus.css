@@ -1,0 +1,544 @@
+/* ESO 账号绑定状态样式 - 简洁庄重 */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Noto+Sans+SC:wght@400;500&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    background: #0a0a0a;
+    min-height: 100vh;
+    padding: 40px;
+    color: #a09888;
+}
+
+.eso-bind-container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #141414;
+    border: 1px solid #3a3a3a;
+}
+
+/* 头部 */
+.header {
+    padding: 30px 35px;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.title {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: #f0d070;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #888;
+    letter-spacing: 1px;
+}
+
+/* 表格 */
+.bindings-table {
+    padding: 0;
+}
+
+/* 表头 */
+.table-header {
+    display: flex;
+    background: #1a1a1a;
+    padding: 14px 35px;
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.table-header .col-index { width: 60px; text-align: center; }
+.table-header .col-avatar { width: 100px; text-align: center; }
+.table-header .col-account { flex: 1.5; padding: 0 15px; }
+.table-header .col-esocn { flex: 1; text-align: center; padding: 0 10px; }
+.table-header .col-server { flex: 1; text-align: center; padding: 0 10px; }
+.table-header .col-status { width: 70px; text-align: center; }
+
+/* 绑定项 - 使用 Grid 布局 */
+.binding-item {
+    display: grid;
+    grid-template-columns: 60px 100px 1.5fr 1fr 1fr 70px;
+    grid-template-rows: auto auto;
+    border-bottom: 1px solid #2a2a2a;
+    min-height: 100px;
+}
+
+.binding-item:hover {
+    background: #181818;
+}
+
+.binding-item.primary-bind {
+    background: #1a1810;
+    border-left: 3px solid #f0d070;
+}
+
+.binding-item.primary-bind:hover {
+    background: #1e1c14;
+}
+
+/* 序号单元格 - 跨两行 */
+.cell-index {
+    grid-row: 1 / 3;
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px 0;
+}
+
+.index-num {
+    color: #666;
+    font-size: 16px;
+}
+
+.primary-bind .index-num {
+    color: #f0d070;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+/* 头像单元格 - 跨两行 */
+.cell-avatar {
+    grid-row: 1 / 3;
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px 0;
+}
+
+.user-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    border: 2px solid #444;
+    object-fit: cover;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    border: 2px solid #3a3a3a;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+}
+
+.primary-bind .user-avatar,
+.primary-bind .avatar-placeholder {
+    border-color: #f0d070;
+    box-shadow: 0 0 20px rgba(240, 208, 112, 0.25), 0 4px 12px rgba(0,0,0,0.5);
+}
+
+/* 账户名单元格 */
+.cell-account {
+    grid-row: 1;
+    grid-column: 3;
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    padding-bottom: 8px;
+}
+
+.account-name {
+    font-size: 16px;
+    color: #908880;
+    font-weight: 400;
+}
+
+.primary-bind .account-name {
+    color: #f8e8b8;
+    font-weight: 600;
+    font-size: 17px;
+    text-shadow: 0 0 10px rgba(240, 208, 112, 0.2);
+}
+
+/* ESOCN名单元格 */
+.cell-esocn {
+    grid-row: 1;
+    grid-column: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px 10px;
+    padding-bottom: 8px;
+}
+
+.esocn-name {
+    font-size: 15px;
+    color: #807868;
+}
+
+.primary-bind .esocn-name {
+    color: #e8d8a8;
+    font-weight: 500;
+}
+
+/* 服务器单元格 */
+.cell-server {
+    grid-row: 1;
+    grid-column: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px 10px;
+    padding-bottom: 8px;
+}
+
+.server-name {
+    font-size: 13px;
+    color: #706860;
+    padding: 4px 12px;
+    border: 1px solid #3a3a3a;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.primary-bind .server-name {
+    color: #d8c888;
+    border-color: #6a5a30;
+    background: rgba(240, 208, 112, 0.08);
+}
+
+/* 主账号标记单元格 */
+.cell-status {
+    grid-row: 1;
+    grid-column: 6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px 0;
+    padding-bottom: 8px;
+}
+
+.primary-star {
+    font-size: 24px;
+    color: #f0d070;
+    text-shadow: 0 0 15px rgba(240, 208, 112, 0.5);
+}
+
+.normal-mark {
+    color: #333;
+    font-size: 16px;
+}
+
+/* 个性签名单元格 - 跨4列 */
+.cell-signature {
+    grid-row: 2;
+    grid-column: 3 / 7;
+    display: flex;
+    align-items: flex-start;
+    padding: 0 15px 15px 15px;
+}
+
+.signature-text {
+    font-size: 13px;
+    color: #605848;
+    font-style: italic;
+    line-height: 1.5;
+}
+
+.primary-bind .signature-text {
+    color: #a09060;
+}
+
+.cell-signature.empty {
+    align-items: center;
+}
+
+.signature-placeholder {
+    color: #2a2a2a;
+    font-size: 12px;
+}
+
+/* 空行 */
+.empty-row {
+    padding: 60px 35px;
+    text-align: center;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.empty-text {
+    color: #555;
+    font-size: 14px;
+    letter-spacing: 2px;
+}
+
+/* 帮助区域 */
+.help-section {
+    background: #111;
+    padding: 25px 35px;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.help-content {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 40px;
+}
+
+.help-item {
+    display: flex;
+    align-items: baseline;
+    font-size: 13px;
+}
+
+/* 第一个帮助项单独占据一行 */
+.help-item:first-child {
+    grid-column: 1 / 3;
+}
+
+.help-item .cmd {
+    color: #a0a0a0;
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    margin-right: 12px;
+    white-space: nowrap;
+}
+
+.help-item .desc {
+    color: #707070;
+}
+
+/* 底部 */
+.footer {
+    padding: 20px 35px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0f0f0f;
+}
+
+.tips {
+    font-size: 11px;
+    color: #505050;
+}
+
+.current-time {
+    font-size: 11px;
+    color: #404040;
+}
+
+/* 响应式 */
+@media (max-width: 700px) {
+    body {
+        padding: 20px;
+    }
+    
+    .binding-item {
+        grid-template-columns: 50px 80px 1fr 1fr 60px;
+    }
+    
+    .cell-esocn,
+    .cell-server {
+        display: none;
+    }
+    
+    .cell-account {
+        grid-column: 3 / 5;
+    }
+    
+    .cell-status {
+        grid-column: 5;
+    }
+    
+    .cell-signature {
+        grid-column: 3 / 6;
+    }
+    
+    .user-avatar,
+    .avatar-placeholder {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .header,
+    .table-header,
+    .help-section,
+    .footer {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
+
+/* ============================================
+   Rank 等级样式
+   ============================================ */
+
+/* 基础样式 */
+.esocn-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+}
+
+.esocn-name {
+    font-size: 15px;
+    color: inherit;
+}
+
+/* Rank 徽章样式 */
+.rank-badge {
+    font-size: 11px;
+    font-weight: bold;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: currentColor;
+    opacity: 0.9;
+}
+
+.rank-badge::before {
+    content: '';
+    background: #1a1a1a;
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+/* Rank 0 - 白色/灰色 */
+.esocn-wrapper.rank-0 {
+    color: #b0a8a0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.esocn-wrapper.rank-0 .rank-badge {
+    background: #b0a8a0;
+    color: #1a1a1a;
+}
+
+/* Rank 1 - 绿色 */
+.esocn-wrapper.rank-1 {
+    color: #60d0a0;
+    text-shadow: 0 0 8px rgba(96, 208, 160, 0.4);
+}
+.esocn-wrapper.rank-1 .rank-badge {
+    background: #60d0a0;
+    color: #1a1a1a;
+}
+
+/* Rank 2 - 蓝色 */
+.esocn-wrapper.rank-2 {
+    color: #60a0f0;
+    text-shadow: 0 0 10px rgba(96, 160, 240, 0.5);
+}
+.esocn-wrapper.rank-2 .rank-badge {
+    background: #60a0f0;
+    color: #1a1a1a;
+}
+
+/* Rank 3 - 紫色 */
+.esocn-wrapper.rank-3 {
+    color: #c080e0;
+    text-shadow: 0 0 12px rgba(192, 128, 224, 0.6);
+}
+.esocn-wrapper.rank-3 .rank-badge {
+    background: #c080e0;
+    color: #1a1a1a;
+}
+
+/* Rank 4 - 金色 */
+.esocn-wrapper.rank-4 {
+    color: #f0d040;
+    text-shadow: 0 0 14px rgba(240, 208, 64, 0.7);
+}
+.esocn-wrapper.rank-4 .rank-badge {
+    background: #f0d040;
+    color: #1a1a1a;
+}
+
+/* Rank 5 - 红色 */
+.esocn-wrapper.rank-5 {
+    color: #f06080;
+    text-shadow: 0 0 16px rgba(240, 96, 128, 0.8);
+}
+.esocn-wrapper.rank-5 .rank-badge {
+    background: #f06080;
+    color: #1a1a1a;
+}
+
+/* Rank 6 - 红紫渐变特效 */
+.esocn-wrapper.rank-6 {
+    background: linear-gradient(135deg, #f0d040 0%, #e080c0 50%, #8040f0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 20px rgba(224, 128, 192, 0.9);
+    font-weight: bold;
+}
+.esocn-wrapper.rank-6 .rank-badge {
+    background: linear-gradient(135deg, #f0d040 0%, #e080c0 50%, #8040f0 100%);
+    color: #1a1a1a;
+    text-shadow: none;
+}
+
+/* 主账号的 ESOCN 名样式增强 */
+.primary-bind .esocn-wrapper.rank-0 {
+    color: #d0c8c0;
+}
+.primary-bind .esocn-wrapper.rank-0 .rank-badge {
+    background: #d0c8c0;
+}
+
+.primary-bind .esocn-wrapper.rank-1 {
+    color: #80e8b8;
+    text-shadow: 0 0 10px rgba(128, 232, 184, 0.5);
+}
+.primary-bind .esocn-wrapper.rank-1 .rank-badge {
+    background: #80e8b8;
+}
+
+.primary-bind .esocn-wrapper.rank-2 {
+    color: #80b8ff;
+    text-shadow: 0 0 12px rgba(128, 184, 255, 0.6);
+}
+.primary-bind .esocn-wrapper.rank-2 .rank-badge {
+    background: #80b8ff;
+}
+
+.primary-bind .esocn-wrapper.rank-3 {
+    color: #e0a0ff;
+    text-shadow: 0 0 14px rgba(224, 160, 255, 0.7);
+}
+.primary-bind .esocn-wrapper.rank-3 .rank-badge {
+    background: #e0a0ff;
+}
+
+.primary-bind .esocn-wrapper.rank-4 {
+    color: #ffe060;
+    text-shadow: 0 0 16px rgba(255, 224, 96, 0.8);
+}
+
+.primary-bind .esocn-wrapper.rank-5 {
+    color: #ff80a0;
+    text-shadow: 0 0 18px rgba(255, 128, 160, 0.9);
+}
+.primary-bind .esocn-wrapper.rank-5 .rank-badge {
+    background: #ff80a0;
+}
+
+.primary-bind .esocn-wrapper.rank-6 {
+    background: linear-gradient(135deg, #ffe860 0%, #ffa0e0 50%, #a060ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 24px rgba(255, 160, 224, 1);
+    font-weight: bold;
+}
+.primary-bind .esocn-wrapper.rank-6 .rank-badge {
+    background: linear-gradient(135deg, #ffe860 0%, #ffa0e0 50%, #a060ff 100%);
+    color: #1a1a1a;
+    text-shadow: none;
+}

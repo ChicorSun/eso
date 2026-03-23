@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESOCN 用户状态</title>
+    <link rel="stylesheet" href="{{pluResPath}}html/eso/esocnStatus.css">
+</head>
+<body>
+    <div class="esocn-status-container">
+        <div class="header">
+            <div class="title">ESOCN 用户状态</div>
+            <div class="subtitle">{{qqUser}}</div>
+        </div>
+        
+        {{if !hasBinding}}
+        <div class="no-binding">
+            <div class="empty-icon">📭</div>
+            <div class="empty-text">该用户尚未绑定 ESO 账号</div>
+            <div class="empty-hint">使用 #绑定 账号名 来绑定角色</div>
+        </div>
+        {{else}}
+        <div class="user-card">
+            <!-- 头部区域：头像和基本信息 -->
+            <div class="card-header">
+                <div class="avatar-section">
+                    {{if avatar}}
+                    <img src="{{avatar}}" alt="用户头像" class="user-avatar">
+                    {{else}}
+                    <div class="avatar-placeholder">
+                        <span class="placeholder-text">ESO</span>
+                    </div>
+                    {{/if}}
+                </div>
+                
+                <div class="basic-info">
+                    <div class="info-row">
+                        <span class="label">ESO账号:</span>
+                        <span class="value account-name">@{{accountName}}</span>
+                    </div>
+                    {{if esocnName}}
+                    <div class="info-row">
+                        <span class="label">ESOCN:</span>
+                        <div class="value esocn-wrapper rank-{{rank || 0}}">
+                            <span class="esocn-name">{{esocnName}}</span>
+                            <span class="rank-badge">{{rank || 0}}</span>
+                        </div>
+                    </div>
+                    {{/if}}
+                    {{if playerName}}
+                    <div class="info-row">
+                        <span class="label">角色名:</span>
+                        <span class="value player-name">{{playerName}}</span>
+                    </div>
+                    {{/if}}
+                    {{if server}}
+                    <div class="info-row">
+                        <span class="label">服务器:</span>
+                        <span class="value server-name">{{server}}</span>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+            
+            <!-- 签名区域 -->
+            {{if signature}}
+            <div class="signature-section">
+                <div class="signature-label">个性签名</div>
+                <div class="signature-content">
+                    <span class="quote-mark">"</span>
+                    <span class="signature-text">{{signature}}</span>
+                    <span class="quote-mark">"</span>
+                </div>
+            </div>
+            {{/if}}
+            
+        </div>
+        {{/if}}
+        
+        <div class="footer">
+            <div class="current-time">{{currentTime}}</div>
+        </div>
+    </div>
+</body>
+</html>

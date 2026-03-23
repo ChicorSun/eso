@@ -1,0 +1,305 @@
+/* ESOCN 状态卡片样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+    background: transparent;
+    min-height: auto;
+    padding: 0;
+    width: 600px;
+}
+
+.esocn-status-container {
+    display: block;
+    margin: 0 auto;
+    background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+    border: 1px solid #3a3020;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* 头部样式 */
+.header {
+    background: linear-gradient(135deg, #1a1510 0%, #0f0c08 100%);
+    border-bottom: 2px solid #5a4a30;
+    padding: 20px 24px;
+    text-align: center;
+}
+
+.title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #c9a050;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: 2px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #8a7a60;
+    margin-top: 6px;
+}
+
+/* 未绑定状态 */
+.no-binding {
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.7;
+}
+
+.empty-text {
+    font-size: 18px;
+    color: #a09070;
+    margin-bottom: 12px;
+}
+
+.empty-hint {
+    font-size: 14px;
+    color: #6a5a40;
+}
+
+/* 用户卡片 */
+.user-card {
+    padding: 24px;
+    background: linear-gradient(180deg, rgba(201, 160, 80, 0.05) 0%, transparent 100%);
+}
+
+/* 卡片头部 */
+.card-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.avatar-section {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.user-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 3px solid #c9a050;
+    object-fit: cover;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.avatar-placeholder {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 3px solid #4a4030;
+    background: linear-gradient(135deg, #2a2520 0%, #1a1815 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.placeholder-text {
+    font-size: 14px;
+    color: #5a5040;
+    font-weight: bold;
+}
+
+/* 基本信息 */
+.basic-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.label {
+    font-size: 13px;
+    color: #7a6a50;
+    min-width: 70px;
+}
+
+.value {
+    font-size: 15px;
+    color: #d0c0a0;
+}
+
+.account-name {
+    color: #c9a050;
+    font-weight: bold;
+}
+
+.esocn-name {
+    color: #e0d0b0;
+}
+
+.player-name {
+    color: #a0c0e0;
+}
+
+.server-name {
+    color: #80b0a0;
+    font-size: 13px;
+    background: rgba(128, 176, 160, 0.15);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* 签名区域 */
+.signature-section {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #3a3020;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.signature-label {
+    font-size: 12px;
+    color: #5a5040;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.signature-content {
+    font-style: italic;
+}
+
+.quote-mark {
+    color: #5a4a30;
+    font-size: 18px;
+}
+
+.signature-text {
+    color: #b0a080;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* 底部 */
+.footer {
+    background: #0f0f0f;
+    border-top: 1px solid #2a2520;
+    padding: 12px 24px;
+    text-align: center;
+}
+
+.current-time {
+    font-size: 12px;
+    color: #4a4030;
+}
+
+/* ============================================
+   Rank 等级样式
+   ============================================ */
+
+/* 基础样式 */
+.esocn-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+}
+
+.esocn-name {
+    font-size: 15px;
+    color: inherit;
+}
+
+/* Rank 徽章样式 */
+.rank-badge {
+    font-size: 11px;
+    font-weight: bold;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: currentColor;
+}
+
+/* Rank 0 - 白色/灰色 */
+.esocn-wrapper.rank-0 {
+    color: #d0c8c0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.esocn-wrapper.rank-0 .rank-badge {
+    background: #d0c8c0;
+    color: #1a1a1a;
+}
+
+/* Rank 1 - 绿色 */
+.esocn-wrapper.rank-1 {
+    color: #60d0a0;
+    text-shadow: 0 0 8px rgba(96, 208, 160, 0.4);
+}
+.esocn-wrapper.rank-1 .rank-badge {
+    background: #60d0a0;
+    color: #1a1a1a;
+}
+
+/* Rank 2 - 蓝色 */
+.esocn-wrapper.rank-2 {
+    color: #60a0f0;
+    text-shadow: 0 0 10px rgba(96, 160, 240, 0.5);
+}
+.esocn-wrapper.rank-2 .rank-badge {
+    background: #60a0f0;
+    color: #1a1a1a;
+}
+
+/* Rank 3 - 紫色 */
+.esocn-wrapper.rank-3 {
+    color: #c080e0;
+    text-shadow: 0 0 12px rgba(192, 128, 224, 0.6);
+}
+.esocn-wrapper.rank-3 .rank-badge {
+    background: #c080e0;
+    color: #1a1a1a;
+}
+
+/* Rank 4 - 金色 */
+.esocn-wrapper.rank-4 {
+    color: #f0d040;
+    text-shadow: 0 0 14px rgba(240, 208, 64, 0.7);
+}
+.esocn-wrapper.rank-4 .rank-badge {
+    background: #f0d040;
+    color: #1a1a1a;
+}
+
+/* Rank 5 - 红色 */
+.esocn-wrapper.rank-5 {
+    color: #f06080;
+    text-shadow: 0 0 16px rgba(240, 96, 128, 0.8);
+}
+.esocn-wrapper.rank-5 .rank-badge {
+    background: #f06080;
+    color: #1a1a1a;
+}
+
+/* Rank 6 - 红紫渐变特效 */
+.esocn-wrapper.rank-6 {
+    background: linear-gradient(135deg, #f0d040 0%, #e080c0 50%, #8040f0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 20px rgba(224, 128, 192, 0.9);
+    font-weight: bold;
+}
+.esocn-wrapper.rank-6 .rank-badge {
+    background: linear-gradient(135deg, #f0d040 0%, #e080c0 50%, #8040f0 100%);
+    color: #1a1a1a;
+    text-shadow: none;
+}

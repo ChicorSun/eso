@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESO账号绑定状态</title>
+    <link rel="stylesheet" href="{{pluResPath}}html/eso/bindStatus.css">
+</head>
+<body>
+    <div class="eso-bind-container">
+        <div class="header">
+            <div class="title">ESO 账号绑定状态</div>
+            <div class="subtitle">{{qqUser}}</div>
+        </div>
+        
+        <div class="bindings-table">
+            <div class="table-header">
+                <div class="col-index">序号</div>
+                <div class="col-avatar">头像</div>
+                <div class="col-account">账户名</div>
+                <div class="col-esocn">ESOCN名</div>
+                <div class="col-server">所在服务器</div>
+                <div class="col-status">主账号</div>
+            </div>
+            
+            {{if !bindings || bindings.length === 0}}
+            <div class="empty-row">
+                <div class="empty-text">暂无绑定角色</div>
+            </div>
+            {{else}}
+            {{each bindings}}
+            <div class="binding-item {{$value.isPrimary ? 'primary-bind' : ''}} {{$value.isNewBinding ? 'new-binding' : ''}}">
+                <!-- 序号（跨两行） -->
+                <div class="cell-index">
+                    <span class="index-num">{{$value.index}}</span>
+                </div>
+                
+                <!-- 头像（跨两行） -->
+                <div class="cell-avatar">
+                    {{if $value.avatar}}
+                    <img src="{{$value.avatar}}" alt="头像" class="user-avatar">
+                    {{else}}
+                    <div class="avatar-placeholder"></div>
+                    {{/if}}
+                </div>
+                
+                <!-- 账户名 -->
+                <div class="cell-account">
+                    <span class="account-name">@{{$value.accountName}}</span>
+                </div>
+                
+                <!-- ESOCN名 -->
+                <div class="cell-esocn">
+                    <div class="esocn-wrapper rank-{{$value.rank || 0}}">
+                        <span class="esocn-name">{{$value.esocnName || '—'}}</span>
+                        {{if $value.esocnName}}
+                        <span class="rank-badge">R{{$value.rank || 0}}</span>
+                        {{/if}}
+                    </div>
+                </div>
+                
+                <!-- 服务器 -->
+                <div class="cell-server">
+                    <span class="server-name">{{$value.server || '—'}}</span>
+                </div>
+                
+                <!-- 主账号 -->
+                <div class="cell-status">
+                    {{if $value.isPrimary}}
+                    <span class="primary-star">★</span>
+                    {{else}}
+                    <span class="normal-mark">—</span>
+                    {{/if}}
+                </div>
+                
+                <!-- 个性签名（跨4列） -->
+                {{if $value.signature}}
+                <div class="cell-signature">
+                    <span class="signature-text">{{$value.signature}}</span>
+                </div>
+                {{else}}
+                <div class="cell-signature empty">
+                    <span class="signature-placeholder">—</span>
+                </div>
+                {{/if}}
+            </div>
+            {{/each}}
+            {{/if}}
+        </div>
+        
+        <div class="help-section">
+            <div class="help-content">
+                <div class="help-item">
+                    <span class="cmd">#BCXXXXXX</span>
+                    <span class="desc">使用绑定码，绑定ESOCN账号(个人设置页面->安全设置->ESOBot 账号绑定)</span>
+                </div>
+                <div class="help-item">
+                    <span class="cmd">#切换绑定 序号</span>
+                    <span class="desc">切换主账号</span>
+                </div>
+                <div class="help-item">
+                    <span class="cmd">#解绑 序号</span>
+                    <span class="desc">解除绑定</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="tips">每个用户最多绑定3个不同账号</div>
+            <div class="current-time">{{currentTime}}</div>
+        </div>
+    </div>
+</body>
+</html>
