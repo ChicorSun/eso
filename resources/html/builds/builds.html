@@ -19,7 +19,11 @@
         <img id="class_pic" src="{{pluResPath}}img/classes/{{val.class}}.png" />
       </div>
 
-      <div id="title_div">
+      {{if val.isESOCN}}
+      <div id="title_div" style="width: 47%;">
+      {{else}}
+      <div id="title_div" style="width: 52%;">
+      {{/if}}
         <div id="build_title_div">
           <span id="build_title">{{val.title}}</span>
         </div>
@@ -27,6 +31,25 @@
           <span id="name_string" style="font-size: {{val.fontSize}};">{{val.playerName}}{{val.accountName}}</span>
         </div>
       </div>
+      {{if val.isESOCN}}
+      <div id="attributes_div">
+        <div class="attr_row">
+          <div class="attr_block" style="background-color: rgb(58, 146, 254);">
+            <span class="attr_value">{{val.attributes.magicka}}</span>
+          </div>
+        </div>
+        <div class="attr_row">
+          <div class="attr_block" style="background-color: rgb(227, 36, 33);">
+            <span class="attr_value">{{val.attributes.health}}</span>
+          </div>
+        </div>
+        <div class="attr_row">
+          <div class="attr_block" style="background-color: rgb(47, 213, 14);">
+            <span class="attr_value">{{val.attributes.stamina}}</span>
+          </div>
+        </div>
+      </div>
+      {{/if}}
       <div id="SkillLineInfo">
       {{each val.line item}}
         <div id="SkillLine">
@@ -37,7 +60,7 @@
       </div>
       <div id="BuffsInfo">
         <div id="Race">
-          <img id="race_pic" src="{{pluResPath}}img/stones/{{val.race_img}}.png" />
+          <img id="race_pic" src="{{pluResPath}}img/races/{{val.race_img}}.png" />
           <span id="race_string">{{val.race_name_cn}}</span>
         </div>
         
@@ -53,7 +76,11 @@
         <div id="FoodInfo">
         {{each val.food item}}
           <div id="Food">
+            {{if val.isESOCN}}
+            <img id="food_pic" src="{{pluResPath}}img/foods/../../../../../{{item.img}}.png" />
+            {{else}}
             <img id="food_pic" src="{{pluResPath}}img/foods/{{item.img}}.png" />
+            {{/if}}
             <span id="food_string">{{item.name_cn}}</span>
           </div>
         {{/each}}

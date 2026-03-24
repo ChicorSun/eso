@@ -4303,9 +4303,14 @@ class database {
       {
         data = await Builds.get(this.e, 'builds', 'build', 'builds')
       }
-      else
+      else if(cardMode == 1)
       {
         data = await Cards.get(this.e, 'builds', 'build', 'cards')
+      }
+      else if(cardMode == 2)
+      {
+        // ESOCN build 格式，使用普通 builds 模板
+        data = await Builds.get(this.e, 'builds', 'build', 'builds')
       }
       if (!data)
       {
@@ -4316,9 +4321,23 @@ class database {
     }
 
     let tags = []
-    buildData.buildsData[1].head_title = "Build Info from www.esolog.com created by " + BD.playerName + BD.accountName
-    buildData.buildsData[1].accountName = BD.accountName
-    buildData.buildsData[1].playerName = BD.playerName
+    
+    // ESOCN 格式使用不同的标题
+    if(cardMode == 2 && BD.isESOCN)
+    {
+      buildData.buildsData[1].head_title = "Build Info from www.esocn.com.cn created by " + BD.playerName
+      buildData.buildsData[1].accountName = ''
+      buildData.buildsData[1].playerName = BD.playerName
+      // 传递 ESOCN 标记和属性点
+      buildData.buildsData[1].isESOCN = true
+      buildData.buildsData[1].attributes = BD.attributes || { health: 0, magicka: 0, stamina: 0 }
+    }
+    else
+    {
+      buildData.buildsData[1].head_title = "Build Info from www.esolog.com created by " + BD.playerName + BD.accountName
+      buildData.buildsData[1].accountName = BD.accountName
+      buildData.buildsData[1].playerName = BD.playerName
+    }
     buildData.buildsData[1].stone = BD.stoneInfo
     buildData.buildsData[1].food = BD.foodInfo
 
@@ -4434,6 +4453,175 @@ class database {
       if(index == -1)
       {
         continue;
+      }
+
+      // ESOCN 格式数据处理 - 直接使用已提供的信息
+      if(BD.isESOCN && GI.name && GI.name.image)
+      {
+        // 提取图标名称
+        let iconName = ''
+        if(GI.name.image.includes('/')){
+          iconName = GI.name.image.split('/').pop().split('.')[0]
+        } else {
+          iconName = GI.name.image
+        }
+        
+        buildData.buildsData[1].gear[index].icon = iconName
+        buildData.buildsData[1].gear[index].type = GI.type
+        
+        // 设置装备类型颜色 - 支持英文和中文类型
+        if(GI.type == 'Light' || GI.type == '轻甲')
+        {
+          buildData.buildsData[1].gear[index].type_color = 'rgb(58, 146, 254)'
+        }
+        else if(GI.type == 'Medium' || GI.type == '中甲')
+        {
+          buildData.buildsData[1].gear[index].type_color = 'rgb(47, 213, 14)'
+        }
+        else if(GI.type == 'Heavy' || GI.type == '重甲')
+        {
+          buildData.buildsData[1].gear[index].type_color = 'rgb(227, 36, 33)'
+        }
+        else
+        {
+          buildData.buildsData[1].gear[index].type_color = 'rgb(221, 221, 221)'
+        }
+        
+        // 设置名称 - name填入intv_cn, enName用<>包裹填入intv_en
+        // 武器部位（主手、副手、备用主手、备用副手）需要在名称后加上type
+        let nameCn = GI.name.text
+        if((index == 10 || index == 11 || index == 12 || index == 13) && GI.type){
+          nameCn = nameCn + GI.type
+        }
+        buildData.buildsData[1].gear[index].name_cn = nameCn
+        buildData.buildsData[1].gear[index].name_en = '<' + (GI.name.enName || '') + '>'
+        // 去除level中的CP前缀
+        let levelStr = GI.level || 'CP160'
+        if(levelStr.startsWith('CP')){
+          levelStr = levelStr.substring(2)
+        }
+        buildData.buildsData[1].gear[index].level = levelStr
+        buildData.buildsData[1].gear[index].color = GI.name.color || 'rgb(170, 170, 170)'
+        
+        // 非空装备的颜色设置（神话装备判断暂时注释，使用传说颜色）
+        // if(setData.atlasData[1].type == '神话')
+        // {
+        //   buildData.buildsData[1].gear[index].color = 'rgb(255, 110, 0)'
+        // } else {
+          buildData.buildsData[1].gear[index].color = 'rgb(255, 230, 45)'
+        // }
+        
+        buildData.buildsData[1].gear[index].level_class = 'inline-block'
+        buildData.buildsData[1].gear[index].set_cn = GI.set || ''
+        buildData.buildsData[1].gear[index].set_en = GI.setEn || ''
+        
+        // trait拼接成 中文<英文> 格式
+        if(GI.trait && GI.trait.name){
+          buildData.buildsData[1].gear[index].trait = GI.trait.name + '<' + GI.trait.enName + '>'
+        } else {
+          buildData.buildsData[1].gear[index].trait = 'N/A'
+        }
+        
+        // enchant拼接成 中文<英文> 格式，去掉英文中的"Glyph of "前缀
+        if(GI.enchant && GI.enchant.name){
+          let enName = GI.enchant.enName || ''
+          if(enName.startsWith('Glyph of ')){
+            enName = enName.substring(9)
+          }
+          buildData.buildsData[1].gear[index].enchant = GI.enchant.name + '<' + enName + '>'
+          // 非空附魔使用固定颜色
+          buildData.buildsData[1].gear[index].enchantColor = 'rgb(229, 204, 128)'
+        } else {
+          buildData.buildsData[1].gear[index].enchant = 'N/A'
+          buildData.buildsData[1].gear[index].enchantColor = 'rgb(170, 170, 170)'
+        }
+        
+        // 处理武器类型
+        if(index == 10)
+        {
+          if(GI.type == 'Fire Staff')
+          {
+            left_weapon = 'Destruction_Staff_Fire'
+          }
+          else if(GI.type == 'Frost Staff')
+          {
+            left_weapon = 'Destruction_Staff_Ice'
+          }
+          else if(GI.type == 'Lightning Staff')
+          {
+            left_weapon = 'Destruction_Staff_Lightning'
+          }
+          else if(GI.type == 'Healing Staff')
+          {
+            left_weapon = 'Restoration_Staff'
+          }
+          else if(GI.type == 'Bow')
+          {
+            left_weapon = 'Bow'
+          }
+          else
+          {
+            left_weapon = 'Two_Handed'
+          }
+        }
+        
+        if(index == 11)
+        {
+          if(GI.type == 'Shield')
+          {
+            left_weapon = 'One_Hand_and_Shield'
+          }
+          else if(GI.type == 'Dagger' || GI.type == 'Hammer' || GI.type == 'Sword' || GI.type == 'Axe' || GI.type == 'Mace')
+          {
+            left_weapon = 'Dual_Wield'
+          }
+        }
+        
+        if(index == 12)
+        {
+          if(GI.type == 'Fire Staff')
+          {
+            right_weapon = 'Destruction_Staff_Fire'
+          }
+          else if(GI.type == 'Frost Staff')
+          {
+            right_weapon = 'Destruction_Staff_Ice'
+          }
+          else if(GI.type == 'Lightning Staff')
+          {
+            right_weapon = 'Destruction_Staff_Lightning'
+          }
+          else if(GI.type == 'Healing Staff')
+          {
+            right_weapon = 'Restoration_Staff'
+          }
+          else if(GI.type == 'Bow')
+          {
+            right_weapon = 'Bow'
+          }
+          else
+          {
+            right_weapon = 'Two_Handed'
+          }
+        }
+        
+        if(index == 13)
+        {
+          if(GI.type == 'Shield')
+          {
+            right_weapon = 'One_Hand_and_Shield'
+          }
+          else if(GI.type == 'Dagger' || GI.type == 'Hammer' || GI.type == 'Sword' || GI.type == 'Axe' || GI.type == 'Mace')
+          {
+            right_weapon = 'Dual_Wield'
+          }
+        }
+        
+        // 处理图标路径
+        let imgPath = await getimgs.realpath(buildData.buildsData[1].gear[index].icon, "sets")
+        buildData.buildsData[1].gear[index].icon = `../../../../../` + imgPath
+        
+        continue
       }
 
       let objSets = await this.name2index('ESOLOG'+GI.set,1)
@@ -4703,6 +4891,32 @@ class database {
           continue;
         }
 
+        // ESOCN 格式数据处理 - 直接使用已提供的信息
+        if(BD.isESOCN)
+        {
+          // 提取图标名称
+          let iconName = ''
+          if(oneTalent['icon'] && oneTalent['icon'].includes('/')){
+            iconName = oneTalent['icon'].split('/').pop().split('.')[0]
+          } else {
+            iconName = oneTalent['icon'] || 'empty'
+          }
+          
+          buildData.buildsData[1].spell[i].bar[talentIndex].icon = iconName
+          buildData.buildsData[1].spell[i].bar[talentIndex].color = oneTalent['color'] || 'rgb(170, 170, 170)'
+          buildData.buildsData[1].spell[i].bar[talentIndex].name = oneTalent['text'] || 'N/A'
+          // 使用 skillTreeName 作为 address
+          buildData.buildsData[1].spell[i].bar[talentIndex].address = oneTalent['address'] || ' '
+          
+          // 处理图标路径
+          if(iconName != 'empty') {
+            let imgPath = await getimgs.realpath(iconName, "skills")
+            buildData.buildsData[1].spell[i].bar[talentIndex].icon = `../../../../../` + imgPath
+          }
+          
+          continue
+        }
+
         let objSkills = await this.name2index(oneTalent['text'],22)
         //logger.info('=======' + oneTalent['text'])
         let skillNum = objSkills.length
@@ -4912,6 +5126,11 @@ class database {
     if(BD.title !== undefined)
     {
       buildData.buildsData[1].title = BD.title
+    }
+    else if(BD.isESOCN && BD.buildName)
+    {
+      // ESOCN 格式使用 buildName 作为标题
+      buildData.buildsData[1].title = BD.buildName
     }
     else
     {
@@ -5285,6 +5504,10 @@ class database {
     if(type == 7) //this is name for cards
     {
       return await this.updateBuildData(setKey, 1)
+    }
+    if(type == 10) //this is name for ESOCN builds
+    {
+      return await this.updateBuildData(setKey, 2)
     }
 
     if(type == 11) //this is name for sets-english

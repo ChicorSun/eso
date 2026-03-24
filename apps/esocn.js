@@ -1,5 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import ESOAccount from '../model/esoAccount.js'
+import database from '../model/database.js'
 import fetch from 'node-fetch'
 import fs from 'node:fs'
 
@@ -48,6 +49,10 @@ export class esocn extends plugin {
         {
           reg: '^#esocn状态.*$',
           fnc: 'queryESOCNStatus'
+        },
+        {
+          reg: 'esocn.com.cn/build/',
+          fnc: 'parseBuildLink'
         }
       ]
     })
@@ -551,5 +556,495 @@ export class esocn extends plugin {
 
       return await this.reply(replyMsg)
     }
+  }
+
+  /**
+   * 解析 ESOCN Build 链接
+   * @param {*} e 消息对象
+   * @returns
+   */
+  async parseBuildLink(e) {
+    // 检查限流
+    const userId = String(e.user_id)
+    if (!checkRateLimit(userId)) {
+      return await this.reply('操作太频繁，请稍后再试')
+    }
+
+    // 提取 build ID
+    const buildId = this.extractBuildId(e.msg)
+    if (!buildId) {
+      return await this.reply('无法解析配装链接，请检查链接格式是否正确\n格式示例: https://esocn.com.cn/build/QAMjcC7k')
+    }
+
+    await this.reply('正在获取配装数据，请稍候...')
+
+    try {
+      // 调用 API 获取配装详情
+      const buildData = await this.getBuildDetail(buildId)
+      
+      if (!buildData.success || !buildData.data) {
+        return await this.reply(`获取配装失败：${buildData.message || '配装不存在或已删除'}`)
+      }
+
+      // 转换数据格式
+      const BD = await this.convertBuildData(buildData.data)
+      
+      // 使用 puppeteer 生成图片
+      const puppeteer = (await import('../../../lib/puppeteer/puppeteer.js')).default
+      
+      // 调用 database.updateData 处理数据
+      // 使用 type=10 进入 updateBuildData(BD, 2) 处理 ESOCN 格式
+      let processedData = await database.updateData(BD, 10)
+      
+      let image = await puppeteer.screenshot('eso', processedData)
+      
+      return await this.reply(image)
+
+    } catch (error) {
+      logger.error(`[ESOCN:Build解析] 解析失败: ${error.message}`)
+      return await this.reply('解析配装失败，请稍后重试')
+    }
+  }
+
+  /**
+   * 从消息中提取 Build ID
+   * @param {string} msg 消息内容
+   * @returns {string|null} Build ID
+   */
+  extractBuildId(msg) {
+    // 匹配 esocn.com.cn/build/XXXXXX 格式
+    const match = msg.match(/esocn\.com\.cn\/build\/([A-Za-z0-9]+)/i)
+    if (match && match[1]) {
+      return match[1]
+    }
+    return null
+  }
+
+  /**
+   * 获取配装详情
+   * @param {string} buildId 配装ID
+   * @returns {object} API返回结果
+   */
+  async getBuildDetail(buildId) {
+    try {
+      const url = `${ESOCN_API.BASE_URL}/api/builds/getBuildDetail`
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          buildId: buildId
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      logger.error(`[ESOCN:API] 获取配装详情失败: ${error.message}`)
+      return { success: false, message: 'API请求失败' }
+    }
+  }
+
+  /**
+   * 转换 ESOCN Build 数据为 BD 格式
+   * @param {object} data ESOCN返回的数据
+   * @returns {object} BD格式数据
+   */
+  async convertBuildData(data) {
+    const buildData = data.buildData || {}
+    const equipment = buildData.equipment || {}
+    const skills = buildData.skills || {}
+    const buffs = buildData.buffs || {}
+    const basicInfo = buildData.basicInfo || {}
+
+    // 职业映射表
+    const classMap = {
+      '1': { name: 'Dragonknight', cn: '龙骑' },
+      '2': { name: 'Sorcerer', cn: '巫师' },
+      '3': { name: 'Nightblade', cn: '夜刃' },
+      '4': { name: 'Warden', cn: '窝登' },
+      '5': { name: 'Templar', cn: '圣骑' },
+      '6': { name: 'Necromancer', cn: '死灵' },
+      '7': { name: 'Arcanist', cn: '奥术' }
+    }
+
+    // 角色定位映射（坦克和治疗固定，输出需要根据属性判断）
+    const roleMap = {
+      '坦克': { name: 'Tank', cn: '坦克' },
+      '治疗': { name: 'Healer', cn: '奶妈' }
+    }
+
+    // 获取职业信息
+    const classId = data.class || basicInfo.classId
+    const classInfo = classMap[classId] || { name: '', cn: '' }
+    
+    // 获取角色定位
+    const role = data.role || basicInfo.role
+    let roleInfo
+    
+    if (role === '输出') {
+      // 输出职业根据属性判断法系/耐系
+      const attributes = basicInfo.attributes || { magicka: 0, stamina: 0 }
+      if (attributes.magicka >= attributes.stamina) {
+        roleInfo = { name: 'MagickaDPS', cn: '法系' }
+      } else {
+        roleInfo = { name: 'StaminaDPS', cn: '耐系' }
+      }
+    } else {
+      roleInfo = roleMap[role] || { name: 'StaminaDPS', cn: '耐系' }
+    }
+
+    // 转换装备数据
+    const gearData = this.convertEquipment(equipment)
+
+    // 转换技能数据
+    const talentData = this.convertSkills(skills)
+
+    // 转换石头信息
+    const stoneInfo = this.convertMundusStone(buffs.mundusStone)
+
+    // 转换食物信息（异步）
+    const foodInfo = await this.convertFood(buffs.food)
+
+    // 转换种族信息
+    const raceInfo = this.convertRace(basicInfo.race || data.race)
+
+    // 转换技能线信息
+    const skillLineInfo = this.convertSkillLines(basicInfo.skillLine || data.subClass)
+
+    return {
+      virtual: 0,
+      playerName: data.author || basicInfo.authorName || '',
+      accountName: '',
+      className: classInfo.name,
+      classNameCN: classInfo.cn,
+      roleName: roleInfo.name,
+      roleNameCN: roleInfo.cn,
+      links: [],
+      gearData: gearData,
+      talentData: talentData,
+      race: basicInfo.race || data.race || '',
+      stoneInfo: stoneInfo,
+      foodInfo: foodInfo,
+      raceInfo: raceInfo,
+      skillLineInfo: skillLineInfo,
+      food: buffs.food ? buffs.food.name : '',
+      food_icon: buffs.food ? buffs.food.icon : '',
+      potion: buffs.potion ? buffs.potion.name : '',
+      potion_icon: buffs.potion ? buffs.potion.icon : '',
+      // ESOCN 特有数据标记
+      isESOCN: true,
+      buildName: data.buildName || basicInfo.buildName || '',
+      subtitle: data.subtitle || basicInfo.subtitle || '',
+      // 属性点数据
+      attributes: basicInfo.attributes || { health: 0, magicka: 0, stamina: 0 }
+    }
+  }
+
+  /**
+   * 转换装备数据
+   * @param {object} equipment 装备数据
+   * @returns {array} gearData 数组
+   */
+  convertEquipment(equipment) {
+    const slotMap = {
+      'head': { slot: 'Head', type: 'armor' },
+      'shoulders': { slot: 'Shoulders', type: 'armor' },
+      'chest': { slot: 'Chest', type: 'armor' },
+      'hands': { slot: 'Hands', type: 'armor' },
+      'waist': { slot: 'Waist', type: 'armor' },
+      'legs': { slot: 'Legs', type: 'armor' },
+      'feet': { slot: 'Feet', type: 'armor' },
+      'neck': { slot: 'Neck', type: 'jewelry' },
+      'ring1': { slot: 'Ring 1', type: 'jewelry' },
+      'ring2': { slot: 'Ring 2', type: 'jewelry' },
+      'mainHand': { slot: 'Main Hand', type: 'weapon' },
+      'offHand': { slot: 'Off Hand', type: 'weapon' },
+      'backbarMainHand': { slot: 'Main Hand Backup', type: 'weapon' },
+      'backbarOffHand': { slot: 'Off Hand Backup', type: 'weapon' }
+    }
+
+    const gearData = []
+
+    for (const [key, item] of Object.entries(equipment)) {
+      if (!item || !slotMap[key]) continue
+
+      const slotInfo = slotMap[key]
+      
+      // 确定装备类型 - 使用 type 字段（轻甲/中甲/重甲），而非 armor 字段
+      let armorType = ''
+      if (item.type) {
+        if (item.type.includes('轻甲')) armorType = 'Light'
+        else if (item.type.includes('中甲')) armorType = 'Medium'
+        else if (item.type.includes('重甲')) armorType = 'Heavy'
+        else armorType = item.type
+      }
+
+      // 处理武器类型
+      let weaponType = ''
+      if (slotInfo.type === 'weapon' && item.type) {
+        if (item.type.includes('火焰')) weaponType = 'Fire Staff'
+        else if (item.type.includes('寒冰')) weaponType = 'Frost Staff'
+        else if (item.type.includes('闪电')) weaponType = 'Lightning Staff'
+        else if (item.type.includes('恢复')) weaponType = 'Healing Staff'
+        else if (item.type.includes('弓')) weaponType = 'Bow'
+        else if (item.type.includes('盾')) weaponType = 'Shield'
+        else if (item.type.includes('匕首')) weaponType = 'Dagger'
+        else if (item.type.includes('锤')) weaponType = 'Hammer'
+        else if (item.type.includes('剑')) weaponType = 'Sword'
+        else if (item.type.includes('斧')) weaponType = 'Axe'
+        else weaponType = item.type
+      }
+
+      // 获取特质信息
+      const trait = item.trait || {}
+      const enchantment = item.enchantment || {}
+
+      // 获取品质颜色
+      let color = 'rgb(170, 170, 170)'
+      const quality = item.quality || '普通'
+      if (quality === '传说') color = 'rgb(255, 230, 45)'
+      else if (quality === '史诗') color = 'rgb(163, 53, 238)'
+      else if (quality === '精良') color = 'rgb(58, 146, 254)'
+      else if (quality === '优秀') color = 'rgb(47, 213, 14)'
+
+      // 处理图标路径
+      let iconUrl = item.icon || ''
+      if (iconUrl && !iconUrl.startsWith('http')) {
+        iconUrl = 'https://esoicons.uesp.net' + iconUrl
+      }
+
+      gearData.push({
+        level: item.level || 'CP160',
+        type: armorType || weaponType || 'Jewelry',
+        slot: slotInfo.slot,
+        name: {
+          text: item.name || '',
+          enName: item.enName || '',
+          link: '',
+          color: color,
+          image: iconUrl
+        },
+        set: item.setName || '',
+        setEn: item.setEn || item.enName || '',
+        trait: trait,
+        enchant: enchantment
+      })
+    }
+
+    return gearData
+  }
+
+  /**
+   * 转换技能数据
+   * @param {object} skills 技能数据
+   * @returns {array} talentData 数组
+   */
+  convertSkills(skills) {
+    const talentData = []
+    const mainBar = skills.mainBar || []
+    const backBar = skills.backBar || []
+
+    // 合并主副手技能
+    const maxLen = Math.max(mainBar.length, backBar.length)
+    
+    for (let i = 0; i < maxLen; i++) {
+      const mainSkill = mainBar[i] || {}
+      const backSkill = backBar[i] || {}
+
+      talentData.push({
+        mainSkill: {
+          icon: mainSkill.icon || '',
+          text: mainSkill.name || '',
+          address: mainSkill.skillTreeName || '',
+          color: this.getSkillColor(mainSkill)
+        },
+        offSkill: {
+          icon: backSkill.icon || '',
+          text: backSkill.name || '',
+          address: backSkill.skillTreeName || '',
+          color: this.getSkillColor(backSkill)
+        }
+      })
+    }
+
+    return talentData
+  }
+
+  /**
+   * 获取技能颜色
+   * @param {object} skill 技能数据
+   * @returns {string} 颜色值
+   */
+  getSkillColor(skill) {
+    if (!skill) return 'rgb(170, 170, 170)'
+    
+    // 终极技使用特殊颜色
+    if (skill.ultimate === 1 || skill.ultimate === true) {
+      return 'rgb(255, 204, 0)'
+    }
+    
+    // 根据消耗类型判断
+    if (skill.magickaCost > 0) return 'rgb(58, 146, 254)'
+    if (skill.staminaCost > 0) return 'rgb(47, 213, 14)'
+    
+    return 'rgb(170, 170, 170)'
+  }
+
+  /**
+   * 转换梦达斯之石
+   * @param {object} mundusStone 石头数据
+   * @returns {array} stoneInfo 数组
+   */
+  convertMundusStone(mundusStone) {
+    if (!mundusStone || !mundusStone.name) return []
+
+    const stoneMap = {
+      '学徒': 'ON-icon-mundusstone-Apprentice.png',
+      '侍灵': 'ON-icon-mundusstone-Atronach.png',
+      '女神': 'ON-icon-mundusstone-Lady.png',
+      '君王': 'ON-icon-mundusstone-Lord.png',
+      '恋人': 'ON-icon-mundusstone-Lover.png',
+      '法师': 'ON-icon-mundusstone-Mage.png',
+      '仪式': 'ON-icon-mundusstone-Ritual.png',
+      '毒蛇': 'ON-icon-mundusstone-Serpent.png',
+      '暗影': 'ON-icon-mundusstone-Shadow.png',
+      '战马': 'ON-icon-mundusstone-Steed.png',
+      '盗贼': 'ON-icon-mundusstone-Thief.png',
+      '高塔': 'ON-icon-mundusstone-Tower.png',
+      '战士': 'ON-icon-mundusstone-Warrior.png'
+    }
+
+    const name = mundusStone.name
+    let img = stoneMap[name] || 'ON-icon-mundusstone-Apprentice.png'
+
+    return [{
+      name: name,
+      name_cn: name,
+      name_en: 'The ' + name,
+      img: img
+    }]
+  }
+
+  /**
+   * 转换食物信息
+   * @param {object} food 食物数据
+   * @returns {array} foodInfo 数组
+   */
+  async convertFood(food) {
+    if (!food || !food.name) return []
+
+    // 提取图标名称（去掉路径和扩展名）
+    let iconName = ''
+    if (food.icon) {
+      // 去掉路径，只保留文件名
+      const parts = food.icon.split('/')
+      const fileName = parts.pop() || ''
+      // 去掉扩展名
+      iconName = fileName.replace(/\.[^/.]+$/, '')
+    }
+
+    // 使用 getimgs 获取正确的图片路径
+    let imgPath = ''
+    if (iconName) {
+      try {
+        const getimgs = (await import('../model/getimgs.js')).default
+        imgPath = await getimgs.realpath(iconName, 'foods')
+      } catch (err) {
+        logger.warn(`[ESOCN:食物] 获取食物图标失败: ${err.message}`)
+        imgPath = food.icon || ''
+      }
+    }
+
+    return [{
+      name: food.name,
+      name_cn: food.name,
+      name_en: food.enName || '',
+      img: imgPath
+    }]
+  }
+
+  /**
+   * 转换种族信息
+   * @param {string} race 种族名称
+   * @returns {array} raceInfo 数组
+   */
+  convertRace(race) {
+    if (!race) return []
+
+    const raceMap = {
+      '高精灵': { en: 'Altmer', img: 'Altmer' },
+      '木精灵': { en: 'Bosmer', img: 'Bosmer' },
+      '卡吉特': { en: 'Khajiit', img: 'Khajiit' },
+      '布莱顿': { en: 'Breton', img: 'Breton' },
+      '兽人': { en: 'Orc', img: 'Orc' },
+      '红卫': { en: 'Redguard', img: 'Redguard' },
+      '亚龙人': { en: 'Argonian', img: 'Argonian' },
+      '暗精灵': { en: 'Dunmer', img: 'Dunmer' },
+      '诺德人': { en: 'Nord', img: 'Nord' },
+      '帝国人': { en: 'Imperial', img: 'Imperial' }
+    }
+
+    const raceInfo = raceMap[race]
+    if (!raceInfo) return []
+
+    return [{
+      name_en: raceInfo.en,
+      name_cn: race,
+      img: raceInfo.img
+    }]
+  }
+
+  /**
+   * 转换技能线信息
+   * @param {array} skillLines 技能线数组
+   * @returns {array} skillLineInfo 数组
+   */
+  convertSkillLines(skillLines) {
+    if (!skillLines || !Array.isArray(skillLines)) return []
+
+    const skillLineMap = {
+      '黑暗魔法': { class_img: 'ON-icon-class-Sorcerer', class_name: '巫师' },
+      '魔族召唤': { class_img: 'ON-icon-class-Sorcerer', class_name: '巫师' },
+      '风暴呼唤': { class_img: 'ON-icon-class-Sorcerer', class_name: '巫师' },
+      '神族之矛': { class_img: 'ON-icon-class-Templar', class_name: '圣骑' },
+      '黎明之怒': { class_img: 'ON-icon-class-Templar', class_name: '圣骑' },
+      '恢复之光': { class_img: 'ON-icon-class-Templar', class_name: '圣骑' },
+      '烈焰之刃': { class_img: 'ON-icon-class-Dragonknight', class_name: '龙骑' },
+      '巨龙之力': { class_img: 'ON-icon-class-Dragonknight', class_name: '龙骑' },
+      '大地之心': { class_img: 'ON-icon-class-Dragonknight', class_name: '龙骑' },
+      '刺杀': { class_img: 'ON-icon-class-Nightblade', class_name: '夜刃' },
+      '暗影': { class_img: 'ON-icon-class-Nightblade', class_name: '夜刃' },
+      '虹吸': { class_img: 'ON-icon-class-Nightblade', class_name: '夜刃' },
+      '动物伙伴': { class_img: 'ON-icon-class-Warden', class_name: '守望' },
+      '绿色平衡': { class_img: 'ON-icon-class-Warden', class_name: '守望' },
+      '凛冬之拥': { class_img: 'ON-icon-class-Warden', class_name: '守望' },
+      '墓穴领主': { class_img: 'ON-icon-class-Necromancer', class_name: '死灵' },
+      '白骨暴君': { class_img: 'ON-icon-class-Necromancer', class_name: '死灵' },
+      '存世亡者': { class_img: 'ON-icon-class-Necromancer', class_name: '死灵' },
+      '古籍使者': { class_img: 'ON-icon-class-Arcanist', class_name: '奥术师' },
+      '异典士兵': { class_img: 'ON-icon-class-Arcanist', class_name: '奥术师' },
+      '药剂符师': { class_img: 'ON-icon-class-Arcanist', class_name: '奥术师' }
+    }
+
+    const result = []
+    for (const line of skillLines) {
+      const lineName = typeof line === 'string' ? line : (line.name || '')
+      const info = skillLineMap[lineName]
+      if (info) {
+        result.push({
+          img: info.class_img,
+          class_name: info.class_name,
+          line_name: lineName
+        })
+      }
+    }
+
+    return result
   }
 }
