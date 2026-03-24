@@ -28,7 +28,11 @@
           <span id="build_title">{{val.title}}</span>
         </div>
         <div id="name_div">
+          {{if val.isESOCN}}
+          <span id="name_string" style="font-size: 24px; color: #AAAAAA;">{{val.playerName}}</span>
+          {{else}}
           <span id="name_string" style="font-size: {{val.fontSize}};">{{val.playerName}}{{val.accountName}}</span>
+          {{/if}}
         </div>
       </div>
       {{if val.isESOCN}}
@@ -85,6 +89,28 @@
           </div>
         {{/each}}
         </div>
+
+        {{if val.isESOCN && val.vampireInfo.length > 0}}
+        <div id="VampireInfo">
+        {{each val.vampireInfo item}}
+          <div id="Vampire">
+            <img id="vampire_pic" src="{{pluResPath}}img/skills/../../../../../{{item.img}}.png" />
+            <span id="vampire_string">{{item.name}}</span>
+          </div>
+        {{/each}}
+        </div>
+        {{/if}}
+
+        {{if val.isESOCN && val.wolfInfo.length > 0}}
+        <div id="WolfInfo">
+        {{each val.wolfInfo item}}
+          <div id="Wolf">
+            <img id="wolf_pic" src="{{pluResPath}}img/skills/../../../../../{{item.img}}.png" />
+            <span id="wolf_string">{{item.name}}</span>
+          </div>
+        {{/each}}
+        </div>
+        {{/if}}
 
       </div>
     </div>

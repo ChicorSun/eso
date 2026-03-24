@@ -915,6 +915,11 @@ let setsBlackList = [
   "Broken Soul"
 ]
 
+//神器名单
+let numArtifacts = 0
+let artifactList = [
+]
+
 let numDungeons = 0
 let dgList = [
   "Spindleclutch II",
@@ -1252,6 +1257,12 @@ class database {
     return dgList
   }
 
+  async getArtifactList () {
+    await this.init_database()
+    return artifactList
+  }
+
+
   async getdgSets () {
     await this.init_database()
     return dgSetsTable
@@ -1269,6 +1280,7 @@ class database {
 
     await this.enhance_database()
     await this.init_databaseDG()
+    await this.init_databaseArtifact()
     //await this.list_setsData()
   }
 
@@ -2047,6 +2059,31 @@ class database {
         }
       }
     }
+  }
+
+  async init_databaseArtifact () {
+    if (numArtifacts > 0)
+    {
+      //logger.info("DataBaseArtifacts is ready, no need to update.")
+      return
+    }
+    //logger.info("Init ESOdataBaseArtifacts")
+
+    var keysSet = Object.keys(setsData)
+    var numSets = keysSet.length
+    var artifactIndex = 0
+
+    for (let setKey of keysSet) {
+      if(setsData[setKey].type == 12)
+      {
+        artifactList[artifactIndex] = setsData[setKey].name
+        //logger.info("[No." + artifactIndex + "]" + setsDataCN[setsData[setKey].id].name)
+        artifactIndex = artifactIndex+1
+      }
+    }
+    numArtifacts = artifactIndex
+    //logger.info("[EN]Num of artifacts is " + numArtifacts)
+    //logger.info(artifactList)
   }
 
   async init_databaseEN () {
@@ -4325,12 +4362,16 @@ class database {
     // ESOCN 格式使用不同的标题
     if(cardMode == 2 && BD.isESOCN)
     {
-      buildData.buildsData[1].head_title = "Build Info from www.esocn.com.cn created by " + BD.playerName
+      buildData.buildsData[1].head_title = "Build Info from www.esocn.com.cn created by " + (BD.author || BD.playerName)
       buildData.buildsData[1].accountName = ''
       buildData.buildsData[1].playerName = BD.playerName
       // 传递 ESOCN 标记和属性点
       buildData.buildsData[1].isESOCN = true
       buildData.buildsData[1].attributes = BD.attributes || { health: 0, magicka: 0, stamina: 0 }
+      // 传递吸血鬼信息
+      buildData.buildsData[1].vampireInfo = BD.vampireInfo || []
+      // 传递狼人信息
+      buildData.buildsData[1].wolfInfo = BD.wolfInfo || []
     }
     else
     {
@@ -4503,13 +4544,15 @@ class database {
         buildData.buildsData[1].gear[index].level = levelStr
         buildData.buildsData[1].gear[index].color = GI.name.color || 'rgb(170, 170, 170)'
         
-        // 非空装备的颜色设置（神话装备判断暂时注释，使用传说颜色）
-        // if(setData.atlasData[1].type == '神话')
-        // {
-        //   buildData.buildsData[1].gear[index].color = 'rgb(255, 110, 0)'
-        // } else {
+        // 非空装备的颜色设置（检查是否为神器）
+        // 确保 artifactList 已初始化
+        await this.init_database()
+        // 检查装备英文名是否在神器列表中
+        if(artifactList.includes(GI.name.enName)){
+          buildData.buildsData[1].gear[index].color = 'rgb(255, 110, 0)'
+        } else {
           buildData.buildsData[1].gear[index].color = 'rgb(255, 230, 45)'
-        // }
+        }
         
         buildData.buildsData[1].gear[index].level_class = 'inline-block'
         buildData.buildsData[1].gear[index].set_cn = GI.set || ''

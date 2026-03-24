@@ -717,9 +717,56 @@ export class esocn extends plugin {
     // 转换技能线信息
     const skillLineInfo = this.convertSkillLines(basicInfo.skillLine || data.subClass)
 
+    // buildName 存入 title，subtitle 存入 playerName
+    const buildTitle = data.buildName || basicInfo.buildName || ''
+    const subtitle = data.subtitle || basicInfo.subtitle || ''
+    const author = data.author || basicInfo.authorName || ''
+
+    // 处理吸血鬼信息
+    const vampireLevel = parseInt(data.vampire || basicInfo.vampire || 0)
+    let vampireInfo = []
+    if (vampireLevel > 0 && vampireLevel <= 5) {
+      const iconName = `ability_u26_vampire_infection_stage${vampireLevel}`
+      try {
+        const getimgs = (await import('../model/getimgs.js')).default
+        const imgPath = await getimgs.realpath(iconName, 'skills')
+        vampireInfo = [{
+          name: `吸血鬼${vampireLevel}阶`,
+          img: imgPath
+        }]
+      } catch (err) {
+        logger.warn(`[ESOCN:吸血鬼] 获取图标失败: ${err.message}`)
+        vampireInfo = [{
+          name: `吸血鬼${vampireLevel}阶`,
+          img: ''
+        }]
+      }
+    }
+
+    // 处理狼人信息
+    const wolfLevel = parseInt(data.wolf || basicInfo.wolf || 0)
+    let wolfInfo = []
+    if (wolfLevel > 0) {
+      const iconName = 'ability_werewolf_010'
+      try {
+        const getimgs = (await import('../model/getimgs.js')).default
+        const imgPath = await getimgs.realpath(iconName, 'skills')
+        wolfInfo = [{
+          name: '狼人病',
+          img: imgPath
+        }]
+      } catch (err) {
+        logger.warn(`[ESOCN:狼人] 获取图标失败: ${err.message}`)
+        wolfInfo = [{
+          name: '狼人病',
+          img: ''
+        }]
+      }
+    }
+
     return {
       virtual: 0,
-      playerName: data.author || basicInfo.authorName || '',
+      playerName: subtitle,
       accountName: '',
       className: classInfo.name,
       classNameCN: classInfo.cn,
@@ -733,14 +780,18 @@ export class esocn extends plugin {
       foodInfo: foodInfo,
       raceInfo: raceInfo,
       skillLineInfo: skillLineInfo,
+      vampireInfo: vampireInfo,
+      wolfInfo: wolfInfo,
       food: buffs.food ? buffs.food.name : '',
       food_icon: buffs.food ? buffs.food.icon : '',
       potion: buffs.potion ? buffs.potion.name : '',
       potion_icon: buffs.potion ? buffs.potion.icon : '',
       // ESOCN 特有数据标记
       isESOCN: true,
-      buildName: data.buildName || basicInfo.buildName || '',
-      subtitle: data.subtitle || basicInfo.subtitle || '',
+      title: buildTitle,
+      buildName: buildTitle,
+      subtitle: subtitle,
+      author: author,
       // 属性点数据
       attributes: basicInfo.attributes || { health: 0, magicka: 0, stamina: 0 }
     }
