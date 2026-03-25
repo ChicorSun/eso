@@ -4489,7 +4489,7 @@ class database {
       if(GI.slot == 'Off Hand'){index = 11; set_type = 2}
       if(GI.slot == 'Main Hand Backup'){index = 12; set_type = 2}
       if(GI.slot == 'Off Hand Backup'){index = 13; set_type = 2}
-      if(GI.type == 'Shield'){set_type = 0}
+      if(GI.gearType == 'Shield'){set_type = 0}
 
       if(index == -1)
       {
@@ -4508,18 +4508,18 @@ class database {
         }
         
         buildData.buildsData[1].gear[index].icon = iconName
-        buildData.buildsData[1].gear[index].type = GI.type
+        buildData.buildsData[1].gear[index].type = GI.gearType
         
         // 设置装备类型颜色 - 支持英文和中文类型
-        if(GI.type == 'Light' || GI.type == '轻甲')
+        if(GI.gearType == 'Light' || GI.gearType == '轻甲')
         {
           buildData.buildsData[1].gear[index].type_color = 'rgb(58, 146, 254)'
         }
-        else if(GI.type == 'Medium' || GI.type == '中甲')
+        else if(GI.gearType == 'Medium' || GI.gearType == '中甲')
         {
           buildData.buildsData[1].gear[index].type_color = 'rgb(47, 213, 14)'
         }
-        else if(GI.type == 'Heavy' || GI.type == '重甲')
+        else if(GI.gearType == 'Heavy' || GI.gearType == '重甲')
         {
           buildData.buildsData[1].gear[index].type_color = 'rgb(227, 36, 33)'
         }
@@ -4529,10 +4529,10 @@ class database {
         }
         
         // 设置名称 - name填入intv_cn, enName用<>包裹填入intv_en
-        // 武器部位（主手、副手、备用主手、备用副手）需要在名称后加上type
+        // 武器部位（主手、副手、备用主手、备用副手）需要在名称后加上gearType
         let nameCn = GI.name.text
-        if((index == 10 || index == 11 || index == 12 || index == 13) && GI.type){
-          nameCn = nameCn + GI.type
+        if((index == 10 || index == 11 || index == 12 || index == 13) && GI.gearType){
+          nameCn = nameCn + GI.gearType
         }
         buildData.buildsData[1].gear[index].name_cn = nameCn
         buildData.buildsData[1].gear[index].name_en = '<' + (GI.name.enName || '') + '>'
@@ -4545,10 +4545,8 @@ class database {
         buildData.buildsData[1].gear[index].color = GI.name.color || 'rgb(170, 170, 170)'
         
         // 非空装备的颜色设置（检查是否为神器）
-        // 确保 artifactList 已初始化
-        await this.init_database()
-        // 检查装备英文名是否在神器列表中
-        if(artifactList.includes(GI.name.enName)){
+        // 如果装备的 type 为 "12"，表示神器套装，使用橙色
+        if(GI.type == 12){
           buildData.buildsData[1].gear[index].color = 'rgb(255, 110, 0)'
         } else {
           buildData.buildsData[1].gear[index].color = 'rgb(255, 230, 45)'
@@ -4582,23 +4580,23 @@ class database {
         // 处理武器类型
         if(index == 10)
         {
-          if(GI.type == 'Fire Staff')
+          if(GI.gearType == 'Fire Staff')
           {
             left_weapon = 'Destruction_Staff_Fire'
           }
-          else if(GI.type == 'Frost Staff')
+          else if(GI.gearType == 'Frost Staff')
           {
             left_weapon = 'Destruction_Staff_Ice'
           }
-          else if(GI.type == 'Lightning Staff')
+          else if(GI.gearType == 'Lightning Staff')
           {
             left_weapon = 'Destruction_Staff_Lightning'
           }
-          else if(GI.type == 'Healing Staff')
+          else if(GI.gearType == 'Healing Staff')
           {
             left_weapon = 'Restoration_Staff'
           }
-          else if(GI.type == 'Bow')
+          else if(GI.gearType == 'Bow')
           {
             left_weapon = 'Bow'
           }
@@ -4610,11 +4608,11 @@ class database {
         
         if(index == 11)
         {
-          if(GI.type == 'Shield')
+          if(GI.gearType == 'Shield')
           {
             left_weapon = 'One_Hand_and_Shield'
           }
-          else if(GI.type == 'Dagger' || GI.type == 'Hammer' || GI.type == 'Sword' || GI.type == 'Axe' || GI.type == 'Mace')
+          else if(GI.gearType == 'Dagger' || GI.gearType == 'Hammer' || GI.gearType == 'Sword' || GI.gearType == 'Axe' || GI.gearType == 'Mace')
           {
             left_weapon = 'Dual_Wield'
           }
@@ -4622,23 +4620,23 @@ class database {
         
         if(index == 12)
         {
-          if(GI.type == 'Fire Staff')
+          if(GI.gearType == 'Fire Staff')
           {
             right_weapon = 'Destruction_Staff_Fire'
           }
-          else if(GI.type == 'Frost Staff')
+          else if(GI.gearType == 'Frost Staff')
           {
             right_weapon = 'Destruction_Staff_Ice'
           }
-          else if(GI.type == 'Lightning Staff')
+          else if(GI.gearType == 'Lightning Staff')
           {
             right_weapon = 'Destruction_Staff_Lightning'
           }
-          else if(GI.type == 'Healing Staff')
+          else if(GI.gearType == 'Healing Staff')
           {
             right_weapon = 'Restoration_Staff'
           }
-          else if(GI.type == 'Bow')
+          else if(GI.gearType == 'Bow')
           {
             right_weapon = 'Bow'
           }
@@ -4650,11 +4648,11 @@ class database {
         
         if(index == 13)
         {
-          if(GI.type == 'Shield')
+          if(GI.gearType == 'Shield')
           {
             right_weapon = 'One_Hand_and_Shield'
           }
-          else if(GI.type == 'Dagger' || GI.type == 'Hammer' || GI.type == 'Sword' || GI.type == 'Axe' || GI.type == 'Mace')
+          else if(GI.gearType == 'Dagger' || GI.gearType == 'Hammer' || GI.gearType == 'Sword' || GI.gearType == 'Axe' || GI.gearType == 'Mace')
           {
             right_weapon = 'Dual_Wield'
           }

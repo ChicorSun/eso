@@ -827,29 +827,29 @@ export class esocn extends plugin {
 
       const slotInfo = slotMap[key]
       
-      // 确定装备类型 - 使用 type 字段（轻甲/中甲/重甲），而非 armor 字段
+      // 确定装备类型 - 使用 gearType 字段（轻甲/中甲/重甲），而非 armor 字段
       let armorType = ''
-      if (item.type) {
-        if (item.type.includes('轻甲')) armorType = 'Light'
-        else if (item.type.includes('中甲')) armorType = 'Medium'
-        else if (item.type.includes('重甲')) armorType = 'Heavy'
-        else armorType = item.type
+      if (item.gearType) {
+        if (item.gearType.includes('轻甲')) armorType = 'Light'
+        else if (item.gearType.includes('中甲')) armorType = 'Medium'
+        else if (item.gearType.includes('重甲')) armorType = 'Heavy'
+        else armorType = item.gearType
       }
 
       // 处理武器类型
       let weaponType = ''
-      if (slotInfo.type === 'weapon' && item.type) {
-        if (item.type.includes('火焰')) weaponType = 'Fire Staff'
-        else if (item.type.includes('寒冰')) weaponType = 'Frost Staff'
-        else if (item.type.includes('闪电')) weaponType = 'Lightning Staff'
-        else if (item.type.includes('恢复')) weaponType = 'Healing Staff'
-        else if (item.type.includes('弓')) weaponType = 'Bow'
-        else if (item.type.includes('盾')) weaponType = 'Shield'
-        else if (item.type.includes('匕首')) weaponType = 'Dagger'
-        else if (item.type.includes('锤')) weaponType = 'Hammer'
-        else if (item.type.includes('剑')) weaponType = 'Sword'
-        else if (item.type.includes('斧')) weaponType = 'Axe'
-        else weaponType = item.type
+      if (slotInfo.type === 'weapon' && item.gearType) {
+        if (item.gearType.includes('火焰')) weaponType = 'Fire Staff'
+        else if (item.gearType.includes('寒冰')) weaponType = 'Frost Staff'
+        else if (item.gearType.includes('闪电')) weaponType = 'Lightning Staff'
+        else if (item.gearType.includes('恢复')) weaponType = 'Healing Staff'
+        else if (item.gearType.includes('弓')) weaponType = 'Bow'
+        else if (item.gearType.includes('盾')) weaponType = 'Shield'
+        else if (item.gearType.includes('匕首')) weaponType = 'Dagger'
+        else if (item.gearType.includes('锤')) weaponType = 'Hammer'
+        else if (item.gearType.includes('剑')) weaponType = 'Sword'
+        else if (item.gearType.includes('斧')) weaponType = 'Axe'
+        else weaponType = item.gearType
       }
 
       // 获取特质信息
@@ -872,7 +872,8 @@ export class esocn extends plugin {
 
       gearData.push({
         level: item.level || 'CP160',
-        type: armorType || weaponType || 'Jewelry',
+        type: item.type,  // 原始 type 字段（用于判断神器，如 "12"）
+        gearType: armorType || weaponType || 'Jewelry',  // 装备类型（轻甲/中甲/重甲/武器）
         slot: slotInfo.slot,
         name: {
           text: item.name || '',
