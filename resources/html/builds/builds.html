@@ -191,6 +191,34 @@
         </tr>
         {{/each}}
       </table>
+      {{if val.isESOCN && val.craftedSkills && val.craftedSkills.length > 0}}
+      <div class="craftedSkills_div">
+        {{each val.craftedSkills skill}}
+        <div class="crafted_skill_item">
+          <div class="crafted_skill_main">
+            <img src="{{pluResPath}}img/skills/../../../../../{{skill.bookIcon}}.png" class="crafted_skill_icon">
+            <div class="crafted_skill_content">
+              <div class="crafted_skill_name">{{skill.name}} {{skill.enName}}</div>
+              <div class="crafted_scripts">
+                <div class="crafted_script">
+                  <img src="{{pluResPath}}img/skills/../../../../../{{skill.slots1.icon}}.png" class="crafted_script_icon">
+                  <span class="crafted_script_text">{{skill.slots1.name}}</span>
+                </div>
+                <div class="crafted_script">
+                  <img src="{{pluResPath}}img/skills/../../../../../{{skill.slots2.icon}}.png" class="crafted_script_icon">
+                  <span class="crafted_script_text">{{skill.slots2.name}}</span>
+                </div>
+                <div class="crafted_script">
+                  <img src="{{pluResPath}}img/skills/../../../../../{{skill.slots3.icon}}.png" class="crafted_script_icon">
+                  <span class="crafted_script_text">{{skill.slots3.name}}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {{/each}}
+      </div>
+      {{/if}}
     </div>
     {{/if}}
     {{/each}}

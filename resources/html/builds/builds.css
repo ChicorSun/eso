@@ -412,3 +412,69 @@ spell_cell_f {
   text-align: center;
   color: #7994a7;
 }
+
+/* Crafted Skills (篆刻技能) Styles */
+.craftedSkills_div {
+  width: 30%;
+  display: flex;
+  flex-direction: column;
+  margin-top: 15px;
+  padding-left: 20px;
+}
+
+.crafted_skill_item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.crafted_skill_main {
+  display: flex;
+  align-items: center;
+}
+
+.crafted_skill_icon {
+  width: 48px;
+  height: 48px;
+  margin-right: 5px;
+}
+
+.crafted_skill_content {
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+}
+
+.crafted_skill_name {
+  font-size: 16px;
+  color: #FFFFFF;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  margin-bottom: 2px;
+}
+
+.crafted_scripts {
+  display: flex;
+  flex-direction: row;
+}
+
+.crafted_script {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.crafted_script_icon {
+  width: 28px;
+  height: 28px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.crafted_script_text {
+  font-size: 12px;
+  color: #e5e2b9;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 2px;
+}

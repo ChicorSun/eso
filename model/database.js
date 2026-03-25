@@ -1907,6 +1907,19 @@ class database {
         }
       }
     }
+
+    if(updateImgMode == 1)
+    {
+      keysLine = Object.keys(allSkillData["scriptList"])
+      for (let index of keysLine) {
+        let skillLine = allSkillData["scriptList"][index]
+        let icon = await this.splitStr(skillLine.icon, 'icons/', '.dds')
+        if(icon != 'icon_missing')
+        {
+          await getimgs.realpath(icon, "craftedScripts")
+        }  
+      }
+    }
     skillID2IndexCN.init = 'done'
   }
 
@@ -4372,6 +4385,8 @@ class database {
       buildData.buildsData[1].vampireInfo = BD.vampireInfo || []
       // 传递狼人信息
       buildData.buildsData[1].wolfInfo = BD.wolfInfo || []
+      // 传递篆刻技能信息
+      buildData.buildsData[1].craftedSkills = BD.craftedSkills || []
     }
     else
     {

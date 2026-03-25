@@ -39,6 +39,8 @@ class getimgs {
           url = `https://assets.rpglogs.com/img/eso/zones/${name}.png`
         } else if (type == `avatar`) {
           url = `https://q1.qlogo.cn/g?b=qq&nk=${name}&s=160`
+        } else if (type == `craftedScripts`) {
+          url = `https://storage.esocn.com.cn/esoui/art/icons/${name}.png`
         } else if (type == 'esocn_avatar' && (typeof name === 'string' && (name.startsWith('http://') || name.startsWith('https://')))) {
           // ESOCN 头像直接下载
           const url = name

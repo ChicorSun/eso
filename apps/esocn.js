@@ -764,6 +764,9 @@ export class esocn extends plugin {
       }
     }
 
+    // 转换篆刻技能数据
+    const craftedSkills = await this.convertCraftedSkills(buildData.craftedSkills)
+
     return {
       virtual: 0,
       playerName: subtitle,
@@ -793,7 +796,9 @@ export class esocn extends plugin {
       subtitle: subtitle,
       author: author,
       // 属性点数据
-      attributes: basicInfo.attributes || { health: 0, magicka: 0, stamina: 0 }
+      attributes: basicInfo.attributes || { health: 0, magicka: 0, stamina: 0 },
+      // 篆刻技能数据
+      craftedSkills: craftedSkills
     }
   }
 
@@ -1032,8 +1037,8 @@ export class esocn extends plugin {
     const raceMap = {
       '高精灵': { en: 'Altmer', img: 'Altmer' },
       '木精灵': { en: 'Bosmer', img: 'Bosmer' },
-      '虎人': { en: 'Khajiit', img: 'Khajiit' },
-      '布莱顿人': { en: 'Breton', img: 'Breton' },
+      '卡吉特': { en: 'Khajiit', img: 'Khajiit' },
+      '布莱顿': { en: 'Breton', img: 'Breton' },
       '兽人': { en: 'Orc', img: 'Orc' },
       '红卫': { en: 'Redguard', img: 'Redguard' },
       '亚龙人': { en: 'Argonian', img: 'Argonian' },
@@ -1095,6 +1100,99 @@ export class esocn extends plugin {
           line_name: lineName
         })
       }
+    }
+
+    return result
+  }
+
+  /**
+   * 转换篆刻技能数据
+   * @param {array} craftedSkills 篆刻技能数组
+   * @returns {array} 处理后的篆刻技能数组
+   */
+  async convertCraftedSkills(craftedSkills) {
+    if (!craftedSkills || !Array.isArray(craftedSkills) || craftedSkills.length === 0) {
+      return []
+    }
+
+    const getimgs = (await import('../model/getimgs.js')).default
+    const result = []
+
+    for (const skill of craftedSkills) {
+      // 提取篆刻技能图标名称（技能效果图标）
+      let skillIconName = ''
+      if (skill.icon) {
+        const match = skill.icon.match(/\/([^\/]+)\.webp$/)
+        if (match) {
+          skillIconName = match[1]
+        }
+      }
+
+      // 提取魔典图标名称（book-icon）
+      let bookIconName = ''
+      if (skill['book-icon']) {
+        const match = skill['book-icon'].match(/\/([^\/]+)\.webp$/)
+        if (match) {
+          bookIconName = match[1]
+        }
+      }
+
+      // 提取脚本图标名称
+      const extractScriptIcon = (iconPath) => {
+        if (!iconPath) return ''
+        const match = iconPath.match(/\/([^\/]+)\.webp$/)
+        return match ? match[1] : ''
+      }
+
+      const slots1IconName = extractScriptIcon(skill.slots1?.icon)
+      const slots2IconName = extractScriptIcon(skill.slots2?.icon)
+      const slots3IconName = extractScriptIcon(skill.slots3?.icon)
+
+      let skillIconNamePath = ''
+      let bookIconNamePath = ''
+      let slots1IconNamePath = ''
+      let slots2IconNamePath = ''
+      let slots3IconNamePath = ''
+
+      // 下载图标到本地
+      try {
+        if (skillIconName) {
+          skillIconNamePath = await getimgs.realpath(skillIconName, 'skills')
+        }
+        if (bookIconName) {
+          bookIconNamePath = await getimgs.realpath(bookIconName, 'skills')
+        }
+        if (slots1IconName) {
+          slots1IconNamePath  = await getimgs.realpath(slots1IconName, 'craftedScripts')
+        }
+        if (slots2IconName) {
+          slots2IconNamePath = await getimgs.realpath(slots2IconName, 'craftedScripts')
+        }
+        if (slots3IconName) {
+          slots3IconNamePath = await getimgs.realpath(slots3IconName, 'craftedScripts')
+        }
+      } catch (err) {
+        logger.warn(`[ESOCN:篆刻技能] 下载图标失败: ${err.message}`)
+      }
+
+      result.push({
+        name: skill.name || '',
+        enName: skill.enName || '',
+        icon: skillIconNamePath,
+        bookIcon: bookIconNamePath,
+        slots1: {
+          name: skill.slots1?.name || '',
+          icon: slots1IconNamePath
+        },
+        slots2: {
+          name: skill.slots2?.name || '',
+          icon: slots2IconNamePath
+        },
+        slots3: {
+          name: skill.slots3?.name || '',
+          icon: slots3IconNamePath
+        }
+      })
     }
 
     return result
