@@ -415,66 +415,74 @@ spell_cell_f {
 
 /* Crafted Skills (篆刻技能) Styles */
 .craftedSkills_div {
-  width: 30%;
+  width: 100%;
   display: flex;
-  flex-direction: column;
-  margin-top: 15px;
-  padding-left: 20px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 6px;
+  padding: 0 8px;
 }
 
 .crafted_skill_item {
   display: flex;
-  align-items: center;
-  margin-bottom: 10px;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  max-width: 33.33%;
+  min-width: 280px;
+  margin-bottom: 4px;
+  box-sizing: border-box;
+  padding-right: 6px;
 }
 
 .crafted_skill_main {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .crafted_skill_icon {
-  width: 48px;
-  height: 48px;
-  margin-right: 5px;
+  width: 68px;
+  height: 68px;
+  margin-right: 2px;
+  flex-shrink: 0;
 }
 
 .crafted_skill_content {
   display: flex;
   flex-direction: column;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .crafted_skill_name {
-  font-size: 16px;
+  font-size: 24px;
   color: #FFFFFF;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   margin-bottom: 2px;
+  line-height: 1.1;
 }
 
 .crafted_scripts {
   display: flex;
   flex-direction: row;
+  flex-wrap: nowrap;
 }
 
 .crafted_script {
   display: flex;
   align-items: center;
-  margin-right: 8px;
+  margin-right: 3px;
 }
 
 .crafted_script_icon {
-  width: 28px;
-  height: 28px;
-  display: inline-block;
-  vertical-align: middle;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
 }
 
 .crafted_script_text {
-  font-size: 12px;
+  font-size: 16px;
   color: #e5e2b9;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 2px;
+  margin-left: 1px;
+  white-space: nowrap;
 }
