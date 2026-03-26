@@ -37,6 +37,11 @@ body {
   color: #919191;
 }
 
+.head_title_author {
+  color: #DDDDDD;
+  font-weight: bold;
+}
+
 #Header{
   height: 100px;
   width: 100%;
@@ -485,4 +490,60 @@ spell_cell_f {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   margin-left: 1px;
   white-space: nowrap;
+}
+
+/* CP Points (冠军点数) Styles */
+.cpPoints_div {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  margin-top: 10px;
+  padding: 0 10px;
+}
+
+.cpCategory {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 5px;
+  box-sizing: border-box;
+}
+
+.cpCategoryHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.cpCategoryIcon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
+}
+
+.cpCategoryName {
+  font-size: 18px;
+  color: #FFFFFF;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.cpItems {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.cpItem {
+  width: 50%;
+  font-size: 22px;
+  color: #e5e2b9;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  line-height: 1.4;
+  padding: 2px 0;
 }

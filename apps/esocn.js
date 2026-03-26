@@ -767,6 +767,9 @@ export class esocn extends plugin {
     // 转换篆刻技能数据
     const craftedSkills = await this.convertCraftedSkills(buildData.craftedSkills)
 
+    // 转换 CP 数据
+    const cpPoints = this.convertCPPoints(buildData)
+
     return {
       virtual: 0,
       playerName: subtitle,
@@ -798,7 +801,9 @@ export class esocn extends plugin {
       // 属性点数据
       attributes: basicInfo.attributes || { health: 0, magicka: 0, stamina: 0 },
       // 篆刻技能数据
-      craftedSkills: craftedSkills
+      craftedSkills: craftedSkills,
+      // CP 点数数据
+      cpPoints: cpPoints
     }
   }
 
@@ -1193,6 +1198,54 @@ export class esocn extends plugin {
           icon: slots3IconNamePath
         }
       })
+    }
+
+    return result
+  }
+
+  /**
+   * 转换 CP 点数数据
+   * @param {object} buildData 构建数据
+   * @returns {object} CP 数据对象
+   */
+  convertCPPoints(buildData) {
+    const result = {
+      crafted: [],
+      warfare: [],
+      fitness: []
+    }
+
+    // 处理制作 CP (selectedCraftedCP)
+    const selectedCraftedCP = buildData.selectedCraftedCP || []
+    for (const cp of selectedCraftedCP) {
+      if (cp && cp.name) {
+        result.crafted.push({
+          name: cp.name,
+          enName: cp.en_name || ''
+        })
+      }
+    }
+
+    // 处理战争 CP (selectedWarfareCP)
+    const selectedWarfareCP = buildData.selectedWarfareCP || []
+    for (const cp of selectedWarfareCP) {
+      if (cp && cp.name) {
+        result.warfare.push({
+          name: cp.name,
+          enName: cp.en_name || ''
+        })
+      }
+    }
+
+    // 处理强健 CP (selectedFitnessCP)
+    const selectedFitnessCP = buildData.selectedFitnessCP || []
+    for (const cp of selectedFitnessCP) {
+      if (cp && cp.name) {
+        result.fitness.push({
+          name: cp.name,
+          enName: cp.en_name || ''
+        })
+      }
     }
 
     return result

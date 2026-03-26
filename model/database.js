@@ -4375,7 +4375,8 @@ class database {
     // ESOCN 格式使用不同的标题
     if(cardMode == 2 && BD.isESOCN)
     {
-      buildData.buildsData[1].head_title = "Build Info from www.esocn.com.cn created by " + (BD.author || BD.playerName)
+      buildData.buildsData[1].head_title = "Build Info from www.esocn.com.cn created by "
+      buildData.buildsData[1].head_title_author = BD.author || BD.playerName
       buildData.buildsData[1].accountName = ''
       buildData.buildsData[1].playerName = BD.playerName
       // 传递 ESOCN 标记和属性点
@@ -4387,6 +4388,8 @@ class database {
       buildData.buildsData[1].wolfInfo = BD.wolfInfo || []
       // 传递篆刻技能信息
       buildData.buildsData[1].craftedSkills = BD.craftedSkills || []
+      // 传递 CP 点数信息
+      buildData.buildsData[1].cpPoints = BD.cpPoints || { crafted: [], warfare: [], fitness: [] }
     }
     else
     {

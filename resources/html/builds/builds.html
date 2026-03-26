@@ -13,7 +13,7 @@
     {{if index==0}}
     {{else}}
     <div  class="Up_Border"  id="Up_Border"></div>
-    <div class="Title" id="Title">{{val.head_title}}</div>
+    <div class="Title" id="Title">{{val.head_title}}{{if val.isESOCN}}<span class="head_title_author">{{val.head_title_author}}</span>{{/if}}</div>
     <div class="Header" id="Header">
       <div id="Class">
         <img id="class_pic" src="{{pluResPath}}img/classes/{{val.class}}.png" />
@@ -217,6 +217,49 @@
           </div>
         </div>
         {{/each}}
+      </div>
+      {{/if}}
+      {{if val.isESOCN && val.cpPoints}}
+      <div class="cpPoints_div">
+        {{if val.cpPoints.crafted && val.cpPoints.crafted.length > 0}}
+        <div class="cpCategory">
+          <div class="cpCategoryHeader">
+            <img src="{{pluResPath}}img/icon/ON-icon-Champion_Stamina.png" class="cpCategoryIcon">
+            <span class="cpCategoryName">制作</span>
+          </div>
+          <div class="cpItems">
+            {{each val.cpPoints.crafted item}}
+            <div class="cpItem">{{item.name}}</div>
+            {{/each}}
+          </div>
+        </div>
+        {{/if}}
+        {{if val.cpPoints.warfare && val.cpPoints.warfare.length > 0}}
+        <div class="cpCategory">
+          <div class="cpCategoryHeader">
+            <img src="{{pluResPath}}img/icon/ON-icon-Champion_Magicka.png" class="cpCategoryIcon">
+            <span class="cpCategoryName">战争</span>
+          </div>
+          <div class="cpItems">
+            {{each val.cpPoints.warfare item}}
+            <div class="cpItem">{{item.name}}</div>
+            {{/each}}
+          </div>
+        </div>
+        {{/if}}
+        {{if val.cpPoints.fitness && val.cpPoints.fitness.length > 0}}
+        <div class="cpCategory">
+          <div class="cpCategoryHeader">
+            <img src="{{pluResPath}}img/icon/ON-icon-Champion_Health.png" class="cpCategoryIcon">
+            <span class="cpCategoryName">强健</span>
+          </div>
+          <div class="cpItems">
+            {{each val.cpPoints.fitness item}}
+            <div class="cpItem">{{item.name}}</div>
+            {{/each}}
+          </div>
+        </div>
+        {{/if}}
       </div>
       {{/if}}
     </div>
