@@ -131,7 +131,11 @@
             <div class="intv_en">{{item.name_en}}</div>
           </div>
           <div class="trans">
+            {{if item.trait == '牢不可破<Impenetrable>'}}
+            <div class="tran" style="width: 317px; margin: -5px -5px 0px -33px;">{{item.trait}}</div>
+            {{else}}
             <div class="tran">{{item.trait}}</div>
+            {{/if}}
             <div class="enchant" style="color: {{item.enchantColor}};">{{item.enchant}}</div>
           </div>
         </div>
