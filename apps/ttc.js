@@ -4781,17 +4781,18 @@ export class ttc extends plugin {
         levelClass: (data.等级 === 'CP160') ? 'cp160' : 'level160',
         rowBackgroundClass: this.getLevelBackgroundClass(data.等级),
         trait: data.特质 || '未知',
-        // 价格信息 (按用户要求的顺序：最低价 → 最高价 → 平均价 → 销售均价→建议价)
-        lowPrice: data.最低价 ? `${data.最低价.toLocaleString()}金` : null,
-        highPrice: data.最高价 ? `${data.最高价.toLocaleString()}金` : null,
-        averagePrice: data.平均价 ? `${data.平均价.toLocaleString()}金` : null,
-        salesAvgPrice: data.销售均价 ? `${data.销售均价.toLocaleString()}金` : null,
-        suggestedPrice: data.建议价 ? `${data.建议价.toLocaleString()}金` : null,
+        // 价格信息 (按用户要求的顺序：最低价 → 最高价 → 平均价 → 成交均价 → 建议价)
+        // 价格不再包含"金"字，由模板中的金币图片替代
+        lowPrice: data.最低价 ? data.最低价.toLocaleString() : null,
+        highPrice: data.最高价 ? data.最高价.toLocaleString() : null,
+        averagePrice: data.平均价 ? data.平均价.toLocaleString() : null,
+        salesAvgPrice: data.销售均价 ? data.销售均价.toLocaleString() : null,
+        suggestedPrice: data.建议价 ? data.建议价.toLocaleString() : null,
         // 交易信息
-        listingCount: data.列表数量 ? `${data.列表数量}个` : null,
+        listingCount: data.列表数量 ? `${data.列表数量}栏` : null,
         totalItems: data.总物品数 ? `${data.总物品数}个` : null,
         salesCount: data.销售记录数 ? `${data.销售记录数}笔` : null,
-        salesTotal: data.销售总数 ? `${data.销售总数}笔` : null
+        salesTotal: data.销售总数 ? `${data.销售总数}个` : null
       }
       priceData.push(item)
     }

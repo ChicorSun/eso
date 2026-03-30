@@ -323,6 +323,54 @@ body {
   font-weight: 500;
 }
 
+/* Tips名词解释区域样式 */
+.tips-container {
+  background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+  border: 1px solid #f0d78c;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(240, 215, 140, 0.3);
+}
+
+.tips-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #856404;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tips-content {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #5c4a08;
+}
+
+.tips-content p {
+  margin: 6px 0;
+  text-align: justify;
+}
+
+.tips-content b {
+  font-weight: 700;
+  color: #856404;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* 金币图标样式 */
+.gold-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-left: 3px;
+  display: inline-block;
+}
+
 /* 响应式调整 */
 @media (max-width: 600px) {
   .price-row {

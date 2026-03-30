@@ -38,12 +38,12 @@
             <div class="col-low">最低价</div>
             <div class="col-high">最高价</div>
             <div class="col-avg">平均价</div>
-            <div class="col-sales">销售均价</div>
+            <div class="col-sales">成交均价</div>
             <div class="col-suggest">建议价</div>
-            <div class="col-listing">在售数量</div>
-            <div class="col-total-items">总物品数</div>
-            <div class="col-sales-count">销售记录</div>
-            <div class="col-sales-total">销售总数</div>
+            <div class="col-listing">在售栏位</div>
+            <div class="col-total-items">在售总数</div>
+            <div class="col-sales-count">近期成交记录</div>
+            <div class="col-sales-total">近期成交总数</div>
           </div>
           
           {{each val.priceData item idx}}
@@ -57,11 +57,11 @@
                 <span class="trait">{{item.trait}}</span>
               </div>
             </div>
-            <div class="col-low">{{item.lowPrice || '-'}}</div>
-            <div class="col-high">{{item.highPrice || '-'}}</div>
-            <div class="col-avg">{{item.averagePrice || '-'}}</div>
-            <div class="col-sales">{{item.salesAvgPrice || '-'}}</div>
-            <div class="col-suggest">{{item.suggestedPrice || '-'}}</div>
+            <div class="col-low">{{@item.lowPrice ? item.lowPrice + '<img class="gold-icon" src="' + pluResPath + 'img/icon/gold.png" />' : '-'}}</div>
+            <div class="col-high">{{@item.highPrice ? item.highPrice + '<img class="gold-icon" src="' + pluResPath + 'img/icon/gold.png" />' : '-'}}</div>
+            <div class="col-avg">{{@item.averagePrice ? item.averagePrice + '<img class="gold-icon" src="' + pluResPath + 'img/icon/gold.png" />' : '-'}}</div>
+            <div class="col-sales">{{@item.salesAvgPrice ? item.salesAvgPrice + '<img class="gold-icon" src="' + pluResPath + 'img/icon/gold.png" />' : '-'}}</div>
+            <div class="col-suggest">{{@item.suggestedPrice ? item.suggestedPrice + '<img class="gold-icon" src="' + pluResPath + 'img/icon/gold.png" />' : '-'}}</div>
             <div class="col-listing">{{item.listingCount || '-'}}</div>
             <div class="col-total-items">{{item.totalItems || '-'}}</div>
             <div class="col-sales-count">{{item.salesCount || '-'}}</div>
@@ -74,6 +74,17 @@
             ... 还有 {{val.moreCount}} 条数据
           </div>
           {{/if}}
+          
+          <!-- Tips名词解释区域 -->
+          <div class="tips-container">
+            <div class="tips-title">📌 名词解释</div>
+            <div class="tips-content">
+              <p><b>最低价</b>、<b>最高价</b>、<b>平均价</b>：均为上架价格的统计结果。</p>
+              <p><b>成交均价</b>：为实际成交的价格。</p>
+              <p><b>在售栏位</b>、<b>在售总数</b>：小明上架了两个栏位的物品A，第一个栏位包含10个物品A，第二个栏位包含20个物品A，此时在售栏位增加2个，在售总数增加30个。</p>
+              <p><b>近期成交记录</b>、<b>近期成交总数</b>：上面的例子中，小明的物品都卖掉了，此时近期成交记录增加2笔，近期成交总数增加30个。</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -82,4 +93,4 @@
     <div class="logo">TTC Price Data · ESO-Bot</div>
   </div>
 </body>
-</html> 
+</html>
