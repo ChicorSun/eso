@@ -131,6 +131,40 @@ const CITIES_LIST = {
   "独孤城": 30008
 }
 
+// ===========================================
+// 热销商品列表
+// ===========================================
+const HOT_ITEMS_LIST = [
+  { itemId: '2677', itemName: '松香', icon: 'crafting_wood_rosin.png' },
+  { itemId: '211', itemName: '蟹灵蜡', icon: 'crafting_outfitter_potion_014.png' },
+  { itemId: '5687', itemName: '回火合金', icon: 'crafting_tempering_alloy.png' },
+  { itemId: '6132', itemName: '完美鱼子酱', icon: 'crafting_heavy_armor_vendor_component_002.png' },
+  { itemId: '1114', itemName: '库塔', icon: 'crafting_components_runestones_002.png' },
+  { itemId: '18023', itemName: '铂金粉', icon: 'crafting_platinum_dust.png' },
+  { itemId: '18031', itemName: '铂金锻条', icon: 'crafting_platinum_refined.png' },
+  { itemId: '6554', itemName: '粗糙祖先丝绸', icon: 'crafting_light_armor_standard_f_005.png' },
+  { itemId: '6555', itemName: '发红皮革碎片', icon: 'crafting_leather_ambergris.png' },
+  { itemId: '6473', itemName: '赤晶矿', icon: 'crafting_jewelry_base_ruby_r1.png' },
+  { itemId: '4794', itemName: '哈科杰', icon: 'crafting_components_runestones_058.png' },
+  { itemId: '3790', itemName: '强效奈恩核心', icon: 'crafting_potent_nirncrux_dust.png' },
+  { itemId: '11984', itemName: '金属渣', icon: 'crafting_furniture_base_regulus.png' },
+  { itemId: '11971', itemName: '心材', icon: 'crafting_furniture_base_heartwood.png' },
+  { itemId: '11983', itemName: '尘世符文', icon: 'crafting_furniture_base_mundante_rune.png' },
+  { itemId: '11979', itemName: '装饰蜡', icon: 'crafting_furniture_base_decorative_wax.png' },
+  { itemId: '20178', itemName: '闪耀之沙', icon: 'crafting_shimmering_sand.png' },
+  { itemId: '17750', itemName: '库兰达漆', icon: 'crafting_leather_phlegm.png' },
+  { itemId: '25342', itemName: '思坦达印记', icon: 'u34_crafting_style_item_steadfast_society.png' },
+  { itemId: '17868', itemName: '罗刹石', icon: 'crafting_enchantment_baxe_bloodstone_r1.png' },
+  { itemId: '18092', itemName: '润滑蜡', icon: 'crafting_outfitter_plug_component_002.png' },
+  { itemId: '18099', itemName: '黎明晶石', icon: 'jewelrycrafting_trait_refined_dawnprism.png' },
+  { itemId: '17989', itemName: '琥珀石', icon: 'crafting_enchantment_base_jade_r1.png' },
+  { itemId: '21009', itemName: '龙之分泌物', icon: 'item_u24_dragonstears.png' },
+  { itemId: '20157', itemName: '龙之血', icon: 'crafting_dragons_blood.png' },
+  { itemId: '3200', itemName: '耧斗花', icon: 'crafting_flower_columbine_r1.png' },
+  { itemId: '17523', itemName: '珍珠母粉末', icon: 'crafting_style_item_celestial_r1.png' },
+  { itemId: '7919', itemName: '流萤虫胸节', icon: 'crafting_poisonmaking_reagent_torchbug_thorax.png' },
+  { itemId: '8102', itemName: '泥蟹甲壳', icon: 'crafting_poisonmaking_reagent_mudcrab_chitin.png' }
+]
 
 // ===========================================
 // 公会位置缓存文件路径
@@ -429,6 +463,12 @@ export class ttc extends plugin {
           reg: '^#*(更新拍卖行位置)$',
           /** 执行方法 */
           fnc: 'updateGuildNPCLocation'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#*(热销商品|快销商品|热销物品|快销物品|热销物|快销物).*$',
+          /** 执行方法 */
+          fnc: 'queryHotItems'
         }
       ]
     })
@@ -1873,6 +1913,14 @@ export class ttc extends plugin {
 ※ 支持最多30条价格数据展示
 ※ 默认查询${defaultServerConfig.name}价格
 
+🔥 热销商品
+#热销商品 [服务器]
+示例：#热销商品
+示例：#热销商品 欧服
+功能：查看热门生活材料的价格榜单
+※ 按近期成交总金额（成交均价×成交总数）降序排列
+※ 包含29种常用材料：松香、蟹灵蜡、铂金粉、龙之血等
+
 🔄 更新价格表（仅主人）
 #更新价格表 [服务器]
 示例：#更新价格表（更新美服+欧服）
@@ -1936,6 +1984,207 @@ export class ttc extends plugin {
 • 如遇到页面访问问题，可使用代理功能解决（仅用于交易查询）`
 
     return await this.reply(helpMsg)
+  }
+
+  /** 查询热销商品 */
+  async queryHotItems(e) {
+    try {
+      const userId = e.user_id
+      
+      // 限流检查
+      if (!this.checkRateLimit(userId)) {
+        return await this.reply('查询太频繁，请稍后再试')
+      }
+
+      // 解析命令和服务器
+      let content = e.msg.replace(/^#*(热销商品|快销商品|热销物品|快销物品|热销物|快销物)/, '').trim()
+      let serverKey = 'NA' // 默认美服
+      
+      // 检测服务器类型
+      if (content.includes('欧服') || content.includes('EU')) {
+        serverKey = 'EU'
+        content = content.replace(/欧服|EU/g, '').trim()
+      } else if (content.includes('美服') || content.includes('NA') || content.includes('US')) {
+        serverKey = 'NA'
+        content = content.replace(/美服|NA|US/g, '').trim()
+      } else {
+        // 如果没有指定服务器，使用默认配置
+        serverKey = defaultServerConfig.server
+      }
+
+      await this.reply(`正在查询${SERVER_CONFIG[serverKey].name}热销商品，请稍后...`)
+
+      // 获取服务器配置
+      const serverConfig = SERVER_CONFIG[serverKey]
+      const luaFilePath = serverConfig.priceTableLua
+      const jsonFilePath = path.join(path.dirname(luaFilePath), `PriceTable${serverKey.toUpperCase()}.json`)
+      
+      // 检查JSON文件是否存在
+      if (!fs.existsSync(jsonFilePath)) {
+        return await this.reply(`❌ ${serverConfig.name}价格表文件不存在\n\n请先执行以下操作：\n🔄 #更新价格表\n\n更新完成后再查询热销商品。`)
+      }
+
+      // 读取JSON价格表数据
+      let priceTableData = null
+      try {
+        const jsonContent = await fs.promises.readFile(jsonFilePath, 'utf8')
+        priceTableData = safeJsonParse(jsonContent)
+        if (!priceTableData) {
+          throw new Error('价格表数据格式无效')
+        }
+      } catch (error) {
+        logger.error(`[TTC] 读取价格表失败: ${truncateLogMessage(error.message)}`)
+        return await this.reply(`❌ 价格表读取失败\n\n请尝试重新更新价格表：\n🔄 #更新价格表`)
+      }
+
+      // 查询所有热销商品的价格信息
+      const hotItemsData = []
+      
+      for (const hotItem of HOT_ITEMS_LIST) {
+        try {
+          const itemId = hotItem.itemId
+          const itemName = hotItem.itemName
+          
+          // 在复杂的数据结构中查找物品数据
+          const dataToSearch = priceTableData.priceTable || priceTableData
+          const itemData = this.findItemData(dataToSearch, itemId)
+          
+          if (itemData) {
+            // 处理复杂的价格数据结构
+            const processedData = this.processSpecialStructures(itemData)
+            if (processedData && processedData.length > 0) {
+              // 获取第一条价格数据作为摘要
+              const firstData = processedData[0]
+              
+              // 计算总销售数量（用于排序）
+              const salesTotal = firstData['销售总数'] || firstData['近期成交总数'] || 0
+              
+              hotItemsData.push({
+                itemId: itemId,
+                itemName: itemName,
+                icon: hotItem.icon,
+                quality: firstData['品质'] || '未知',
+                level: firstData['等级'] || '未知',
+                trait: firstData['特质'] || '未知',
+                lowPrice: firstData['最低价'] || null,
+                highPrice: firstData['最高价'] || null,
+                averagePrice: firstData['平均价'] || null,
+                salesAvgPrice: firstData['销售均价'] || firstData['成交均价'] || null,
+                suggestedPrice: firstData['建议价'] || null,
+                listingCount: firstData['列表数量'] || firstData['在售栏位'] || 0,
+                totalItems: firstData['总物品数'] || firstData['在售总数'] || 0,
+                salesCount: firstData['销售记录数'] || firstData['近期成交记录'] || 0,
+                salesTotal: salesTotal,
+                dataCount: processedData.length
+              })
+            }
+          }
+        } catch (error) {
+          logger.warn(`[TTC] 查询热销商品 ${hotItem.itemName}(${hotItem.itemId}) 失败: ${error.message}`)
+        }
+      }
+
+      if (hotItemsData.length === 0) {
+        return await this.reply(`❌ 未找到任何热销商品的价格数据\n\n可能原因：\n• 价格表需要更新\n• 暂无交易记录\n\n请尝试：\n🔄 #更新价格表`)
+      }
+
+      // 按近期成交总金额（成交均价 × 近期成交总数）降序排序
+      hotItemsData.sort((a, b) => {
+        const totalAmountA = (a.salesAvgPrice || 0) * (a.salesTotal || 0)
+        const totalAmountB = (b.salesAvgPrice || 0) * (b.salesTotal || 0)
+        return totalAmountB - totalAmountA
+      })
+
+      // 获取时间戳
+      let timestamp = priceTableData.TimeStamp
+      if (!timestamp && priceTableData.priceTable) {
+        timestamp = priceTableData.priceTable.TimeStamp
+      }
+      if (!timestamp && priceTableData.Data) {
+        timestamp = priceTableData.Data.TimeStamp
+      }
+      let timeStr = this.formatTimestamp(timestamp, 'zh-CN')
+
+      // 准备模板数据
+      const templateData = await this.prepareHotItemsHTMLData(hotItemsData, serverConfig, timeStr)
+      
+      // 生成图片
+      const imgBuffer = await this.cacheTTCImage(templateData)
+      
+      return await this.reply(imgBuffer)
+
+    } catch (error) {
+      logger.error(`[TTC] 查询热销商品失败: ${error.message}`)
+      return await this.reply('查询热销商品失败，请稍后重试')
+    }
+  }
+
+  /** 准备热销商品HTML模板数据 */
+  async prepareHotItemsHTMLData(hotItemsData, serverConfig, timeStr) {
+    // 处理热销商品数据为模板格式
+    const itemsRows = []
+    
+    for (let i = 0; i < hotItemsData.length; i++) {
+      const data = hotItemsData[i]
+      
+      itemsRows.push({
+        index: i + 1,
+        itemId: data.itemId,
+        itemName: data.itemName,
+        itemIcon: data.icon, // 物品图标
+        quality: data.quality,
+        qualityClass: this.getQualityClass(data.quality),
+        level: data.level,
+        levelClass: (data.level === 'CP160') ? 'cp160' : 'level160',
+        rowBackgroundClass: this.getLevelBackgroundClass(data.level),
+        trait: data.trait,
+        // 价格信息
+        lowPrice: data.lowPrice ? data.lowPrice.toLocaleString() : null,
+        highPrice: data.highPrice ? data.highPrice.toLocaleString() : null,
+        averagePrice: data.averagePrice ? data.averagePrice.toLocaleString() : null,
+        salesAvgPrice: data.salesAvgPrice ? data.salesAvgPrice.toLocaleString() : null,
+        suggestedPrice: data.suggestedPrice ? data.suggestedPrice.toLocaleString() : null,
+        // 交易信息
+        listingCount: data.listingCount ? `${data.listingCount}栏` : '-',
+        totalItems: data.totalItems ? `${data.totalItems}个` : '-',
+        salesCount: data.salesCount ? `${data.salesCount}笔` : '-',
+        salesTotal: data.salesTotal ? `${data.salesTotal}个` : '-',
+        dataCount: data.dataCount
+      })
+    }
+    
+    // 初始化TTC热销商品模板数据结构
+    if (!this.hotItemsData || this.hotItemsData.init !== 'done') {
+      this.hotItemsData = await TTC.get(this.e, 'ttc', 'ttc', 'hotItems')
+      if (!this.hotItemsData) {
+        // 如果没有专门的热销商品模板，复用ttcPrice模板
+        this.hotItemsData = await TTC.get(this.e, 'ttc', 'ttc', 'ttcPrice')
+        if (!this.hotItemsData) {
+          throw new Error('TTC热销商品模板初始化失败')
+        }
+      }
+    }
+    
+    const templateData = {
+      ...this.hotItemsData,
+      ttcData: [
+        {
+          pic: 'cd1' // 背景图片
+        },
+        {
+          itemName: '热销商品排行榜',
+          itemId: '',
+          serverName: serverConfig.name,
+          dataCount: hotItemsData.length,
+          updateTime: timeStr,
+          priceData: itemsRows,
+          hasMore: false,
+          moreCount: 0
+        }
+      ]
+    }
+
+    return templateData
   }
 
   /** 读取默认服务器配置 */
@@ -3876,6 +4125,39 @@ export class ttc extends plugin {
     }
   }
 
+  /** 根据物品ID查找物品名称 */
+  async findItemNameById(itemId) {
+    try {
+      const lookupPath = TTC_LOOKUP_TABLE_LUA
+      if (fs.existsSync(lookupPath)) {
+        const content = fs.readFileSync(lookupPath, 'utf-8')
+        const pattern = /\["([^"]+)"\]\s*=\s*\{([^}]+)\}/g
+        let match
+        
+        while ((match = pattern.exec(content)) !== null) {
+          const fullName = match[1]
+          const idsContent = match[2]
+          
+          // 提取该物品的所有ID
+          const idMatches = idsContent.match(/\[\d+\]\s*=\s*(\d+)/g)
+          if (idMatches) {
+            for (const idMatch of idMatches) {
+              const id = idMatch.match(/=\s*(\d+)/)[1]
+              if (id === String(itemId)) {
+                return fullName
+              }
+            }
+          }
+        }
+      }
+      
+      return null
+    } catch (error) {
+      logger.error(`[TTC] 根据ID查找物品名称失败: ${error.message}`)
+      return null
+    }
+  }
+
   /** 根据物品名称查找所有匹配的物品ID和名称 */
   async findAllItemIdsByName(itemName) {
     try {
@@ -4443,7 +4725,9 @@ export class ttc extends plugin {
       // 1. 如果输入是纯数字，直接作为物品ID精确查询
       if (queryContent.match(/^\d+$/)) {
         const itemId = queryContent
-        const itemName = `物品ID: ${itemId}`
+        // 尝试查找真实物品名
+        const realItemName = await this.findItemNameById(itemId)
+        const itemName = realItemName || `物品ID: ${itemId}`
         
         // 精确ID查询
         const result = await this.queryItemPriceById(itemId, itemName, priceTableData, serverConfig, cacheKey)

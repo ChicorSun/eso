@@ -371,6 +371,16 @@ body {
   display: inline-block;
 }
 
+/* 物品图标样式 */
+.item-icon {
+  width: 32px;
+  height: 32px;
+  vertical-align: middle;
+  margin-right: 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 /* 响应式调整 */
 @media (max-width: 600px) {
   .price-row {

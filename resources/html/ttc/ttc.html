@@ -49,6 +49,9 @@
           {{each val.priceData item idx}}
           <div class="price-row {{item.rowBackgroundClass}}">
             <div class="col-item">
+              {{if item.itemIcon}}
+              <img class="item-icon" src="{{pluResPath}}img/ttc/{{item.itemIcon}}" onerror="this.style.display='none'" />
+              {{/if}}
               <span class="item-name quality-{{item.qualityClass}}">{{item.itemName}}</span>
             </div>
             <div class="col-level">
