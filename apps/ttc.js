@@ -101,14 +101,36 @@ const CAPTCHA_SERVICES = {
 // 需要查询位置的公会名称列表
 const GUILD_LIST = [
   'Splendid Achievers',
+  'Lost Ark',
   'Ebony Furnace',
   'Six God',
-  'ShenZhou VI',
   'Fond Memory',
   'Hearthfire Club',
   'Niubis Help Newbies',
-  'Lost Ark'
+  'ShenZhou VI',
 ]
+
+const CITIES_LIST = {
+  "哀伤之城": 1,
+  "维威克城": 1,
+  "艾尔登之根": 5001,
+  "途歇城": 5002,
+  "匕落": 10001,
+  "阿里诺尔": 10001,
+  "罗尔卡": 10003,
+  "瑞门": 20001,
+  "贝尔卡斯": 20001,
+  "乐雅文": 20003,
+  "号旗湾": 30001,
+  "天望城": 30002,
+  "斯金格拉德": 30003,
+  "班达理交易站": 30004,
+  "哨兵城": 30005,
+  "黑檀心": 30006,
+  "裂谷城": 30007,
+  "独孤城": 30008
+}
+
 
 // ===========================================
 // 公会位置缓存文件路径
@@ -1487,24 +1509,86 @@ export class ttc extends plugin {
     }
   }
 
-  /** 按照GUILD_LIST的顺序排序公会位置信息 */
+  /** 按照CITIES_LIST和GUILD_LIST的顺序排序公会位置信息 */
   sortGuildLocationsByList(guildLocations, guildList) {
-    const sorted = {}
-    const foundGuilds = new Set()
+    // 计算每个公会的优先级参数
+    const guildPriorityMap = {}
     
-    // 首先按照GUILD_LIST的顺序添加
-    guildList.forEach(guild => {
-      if (guildLocations[guild] !== null && guildLocations[guild] !== undefined) {
-        sorted[guild] = guildLocations[guild]
-        foundGuilds.add(guild)
+    Object.keys(guildLocations).forEach(guild => {
+      const locationInfo = guildLocations[guild]
+      if (locationInfo === null || locationInfo === undefined) {
+        return
       }
+      
+      // 获取位置字符串
+      let locationStr = locationInfo.location || ''
+      let priority = 0
+      
+      // 1. 判断是否包含"避难所"
+      if (locationStr.includes('避难所')) {
+        priority += 100000
+      }
+      
+      // 2. 解析地址，按": "分割，取后半部分
+      let cityName = ''
+      if (locationStr.includes(': ')) {
+        const parts = locationStr.split(': ')
+        if (parts.length >= 2) {
+          cityName = parts[1].trim()
+        }
+      }
+      
+      // 3. 在CITIES_LIST中查找城市
+      if (cityName && CITIES_LIST[cityName] !== undefined) {
+        priority += CITIES_LIST[cityName]
+      } else {
+        priority += 40000
+      }
+      
+      guildPriorityMap[guild] = priority
     })
     
-    // 然后添加不在GUILD_LIST中的其他公会（按字母顺序）
-    Object.keys(guildLocations).forEach(guild => {
-      if (!foundGuilds.has(guild) && guildLocations[guild] !== null && guildLocations[guild] !== undefined) {
-        sorted[guild] = guildLocations[guild]
+    // 将公会按优先级排序
+    const sortedGuilds = Object.keys(guildLocations).filter(guild => {
+      return guildLocations[guild] !== null && guildLocations[guild] !== undefined
+    }).sort((a, b) => {
+      // 首先按优先级参数排序（从小到大）
+      const priorityA = guildPriorityMap[a] || 0
+      const priorityB = guildPriorityMap[b] || 0
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB
       }
+      
+      // 如果优先级相同，按GUILD_LIST顺序排序
+      const indexA = guildList.indexOf(a)
+      const indexB = guildList.indexOf(b)
+      
+      // 如果都在GUILD_LIST中，按列表顺序
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB
+      }
+      
+      // 如果只有一个在GUILD_LIST中，优先
+      if (indexA !== -1) return -1
+      if (indexB !== -1) return 1
+      
+      // 都不在GUILD_LIST中，按字母顺序
+      return a.localeCompare(b)
+    })
+    
+    // 构建排序后的结果对象
+    const sorted = {}
+    sortedGuilds.forEach(guild => {
+      sorted[guild] = guildLocations[guild]
+    })
+    
+    // 输出参与排序的所有位置的优先级值
+    //logger.info('[TTC] 公会位置排序优先级详情:')
+    sortedGuilds.forEach((guild, index) => {
+      const locationInfo = guildLocations[guild]
+      const priority = guildPriorityMap[guild] || 0
+      //logger.info(`[TTC] [${index + 1}] ${guild}: 位置=${locationInfo.location}, 优先级=${priority}`)
     })
     
     return sorted
