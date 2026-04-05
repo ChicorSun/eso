@@ -170,7 +170,7 @@ const HOT_ITEMS_LIST = [
   { itemId: '27544', itemName: '锆紫镀层', icon: 'jewelrycrafting_booster_refined_zircon.png' },
   { itemId: '11811', itemName: '神话以太仙馔密酒', icon: 'consumeable_experience_003.png' },
   { itemId: '32320', itemName: '未知炼金委托', icon: 'item_u47_latched_box_tan.png' },
-  { itemId: '3047', itemName: '真正超凡棱镜防御雕文', icon: 'crafting_enchantment_036.png' },
+  //{ itemId: '3047', itemName: '真正超凡棱镜防御雕文', icon: 'crafting_enchantment_036.png' },
   { itemId: '19847', itemName: '可调节的锻造台', icon: 'housing_gen_crf_portableblacksmith001.png' },
   { itemId: '19850', itemName: '可调节的珠宝制作台', icon: 'housing_gen_crf_portabletablejewelry001.png' },
   { itemId: '19420', itemName: '可调节的木工台', icon: 'housing_gen_crf_portabletablewoodworking001.png' },
