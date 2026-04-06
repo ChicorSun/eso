@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/alchemy/alchemy.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+
+    {{if !isSingleMedicine}}
+    <div class="head_box">
+      <div class="id_text">#炼金配方</div>
+    </div>
+    {{/if}}
+
+    {{each alchemyData medicine}}
+    <div class="medicine_box">
+      <div class="medicine_header">
+        <div class="medicine_title">
+          <div class="medicine_name">{{medicine.name}}</div>
+          <div class="medicine_effects">{{medicine.effects}}</div>
+        </div>
+      </div>
+
+      <div class="recipes_container">
+        {{each medicine.recipes recipe index}}
+        <div class="recipe_row">
+          <div class="recipe_left">
+            <div class="recipe_index">{{index + 1}}</div>
+            {{if recipe.totalPrice !== null}}
+            <div class="recipe_total">
+              <span class="total_price">{{recipe.totalPrice.toLocaleString()}}<img class="gold-icon" src="{{pluResPath}}img/icon/gold.png" /></span>
+            </div>
+            {{else}}
+            <div class="recipe_total no_total">
+              <span class="total_price">-</span>
+            </div>
+            {{/if}}
+          </div>
+          <div class="materials_list">
+            {{each recipe.materials material}}
+            <div class="material_item">
+              <img class="material_icon" src="{{pluResPath}}img/alchemy/{{material.icon}}.png" />
+              <div class="material_info">
+                <div class="material_name">{{material.name}}</div>
+                {{if material.price !== null}}
+                <div class="material_price">{{material.price.toLocaleString()}}<img class="gold-icon" src="{{pluResPath}}img/icon/gold.png" /></div>
+                {{else}}
+                <div class="material_price no_price">-</div>
+                {{/if}}
+              </div>
+            </div>
+            {{/each}}
+          </div>
+        </div>
+        {{/each}}
+      </div>
+
+      {{if medicine.description}}
+      <div class="description_box">
+        <div class="desc_content">{{@medicine.description}}</div>
+      </div>
+      {{/if}}
+    </div>
+    {{/each}}
+
+    <div class="logo">ESO-Bot</div>
+  </div>
+</body>
+
+</html>

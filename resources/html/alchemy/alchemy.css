@@ -1,0 +1,257 @@
+@font-face {
+  font-family: 'HYWenHei-55W';
+  src: url('../../fonts/HYWenHei-55W.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'HYWenHei-55W', 'Microsoft YaHei', sans-serif;
+}
+
+body {
+  background: #0a0a0a;
+  padding: 18px;
+  width: 1080px;
+  min-height: 100vh;
+}
+
+.container {
+  width: 1044px;
+  margin: 0 auto;
+  background: #1a1a1a;
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  border: 1px solid #2a2a2a;
+}
+
+/* Header - 紧凑 */
+.head_box {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+  padding: 18px 36px;
+  position: relative;
+}
+
+.id_text {
+  font-size: 36px;
+  color: #e9c46a;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+/* Medicine Box - 紧凑间距 */
+.medicine_box {
+  margin: 18px;
+  background: #242424;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid #333;
+}
+
+/* Medicine Header - 突出药水名字 */
+.medicine_header {
+  background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+  padding: 27px;
+  border-bottom: 3px solid #e9c46a;
+}
+
+.medicine_title {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.medicine_name {
+  font-size: 45px;
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
+}
+
+.medicine_effects {
+  font-size: 27px;
+  color: #e9c46a;
+  background: rgba(233, 196, 106, 0.1);
+  padding: 9px 22px;
+  border-radius: 24px;
+  border: 1px solid rgba(233, 196, 106, 0.2);
+  display: inline-block;
+  text-align: right;
+}
+
+/* Recipes Container - 无多余间距 */
+.recipes_container {
+  padding: 18px;
+}
+
+/* Recipe Row - 紧凑横向布局 */
+.recipe_row {
+  display: flex;
+  align-items: stretch;
+  gap: 22px;
+  padding: 22px 18px;
+  margin-bottom: 18px;
+  background: #1a1a1a;
+  border-radius: 18px;
+  border: 1px solid #333;
+}
+
+.recipe_row:last-child {
+  margin-bottom: 0;
+}
+
+/* Recipe Left - 序号和总价 */
+.recipe_left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-width: 112px;
+  padding-right: 18px;
+  border-right: 1px solid #333;
+}
+
+.recipe_index {
+  width: 54px;
+  height: 54px;
+  background: linear-gradient(135deg, #e9c46a 0%, #d4a373 100%);
+  color: #1a1a1a;
+  font-size: 27px;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.recipe_total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 9px 14px;
+  background: rgba(233, 196, 106, 0.1);
+  border-radius: 14px;
+  border: 1px solid rgba(233, 196, 106, 0.2);
+  min-width: 98px;
+}
+
+.recipe_total.no_total {
+  background: rgba(100, 100, 100, 0.1);
+  border-color: #444;
+}
+
+.total_price {
+  font-size: 27px;
+  color: #e9c46a;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.recipe_total.no_total .total_price {
+  color: #666;
+}
+
+/* Materials List - 突出材料 */
+.materials_list {
+  display: flex;
+  flex: 1;
+  justify-content: space-around;
+  align-items: center;
+  gap: 22px;
+}
+
+.material_item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  justify-content: center;
+}
+
+.material_icon {
+  width: 108px;
+  height: 108px;
+  border-radius: 18px;
+  background: #2a2a2a;
+  padding: 7px;
+  object-fit: contain;
+  border: 2px solid #444;
+  flex-shrink: 0;
+}
+
+.material_info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.material_name {
+  font-size: 32px;
+  color: #fff;
+  text-align: left;
+  word-wrap: break-word;
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+.material_price {
+  font-size: 25px;
+  color: #e9c46a;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.material_price.no_price {
+  color: #555;
+  font-size: 25px;
+}
+
+/* Gold Icon */
+.gold-icon {
+  width: 22px;
+  height: 22px;
+  vertical-align: middle;
+}
+
+/* Description - 紧凑 */
+.description_box {
+  padding: 22px 27px;
+  background: #1f1f1f;
+  border-top: 1px solid #2a2a2a;
+}
+
+.desc_content {
+  font-size: 25px;
+  color: #bbb;
+  line-height: 1.6;
+}
+
+/* Description中的颜色标签样式 */
+.desc_content span {
+  text-shadow: 0 0 2px currentColor;
+}
+
+/* Logo */
+.logo {
+  text-align: center;
+  padding: 22px;
+  font-size: 22px;
+  color: #555;
+  background: #141414;
+  border-top: 1px solid #222;
+}

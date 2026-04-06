@@ -920,6 +920,282 @@ let numArtifacts = 0
 let artifactList = [
 ]
 
+// ===========================================
+// 炼金配方表
+// ===========================================
+const ALCHEMY_DATA = {
+  "materials": {
+    "3200": {"Name": "耧斗花", "icon": "columbine_r1.png"},
+    "3376": {"Name": "牛舌草", "icon": "vipers_bugloss_r1.png"},
+    "5072": {"Name": "山花", "icon": "mountain_flower_r1.png"},
+    "1823": {"Name": "碎米荠", "icon": "ladysmock.png"},
+    "1412": {"Name": "龙刺草", "icon": "dragonthorn.png"},
+    "3855": {"Name": "福蓟草", "icon": "blessed_thistle.png"},
+    "3450": {"Name": "苦艾", "icon": "wormwood_r1.png"},
+    "511": {"Name": "矢车菊", "icon": "corn_flower_r1.png"},
+    "110": {"Name": "水葫芦", "icon": "plant_water_hyacinth_r1.png"},
+    "20157": {"Name": "龙之血", "icon": "dragonsblood.png"},
+    "21009": {"Name": "龙之分泌物", "icon": "dragonrheum.png"},
+    "21554": {"Name": "猩红奈恩根", "icon": "crafting_water_plant_nirnroot_crimson.png"},
+    "3839": {"Name": "娜米拉腐菌", "icon": "namiras_rot_r1.png"}
+  },
+  "medicines": {
+    "三回药": {
+      "Recipes": [
+        ["3200", "3376", "5072"], // 耧斗花, 牛舌草, 山花,
+        ["3200", "5072", "1823"], // 耧斗花, 山花, 碎米荠,
+        ["3200", "5072", "21009"], // 耧斗花, 山花, 龙之分泌物,
+        ["3200", "3376", "1412"], // 耧斗花, 牛舌草, 龙刺草,
+        ["3200", "3376", "20157"], // 耧斗花, 牛舌草, 龙之血
+      ],
+      "Effects": "回血+回耐+回魔",
+      "Description": {
+        "itemId": 54339,
+        "potionData": 66309,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "生命精华",
+        "icon": "/esoui/art/icons/consumable_potion_001_type_005.webp",
+        "description": "立即恢复|Cffffff8536|R点生命。\r\n你将获得高级坚韧，使生命恢复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R魔力。\r\n你获得高级智慧，魔力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R耐力。\r\n你获得高级忍耐，耐力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "1,3,5",
+        "enName": "Essence of Health",
+        "en_description": "Restore |Cffffff8536|R Health Immediately.\nGrants Major Fortitude Which Increases Your Health Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Magicka Immediately.\nGrants You Major Intellect Which Increases Your Magicka Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Stamina Immediately.\nGrants Major Endurance Which Increases Your Stamina Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "耐系大力丸": {
+      "Recipes": [
+        ["3855", "1412", "110"], // 福蓟草, 龙刺草, 水葫芦,
+        ["3855", "1412", "3450"], // 福蓟草, 龙刺草, 苦艾
+      ],
+      "Effects": "耐力回复+武器暴击+武器威力",
+      "Description": {
+        "itemId": 44714,
+        "potionData": 856325,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "武器威力精华",
+        "icon": "/esoui/art/icons/consumable_potion_005_type_005.webp",
+        "description": "获得高级残暴，使自身武器伤害提高|Cffffff20|R%，持续|Cffffff36.6|R秒。\n获得高级野性，赋予你|Cffffff2629|R武器暴击值，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R耐力。\r\n你获得高级忍耐，耐力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "13,17,5",
+        "enName": "Essence of Weapon Power",
+        "en_description": "Grants Major Brutality Which Increases Your Weapon Damage by |Cffffff20|R% for |Cffffff36.6|R Seconds.\nGrants You Major Savagery Which Gives You |Cffffff2629|R Weapon Critical Rating for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Stamina Immediately.\nGrants Major Endurance Which Increases Your Stamina Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "法系大力丸": {
+      "Recipes": [
+        ["511", "1823", "110"], // 矢车菊, 碎米荠, 水葫芦,
+        ["511", "1823", "3839"], // 矢车菊, 碎米荠, 娜米拉腐菌,
+        ["511", "1823", "21554"], // 矢车菊, 碎米荠, 猩红奈恩根
+      ],
+      "Effects": "魔力回复+法术暴击+法术威力",
+      "Description": {
+        "itemId": 30145,
+        "potionData": 724739,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "法术威力精华",
+        "icon": "/esoui/art/icons/consumable_potion_006_type_005.webp",
+        "description": "获得高级巫术，法术伤害提高|Cffffff20|R%，持续|Cffffff36.6|R秒。\n获得高级预知，赋予你|Cffffff2629|R法术暴击值，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R魔力。\r\n你获得高级智慧，魔力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "11,15,3",
+        "enName": "Essence of Spell Power",
+        "en_description": "Grants Major Sorcery Which Increases Your Spell Damage by |Cffffff20|R% for |Cffffff36.6|R Seconds.\nGrants Major Prophecy Which Gives You |Cffffff2629|R Spell Critical Rating for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Magicka Immediately.\nGrants You Major Intellect Which Increases Your Magicka Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "耐系小力丸": {
+      "Recipes": [
+        ["3855", "1412"], // 福蓟草, 龙刺草
+      ],
+      "Effects": "耐力回复+武器威力",
+      "Description": {
+        "itemId": 44714,
+        "potionData": 3333,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "武器威力精华",
+        "icon": "/esoui/art/icons/consumable_potion_005_type_005.webp",
+        "description": "获得高级残暴，使自身武器伤害提高|Cffffff20|R%，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R耐力。\r\n你获得高级忍耐，耐力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "13,5",
+        "enName": "Essence of Weapon Power",
+        "en_description": "Grants Major Brutality Which Increases Your Weapon Damage by |Cffffff20|R% for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Stamina Immediately.\nGrants Major Endurance Which Increases Your Stamina Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "法系小力丸": {
+      "Recipes": [
+        ["511", "1823"], // 矢车菊, 碎米荠
+      ],
+      "Effects": "魔力回复+法术威力",
+      "Description": {
+        "itemId": 30145,
+        "potionData": 2819,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "法术威力精华",
+        "icon": "/esoui/art/icons/consumable_potion_006_type_005.webp",
+        "description": "获得高级巫术，法术伤害提高|Cffffff20|R%，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R魔力。\r\n你获得高级智慧，魔力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "11,3",
+        "enName": "Essence of Spell Power",
+        "en_description": "Grants Major Sorcery Which Increases Your Spell Damage by |Cffffff20|R% for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Magicka Immediately.\nGrants You Major Intellect Which Increases Your Magicka Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "耐系回血暴击药": {
+      "Recipes": [
+        ["5072", "1412", "110"], // 山花, 龙刺草, 水葫芦,
+        ["3200", "1412", "110"], // 耧斗花, 龙刺草, 水葫芦
+      ],
+      "Effects": "生命回复+耐力回复+武器暴击",
+      "Description": {
+        "itemId": 30146,
+        "potionData": 1114373,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "武器暴击精华",
+        "icon": "/esoui/art/icons/consumable_potion_012_type_005.webp",
+        "description": "获得高级野性，赋予你|Cffffff2629|R武器暴击值，持续|Cffffff36.6|R秒。\n立即恢复|Cffffff8536|R点生命。\r\n你将获得高级坚韧，使生命恢复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R耐力。\r\n你获得高级忍耐，耐力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "17,1,5",
+        "enName": "Essence of Weapon Crit",
+        "en_description": "Grants You Major Savagery Which Gives You |Cffffff2629|R Weapon Critical Rating for |Cffffff36.6|R Seconds.\nRestore |Cffffff8536|R Health Immediately.\nGrants Major Fortitude Which Increases Your Health Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Stamina Immediately.\nGrants Major Endurance Which Increases Your Stamina Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "法系回血暴击药": {
+      "Recipes": [
+        ["3376", "1823", "21554"], // 牛舌草, 碎米荠, 猩红奈恩根,
+        ["3376", "1823", "110"], // 牛舌草, 碎米荠, 水葫芦,
+        ["3200", "1823", "21554"], // 耧斗花, 碎米荠, 猩红奈恩根,
+        ["3200", "1823", "110"], // 耧斗花, 碎米荠, 水葫芦
+      ],
+      "Effects": "生命回复+魔力回复+法术暴击",
+      "Description": {
+        "itemId": 30141,
+        "potionData": 983299,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "法术暴击率精华",
+        "icon": "/esoui/art/icons/consumable_potion_013_type_005.webp",
+        "description": "获得高级预知，赋予你|Cffffff2629|R法术暴击值，持续|Cffffff36.6|R秒。\n立即恢复|Cffffff8536|R点生命。\r\n你将获得高级坚韧，使生命恢复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R魔力。\r\n你获得高级智慧，魔力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "15,1,3",
+        "enName": "Essence of Spell Critical",
+        "en_description": "Grants Major Prophecy Which Gives You |Cffffff2629|R Spell Critical Rating for |Cffffff36.6|R Seconds.\nRestore |Cffffff8536|R Health Immediately.\nGrants Major Fortitude Which Increases Your Health Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Magicka Immediately.\nGrants You Major Intellect Which Increases Your Magicka Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "终极点药": {
+      "Recipes": [
+        ["3200", "21009", "20157"], // 耧斗花, 龙之分泌物, 龙之血
+      ],
+      "Effects": "回耐+回魔+次级英勇",
+      "Description": {
+        "itemId": 54340,
+        "potionData": 197919,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "魔力精华",
+        "icon": "/esoui/art/icons/consumable_potion_002_type_005.webp",
+        "description": "立即回复|Cffffff7582|R魔力。\r\n你获得高级智慧，魔力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R耐力。\r\n你获得高级忍耐，耐力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n对自身施加次级英勇效果，每|Cffffff1.5|R秒回复|Cffffff1|R终极点，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "3,5,31",
+        "enName": "Essence of Magicka",
+        "en_description": "Restore |Cffffff7582|R Magicka Immediately.\nGrants You Major Intellect Which Increases Your Magicka Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Stamina Immediately.\nGrants Major Endurance Which Increases Your Stamina Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\nGrants You Minor Heroism, Restoring |Cffffff1|R Ultimate Every |Cffffff1.5|R Seconds for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "回耐回血霸体药": {
+      "Recipes": [
+        ["5072", "3200", "3839"], // 山花, 耧斗花, 娜米拉腐菌,
+        ["5072", "3200", "3450"], // 山花, 耧斗花, 苦艾
+      ],
+      "Effects": "生命回复+耐力回复+不可阻挡",
+      "Description": {
+        "itemId": 27039,
+        "potionData": 1245445,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "岿然不动精华",
+        "icon": "/esoui/art/icons/consumable_potion_008_type_005.webp",
+        "description": "对击退与失控效果免疫，持续|Cffffff8|R秒。\n立即恢复|Cffffff8536|R点生命。\r\n你将获得高级坚韧，使生命恢复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R耐力。\r\n你获得高级忍耐，耐力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "19,1,5",
+        "enName": "Essence of Immovability",
+        "en_description": "Become Immune to Knockback and Disabling Effects for |Cffffff8|R Seconds.\nRestore |Cffffff8536|R Health Immediately.\nGrants Major Fortitude Which Increases Your Health Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Stamina Immediately.\nGrants Major Endurance Which Increases Your Stamina Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "回魔回血霸体药": {
+      "Recipes": [
+        ["3376", "3200", "3839"], // 牛舌草, 耧斗花, 娜米拉腐菌,
+        ["3376", "3200", "3450"], // 牛舌草, 耧斗花, 苦艾
+      ],
+      "Effects": "生命回复+魔力回复+不可阻挡",
+      "Description": {
+        "itemId": 27039,
+        "potionData": 1245443,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "岿然不动精华",
+        "icon": "/esoui/art/icons/consumable_potion_008_type_005.webp",
+        "description": "对击退与失控效果免疫，持续|Cffffff8|R秒。\n立即恢复|Cffffff8536|R点生命。\r\n你将获得高级坚韧，使生命恢复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R魔力。\r\n你获得高级智慧，魔力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "19,1,3",
+        "enName": "Essence of Immovability",
+        "en_description": "Become Immune to Knockback and Disabling Effects for |Cffffff8|R Seconds.\nRestore |Cffffff8536|R Health Immediately.\nGrants Major Fortitude Which Increases Your Health Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Magicka Immediately.\nGrants You Major Intellect Which Increases Your Magicka Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "耐系暴击霸体药": {
+      "Recipes": [
+        ["3200", "1412", "3450"], // 耧斗花, 龙刺草, 苦艾
+      ],
+      "Effects": "武器暴击+耐力回复+不可阻挡",
+      "Description": {
+        "itemId": 27039,
+        "potionData": 1249541,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "岿然不动精华",
+        "icon": "/esoui/art/icons/consumable_potion_008_type_005.webp",
+        "description": "对击退与失控效果免疫，持续|Cffffff8|R秒。\n获得高级野性，赋予你|Cffffff2629|R武器暴击值，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R耐力。\r\n你获得高级忍耐，耐力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "19,17,5",
+        "enName": "Essence of Immovability",
+        "en_description": "Become Immune to Knockback and Disabling Effects for |Cffffff8|R Seconds.\nGrants You Major Savagery Which Gives You |Cffffff2629|R Weapon Critical Rating for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Stamina Immediately.\nGrants Major Endurance Which Increases Your Stamina Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    },
+    "法系暴击霸体药": {
+      "Recipes": [
+        ["3200", "3839", "1823"], // 耧斗花, 娜米拉腐菌, 碎米荠
+      ],
+      "Effects": "法术暴击+魔力回复+不可阻挡",
+      "Description": {
+        "itemId": 27039,
+        "potionData": 1249027,
+        "internalType": 308,
+        "internalLevel": 50,
+        "isPoison": "False",
+        "name": "岿然不动精华",
+        "icon": "/esoui/art/icons/consumable_potion_008_type_005.webp",
+        "description": "对击退与失控效果免疫，持续|Cffffff8|R秒。\n获得高级预知，赋予你|Cffffff2629|R法术暴击值，持续|Cffffff36.6|R秒。\n立即回复|Cffffff7582|R魔力。\r\n你获得高级智慧，魔力回复提高|Cffffff30|R%，持续|Cffffff36.6|R秒。\n",
+        "quality": "普通",
+        "effectIds": "19,15,3",
+        "enName": "Essence of Immovability",
+        "en_description": "Become Immune to Knockback and Disabling Effects for |Cffffff8|R Seconds.\nGrants Major Prophecy Which Gives You |Cffffff2629|R Spell Critical Rating for |Cffffff36.6|R Seconds.\nRestore |Cffffff7582|R Magicka Immediately.\nGrants You Major Intellect Which Increases Your Magicka Recovery by |Cffffff30|R% for |Cffffff36.6|R Seconds.\n"
+      }
+    }
+  }
+}
+
 let numDungeons = 0
 let dgList = [
   "Spindleclutch II",
@@ -5795,5 +6071,5 @@ class database {
   }
 }
 
-export { dataRaids, dataRaidsCN, raidNameMap }
+export { dataRaids, dataRaidsCN, raidNameMap, ALCHEMY_DATA }
 export default new database()
