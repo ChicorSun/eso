@@ -12,7 +12,7 @@
 
     {{if !isSingleMedicine}}
     <div class="head_box">
-      <div class="id_text">#炼金配方</div>
+      <div class="id_text">{{originalCommand ? '#' + originalCommand : '#炼金配方'}}</div>
     </div>
     {{/if}}
 
@@ -67,7 +67,7 @@
     </div>
     {{/each}}
 
-    <div class="logo">ESO-Bot</div>
+    <div class="logo">Created By ESO-Bot</div>
   </div>
 </body>
 

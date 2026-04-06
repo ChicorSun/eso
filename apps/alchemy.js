@@ -154,15 +154,58 @@ export class alchemy extends plugin {
     return null
   }
 
+  /**
+   * 根据输入名称查找药水真实名称（支持NickName别名）
+   * @param {string} inputName - 用户输入的名称
+   * @returns {string[]|null} - 匹配的药水名称数组，未找到返回null
+   */
+  findMedicineNames(inputName) {
+    if (!inputName) return null
+
+    const matchedNames = []
+
+    // 首先尝试直接匹配药水名称
+    if (ALCHEMY_DATA.medicines[inputName]) {
+      matchedNames.push(inputName)
+      return matchedNames
+    }
+
+    // 然后尝试匹配NickName，收集所有匹配的药水
+    for (const [medicineName, medicineInfo] of Object.entries(ALCHEMY_DATA.medicines)) {
+      if (medicineInfo.NickName && Array.isArray(medicineInfo.NickName)) {
+        if (medicineInfo.NickName.includes(inputName)) {
+          matchedNames.push(medicineName)
+        }
+      }
+    }
+
+    return matchedNames.length > 0 ? matchedNames : null
+  }
+
   async alchemyRecipe (e) {
     // 提取药水名称，如果是 #三回药配方 格式，则提取"三回药"
     const match = e.msg.match(/^#*(.+?)配方$/)
-    const medicineName = match && match[1] !== '炼金' ? match[1] : null
+    let medicineNames = match && match[1] !== '炼金' ? match[1] : null
 
-    const data = await this.getAlchemyData(medicineName)
+    // 如果指定了药水名称，尝试通过NickName查找所有匹配的药水
+    if (medicineNames) {
+      const matchedNames = this.findMedicineNames(medicineNames)
+      if (matchedNames) {
+        medicineNames = matchedNames
+      } else {
+        // 没有找到匹配的药水，保持原样让后续处理返回错误
+        medicineNames = [medicineNames]
+      }
+    }
+
+    // 保存用户输入的原始命令（用于多药水查询时显示）
+    const originalCommand = match ? e.msg.match(/^#*(.+)$/)[1] : null
+
+    const data = await this.getAlchemyData(medicineNames, originalCommand)
     if (!data) {
-      if (medicineName) {
-        await this.reply(`未找到"${medicineName}"的配方数据，请检查药水名称是否正确。`)
+      if (medicineNames) {
+        const searchName = Array.isArray(medicineNames) ? medicineNames[0] : medicineNames
+        await this.reply(`未找到"${searchName}"的配方数据，请检查药水名称是否正确。`)
       } else {
         await this.reply('获取炼金配方数据失败，请稍后重试。')
       }
@@ -181,9 +224,10 @@ export class alchemy extends plugin {
 
   /**
    * 获取炼金配方数据并组装为模板所需结构
-   * @param {string} targetMedicine - 指定药水名称，如果为null则返回所有药水
+   * @param {string|string[]|null} targetMedicine - 指定药水名称或名称数组，如果为null则返回所有药水
+   * @param {string|null} originalCommand - 用户输入的原始命令，用于多药水查询时显示
    */
-  async getAlchemyData (targetMedicine = null) {
+  async getAlchemyData (targetMedicine = null, originalCommand = null) {
     if (!ALCHEMY_DATA || !ALCHEMY_DATA.medicines || !ALCHEMY_DATA.materials) {
       logger.error('[炼金配方] ALCHEMY_DATA 数据缺失')
       return null
@@ -198,16 +242,23 @@ export class alchemy extends plugin {
 
     const alchemyData = []
 
-    // 如果指定了药水名称，检查是否存在
-    if (targetMedicine && !medicines[targetMedicine]) {
-      logger.error(`[炼金配方] 未找到药水: ${targetMedicine}`)
-      return null
+    // 将 targetMedicine 转换为数组处理
+    let targetMedicines = []
+    if (targetMedicine) {
+      targetMedicines = Array.isArray(targetMedicine) ? targetMedicine : [targetMedicine]
+      // 检查所有指定的药水是否存在
+      for (const name of targetMedicines) {
+        if (!medicines[name]) {
+          logger.error(`[炼金配方] 未找到药水: ${name}`)
+          return null
+        }
+      }
     }
 
     // 遍历每种药水
     for (const [medicineName, medicineInfo] of Object.entries(medicines)) {
       // 如果指定了特定药水，跳过其他药水
-      if (targetMedicine && medicineName !== targetMedicine) {
+      if (targetMedicines.length > 0 && !targetMedicines.includes(medicineName)) {
         continue
       }
       const recipes = []
@@ -294,7 +345,8 @@ export class alchemy extends plugin {
       pluResPath: `${_path}/plugins/eso/resources/`,
       headStyle: '',
       alchemyData: alchemyData,
-      isSingleMedicine: targetMedicine !== null
+      isSingleMedicine: targetMedicine !== null && !Array.isArray(targetMedicine),
+      originalCommand: originalCommand
     }
   }
 
