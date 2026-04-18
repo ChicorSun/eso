@@ -21,6 +21,65 @@ const DEBUFF_JSON_PATH = './plugins/eso/resources/buffs/debuff.json'
 let buffsCache = null
 let debuffsCache = null
 
+// parseColorTags：一次性初始化（避免每次调用重建 Map / 排序）
+let parsedBuffsCache = null
+let parsedDebuffsCache = null
+let parseColorTagsInitialized = false
+let buffsNameToLevelMap = null
+let debuffsNameToLevelMap = null
+let parseColorTagsBaseNameToLevelMap = null
+let sortedNamesCache = null
+
+function escapeRegexForParseColorTags (str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function getParseColorTagsNameInfo (name) {
+  return debuffsNameToLevelMap.get(name) ?? buffsNameToLevelMap.get(name)
+}
+
+function ensureParseColorTagsInitialized () {
+  if (parseColorTagsInitialized) return
+  parsedBuffsCache = loadBuffs()
+  parsedDebuffsCache = loadDebuffs()
+  buffsNameToLevelMap = new Map()
+  debuffsNameToLevelMap = new Map()
+  parseColorTagsBaseNameToLevelMap = new Map()
+
+  function registerBuff (name, enName, levelType, isBuff) {
+    const nameMap = isBuff ? buffsNameToLevelMap : debuffsNameToLevelMap
+    if (name) {
+      nameMap.set(name, { level: levelType, isBuff })
+      const baseName = name.replace(/^(次级|高级)/, '')
+      if (!parseColorTagsBaseNameToLevelMap.has(baseName)) {
+        parseColorTagsBaseNameToLevelMap.set(baseName, [])
+      }
+      parseColorTagsBaseNameToLevelMap.get(baseName).push({ level: levelType, fullName: name })
+    }
+    if (enName) {
+      nameMap.set(enName, { level: levelType, isBuff })
+      const baseEnName = enName.replace(/^(Minor|Major)\s+/i, '')
+      if (!parseColorTagsBaseNameToLevelMap.has(baseEnName)) {
+        parseColorTagsBaseNameToLevelMap.set(baseEnName, [])
+      }
+      parseColorTagsBaseNameToLevelMap.get(baseEnName).push({ level: levelType, fullName: enName })
+    }
+  }
+
+  for (const buff of parsedBuffsCache) {
+    const level = buff.name?.startsWith('次级') ? 'minor' : 'major'
+    registerBuff(buff.name, buff.enName, level, true)
+  }
+  for (const debuff of parsedDebuffsCache) {
+    const level = debuff.name?.startsWith('次级') ? 'minor' : 'major'
+    registerBuff(debuff.name, debuff.enName, level, false)
+  }
+
+  const allNames = new Set([...buffsNameToLevelMap.keys(), ...debuffsNameToLevelMap.keys()])
+  sortedNamesCache = Array.from(allNames).sort((a, b) => b.length - a.length)
+  parseColorTagsInitialized = true
+}
+
 /** 加载 BUFF 数据（带缓存） */
 function loadBuffs () {
   if (buffsCache) return buffsCache
@@ -101,58 +160,15 @@ export function parseColorTags (text) {
     minor: ''    // 次级 - 无额外样式
   }
 
-  // 辅助函数：转义正则特殊字符
-  function escapeRegex(str) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  }
-
-  // 构建 buff/debuff 查找表
-  const buffs = loadBuffs()
-  const debuffs = loadDebuffs()
-  
-  // 创建名称到等级类型的映射
-  const nameToLevelMap = new Map() // 完整名称 -> {level, isBuff}
-  const baseNameToLevelMap = new Map() // 基础名称 -> [{level, fullName}, ...]
-  
-  function registerBuff(name, enName, levelType, isBuff) {
-    if (name) {
-      nameToLevelMap.set(name, { level: levelType, isBuff })
-      const baseName = name.replace(/^(次级|高级)/, '')
-      if (!baseNameToLevelMap.has(baseName)) {
-        baseNameToLevelMap.set(baseName, [])
-      }
-      baseNameToLevelMap.get(baseName).push({ level: levelType, fullName: name })
-    }
-    if (enName) {
-      nameToLevelMap.set(enName, { level: levelType, isBuff })
-      const baseEnName = enName.replace(/^(Minor|Major)\s+/i, '')
-      if (!baseNameToLevelMap.has(baseEnName)) {
-        baseNameToLevelMap.set(baseEnName, [])
-      }
-      baseNameToLevelMap.get(baseEnName).push({ level: levelType, fullName: enName })
-    }
-  }
-
-  // 注册所有 buff 和 debuff
-  for (const buff of buffs) {
-    const level = buff.name?.startsWith('次级') ? 'minor' : 'major'
-    registerBuff(buff.name, buff.enName, level, true)
-  }
-  for (const debuff of debuffs) {
-    const level = debuff.name?.startsWith('次级') ? 'minor' : 'major'
-    registerBuff(debuff.name, debuff.enName, level, false)
-  }
-
-  // 按名称长度降序排序（长的优先匹配）
-  const sortedNames = Array.from(nameToLevelMap.keys()).sort((a, b) => b.length - a.length)
+  ensureParseColorTagsInitialized()
 
   // 阶段1：替换所有完整带前缀的 buff/debuff 名称
   // 使用占位符避免重复替换
   const placeholders = new Map() // 占位符 -> {原始文本, 颜色, isBuff}
   let placeholderId = 0
   
-  for (const name of sortedNames) {
-    const info = nameToLevelMap.get(name)
+  for (const name of sortedNamesCache) {
+    const info = getParseColorTagsNameInfo(name)
     const isEnglish = /^[A-Z]/i.test(name)
     const color = info.level === 'minor' 
       ? (isEnglish ? COLORS.minorEn : COLORS.minor) 
@@ -164,9 +180,9 @@ export function parseColorTags (text) {
     // 中文buff名称前面可以是任意字符（包括汉字），因为我们按长度排序优先匹配长的
     let regex
     if (isEnglish) {
-      regex = new RegExp(`\\b${escapeRegex(name)}\\b`, 'g')
+      regex = new RegExp(`\\b${escapeRegexForParseColorTags(name)}\\b`, 'g')
     } else {
-      regex = new RegExp(`(?<![a-zA-Z0-9])${escapeRegex(name)}(?![a-zA-Z0-9])`, 'g')
+      regex = new RegExp(`(?<![a-zA-Z0-9])${escapeRegexForParseColorTags(name)}(?![a-zA-Z0-9])`, 'g')
     }
     
     formattedText = formattedText.replace(regex, () => {
@@ -178,7 +194,7 @@ export function parseColorTags (text) {
 
   // 阶段2：处理省略前缀的合并展示模式
   // 模式：连接词后的基础名称（如"高级活力和闪避"中的"闪避"）
-  for (const [baseName, infos] of baseNameToLevelMap) {
+  for (const [baseName, infos] of parseColorTagsBaseNameToLevelMap) {
     if (!infos || infos.length === 0) continue
     
     const isEnglish = /^[A-Z]/i.test(baseName)
@@ -190,7 +206,7 @@ export function parseColorTags (text) {
     if (isEnglish) {
       const connectorPattern = '(?:(?:^|[^a-zA-Z])(?:and|or|,)\\s*|§BUFF_\\d+§\\s*)'
       regex = new RegExp(
-        `${connectorPattern}(${escapeRegex(baseName)})(?![a-zA-Z0-9])`,
+        `${connectorPattern}(${escapeRegexForParseColorTags(baseName)})(?![a-zA-Z0-9])`,
         'gi'
       )
     } else {
@@ -198,7 +214,7 @@ export function parseColorTags (text) {
       // 后面不能是字母数字（避免匹配到英文单词的一部分）
       const connectorPattern = '(?:(?:^|和|与|、|及)|§BUFF_\\d+§)'
       regex = new RegExp(
-        `${connectorPattern}(${escapeRegex(baseName)})(?![a-zA-Z0-9])`,
+        `${connectorPattern}(${escapeRegexForParseColorTags(baseName)})(?![a-zA-Z0-9])`,
         'g'
       )
     }
@@ -216,7 +232,7 @@ export function parseColorTags (text) {
         const prevInfo = placeholders.get(prevPlaceholder)
         if (prevInfo) {
           const prevFullName = prevInfo.text
-          const prevLevelInfo = nameToLevelMap.get(prevFullName)
+          const prevLevelInfo = getParseColorTagsNameInfo(prevFullName)
           if (prevLevelInfo) {
             // 如果前一个 buff 有对应等级的当前 baseName，使用相同等级
             const matchingInfo = infos.find(i => i.level === prevLevelInfo.level)
@@ -255,7 +271,7 @@ export function parseColorTags (text) {
 
   // 阶段3：将占位符替换为实际的 HTML span
   for (const [placeholder, { text, color, isBuff, level }] of placeholders) {
-    const regex = new RegExp(escapeRegex(placeholder), 'g')
+    const regex = new RegExp(escapeRegexForParseColorTags(placeholder), 'g')
     // 对于 buff 使用加粗样式，对于 debuff 添加红色描边
     let style = `color: ${color};`
     if (isBuff) {

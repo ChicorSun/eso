@@ -9,12 +9,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "express": "^4.18.1",
-    "multer": "^1.4.5-lts.1",
-    "body-parser": "^1.20.0",
-    "socket.io": "^4.5.1",
-    "jsonwebtoken": "^8.5.1",
-    "cheerio": "1.0.0",
+    "cheerio": "^1.2.0",
+    "lua-to-json": "file:./vendor/lua-to-json",
     "luaparse": "^0.2.0",
     "qrcode": "^1.5.4",
     "moment": "^2.30.1",
