@@ -2,8 +2,50 @@ import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import General from '../model/general.js'
 import database, { parseColorTags } from '../model/database.js'
+import { getNamecardThemeByPic } from '../model/namecardColor.js'
 import moment from 'moment'
 import md5 from 'md5'
+import fs from 'node:fs'
+import path from 'node:path'
+
+/** 头图按日轮换：自该日起第 1 天使用排序后第 1 张 PNG（与 moment 日历日对齐） */
+const NAMECARD_ROTATION_EPOCH = '2026-01-01'
+
+function getSortedNamecardBasenames () {
+  const dir = path.join(process.cwd(), 'plugins', 'eso', 'resources', 'img', 'namecard')
+  try {
+    if (!fs.existsSync(dir)) return []
+    return fs.readdirSync(dir)
+      .filter(f => /\.png$/i.test(f))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
+      .map(f => path.parse(f).name)
+  } catch (err) {
+    logger.error(`[无畏] 读取 namecard 目录失败 ${err}`)
+    return []
+  }
+}
+
+function getNamecardPicBasenameForDate (dateStr) {
+  const basenames = getSortedNamecardBasenames()
+  if (!basenames.length) return null
+  const start = moment(NAMECARD_ROTATION_EPOCH, 'YYYY-MM-DD').startOf('day')
+  const day = moment(dateStr, 'YYYY-MM-DD').startOf('day')
+  if (!day.isValid()) return basenames[0]
+  const offset = day.diff(start, 'days')
+  const n = basenames.length
+  const idx = ((offset % n) + n) % n
+  return basenames[idx]
+}
+
+function applyNamecardPic (data, dateStr) {
+  const pic = getNamecardPicBasenameForDate(dateStr)
+  if (pic && data?.generalData?.[0]) data.generalData[0].pic = pic
+}
+
+function applyNamecardPageBg (data) {
+  const pic = data?.generalData?.[0]?.pic
+  Object.assign(data, getNamecardThemeByPic(pic))
+}
 
 //无畏者副本序号校准码
 let adjust = [4,4,1]
@@ -211,6 +253,8 @@ export class askUndaunted extends plugin {
     //logger.info(unData.generalData[1].list[5].title + ' ' + unData.generalData[1].list[5].desc)
     //logger.info(unData.generalData[1].list[10].title + ' ' + unData.generalData[1].list[10].desc)
 
+    applyNamecardPic(unData, now)
+    applyNamecardPageBg(unData)
     let img = await this.cache(unData, undauntedData)
     await this.reply(img)
   }
@@ -325,6 +369,8 @@ export class askUndaunted extends plugin {
     //logger.info(unTodayData.generalData[2].list[0].title + ' ' + unTodayData.generalData[2].list[0].msg[0])
     //logger.info(unTodayData.generalData[3].list[0].title + ' ' + unTodayData.generalData[3].list[0].msg[0])
 
+    applyNamecardPic(unTodayData, now)
+    applyNamecardPageBg(unTodayData)
     let img = await this.cache(unTodayData, undauntedTodayData)
     await this.reply(img)
   }
@@ -430,6 +476,8 @@ export class askUndaunted extends plugin {
     //logger.info(unYesterdayData.generalData[2].list[0].title + ' ' + unYesterdayData.generalData[2].list[0].msg[0])
     //logger.info(unYesterdayData.generalData[3].list[0].title + ' ' + unYesterdayData.generalData[3].list[0].msg[0])
 
+    applyNamecardPic(unYesterdayData, now)
+    applyNamecardPageBg(unYesterdayData)
     let img = await this.cache(unYesterdayData, undauntedYesterdayData)
     await this.reply(img)
   }
@@ -536,6 +584,8 @@ export class askUndaunted extends plugin {
     //logger.info(unTomorrowData.generalData[2].list[0].title + ' ' + unTomorrowData.generalData[2].list[0].msg[0])
     //logger.info(unTomorrowData.generalData[3].list[0].title + ' ' + unTomorrowData.generalData[3].list[0].msg[0])
 
+    applyNamecardPic(unTomorrowData, now)
+    applyNamecardPageBg(unTomorrowData)
     let img = await this.cache(unTomorrowData, undauntedTomorrowData)
     await this.reply(img)
   }

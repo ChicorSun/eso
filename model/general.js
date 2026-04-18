@@ -1,6 +1,7 @@
 import base from './base.js'
 import esoCfg from './esoCfg.js'
 import cfg from '../../../lib/config/config.js'
+import { deriveThemeFromPageBg, DEFAULT_PAGE_BG } from './namecardColor.js'
 
 export default class General extends base {
   constructor (e) {
@@ -21,6 +22,7 @@ export default class General extends base {
       ...this.screenData,
       saveId: file, /*data/html/xxx/file.tml*/
       version: cfg.package.version,
+      ...deriveThemeFromPageBg(DEFAULT_PAGE_BG),
       generalData
     }
   }

@@ -21,7 +21,7 @@ body {
 .container {
   width: 530px;
   padding: 20px 15px 10px 15px;
-  background-color: #f5f6fb;
+  background-color: transparent;
 }
 .head_box {
   border-radius: 15px;
@@ -30,12 +30,34 @@ body {
   position: relative;
   box-shadow: 0 5px 10px 0 rgb(0 0 0 / 15%);
 }
+.head_box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: transparent;
+  background-image: var(--head-img);
+  background-position-x: 42px;
+  background-repeat: no-repeat;
+  background-size: auto 101%;
+  /* 遮罩与头图左偏移对齐：0～42px 无图；42～342px 为宽 300px 的 0%→100% 显影，避免图案最左缘已落在渐变中段 */
+  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 42px, rgba(0, 0, 0, 1) 342px);
+  mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 42px, rgba(0, 0, 0, 1) 342px);
+  mask-mode: alpha;
+  -webkit-mask-mode: alpha;
+  pointer-events: none;
+  z-index: 0;
+}
 .head_box .id_text {
   font-size: 24px;
+  position: relative;
+  z-index: 1;
 }
 .head_box .day_text {
   color: #1e1f20;
   font-size: 20px;
+  position: relative;
+  z-index: 1;
 }
 .head_box .genshin_logo {
   position: absolute;
@@ -56,7 +78,7 @@ body {
   margin-top: 20px;
   margin-bottom: 15px;
   padding: 20px 0px 5px 0px;
-  background: #fff;
+  background: var(--eso-data-box-bg, #fff);
   box-shadow: 0 5px 10px 0 rgb(0 0 0 / 15%);
   position: relative;
 }
