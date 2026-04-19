@@ -41,8 +41,8 @@ body {
   background-repeat: no-repeat;
   background-size: auto 101%;
   /* 遮罩与头图左偏移对齐：0～42px 无图；42～342px 为宽 300px 的 0%→100% 显影，避免图案最左缘已落在渐变中段 */
-  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 42px, rgba(0, 0, 0, 1) 342px);
-  mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 42px, rgba(0, 0, 0, 1) 342px);
+  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 42px, rgba(0, 0, 0, 1) 192px);
+  mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 42px, rgba(0, 0, 0, 1) 212px);
   mask-mode: alpha;
   -webkit-mask-mode: alpha;
   pointer-events: none;
