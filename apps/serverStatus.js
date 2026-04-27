@@ -1100,6 +1100,7 @@ export class serverStatus extends plugin {
   }
 
   async setServerNotify(e) {
+    if (!e.member.is_owner && !e.member.is_admin) return e.reply('请联系管理员才能设置服务器通知', true)
     const value = e.msg.replace(/^#*服务器通知\s*/, '').trim()
     if (!/^\d+$/.test(value)) {
       await e.reply('服务器通知配置无效，只允许输入数字。')
