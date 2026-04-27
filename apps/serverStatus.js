@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const CONFIG_PATH = path.join(__dirname, '../custome_resources/config/serverStatus.json')
+const SERVER_NOTIFY_CONFIG_PATH = path.join(__dirname, '../custome_resources/config/serverList.json')
 
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 
@@ -46,8 +47,6 @@ const MAINTENANCE_API = 'https://api.esocn.com.cn/api/maintenance'
 
 /** ESOCN API 键名 -> status 对象键名 */
 const esocnToStatus = { PCNA: 'pcNA', PCEU: 'pcEU', PCPTS: 'pcPTS', XBOXNA: 'xbNA', XBOXEU: 'xbEU', PSNA: 'psNA', PSEU: 'psEU' }
-/** ESOCN API 键名 -> 通知显示名称 */
-const apiKeyToDisplayName = { PCNA: '美服', PCEU: '欧服', PCPTS: '测试服', XBOXNA: 'XBOX美服', XBOXEU: 'XBOX欧服', PSNA: 'PS美服', PSEU: 'PS欧服' }
 
 /** SSE 连接相关 */
 let sseReq = null
@@ -55,6 +54,28 @@ let sseReconnectTimer = null
 const SSE_RECONNECT_DELAY_MS = 10000
 let lastEventForNotify = null
 let serverStatusPluginInstance = null
+
+function isOnlineStatus(value) {
+  return String(value ?? '').trim().toLowerCase() === 'online'
+}
+
+function syncLastStatusFromCurrent() {
+  lastStatus.time = status.time
+  lastStatus.pcNA = status.pcNA !== 1 ? 0 : 1
+  lastStatus.pcEU = status.pcEU !== 1 ? 0 : 1
+  lastStatus.pcPTS = status.pcPTS !== 1 ? 0 : 1
+  lastStatus.xbNA = status.xbNA !== 1 ? 0 : 1
+  lastStatus.xbEU = status.xbEU !== 1 ? 0 : 1
+  lastStatus.psNA = status.psNA !== 1 ? 0 : 1
+  lastStatus.psEU = status.psEU !== 1 ? 0 : 1
+  lastStatus.msg = []
+  lastStatus.msg += status.msg
+}
+
+function ensureConfigDir(filePath) {
+  const dir = path.dirname(filePath)
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+}
 
 function stopSSEConnection() {
   if (sseReconnectTimer) {
@@ -97,33 +118,15 @@ async function handleServerStatusChanged(eventData, pluginInstance) {
   for (const [apiKey, change] of Object.entries(changes)) {
     const statusKey = esocnToStatus[apiKey]
     if (!statusKey || !Object.prototype.hasOwnProperty.call(status, statusKey)) continue
-    const prev = String(change?.previous || '').toLowerCase()
-    const curr = String(change?.current || '').toLowerCase()
-    const prevOnline = prev === 'online'
-    const currOnline = curr === 'online'
+    const currOnline = isOnlineStatus(change?.current)
     status[statusKey] = currOnline ? 1 : 0
     status.time = now
-    const displayName = apiKeyToDisplayName[apiKey] || apiKey
-    const cooldownKeyMaint = `${statusKey}_maintenance`
-    const cooldownKeyOnline = `${statusKey}_online`
-    if (prevOnline && !currOnline) {
-      if (!isInCooldown(cooldownKeyMaint) && pluginInstance && lastEventForNotify) {
-        pluginInstance.e = lastEventForNotify
-        const msg = [{ type: 'at', qq: 'all', text: '@全体成员' }, { type: 'text', text: `${displayName}维护了！` }]
-        pluginInstance.e.reply(msg, false, { recallMsg: -1 }).catch(() => {})
-        updateNotifyTime(cooldownKeyMaint)
-      }
-    } else if (!prevOnline && currOnline) {
-      if (!isInCooldown(cooldownKeyOnline) && pluginInstance && lastEventForNotify) {
-        pluginInstance.e = lastEventForNotify
-        const msg = [{ type: 'at', qq: 'all', text: '@全体成员' }, { type: 'text', text: `${displayName}开服了！` }]
-        pluginInstance.e.reply(msg, false, { recallMsg: -1 }).catch(() => {})
-        updateNotifyTime(cooldownKeyOnline)
-      }
-    }
-    lastStatus[statusKey] = status[statusKey] ? 1 : 0
   }
-  lastStatus.time = status.time
+  if (pluginInstance && lastEventForNotify) {
+    pluginInstance.e = lastEventForNotify
+    await pluginInstance.checkStatusChange(lastEventForNotify)
+  }
+  syncLastStatusFromCurrent()
 }
 
 /**
@@ -138,7 +141,7 @@ async function fetchInitialStatus() {
         const d = json.data
         for (const [apiKey, statusKey] of Object.entries(esocnToStatus)) {
           if (Object.prototype.hasOwnProperty.call(status, statusKey) && d[apiKey] != null) {
-            const isOnline = String(d[apiKey]).toLowerCase() === 'online'
+            const isOnline = isOnlineStatus(d[apiKey])
             status[statusKey] = isOnline ? 1 : 0
             lastStatus[statusKey] = status[statusKey] ? 1 : 0
           }
@@ -689,7 +692,7 @@ async function fetchFromESOCN() {
                 const esocnToStatus = { PCNA: 'pcNA', PCEU: 'pcEU', PCPTS: 'pcPTS', XBOXNA: 'xbNA', XBOXEU: 'xbEU', PSNA: 'psNA', PSEU: 'psEU' }
                 for (const [apiKey, statusKey] of Object.entries(esocnToStatus)) {
                     if (Object.prototype.hasOwnProperty.call(status, statusKey) && d[apiKey] != null) {
-                        const isOnline = String(d[apiKey]).toLowerCase() === 'online'
+                        const isOnline = isOnlineStatus(d[apiKey])
                         status[statusKey] = isOnline ? 1 : 0
                     }
                 }
@@ -804,6 +807,75 @@ let serverList= [
   ['psEU','PS 欧服']
 ]
 
+const SERVER_NOTIFY_KEYS = serverList.map(item => item[0])
+const DEFAULT_SERVER_NOTIFY_MASK = '1100000'
+let serverNotifyMask = DEFAULT_SERVER_NOTIFY_MASK
+let serverNotifyMap = new Map()
+
+function normalizeNotifyMask(rawMask) {
+  const raw = String(rawMask ?? '').trim()
+  if (!/^\d+$/.test(raw)) return null
+  if (raw === '0') return '0000000'
+  if (raw.length > SERVER_NOTIFY_KEYS.length) return null
+  if (raw.length === SERVER_NOTIFY_KEYS.length) return raw
+  // 兼容用户示例：6位按左对齐补尾0
+  if (raw.length === 6) return raw + '0'
+  // 兼容用户示例：10000 表示 pcPTS
+  if (raw.length === 5 && raw === '10000') return '0010000'
+  return raw.padStart(SERVER_NOTIFY_KEYS.length, '0')
+}
+
+function applyNotifyMask(mask) {
+  serverNotifyMask = mask
+  serverNotifyMap = new Map()
+  SERVER_NOTIFY_KEYS.forEach((key, idx) => {
+    serverNotifyMap.set(key, mask[idx] === '1')
+  })
+}
+
+function saveServerNotifyMask() {
+  try {
+    ensureConfigDir(SERVER_NOTIFY_CONFIG_PATH)
+    fs.writeFileSync(SERVER_NOTIFY_CONFIG_PATH, JSON.stringify({ notify: serverNotifyMask }, null, 2), 'utf8')
+  } catch (err) {
+    logger.error('[ESO:服务器状态] 保存服务器通知配置失败: ' + (err?.message || err))
+  }
+}
+
+function loadServerNotifyMask() {
+  try {
+    ensureConfigDir(SERVER_NOTIFY_CONFIG_PATH)
+    if (!fs.existsSync(SERVER_NOTIFY_CONFIG_PATH)) {
+      applyNotifyMask(DEFAULT_SERVER_NOTIFY_MASK)
+      saveServerNotifyMask()
+      return
+    }
+    const data = JSON.parse(fs.readFileSync(SERVER_NOTIFY_CONFIG_PATH, 'utf8'))
+    const normalized = normalizeNotifyMask(data?.notify)
+    if (!normalized) {
+      applyNotifyMask(DEFAULT_SERVER_NOTIFY_MASK)
+      saveServerNotifyMask()
+      return
+    }
+    applyNotifyMask(normalized)
+  } catch (_) {
+    applyNotifyMask(DEFAULT_SERVER_NOTIFY_MASK)
+    saveServerNotifyMask()
+  }
+}
+
+function isServerNotifyEnabled(serverKey) {
+  return serverNotifyMap.get(serverKey) === true
+}
+
+function buildNotifySummary() {
+  const enabled = serverList.filter(item => isServerNotifyEnabled(item[0])).map(item => item[1])
+  if (enabled.length === 0) return '当前未开启任何服务器通知'
+  return `当前开启通知：${enabled.join('、')}`
+}
+
+loadServerNotifyMask()
+
 //服务器状态
 let status = {
   time: '2023-01-01_00:00',
@@ -845,12 +917,21 @@ export class serverStatus extends plugin {
           reg: '^#*(服务器|服务器公告|服务器状态|服务器维护|服务器维护时间|服务器维护计划)$',
           /** 执行方法 */
           fnc: 'sendStatus'
+        },
+        {
+          reg: '^#*服务器通知\\s*(\\d+)$',
+          fnc: 'setServerNotify'
+        },
+        {
+          reg: '^#*服务器通知$',
+          fnc: 'showServerNotify'
         }
       ]
     })
     
     // 初始化定时器ID为null
     this.checkInterval = null
+    this.mode2RefreshInterval = null
   }
 
   /**
@@ -863,6 +944,10 @@ export class serverStatus extends plugin {
       clearInterval(this.checkInterval)
       this.checkInterval = null
     }
+    if (this.mode2RefreshInterval) {
+      clearInterval(this.mode2RefreshInterval)
+      this.mode2RefreshInterval = null
+    }
     stopSSEConnection()
     if (src_mode === 1) {
       const intervalMs = 1 * 60 * 1000
@@ -871,6 +956,10 @@ export class serverStatus extends plugin {
       }, intervalMs)
     } else {
       startSSEConnection(this)
+      const refreshIntervalMs = 15 * 60 * 1000
+      this.mode2RefreshInterval = setInterval(async () => {
+        await this.activeFetchFromESOCN(lastEventForNotify || this.e)
+      }, refreshIntervalMs)
     }
   }
 
@@ -1010,6 +1099,43 @@ export class serverStatus extends plugin {
     await this.e.reply(img)
   }
 
+  async setServerNotify(e) {
+    const value = e.msg.replace(/^#*服务器通知\s*/, '').trim()
+    if (!/^\d+$/.test(value)) {
+      await e.reply('服务器通知配置无效，只允许输入数字。')
+      return true
+    }
+    if (value !== '0' && !/^[01]+$/.test(value)) {
+      await e.reply('服务器通知配置无效，只允许使用0和1。')
+      return true
+    }
+    const normalized = normalizeNotifyMask(value)
+    if (!normalized) {
+      await e.reply(`服务器通知配置无效，请输入0或最多${SERVER_NOTIFY_KEYS.length}位01串。`)
+      return true
+    }
+    applyNotifyMask(normalized)
+    saveServerNotifyMask()
+    const serverOrder = serverList.map(item => item[1]).join('、')
+    await e.reply([
+      `服务器通知设置成功：${value}`,
+      `实际应用掩码：${serverNotifyMask}`,
+      `服务器顺序：${serverOrder}`,
+      buildNotifySummary()
+    ].join('\n'))
+    return true
+  }
+
+  async showServerNotify(e) {
+    const serverOrder = serverList.map(item => item[1]).join('、')
+    await e.reply([
+      `当前服务器通知掩码：${serverNotifyMask}`,
+      `服务器顺序：${serverOrder}`,
+      buildNotifySummary()
+    ].join('\n'))
+    return true
+  }
+
   async getESOStatus (e) {
   	//判断是否需要更新服务器状态变量并执行
     let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD'+'_'+'HH'+':'+'mm').replace(/是0/g, "是").replace(/点0/g, "点")
@@ -1022,17 +1148,23 @@ export class serverStatus extends plugin {
     	}
     	status.time = now
     	await this.checkStatusChange(e)
-    	lastStatus.time = status.time
-      if(status.pcNA != 1){lastStatus.pcNA = 0}else{lastStatus.pcNA = 1}
-      if(status.pcEU != 1){lastStatus.pcEU = 0}else{lastStatus.pcEU = 1}
-      if(status.pcPTS != 1){lastStatus.pcPTS = 0}else{lastStatus.pcPTS = 1}
-      if(status.xbNA != 1){lastStatus.xbNA = 0}else{lastStatus.xbNA = 1}
-      if(status.xbEU != 1){lastStatus.xbEU = 0}else{lastStatus.xbEU = 1}
-      if(status.psNA != 1){lastStatus.psNA = 0}else{lastStatus.psNA = 1}
-      if(status.psEU != 1){lastStatus.psEU = 0}else{lastStatus.psEU = 1}
-      lastStatus.msg = []
-      lastStatus.msg += status.msg
+      syncLastStatusFromCurrent()
     }
+  }
+
+  /**
+   * src_mode=2 下，基于 SSE 的定时主动拉取校准
+   */
+  async activeFetchFromESOCN(e) {
+    if (src_mode !== 2) return
+    const { serverOk } = await fetchFromESOCN()
+    if (!serverOk) return
+    status.time = moment(new Date().getTime()).format('YYYY-MM-DD_HH:mm')
+    if (e) {
+      this.e = e
+      await this.checkStatusChange(e)
+    }
+    syncLastStatusFromCurrent()
   }
 
   /**
@@ -1078,45 +1210,26 @@ export class serverStatus extends plugin {
    * @判断服务器状态变更
    */
   async checkStatusChange (e) {
-    let message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服维护了！' }]
-    
-    if(lastStatus.time != '2023-01-01_00:00')
-    {
-      if((lastStatus.pcNA == 1) && (status.pcNA == 0))//美服进入维护
-      {
-//logger.info('美服维护了！')
-        if (!isInCooldown('pcNA_maintenance')) {
-          message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服维护了！' }]
-          await this.e.reply(message, false, { recallMsg: -1 })
-          updateNotifyTime('pcNA_maintenance')
-        }
-      }
-      if((lastStatus.pcNA == 0) && (status.pcNA == 1))//美服完成维护
-      {
-//logger.info('美服开服了！')
-        if (!isInCooldown('pcNA_online')) {
-          message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '美服开服了！' }]
-          await this.e.reply(message, false, { recallMsg: -1 })
-          updateNotifyTime('pcNA_online')
-        }
-      }
-      if((lastStatus.pcEU == 1) && (status.pcEU == 0))//欧服进入维护
-      {
-//logger.info('欧服维护了！')
-        if (!isInCooldown('pcEU_maintenance')) {
-          message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '欧服维护了！' }]
-          await this.e.reply(message, false, { recallMsg: -1 })
-          updateNotifyTime('pcEU_maintenance')
-        }
-      }
-      if((lastStatus.pcEU == 0) && (status.pcEU == 1))//欧服完成维护
-      {
-//logger.info('欧服开服了！')
-        if (!isInCooldown('pcEU_online')) {
-          message = [{ type: 'at', qq: 'all', text: '@全体成员' },{ type: 'text', text: '欧服开服了！' }]
-          await this.e.reply(message, false, { recallMsg: -1 })
-          updateNotifyTime('pcEU_online')
-        }
+    if (lastStatus.time === '2023-01-01_00:00') return
+
+    for (const [serverKey, serverName] of serverList) {
+      if (!isServerNotifyEnabled(serverKey)) continue
+      const before = lastStatus[serverKey] === 1 ? 1 : 0
+      const after = status[serverKey] === 1 ? 1 : 0
+      if (before === after) continue
+
+      if (before === 1 && after === 0) {
+        const cooldownKey = `${serverKey}_maintenance`
+        if (isInCooldown(cooldownKey)) continue
+        const message = [{ type: 'at', qq: 'all', text: '@全体成员' }, { type: 'text', text: `${serverName}维护了！` }]
+        await e.reply(message, false, { recallMsg: -1 })
+        updateNotifyTime(cooldownKey)
+      } else if (before === 0 && after === 1) {
+        const cooldownKey = `${serverKey}_online`
+        if (isInCooldown(cooldownKey)) continue
+        const message = [{ type: 'at', qq: 'all', text: '@全体成员' }, { type: 'text', text: `${serverName}开服了！` }]
+        await e.reply(message, false, { recallMsg: -1 })
+        updateNotifyTime(cooldownKey)
       }
     }
   }
