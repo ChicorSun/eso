@@ -3,7 +3,7 @@ import moment from 'moment'
 import fs from 'node:fs'
 
 // 配置文件路径
-const CONFIG_PATH = './plugins/eso/custome_resources/config/allNoticecfg.json'
+const CONFIG_PATH = './data/eso/custome_resources/config/allNoticecfg.json'
 
 let blackList = []
 
@@ -113,7 +113,7 @@ export class allNotice extends plugin {
   // 保存黑名单到文件
   async saveBlackList() {
     try {
-      const configDir = './plugins/eso/custome_resources/config'
+      const configDir = './data/eso/custome_resources/config'
       if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true })
       }
@@ -131,7 +131,7 @@ export class allNotice extends plugin {
         blackList = JSON.parse(data)
       } else {
         // 如果文件不存在，创建空黑名单
-        const configDir = './plugins/eso/custome_resources/config'
+        const configDir = './data/eso/custome_resources/config'
         if (!fs.existsSync(configDir)) {
           fs.mkdirSync(configDir, { recursive: true })
         }

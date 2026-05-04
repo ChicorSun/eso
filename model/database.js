@@ -387,14 +387,14 @@ let dataExtractorENPath = './plugins/eso/resources/data/DataExtractor-en.lua'
 let dataExtractorCNPath = './plugins/eso/resources/data/DataExtractor-cn.lua'
 
 // 缓存路径
-const cachePath = './plugins/eso/custome_resources/cache/'
+const cachePath = './data/eso/custome_resources/cache/'
 const MAX_CACHE_ENTRIES = 1000
 
 // JSON缓存文件路径
-const jsonCachePathEN = './plugins/eso/custome_resources/cache/database-en.json'
-const jsonCachePathCN = './plugins/eso/custome_resources/cache/database-cn.json'
-const jsonCacheMD5PathEN = './plugins/eso/custome_resources/cache/database-en.md5'
-const jsonCacheMD5PathCN = './plugins/eso/custome_resources/cache/database-cn.md5'
+const jsonCachePathEN = './data/eso/custome_resources/cache/database-en.json'
+const jsonCachePathCN = './data/eso/custome_resources/cache/database-cn.json'
+const jsonCacheMD5PathEN = './data/eso/custome_resources/cache/database-en.md5'
+const jsonCacheMD5PathCN = './data/eso/custome_resources/cache/database-cn.md5'
 
 // JSON缓存文件路径
 const jsonDataPathEN = './plugins/eso/resources/data/database-en.json'

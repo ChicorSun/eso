@@ -8,11 +8,10 @@ import md5 from 'md5'
 import * as cheerio from 'cheerio'
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CONFIG_PATH = path.join(__dirname, '../custome_resources/config/serverStatus.json')
-const SERVER_NOTIFY_CONFIG_PATH = path.join(__dirname, '../custome_resources/config/serverList.json')
+const CUSTOME_RESOURCES_ROOT = path.join(process.cwd(), 'data', 'eso', 'custome_resources')
+const CONFIG_PATH = path.join(CUSTOME_RESOURCES_ROOT, 'config/serverStatus.json')
+const SERVER_NOTIFY_CONFIG_PATH = path.join(CUSTOME_RESOURCES_ROOT, 'config/serverList.json')
 
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 

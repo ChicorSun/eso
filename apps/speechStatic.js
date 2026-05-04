@@ -369,7 +369,7 @@ export class speechStatic extends plugin {
                     // 获取用户头像路径（与speechTally保持一致）
                     let imgPath = await getimgs.realpath(stat.user_id, "avatar")
                     // 提取文件名（去掉路径前缀，只保留文件名部分）
-                    // getimgs.realpath 返回格式：./plugins/eso/resources/img/avatar/123456 或 ./plugins/eso/custome_resources/img/avatar/123456
+                    // getimgs.realpath 返回格式：./plugins/eso/resources/img/avatar/123456 或 ./data/eso/custome_resources/img/avatar/123456
                     // 需要提取出文件名部分，以便在模板中使用 {{pluResPath}}img/avatar/{{avatar}}.png 格式
                     let avatarFileName = imgPath.replace(/^.*[\\\/]/, '') // 提取文件名
                     // 如果提取失败或为空，使用stdin作为默认值

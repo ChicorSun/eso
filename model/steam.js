@@ -20,7 +20,7 @@ class SteamModel {
   // 加载配置
   loadConfig() {
     try {
-      const configPath = './plugins/eso/custome_resources/steam/config/steamConfig.json'
+      const configPath = './data/eso/custome_resources/steam/config/steamConfig.json'
       if (fs.existsSync(configPath)) {
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
         // 处理API密钥，过滤掉null和空值
@@ -42,7 +42,7 @@ class SteamModel {
   // 保存配置
   saveConfig() {
     try {
-      const configPath = './plugins/eso/custome_resources/steam/config/steamConfig.json'
+      const configPath = './data/eso/custome_resources/steam/config/steamConfig.json'
       const configDir = path.dirname(configPath)
       if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true })

@@ -56,7 +56,7 @@ let ttcImgCache = {
 // ===========================================
 // TTC 路径配置
 // ===========================================
-const TTC_BASE_PATH = './plugins/eso/custome_resources/ttc/'
+const TTC_BASE_PATH = './data/eso/custome_resources/ttc/'
 const TTC_CONFIG_PATH = path.join(TTC_BASE_PATH, 'config/')
 const TTC_CACHE_PATH = path.join(TTC_BASE_PATH, 'cache/')
 const TTC_IMAGE_PATH = path.join(TTC_BASE_PATH, 'images/')
@@ -206,7 +206,7 @@ const HOT_ITEMS_LIST = [
 // ===========================================
 // 公会位置缓存文件路径
 // ===========================================
-const PLACE_PATH = './plugins/eso/custome_resources/ttc/data/place.json'
+const PLACE_PATH = './data/eso/custome_resources/ttc/data/place.json'
 
 // ===========================================
 // 公会位置查询固定URL
@@ -3947,7 +3947,7 @@ export class ttc extends plugin {
     }
 
     // 返回相对于HTML模板的路径
-    // HTML模板中使用 {{pluResPath}}custome_resources/ttc/images/{{item.itemIcon}}
+    // HTML模板中使用 {{pluResPath}}../../../data/eso/custome_resources/ttc/images/{{item.itemIcon}}
     // 所以这里只需要返回文件名即可
     return fileName
   }

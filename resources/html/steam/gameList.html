@@ -16,7 +16,7 @@
         <div class="header_user_info">
           <div class="user_avatar">
             {{if userAvatarPath}}
-            <img src="{{pluResPath}}../custome_resources/steam/images/avatar/{{userAvatarPath}}" alt="用户头像" />
+            <img src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/avatar/{{userAvatarPath}}" alt="用户头像" />
             {{else if userAvatar}}
             <img src="{{userAvatar}}" alt="用户头像" />
             {{else}}
@@ -37,7 +37,7 @@
         <div class="game_item">
           <div class="game_header_image">
             {{if $value.headerImagePath}}
-            <img src="{{pluResPath}}../custome_resources/steam/images/games/{{$value.headerImagePath}}" alt="{{$value.name}}" />
+            <img src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/games/{{$value.headerImagePath}}" alt="{{$value.name}}" />
             {{else}}
             <img src="{{$value.headerImage}}" alt="{{$value.name}}" />
             {{/if}}

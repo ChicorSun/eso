@@ -4,7 +4,7 @@ import fs from 'node:fs'
 //import random
 
 // 配置文件路径
-const CONFIG_PATH = './plugins/eso/custome_resources/config/randomMute.json'
+const CONFIG_PATH = './data/eso/custome_resources/config/randomMute.json'
 
 let muteTime = [60, 300, 900, 120, 1800, 600, 180, 3600, 60, 300, 480, 120, 900, 600, 360, 7200, 86400, 300, 1800, 120, 480, 600, 180, 2700]
 let muteEnable = 0
@@ -44,7 +44,7 @@ export class test extends plugin {
         muteEnable = config.muteEnable !== undefined ? config.muteEnable : 0
       } else {
         // 如果文件不存在，创建默认配置
-        const configDir = './plugins/eso/custome_resources/config'
+        const configDir = './data/eso/custome_resources/config'
         if (!fs.existsSync(configDir)) {
           fs.mkdirSync(configDir, { recursive: true })
         }
@@ -61,7 +61,7 @@ export class test extends plugin {
   // 保存配置到文件
   async saveConfig() {
     try {
-      const configDir = './plugins/eso/custome_resources/config'
+      const configDir = './data/eso/custome_resources/config'
       if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true })
       }

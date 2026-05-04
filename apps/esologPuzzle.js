@@ -16,11 +16,11 @@ const ESOCN_API = {
 }
 
 // 配置文件路径
-const CONFIG_PATH = './plugins/eso/custome_resources/config/esologcfg.json'
-const ACCOUNT_PATH = './plugins/eso/custome_resources/data/account_data.json'
-const CARD_PATH = './plugins/eso/custome_resources/data/card_data.json'
-const BUILD_PATH = './plugins/eso/custome_resources/data/builds/'
-const RECORD_PATH = './plugins/eso/custome_resources/data/record_data.json'
+const CONFIG_PATH = './data/eso/custome_resources/config/esologcfg.json'
+const ACCOUNT_PATH = './data/eso/custome_resources/data/account_data.json'
+const CARD_PATH = './data/eso/custome_resources/data/card_data.json'
+const BUILD_PATH = './data/eso/custome_resources/data/builds/'
+const RECORD_PATH = './data/eso/custome_resources/data/record_data.json'
 let configLoaded = false
 
 // 最大并发数
@@ -1697,7 +1697,7 @@ export class esologPuzzle extends plugin {
           fast_mode
         }
         // 确保目录存在
-        const configDir = './plugins/eso/custome_resources/config'
+        const configDir = './data/eso/custome_resources/config'
         if (!fs.existsSync(configDir)) {
           fs.mkdirSync(configDir, { recursive: true })
         }
@@ -1721,7 +1721,7 @@ export class esologPuzzle extends plugin {
         fast_mode
       }
       // 确保目录存在
-      const configDir = './plugins/eso/custome_resources/config'
+      const configDir = './data/eso/custome_resources/config'
       if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true })
       }
@@ -1834,7 +1834,7 @@ export class esologPuzzle extends plugin {
     const bindingData = [];
     
     // 检查是否有自定义头像
-    const customAvatarPath = `./plugins/eso/custome_resources/img/avatar/${userId}.png`;
+    const customAvatarPath = `./data/eso/custome_resources/img/avatar/${userId}.png`;
     const hasCustomAvatar = fs.existsSync(customAvatarPath);
     
     // 导入 getimgs 用于处理 ESOCN 头像
@@ -1859,7 +1859,7 @@ export class esologPuzzle extends plugin {
         
         // 如果没有 ESOCN 头像，且是主账号，尝试使用自定义头像
         if (!avatarPath && binding.isPrimary && hasCustomAvatar) {
-          avatarPath = `${process.cwd().replace(/\\/g, '/')}/plugins/eso/custome_resources/img/avatar/${userId}.png`;
+          avatarPath = `${process.cwd().replace(/\\/g, '/')}/data/eso/custome_resources/img/avatar/${userId}.png`;
         }
         
         bindingData.push({
@@ -2195,7 +2195,7 @@ export class esologPuzzle extends plugin {
   async updateAvatar(e) {
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
-    let customImg = `./plugins/eso/custome_resources/img/avatar/${userId}.png`
+    let customImg = `./data/eso/custome_resources/img/avatar/${userId}.png`
     let imgPath = `./plugins/eso/resources/img/avatar/${userId}.png`
     let url = `https://q1.qlogo.cn/g?b=qq&nk=${userId}&s=160`
     let ret = await Bot.download(url, customImg)

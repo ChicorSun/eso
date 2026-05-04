@@ -4,8 +4,8 @@ import moment from 'moment'
 
 class SteamPushModel {
   constructor() {
-    this.pushPath = './plugins/eso/custome_resources/steam/data/steam_push.json'
-    this.onlineStatusPath = './plugins/eso/custome_resources/steam/data/steam_online_status.json'
+    this.pushPath = './data/eso/custome_resources/steam/data/steam_push.json'
+    this.onlineStatusPath = './data/eso/custome_resources/steam/data/steam_online_status.json'
     this.pushSettings = this.loadPushSettings()
     this.onlineStatus = this.loadOnlineStatus()
     this.monitoring = false

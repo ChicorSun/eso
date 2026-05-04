@@ -1,4 +1,18 @@
 import fs from 'node:fs'
+import path from 'node:path'
+
+const dataCustomeDir = path.join(process.cwd(), 'data', 'eso', 'custome_resources')
+const pluginCustomeDir = path.join(process.cwd(), 'plugins', 'eso', 'custome_resources')
+
+if (!fs.existsSync(dataCustomeDir)) {
+  if (fs.existsSync(pluginCustomeDir)) {
+    fs.mkdirSync(path.dirname(dataCustomeDir), { recursive: true })
+    fs.cpSync(pluginCustomeDir, dataCustomeDir, { recursive: true })
+    fs.rmSync(pluginCustomeDir, { recursive: true, force: true })
+  } else {
+    fs.mkdirSync(dataCustomeDir, { recursive: true })
+  }
+}
 
 if (!global.segment) {
   global.segment = (await import("oicq")).segment

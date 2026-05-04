@@ -3,7 +3,7 @@ import moment from 'moment'
 import fs from 'node:fs'
 
 // 配置文件路径
-const CONFIG_PATH = './plugins/eso/custome_resources/config/warningTips.json'
+const CONFIG_PATH = './data/eso/custome_resources/config/warningTips.json'
 
 let logs = {
   date: '2023-01-01',
@@ -71,7 +71,7 @@ export class warningTips extends plugin {
         nicknameViolationMuteTime = config.nicknameViolationMuteTime !== undefined ? config.nicknameViolationMuteTime : 0
       } else {
         // 如果文件不存在，创建默认配置
-        const configDir = './plugins/eso/custome_resources/config'
+        const configDir = './data/eso/custome_resources/config'
         if (!fs.existsSync(configDir)) {
           fs.mkdirSync(configDir, { recursive: true })
         }
@@ -92,7 +92,7 @@ export class warningTips extends plugin {
   // 保存配置到文件
   async saveConfig() {
     try {
-      const configDir = './plugins/eso/custome_resources/config'
+      const configDir = './data/eso/custome_resources/config'
       if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true })
       }

@@ -30,7 +30,7 @@ function parseAlchemyDescription(text) {
 }
 
 // 价格表文件路径
-const TTC_DATA_PATH = './plugins/eso/custome_resources/ttc/data/'
+const TTC_DATA_PATH = './data/eso/custome_resources/ttc/data/'
 const PRICE_TABLE_NA = path.join(TTC_DATA_PATH, 'PriceTableNA.json')
 const PRICE_TABLE_EU = path.join(TTC_DATA_PATH, 'PriceTableEU.json')
 

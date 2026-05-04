@@ -6,12 +6,11 @@ import moment from 'moment'
 import md5 from 'md5'
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CONFIG_PATH = path.join(__dirname, '../custome_resources/news/newsList.json')
-const CONTEXT_DIR = path.join(__dirname, '../custome_resources/news/context')
-const NEWS_IMG_DIR = path.join(__dirname, '../custome_resources/img/news')
+const CUSTOME_RESOURCES_ROOT = path.join(process.cwd(), 'data', 'eso', 'custome_resources')
+const CONFIG_PATH = path.join(CUSTOME_RESOURCES_ROOT, 'news/newsList.json')
+const CONTEXT_DIR = path.join(CUSTOME_RESOURCES_ROOT, 'news/context')
+const NEWS_IMG_DIR = path.join(CUSTOME_RESOURCES_ROOT, 'img/news')
 const CLEANUP_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
 const NEWS_LIST_API = 'https://api.esocn.com.cn/api/news/getNewsList'
@@ -138,7 +137,7 @@ export class news extends plugin {
       saveId: 'news',
       tplFile: './plugins/eso/resources/html/news/news.html',
       pluResPath: `${_path}/plugins/eso/resources/`,
-      customeResPath: `${_path}/plugins/eso/custome_resources/`,
+      customeResPath: `${_path}/data/eso/custome_resources/`,
       list: [],
       updateTime: data.savedAt || moment().format('YYYY-MM-DD HH:mm:ss')
     }

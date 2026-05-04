@@ -7,7 +7,7 @@ import path from 'node:path'
  */
 class ESOAccountModel {
   constructor() {
-    this.dbPath = './plugins/eso/custome_resources/data/account_data.json'
+    this.dbPath = './data/eso/custome_resources/data/account_data.json'
     this.users = this.loadUsers()
   }
 

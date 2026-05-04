@@ -4,7 +4,7 @@ import path from 'node:path'
 class getimgs {
   async realpath (name, type) {
     let imgPath = `./plugins/eso/resources/img/${type}/${name}.png`
-    let customImg = `./plugins/eso/custome_resources/img/${type}/${name}.png`
+    let customImg = `./data/eso/custome_resources/img/${type}/${name}.png`
     let icon_name = ''
 
     if (type === 'news' && (typeof name === 'string' && (name.startsWith('http://') || name.startsWith('https://')))) {
@@ -13,7 +13,7 @@ class getimgs {
       const ext = path.extname(filename) || '.jpg'
       const baseName = path.basename(filename, ext) || 'news_' + Date.now()
       const saveName = baseName + ext
-      customImg = `./plugins/eso/custome_resources/img/${type}/${saveName}`
+      customImg = `./data/eso/custome_resources/img/${type}/${saveName}`
 
       const dir = path.dirname(customImg)
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -25,13 +25,13 @@ class getimgs {
           logger.error('[getimgs] 下载新闻封面失败: ' + (err?.message || err))
         }
       }
-      return `../../../plugins/eso/custome_resources/img/${type}/${saveName}`
+      return `../../../data/eso/custome_resources/img/${type}/${saveName}`
     }
 
     if (fs.existsSync(imgPath)) {
       icon_name = `./plugins/eso/resources/img/${type}/${name}`
     } else {
-      icon_name = `./plugins/eso/custome_resources/img/${type}/${name}`
+      icon_name = `./data/eso/custome_resources/img/${type}/${name}`
       if (fs.existsSync(customImg)) {
       } else {
         let url = ``
@@ -48,7 +48,7 @@ class getimgs {
           const ext = path.extname(filename) || '.jpg'
           const baseName = path.basename(filename, ext) || 'esocn_' + Date.now()
           const saveName = baseName + ext
-          customImg = `./plugins/eso/custome_resources/img/${type}/${saveName}`
+          customImg = `./data/eso/custome_resources/img/${type}/${saveName}`
 
           const dir = path.dirname(customImg)
           if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -60,7 +60,7 @@ class getimgs {
               logger.error('[getimgs] 下载ESOCN头像失败: ' + (err?.message || err))
             }
           }
-          return `../../../plugins/eso/custome_resources/img/${type}/${saveName}`
+          return `../../../data/eso/custome_resources/img/${type}/${saveName}`
         } else {
           url = `https://esoicons.uesp.net/esoui/art/icons/${name}.png`
         }

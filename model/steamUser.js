@@ -4,7 +4,7 @@ import moment from 'moment'
 
 class SteamUserModel {
   constructor() {
-    this.dbPath = './plugins/eso/custome_resources/steam/data/steam_users.json'
+    this.dbPath = './data/eso/custome_resources/steam/data/steam_users.json'
     this.users = this.loadUsers()
     // 数据迁移：将旧格式转换为新格式（异步执行）
     this.migrateData().catch(error => {
@@ -34,7 +34,7 @@ class SteamUserModel {
               try {
                 const fs = await import('node:fs')
                 const path = await import('node:path')
-                const avatarDir = './plugins/eso/custome_resources/steam/images/avatar'
+                const avatarDir = './data/eso/custome_resources/steam/images/avatar'
                 const avatarPath = path.join(avatarDir, `${userData.steamId}.jpg`)
                 
                 // 检查是否已有缓存

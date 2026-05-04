@@ -19,7 +19,7 @@ const __dirname = path.dirname(__filename)
 // ===========================================
 // Steam 路径配置
 // ===========================================
-const STEAM_BASE_PATH = './plugins/eso/custome_resources/steam/'
+const STEAM_BASE_PATH = './data/eso/custome_resources/steam/'
 const STEAM_CONFIG_PATH = path.join(STEAM_BASE_PATH, 'config/')
 const STEAM_CACHE_PATH = path.join(STEAM_BASE_PATH, 'cache/')
 const STEAM_IMAGE_PATH = path.join(STEAM_BASE_PATH, 'images/')
@@ -1857,7 +1857,7 @@ export class steam extends plugin {
     }
 
     // 返回相对于HTML模板的路径
-    // HTML模板中使用 {{pluResPath}}../custome_resources/steam/images/{{type}}/{{fileName}}
+    // HTML模板中使用 {{pluResPath}}../../../data/eso/custome_resources/steam/images/{{type}}/{{fileName}}
     // 所以这里只需要返回文件名即可
     return fileName
   }
