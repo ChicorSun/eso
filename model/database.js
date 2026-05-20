@@ -333,6 +333,281 @@ export function parseColorTags (text) {
   return formattedText
 }
 
+// ==================== BUFF/DEBUFF 套装·技能映射表 ====================
+const BUFF_DEBUFF_LIST_PATH = './data/eso/custome_resources/cache/buff_debuff.json'
+const BUFF_DEBUFF_MD5_PATH = './data/eso/custome_resources/cache/buff_debuff.md5'
+
+let buffDebuffListBuildState = null
+let buffDebuffListFileCache = null
+
+/** 加载 buff_debuff.json（带内存缓存） */
+function loadBuffDebuffListFile () {
+  if (buffDebuffListFileCache) return buffDebuffListFileCache
+  try {
+    if (fs.existsSync(BUFF_DEBUFF_LIST_PATH)) {
+      buffDebuffListFileCache = JSON.parse(fs.readFileSync(BUFF_DEBUFF_LIST_PATH, 'utf8'))
+      return buffDebuffListFileCache
+    }
+  } catch (e) {
+    logger.warn(`[ESO:图鉴] 加载 buff_debuff.json 失败: ${e.message}`)
+  }
+  buffDebuffListFileCache = { buffs: [], debuffs: [] }
+  return buffDebuffListFileCache
+}
+
+/** 读取 plugins/eso/resources/data/database-cn.md5 当前内容 */
+function readDatabaseCnMd5Value () {
+  try {
+    if (fs.existsSync(jsonDataMD5PathCN)) {
+      return fs.readFileSync(jsonDataMD5PathCN, 'utf8').trim()
+    }
+  } catch (e) {
+    logger.warn(`[ESO:图鉴] 读取 database-cn.md5 失败: ${e.message}`)
+  }
+  return null
+}
+
+/** buff_debuff 缓存是否与当前中文库 MD5 一致且 JSON 已存在 */
+function isBuffDebuffListCacheValid () {
+  const currentMd5 = readDatabaseCnMd5Value()
+  if (!currentMd5) return false
+  if (!fs.existsSync(BUFF_DEBUFF_LIST_PATH) || !fs.existsSync(BUFF_DEBUFF_MD5_PATH)) {
+    return false
+  }
+  try {
+    const cachedMd5 = fs.readFileSync(BUFF_DEBUFF_MD5_PATH, 'utf8').trim()
+    return cachedMd5 === currentMd5
+  } catch (e) {
+    logger.warn(`[ESO:图鉴] 读取 buff_debuff.md5 失败: ${e.message}`)
+    return false
+  }
+}
+
+/** 去除游戏内 |cXXXXXX|r 颜色码，便于 buff 名称匹配 */
+function stripGameColorCodesForBuffDetect (text) {
+  if (text === null || text === undefined) return ''
+  let msg = String(text)
+  const colorMsgs = msg.split('|c')
+  if (colorMsgs.length <= 1) return msg
+  msg = colorMsgs[0]
+  for (let i = 1; i < colorMsgs.length; i++) {
+    const parts = colorMsgs[i].split('|r')
+    msg += (parts[0]?.slice(6) ?? '') + (parts[1] ?? '')
+  }
+  return msg
+}
+
+/** 将匹配到的中/英文名称解析为 buff.json / debuff.json 中的中文 canonical name */
+function resolveCanonicalBuffDebuffName (matchedName, levelHint = null, isBuffHint = null) {
+  ensureParseColorTagsInitialized()
+  const info = getParseColorTagsNameInfo(matchedName)
+  const isBuff = isBuffHint ?? info?.isBuff ?? true
+  const level = levelHint ?? info?.level ?? 'major'
+  const list = isBuff ? parsedBuffsCache : parsedDebuffsCache
+  let entry = list.find(b => b.name === matchedName || b.enName === matchedName)
+  if (entry) return entry.name
+  const isEnglish = /^[A-Z]/i.test(matchedName)
+  if (isEnglish) {
+    const prefix = level === 'minor' ? 'Minor ' : 'Major '
+    entry = list.find(b => b.enName === prefix + matchedName)
+  } else {
+    const prefix = level === 'minor' ? '次级' : '高级'
+    entry = list.find(b => b.name === prefix + matchedName)
+  }
+  if (entry) return entry.name
+  entry = list.find(b => {
+    const baseCn = b.name?.replace(/^(次级|高级)/, '')
+    const baseEn = b.enName?.replace(/^(Minor|Major)\s+/i, '')
+    return baseCn === matchedName || baseEn === matchedName
+  })
+  return entry?.name ?? null
+}
+
+/**
+ * 在文本中检测 buff/debuff（算法与 parseColorTags 一致：完整名 + 省略前缀）
+ * @returns {Set<string>} canonical 中文名集合
+ */
+function detectBuffDebuffInText (text) {
+  const found = new Set()
+  if (!text || typeof text !== 'string') return found
+
+  ensureParseColorTagsInitialized()
+  let workingText = stripGameColorCodesForBuffDetect(text)
+  const placeholders = new Map()
+  let placeholderId = 0
+
+  for (const name of sortedNamesCache) {
+    const info = getParseColorTagsNameInfo(name)
+    const isEnglish = /^[A-Z]/i.test(name)
+    let regex
+    if (isEnglish) {
+      regex = new RegExp(`\\b${escapeRegexForParseColorTags(name)}\\b`, 'g')
+    } else {
+      regex = new RegExp(`(?<![a-zA-Z0-9])${escapeRegexForParseColorTags(name)}(?![a-zA-Z0-9])`, 'g')
+    }
+    workingText = workingText.replace(regex, () => {
+      const canonical = resolveCanonicalBuffDebuffName(name, info?.level, info?.isBuff)
+      if (canonical) found.add(canonical)
+      const placeholder = `§BUFF_${placeholderId++}§`
+      placeholders.set(placeholder, { text: name, level: info?.level, isBuff: info?.isBuff })
+      return placeholder
+    })
+  }
+
+  for (const [baseName, infos] of parseColorTagsBaseNameToLevelMap) {
+    if (!infos?.length) continue
+    const isEnglish = /^[A-Z]/i.test(baseName)
+    let regex
+    if (isEnglish) {
+      const connectorPattern = '(?:(?:^|[^a-zA-Z])(?:and|or|,)\\s*|§BUFF_\\d+§\\s*)'
+      regex = new RegExp(
+        `${connectorPattern}(${escapeRegexForParseColorTags(baseName)})(?![a-zA-Z0-9])`,
+        'gi'
+      )
+    } else {
+      const connectorPattern = '(?:(?:^|和|与|、|及)|§BUFF_\\d+§)'
+      regex = new RegExp(
+        `${connectorPattern}(${escapeRegexForParseColorTags(baseName)})(?![a-zA-Z0-9])`,
+        'g'
+      )
+    }
+    workingText = workingText.replace(regex, (match, baseNameMatch, offset) => {
+      let level = 'major'
+      let isBuff = true
+      const textBeforeMatch = workingText.substring(0, offset)
+      const prevBuffMatch = textBeforeMatch.match(/§BUFF_(\d+)§(?!.*§BUFF_\d+§)/)
+      if (prevBuffMatch) {
+        const prevInfo = placeholders.get(`§BUFF_${prevBuffMatch[1]}§`)
+        if (prevInfo) {
+          isBuff = prevInfo.isBuff
+          level = prevInfo.level
+          const matchingInfo = infos.find(i => i.level === prevInfo.level)
+          if (matchingInfo) level = matchingInfo.level
+        }
+      }
+      const canonical = resolveCanonicalBuffDebuffName(baseNameMatch, level, isBuff)
+      if (canonical) found.add(canonical)
+      const placeholder = `§BUFF_${placeholderId++}§`
+      placeholders.set(placeholder, { text: baseNameMatch, level, isBuff })
+      const connector = match.substring(0, match.length - baseNameMatch.length)
+      return connector + placeholder
+    })
+  }
+
+  return found
+}
+
+function createBuffDebuffListBuildState () {
+  ensureParseColorTagsInitialized()
+  const buffEntries = new Map()
+  const debuffEntries = new Map()
+  for (const b of parsedBuffsCache) {
+    buffEntries.set(b.name, { name: b.name, enName: b.enName, des: b.des, icon: b.icon, setsList: new Set(), skillsList: new Set() })
+  }
+  for (const d of parsedDebuffsCache) {
+    debuffEntries.set(d.name, { name: d.name, enName: d.enName, des: d.des, icon: d.icon, setsList: new Set(), skillsList: new Set() })
+  }
+  return { buffEntries, debuffEntries }
+}
+
+function registerDetectedBuffDebuff (foundNames, setOrSkillId, listKey, state) {
+  if (!foundNames?.size || setOrSkillId == null) return
+  const id = Number(setOrSkillId)
+  if (!Number.isFinite(id)) return
+  for (const cnName of foundNames) {
+    const buffEntry = state.buffEntries.get(cnName)
+    if (buffEntry) {
+      buffEntry[listKey].add(id)
+      continue
+    }
+    const debuffEntry = state.debuffEntries.get(cnName)
+    if (debuffEntry) debuffEntry[listKey].add(id)
+  }
+}
+
+function collectSetBonusTextStrings (setKey) {
+  const texts = []
+  const setId = setsData[setKey]?.id
+  if (setId == null) return texts
+  const sources = [
+    setsDataCN[setId]?.bonuses,
+    setsData[setKey]?.bonuses
+  ]
+  for (const bonuses of sources) {
+    if (!bonuses || typeof bonuses !== 'object') continue
+    for (const tierKey of Object.keys(bonuses)) {
+      const tier = bonuses[tierKey]
+      if (!tier || typeof tier !== 'object') continue
+      for (const effectKey of Object.keys(tier)) {
+        if (typeof tier[effectKey] === 'string') texts.push(tier[effectKey])
+      }
+    }
+  }
+  return texts
+}
+
+function collectSkillDescriptionStrings (skill) {
+  const texts = []
+  if (!skill || typeof skill !== 'object') return texts
+  if (typeof skill.description === 'string') texts.push(skill.description)
+  if (typeof skill.newEffect === 'string') texts.push(skill.newEffect)
+  for (let i = 2; i < 20; i++) {
+    if (skill[i]?.description) texts.push(skill[i].description)
+  }
+  return texts
+}
+
+function scanTextsForBuffDebuff (texts, id, listKey, state) {
+  const found = new Set()
+  for (const t of texts) {
+    for (const name of detectBuffDebuffInText(t)) found.add(name)
+  }
+  registerDetectedBuffDebuff(found, id, listKey, state)
+}
+
+function serializeBuffDebuffListState (state) {
+  const sortIds = (set) => Array.from(set).sort((a, b) => a - b)
+  const buffs = []
+  for (const entry of state.buffEntries.values()) {
+    buffs.push({
+      name: entry.name,
+      enName: entry.enName,
+      des: entry.des,
+      icon: entry.icon,
+      setsList: sortIds(entry.setsList),
+      skillsList: sortIds(entry.skillsList)
+    })
+  }
+  const debuffs = []
+  for (const entry of state.debuffEntries.values()) {
+    debuffs.push({
+      name: entry.name,
+      enName: entry.enName,
+      des: entry.des,
+      icon: entry.icon,
+      setsList: sortIds(entry.setsList),
+      skillsList: sortIds(entry.skillsList)
+    })
+  }
+  return { buffs, debuffs }
+}
+
+function saveBuffDebuffListFile (state) {
+  const outDir = path.dirname(BUFF_DEBUFF_LIST_PATH)
+  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true })
+  const payload = serializeBuffDebuffListState(state)
+  fs.writeFileSync(BUFF_DEBUFF_LIST_PATH, JSON.stringify(payload, null, 2), 'utf8')
+  buffDebuffListFileCache = null
+  const databaseCnMd5 = readDatabaseCnMd5Value()
+  if (databaseCnMd5) {
+    fs.writeFileSync(BUFF_DEBUFF_MD5_PATH, databaseCnMd5, 'utf8')
+    logger.info(`[ESO:图鉴] 已写入 buff/debuff MD5 缓存: ${BUFF_DEBUFF_MD5_PATH}`)
+  } else {
+    logger.warn('[ESO:图鉴] 未找到 database-cn.md5，跳过写入 buff_debuff.md5')
+  }
+  logger.info(`[ESO:图鉴] 已写入 buff/debuff 映射表: ${BUFF_DEBUFF_LIST_PATH}`)
+}
+
 // 家具数据扩充包路径（第三方提供）
 const FURNITURE_PACK_PATH = path.join(process.cwd(), 'plugins/eso/resources/img/furniturePack/F690F8D1DC2C04C0A6384064427778433FBCF99A')
 let furniturePackCache = null
@@ -404,6 +679,9 @@ const jsonDataMD5PathCN = './plugins/eso/resources/data/database-cn.md5'
 
 // 数据文件的 MD5 值
 let currentMD5 = null
+
+/** init_database 单例 Promise，避免 getSetsEN/getSetsCN 等并发重复初始化 */
+let databaseInitPromise = null
 
 // 内存监控和优化函数
 function optimizeMemoryUsage(context = '') {
@@ -1573,6 +1851,18 @@ class database {
   }
 
   async init_database () {
+    if (databaseInitPromise) return databaseInitPromise
+    databaseInitPromise = this._init_databaseOnce()
+    try {
+      await databaseInitPromise
+    } catch (e) {
+      databaseInitPromise = null
+      throw e
+    }
+    return databaseInitPromise
+  }
+
+  async _init_databaseOnce () {
     // 计算数据文件的 MD5 值
     if (!currentMD5) {
       currentMD5 = calculateMD5(dataExtractorCNPath)
@@ -1585,6 +1875,12 @@ class database {
     await this.enhance_database()
     await this.init_databaseDG()
     await this.init_databaseArtifact()
+    if (isBuffDebuffListCacheValid()) {
+      logger.info('[ESO:图鉴] buff/debuff 映射表与 database-cn.md5 一致，跳过生成')
+    } else {
+      await this.create_buff_list_for_sets()
+      await this.create_buff_list_for_skills()
+    }
     //await this.list_setsData()
   }
 
@@ -3957,21 +4253,45 @@ class database {
     }
 
     enID = objects.split('_')
+    if (enID.length < 4) {
+      logger.warn(`[ESO:图鉴] 无效的技能索引: ${objects}`)
+      return null
+    }
 
-    if(enID[3] == '0')
-    {
-      newENSkillData = skillsData[enID[0]][enID[1]].skills[enID[2]]
-      cnID = skillID2IndexCN[newENSkillData.id]
-      newCNSkillData = skillsDataCN[cnID[0]][cnID[1]].skills[cnID[2]]
+    const baseSkill = skillsData[enID[0]]?.[enID[1]]?.skills?.[enID[2]]
+    if (!baseSkill) {
+      logger.warn(`[ESO:图鉴] 未找到技能节点: ${objects}`)
+      return null
     }
-    else
-    {
-      newENSkillData = skillsData[enID[0]][enID[1]].skills[enID[2]][enID[3]]
-      cnID = skillID2IndexCN[newENSkillData.id]
-      newCNSkillData = skillsDataCN[cnID[0]][cnID[1]].skills[cnID[2]][cnID[3]]
+
+    if (enID[3] == '0') {
+      newENSkillData = baseSkill
+    } else {
+      newENSkillData = baseSkill[enID[3]]
     }
-    srcENSkillData = skillsData[enID[0]][enID[1]].skills[enID[2]]
-    srcCNSkillData = skillsDataCN[cnID[0]][cnID[1]].skills[cnID[2]]
+    if (!newENSkillData?.id) {
+      logger.warn(`[ESO:图鉴] 技能缺少 id: ${objects}`)
+      return null
+    }
+
+    cnID = skillID2IndexCN[newENSkillData.id]
+    if (!cnID || cnID[0] == null || cnID[1] == null || cnID[2] == null) {
+      logger.warn(`[ESO:图鉴] 技能无中文索引: ${objects} (id=${newENSkillData.id})`)
+      return null
+    }
+
+    if (enID[3] == '0') {
+      newCNSkillData = skillsDataCN[cnID[0]]?.[cnID[1]]?.skills?.[cnID[2]]
+    } else {
+      newCNSkillData = skillsDataCN[cnID[0]]?.[cnID[1]]?.skills?.[cnID[2]]?.[enID[3]]
+    }
+    srcENSkillData = baseSkill
+    srcCNSkillData = skillsDataCN[cnID[0]]?.[cnID[1]]?.skills?.[cnID[2]]
+
+    if (!newCNSkillData || !srcCNSkillData) {
+      logger.warn(`[ESO:图鉴] 技能中文数据缺失: ${objects}`)
+      return null
+    }
 
     /*
     logger.info(srcENSkillData.name)
@@ -3997,7 +4317,7 @@ class database {
 
     skillData.atlasData[1].type_cn = skillsDataCN[cnID[0]].name
     
-    if(cnID['address'].includes("复仇"))
+    if (cnID['address']?.includes('复仇'))
     {
       skillData.atlasData[1].type_en = "限时白板PVP区域专用技能"
     }
@@ -6096,6 +6416,179 @@ class database {
     }
 
     return typeName
+  }
+
+  /** 遍历全部套装效果文本，建立 buff/debuff -> setsList 映射 */
+  async create_buff_list_for_sets () {
+    try {
+      buffDebuffListBuildState = createBuffDebuffListBuildState()
+      const state = buffDebuffListBuildState
+      let scanned = 0
+      for (const setKey of Object.keys(setsData)) {
+        const setId = setsData[setKey]?.id
+        if (setId == null) continue
+        const texts = collectSetBonusTextStrings(setKey)
+        if (!texts.length) continue
+        scanTextsForBuffDebuff(texts, setId, 'setsList', state)
+        scanned++
+      }
+      logger.info(`[ESO:图鉴] buff/debuff 套装扫描完成，共 ${scanned} 套`)
+    } catch (e) {
+      logger.error(`[ESO:图鉴] create_buff_list_for_sets 失败: ${e.message}`)
+      if (e.stack) logger.error(e.stack)
+    }
+  }
+
+  /** 遍历全部技能描述文本，建立 buff/debuff -> skillsList 映射并写入缓存文件 */
+  async create_buff_list_for_skills () {
+    try {
+      if (!buffDebuffListBuildState) {
+        buffDebuffListBuildState = createBuffDebuffListBuildState()
+      }
+      const state = buffDebuffListBuildState
+      let scanned = 0
+      const seenSkillIds = new Set()
+
+      for (const lineKey of Object.keys(skillsData)) {
+        if (lineKey === 'name' || lineKey === 'id') continue
+        const line = skillsData[lineKey]
+        if (!line || typeof line !== 'object') continue
+        for (const classKey of Object.keys(line)) {
+          const cls = line[classKey]
+          if (!cls?.skills) continue
+          for (const skillKey of Object.keys(cls.skills)) {
+            if (skillKey === 'name' || skillKey === 'id') continue
+            const skill = cls.skills[skillKey]
+            if (!skill?.id) continue
+
+            const scanOne = (skillNode) => {
+              if (!skillNode?.id || seenSkillIds.has(skillNode.id)) return
+              const cnId = skillID2IndexCN[skillNode.id]
+              const cnSkill = cnId
+                ? (cnId[3] === '0'
+                  ? skillsDataCN[cnId[0]]?.[cnId[1]]?.skills?.[cnId[2]]
+                  : skillsDataCN[cnId[0]]?.[cnId[1]]?.skills?.[cnId[2]]?.[cnId[3]])
+                : null
+              const texts = [
+                ...collectSkillDescriptionStrings(skillNode),
+                ...collectSkillDescriptionStrings(cnSkill)
+              ]
+              if (!texts.length) return
+              seenSkillIds.add(skillNode.id)
+              scanTextsForBuffDebuff(texts, skillNode.id, 'skillsList', state)
+              scanned++
+            }
+
+            scanOne(skill)
+            if (skill.passive === false && skill['1']) scanOne(skill['1'])
+            if (skill.passive === false && skill['2']) scanOne(skill['2'])
+          }
+        }
+      }
+
+      saveBuffDebuffListFile(state)
+      buffDebuffListBuildState = null
+      logger.info(`[ESO:图鉴] buff/debuff 技能扫描完成，共 ${scanned} 个技能条目`)
+    } catch (e) {
+      logger.error(`[ESO:图鉴] create_buff_list_for_skills 失败: ${e.message}`)
+      if (e.stack) logger.error(e.stack)
+      buffDebuffListBuildState = null
+      buffDebuffListFileCache = null
+    }
+  }
+
+  /** 按中文名精确匹配 buff/debuff 条目（不含模糊匹配） */
+  async findBuffDebuffByExactName (name) {
+    await this.init_database()
+    const query = String(name ?? '').trim()
+    if (!query) return null
+    const data = loadBuffDebuffListFile()
+    for (const buff of data.buffs || []) {
+      if (buff.name === query) return { ...buff, isBuff: true }
+    }
+    for (const debuff of data.debuffs || []) {
+      if (debuff.name === query) return { ...debuff, isBuff: false }
+    }
+    return null
+  }
+
+  /** 套装 ID 列表 -> setsData 索引键 */
+  async setIdsToSetKeys (setIds) {
+    await this.init_database()
+    const idSet = new Set((setIds || []).map(id => Number(id)).filter(Number.isFinite))
+    const keys = []
+    for (const setKey of Object.keys(setsData)) {
+      const id = setsData[setKey]?.id
+      if (idSet.has(id)) keys.push(setKey)
+    }
+    return keys
+  }
+
+  /** 校验 skill 索引串是否可被 updateSkillData 正常解析 */
+  isValidSkillIndexKey (indexKey) {
+    if (!indexKey || typeof indexKey !== 'string') return false
+    const parts = indexKey.split('_')
+    if (parts.length !== 4) return false
+    const [lineKey, classKey, skillKey, morphKey] = parts
+    const line = skillsData[lineKey]
+    const cls = line?.[classKey]
+    const baseSkill = cls?.skills?.[skillKey]
+    if (!baseSkill) return false
+
+    let targetSkill
+    if (morphKey === '0') {
+      targetSkill = baseSkill
+    } else {
+      targetSkill = baseSkill[morphKey]
+    }
+    if (!targetSkill?.id) return false
+
+    const cnID = skillID2IndexCN[targetSkill.id]
+    if (!cnID || cnID[0] == null || cnID[1] == null || cnID[2] == null) return false
+
+    if (morphKey === '0') {
+      return !!skillsDataCN[cnID[0]]?.[cnID[1]]?.skills?.[cnID[2]]
+    }
+    return !!skillsDataCN[cnID[0]]?.[cnID[1]]?.skills?.[cnID[2]]?.[morphKey]
+  }
+
+  /** 技能 ID 列表 -> updateData 用的 skill 索引串（仅返回可生成图鉴的有效项） */
+  async skillIdsToSkillIndices (skillIds) {
+    await this.init_database()
+    const targetIds = new Set((skillIds || []).map(id => Number(id)).filter(Number.isFinite))
+    const indices = []
+    const seen = new Set()
+
+    for (const lineKey of Object.keys(skillsData)) {
+      if (lineKey === 'name' || lineKey === 'id') continue
+      const line = skillsData[lineKey]
+      if (!line || typeof line !== 'object') continue
+
+      for (const classKey of Object.keys(line)) {
+        const cls = line[classKey]
+        if (!cls?.skills) continue
+
+        for (const skillKey of Object.keys(cls.skills)) {
+          if (skillKey === 'name' || skillKey === 'id') continue
+          const skill = cls.skills[skillKey]
+          if (!skill) continue
+
+          const tryAdd = (node, morphKey) => {
+            if (!node?.id || !targetIds.has(node.id)) return
+            const indexKey = `${lineKey}_${classKey}_${skillKey}_${morphKey}`
+            if (seen.has(indexKey) || !this.isValidSkillIndexKey(indexKey)) return
+            seen.add(indexKey)
+            indices.push(indexKey)
+          }
+
+          tryAdd(skill, '0')
+          if (skill.passive === false && skill['1']) tryAdd(skill['1'], '1')
+          if (skill.passive === false && skill['2']) tryAdd(skill['2'], '2')
+        }
+      }
+    }
+
+    return indices
   }
 }
 

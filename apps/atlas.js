@@ -1,4 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js'
+import common from '../../../lib/common/common.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
 import moment from 'moment'
@@ -96,7 +97,10 @@ export class atlas extends plugin {
                       +`#spc(常用简称)\n`
                       +`#治愈(模糊匹配)\n`
                       +`#太阳尖顶套装\n`
-                      +`#太阳尖顶图鉴`)
+                      +`#太阳尖顶图鉴\n`
+                      +`\n按增益/减益名精确查询（合并转发全部关联图鉴）:\n`
+                      +`#高级勇气\n`
+                      +`#次级破甲`)
   }
 
   async showSkillTips (e) {
@@ -171,6 +175,8 @@ export class atlas extends plugin {
 
     if(name.includes("#"))
     {
+      const buffHandled = await this.tryShowBuffDebuffAtlas(e, name)
+      if (buffHandled) return buffHandled
       await this.showSets(e)
     }
     else if(name.includes("*"))
@@ -192,6 +198,94 @@ export class atlas extends plugin {
         await this.showFurnitures(e)
       }
     }
+  }
+
+  /** 从 # 指令中解析 buff/debuff 查询词（精确匹配用） */
+  extractBuffDebuffQuery (name) {
+    return name
+      .replace(/^[#＃]/, '')
+      .replace(/图鉴$/, '')
+      .replace(/套装$/, '')
+      .replace(/套$/, '')
+      .trim()
+  }
+
+  /**
+   * 若关键词精确等于 buff_debuff.json 中的 name，则生成全部关联套装/技能图鉴并合并转发
+   * @returns {false|number} false 表示非 buff 查询，交由 showSets；否则已处理
+   */
+  async tryShowBuffDebuffAtlas (e, name) {
+    const query = this.extractBuffDebuffQuery(name)
+    if (!query) return false
+
+    const entry = await database.findBuffDebuffByExactName(query)
+    if (!entry) return false
+
+    const setKeys = await database.setIdsToSetKeys(entry.setsList || [])
+    const skillKeys = await database.skillIdsToSkillIndices(entry.skillsList || [])
+    const total = setKeys.length + skillKeys.length
+
+    if (total === 0) {
+      await this.reply(`已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，但未找到关联套装或技能。`)
+      return 1
+    }
+
+    await this.reply(
+      `已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，正在生成图鉴（套装 ${setKeys.length} / 技能 ${skillKeys.length}）...`,
+      true
+    )
+
+    const fakeMsg = []
+
+    let setSkipped = 0
+    for (const setKey of setKeys) {
+      try {
+        setData = await database.updateData(setKey, 1)
+        if (!setData?.atlasData?.[1]) {
+          setSkipped++
+          continue
+        }
+        if (setData.atlasData[1].type === '副本' || setData.atlasData[1].type === '怪物') {
+          const undauntedDates = await this.getUndauntedDates(setData.atlasData[1].name)
+          if (undauntedDates.length > 0) {
+            setData.atlasData[1].undauntedDates = undauntedDates
+          }
+        }
+        fakeMsg.push(await this.cache(setData, setImg))
+      } catch (err) {
+        setSkipped++
+        logger.warn(`[ESO:图鉴] 套装图鉴生成跳过 ${setKey}: ${err.message}`)
+      }
+    }
+
+    let skillSkipped = 0
+    for (const skillKey of skillKeys) {
+      try {
+        skillData = await database.updateData(skillKey, 2)
+        if (!skillData?.atlasData?.[1]) {
+          skillSkipped++
+          continue
+        }
+        fakeMsg.push(await this.cache(skillData, skillImg))
+      } catch (err) {
+        skillSkipped++
+        logger.warn(`[ESO:图鉴] 技能图鉴生成跳过 ${skillKey}: ${err.message}`)
+      }
+    }
+    if (setSkipped > 0) {
+      logger.info(`[ESO:图鉴] buff/debuff 查询有 ${setSkipped} 个套装条目无法生成图鉴，已跳过`)
+    }
+    if (skillSkipped > 0) {
+      logger.info(`[ESO:图鉴] buff/debuff 查询有 ${skillSkipped} 个技能条目无法生成图鉴，已跳过`)
+    }
+    if (fakeMsg.length === 0) {
+      await this.reply(`已匹配「${entry.name}」，但所有关联图鉴均无法生成。`)
+      return 1
+    }
+
+    const forwardTitle = `${entry.isBuff ? '增益' : '减益'}·${entry.name}`
+    await e.reply(await common.makeForwardMsg(e, fakeMsg, forwardTitle, true))
+    return 1
   }
 
   async showSets (e) {
