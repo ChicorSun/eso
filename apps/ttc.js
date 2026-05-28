@@ -2955,38 +2955,40 @@ export class ttc extends plugin {
           const tradeRows = document.querySelectorAll('table.trade-list-table tbody tr')
           
           // 检查是否有真正的验证码挑战（排除不可见reCAPTCHA标识）
+          // 注意：reCAPTCHA checkbox/challenge div 存在于大多数页面，不能作为挑战依据
+          // 只有当页面明确显示验证码验证UI时才算真正的挑战
           let hasRealCaptcha = false
           
           // 检查是否有可见的验证码复选框
           const visibleCheckbox = document.querySelector('.recaptcha-checkbox-border, .recaptcha-checkbox')
           if (visibleCheckbox) {
-            hasRealCaptcha = true
+            const style = window.getComputedStyle(visibleCheckbox)
+            if (style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity) > 0) {
+              hasRealCaptcha = true
+            }
           }
           
           // 检查是否有图片验证挑战
           const imageChallenge = document.querySelector('.rc-imageselect, .rc-imageselect-target, iframe[src*="recaptcha/api2/bframe"]')
           if (imageChallenge) {
-            hasRealCaptcha = true
+            const style = window.getComputedStyle(imageChallenge)
+            if (style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity) > 0) {
+              hasRealCaptcha = true
+            }
           }
           
           // 检查是否有验证码错误消息
           const captchaError = document.querySelector('.recaptcha-error, .rc-anchor-error-msg')
-          if (captchaError && captchaError.style.display !== 'none') {
-            hasRealCaptcha = true
+          if (captchaError) {
+            const errStyle = window.getComputedStyle(captchaError)
+            if (errStyle.display !== 'none' && errStyle.visibility !== 'hidden' && parseFloat(errStyle.opacity) > 0) {
+              hasRealCaptcha = true
+            }
           }
           
           // 检查是否有验证码文本提示（只有在没有真正验证码挑战时才考虑）
+          // 注意：不再通过宽泛文本匹配判断，避免 reCAPTCHA 品牌文字误触发
           let captchaText = null
-          if (!hasRealCaptcha) {
-            captchaText = Array.from(document.querySelectorAll('h3, div, span, p')).find(el => 
-              el.textContent && (
-                el.textContent.includes('抱歉，您需要完成验证码测试才能继续') ||
-                el.textContent.includes('验证码') ||
-                el.textContent.includes('captcha') ||
-                el.textContent.includes('reCAPTCHA')
-              )
-            )
-          }
           
           // 检查是否有Cloudflare挑战
           const cloudflareText = Array.from(document.querySelectorAll('h1, h2, h3, div, span')).find(el => 
@@ -3201,6 +3203,13 @@ export class ttc extends plugin {
             
             console.log(`[TTC] 使用选择器 "${selectorUsed}" 找到 ${rows ? rows.length : 0} 行数据`)
             
+            // 保存第一行的HTML用于调试
+            if (rows && rows.length > 0) {
+              console.log(`[TTC] 第一行HTML:`, rows[0].outerHTML.substring(0, 2000))
+              // 同时保存到全局变量供外部访问
+              window.__ttcFirstRowHTML = rows[0].outerHTML
+            }
+            
             if (!rows || rows.length === 0) {
               // 如果还是找不到，尝试检查页面是否有任何数据内容
               const pageText = document.body.textContent
@@ -3213,301 +3222,159 @@ export class ttc extends plugin {
             
             rows.forEach((row, index) => {
               try {
-                // 调试：查看行的HTML结构
-                console.log(`[TTC] 处理第 ${index + 1} 行，HTML结构:`, row.outerHTML.substring(0, 500))
+                // 新页面结构：tr > td * 5
+                // td1: 物品列 div[x-text="Name"] + img + span[x-text="Level"]
+                // td2: 玩家 div[x-text="trade.PlayerID"]
+                // td3: 位置 button[x-text] + 工会 div[x-text="trade.GuildName"]
+                // td4: 价格 span[x-text="formatLocalizedNumber(UnitPrice)"] + Amount + TotalPrice
+                // td5: 最后看见时间 x-text
                 
-                // 调试：查看行的所有td元素
                 const tds = row.querySelectorAll('td')
-                console.log(`[TTC] 第 ${index + 1} 行有 ${tds.length} 个td元素`)
-                tds.forEach((td, tdIndex) => {
-                  console.log(`[TTC] 第 ${index + 1} 行第 ${tdIndex + 1} 个td内容:`, td.textContent.trim().substring(0, 100))
-                })
-                // 物品信息和品质
+                console.log(`[TTC] 第 ${index + 1} 行有 ${tds.length} 个td`)
+                
+                // 物品名 - td1 内 div[x-text="Name"]
                 let item = "未找到物品信息"
-                let itemQualityColor = "深灰色"
-                let itemIconUrl = null
-                
-                // 尝试多种物品选择器
-                let itemElement = row.querySelector('div[class*="item-quality-"]')
-                if (!itemElement) {
-                  itemElement = row.querySelector('div[data-bind*="Name"]')
-                }
-                if (!itemElement) {
-                  itemElement = row.querySelector('td:first-child div')
-                }
-                if (!itemElement) {
-                  itemElement = row.querySelector('div.item-quality-fine, div.item-quality-normal, div.item-quality-superior, div.item-quality-epic, div.item-quality-legendary')
-                }
-                
+                let itemElement = row.querySelector('div[x-text="Name"]')
                 if (itemElement) {
-                  item = itemElement.textContent.trim()
-                  const itemQualityClass = itemElement.className
-                  if (itemQualityClass.includes('item-quality-legendary')) {
-                    itemQualityColor = "金色"
-                  } else if (itemQualityClass.includes('item-quality-epic')) {
-                    itemQualityColor = "紫色"
-                  } else if (itemQualityClass.includes('item-quality-superior')) {
-                    itemQualityColor = "蓝色"
-                  } else if (itemQualityClass.includes('item-quality-fine')) {
-                    itemQualityColor = "中绿色"
-                  } else if (itemQualityClass.includes('item-quality-normal')) {
-                    itemQualityColor = "深灰色"
-                  }
-                  
-                  // 查找物品图标 - 改进的获取方法
-                  let iconElement = itemElement.querySelector('img.trade-item-icon')
-                  if (!iconElement) {
-                    // 在整个行中查找图标
-                    iconElement = row.querySelector('img.trade-item-icon')
-                  }
-                  if (!iconElement) {
-                    // 查找任何包含图标的img元素
-                    iconElement = row.querySelector('img[src*="Content/icons"]')
-                  }
-                  if (!iconElement) {
-                    // 查找任何包含图标的img元素
-                    iconElement = row.querySelector('img[data-bind*="IconName"]')
-                  }
-                  
-                  if (iconElement) {
-                    console.log(`[TTC] 找到图标元素:`, iconElement.outerHTML)
-                    
-                    // 方法1: 从data-bind属性中提取IconName
-                    const dataBind = iconElement.getAttribute('data-bind')
-                    if (dataBind) {
-                      console.log(`[TTC] 图标data-bind:`, dataBind)
-                      const iconNameMatch = dataBind.match(/IconName['"]\s*:\s*['"]([^'"]+)['"]/)
-                      if (iconNameMatch) {
-                        const iconName = iconNameMatch[1]
-                        const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
-                        itemIconUrl = `${baseUrl}/Content/icons/${iconName}`
-                        console.log(`[TTC] 从data-bind提取到图标名称: ${iconName} -> ${itemIconUrl}`)
-                      }
-                    }
-                    
-                    // 方法2: 如果data-bind没有找到，尝试从src属性获取
-                    if (!itemIconUrl && iconElement.src) {
-                      itemIconUrl = iconElement.src
-                      console.log(`[TTC] 从src属性获取图标URL: ${itemIconUrl}`)
-                    }
-                    
-                    // 方法3: 如果src是相对路径，转换为绝对路径
-                    if (itemIconUrl && itemIconUrl.startsWith('/Content/icons/')) {
-                      const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
-                      itemIconUrl = `${baseUrl}${itemIconUrl}`
-                      console.log(`[TTC] 转换相对路径图标URL: ${itemIconUrl}`)
-                    }
-                    
-                    // 方法4: 如果src是相对路径且没有协议，添加完整URL
-                    if (itemIconUrl && itemIconUrl.startsWith('Content/icons/')) {
-                      const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
-                      itemIconUrl = `${baseUrl}/${itemIconUrl}`
-                      console.log(`[TTC] 转换相对路径图标URL: ${itemIconUrl}`)
-                    }
-                    
-                    // 方法5: 如果src是相对路径且以斜杠开头，添加完整URL
-                    if (itemIconUrl && itemIconUrl.startsWith('/Content/icons/')) {
-                      const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
-                      itemIconUrl = `${baseUrl}${itemIconUrl}`
-                      console.log(`[TTC] 转换相对路径图标URL: ${itemIconUrl}`)
-                    }
-                    
-                    // 方法6: 使用统一的图标URL处理方法
-                    if (itemIconUrl) {
-                      const originalUrl = itemIconUrl
-                      itemIconUrl = processIconUrl(itemIconUrl, serverType)
-                      console.log(`[TTC] 统一处理图标URL: ${originalUrl} -> ${itemIconUrl}`)
-                    } else {
-                      console.log(`[TTC] 未能提取到图标URL`)
-                    }
-                  } else {
-                    console.log(`[TTC] 未找到图标元素`)
-                  }
+                  item = itemElement.textContent.trim().replace(/\s+/g, ' ')
+                  console.log(`[TTC] 第 ${index + 1} 行物品名: ${item}`)
                 }
                 
-                // 等级信息
+                // 等级 - td1 内 span[x-text="Level"]，判断CP或普通
+                // 新页面：渲染后的 img.src 区分CP和非CP
+                // 非CP: src="/Content/icons/nonvet.png"
+                // CP:   src="/Content/icons/championPoint.png"
                 let level = "未找到等级信息"
-                const levelDivs = row.querySelectorAll('div')
-                for (const div of levelDivs) {
-                  if (div.textContent.includes('等级')) {
-                    const imgElement = div.querySelector('img')
-                    const spanElement = div.querySelector('span')
-                    if (imgElement && spanElement) {
-                      const imgSrc = imgElement.src
-                      const levelNum = spanElement.textContent.trim()
-                      if (imgSrc.includes('nonvet.png')) {
-                        level = `普通等级${levelNum}`
-                      } else if (imgSrc.includes('championPoint.png')) {
-                        level = `CP等级${levelNum}`
-                      }
+                let levelSpan = row.querySelector('span[x-text="Level"]')
+                if (levelSpan) {
+                  const levelNum = levelSpan.textContent.trim()
+                  let isCP = false
+                  // 只检查渲染后的 img.src，nonvet=非CP，championPoint=CP
+                  const allImgs = row.querySelectorAll('img')
+                  for (const img of allImgs) {
+                    if (img.src && img.src.includes('championPoint')) {
+                      isCP = true
+                      break
                     }
-                    break
                   }
+                  level = isCP ? `CP${levelNum}` : `Lv${levelNum}`
                 }
                 
-                // 检查奖励委托券
-                const allDivs = row.querySelectorAll('div')
-                for (const div of allDivs) {
-                  if (div.textContent.includes('奖励')) {
-                    const voucherText = div.textContent.trim()
-                    level = `${level}（${voucherText}）`
-                    break
-                  }
-                }
-                
-                // 交易者信息
+                // 玩家 - td2 内 div[x-text="trade.PlayerID"]
                 let playerId = "未找到交易者信息"
-                let playerElement = row.querySelector('div.text-small-width')
-                if (!playerElement) {
-                  playerElement = row.querySelector('div[data-bind*="PlayerName"]')
-                }
-                if (!playerElement) {
-                  playerElement = row.querySelector('td:nth-child(2) div')
-                }
-                if (!playerElement) {
-                  playerElement = row.querySelector('div[class*="player"]')
-                }
-                if (playerElement) {
-                  playerId = playerElement.textContent.trim()
+                let playerDiv = row.querySelector('div[x-text="trade.PlayerID"]')
+                if (playerDiv) {
+                  playerId = playerDiv.textContent.trim()
+                  console.log(`[TTC] 第 ${index + 1} 行玩家: ${playerId}`)
                 }
                 
-                // 位置信息
+                // 位置 - td3 内 button
                 let location = "未找到位置信息"
-                let locationElement = row.querySelector('a.trade-list-clickable.bold')
-                if (!locationElement) {
-                  locationElement = row.querySelector('a[data-bind*="Location"]')
-                }
-                if (!locationElement) {
-                  locationElement = row.querySelector('td:nth-child(3) a')
-                }
-                if (!locationElement) {
-                  locationElement = row.querySelector('a[href*="Location"]')
-                }
-                if (locationElement) {
-                  location = locationElement.textContent.trim()
-                }
-                
-                // 工会信息
-                let guild = "未找到工会信息"
-                let guildElement = row.querySelector('div[data-bind="text: GuildName"]')
-                if (!guildElement) {
-                  guildElement = row.querySelector('div[data-bind*="GuildName"]')
-                }
-                if (!guildElement) {
-                  guildElement = row.querySelector('td:nth-child(2) div:nth-child(2)')
-                }
-                if (!guildElement) {
-                  guildElement = row.querySelector('div[class*="guild"]')
-                }
-                if (guildElement) {
-                  guild = guildElement.textContent.trim()
-                }
-                
-                // 单价信息
-                let unitPrice = "未找到单价信息"
-                let unitPriceElement = row.querySelector('span[data-bind="localizedNumber: UnitPrice"]')
-                if (!unitPriceElement) {
-                  unitPriceElement = row.querySelector('span[data-bind*="UnitPrice"]')
-                }
-                if (!unitPriceElement) {
-                  unitPriceElement = row.querySelector('td:nth-child(4) span')
-                }
-                if (unitPriceElement) {
-                  unitPrice = unitPriceElement.textContent.trim()
-                }
-                
-                // 数量信息
-                let amount = "未找到数量信息"
-                let amountElement = row.querySelector('span[data-bind="localizedNumber: Amount"]')
-                if (!amountElement) {
-                  amountElement = row.querySelector('span[data-bind*="Amount"]')
-                }
-                if (!amountElement) {
-                  amountElement = row.querySelector('td:nth-child(5) span')
-                }
-                if (amountElement) {
-                  amount = amountElement.textContent.trim()
-                }
-                
-                // 总价信息
-                let totalPrice = "未找到总价信息"
-                let totalPriceElement = row.querySelector('span[data-bind="localizedNumber: TotalPrice"]')
-                if (!totalPriceElement) {
-                  totalPriceElement = row.querySelector('span[data-bind*="TotalPrice"]')
-                }
-                if (!totalPriceElement) {
-                  totalPriceElement = row.querySelector('td:nth-child(6) span')
-                }
-                if (totalPriceElement) {
-                  totalPrice = totalPriceElement.textContent.trim()
-                }
-                
-                // 最后看见时间信息
-                let lastSeen = "未找到最后看见时间信息"
-                let lastSeenElement = row.querySelector('td.bold.hidden-xs')
-                if (!lastSeenElement) {
-                  lastSeenElement = row.querySelector('td[data-bind*="LastSeen"]')
-                }
-                if (!lastSeenElement) {
-                  lastSeenElement = row.querySelector('td:last-child')
-                }
-                if (!lastSeenElement) {
-                  lastSeenElement = row.querySelector('td[class*="time"]')
-                }
-                if (lastSeenElement) {
-                  lastSeen = lastSeenElement.textContent.trim()
-                }
-
-                // 特质信息 - 从物品图标的data-original-title属性中提取
-                let trait = ""
-                let traitElement = row.querySelector('img.trade-item-icon[data-original-title]')
-                if (!traitElement) {
-                  traitElement = row.querySelector('img[data-original-title]')
-                }
-                if (!traitElement) {
-                  traitElement = row.querySelector('img[data-bind*="GetItemPropertyDescription"]')
-                }
-                
-                if (traitElement) {
-                  const originalTitle = traitElement.getAttribute('data-original-title')
-                  if (originalTitle) {
-                    // 清理特质信息，将换行符替换为空格
-                    trait = originalTitle.replace(/\n/g, ' ').replace(/\r/g, ' ').trim()
-                    console.log(`[TTC] 第 ${index + 1} 行提取到特质: "${trait}"`)
-                  } else {
-                    console.log(`[TTC] 第 ${index + 1} 行特质元素存在但data-original-title为空`)
+                const buttons = row.querySelectorAll('button')
+                for (const btn of buttons) {
+                  const text = btn.textContent.trim()
+                  if (text && text.length > 0 && !text.includes('@')) {
+                    location = text
+                    console.log(`[TTC] 第 ${index + 1} 行位置: ${location}`)
+                    break
                   }
-                } else {
-                  console.log(`[TTC] 第 ${index + 1} 行未找到特质元素`)
                 }
                 
-                // 如果至少有一些有效信息，就添加到数据中
-                if (item !== "未找到物品信息" || 
-                    unitPrice !== "未找到单价信息" || 
-                    amount !== "未找到数量信息") {
+                // 工会 - td3 内 div[x-text="trade.GuildName"]
+                let guild = "未找到工会信息"
+                let guildDiv = row.querySelector('div[x-text="trade.GuildName"]')
+                if (guildDiv) {
+                  guild = guildDiv.textContent.trim()
+                  console.log(`[TTC] 第 ${index + 1} 行工会: ${guild}`)
+                }
+                
+                // 单价/数量/总价 - td4 内的所有span
+                let unitPrice = "未找到单价信息"
+                let amount = "未找到数量信息"
+                let totalPrice = "未找到总价信息"
+                
+                if (tds.length >= 4) {
+                  const priceTd = tds[3]
+                  const spans = priceTd.querySelectorAll('span')
+                  console.log(`[TTC] 第 ${index + 1} 行价格td有 ${spans.length} 个span`)
                   
+                  // 新页面：第一个是单价，第二个是数量，第三个是总价（如果有）
+                  if (spans.length >= 1) {
+                    unitPrice = spans[0].textContent.trim()
+                  }
+                  if (spans.length >= 2) {
+                    amount = spans[1].textContent.trim()
+                  }
+                  if (spans.length >= 3) {
+                    totalPrice = spans[2].textContent.trim()
+                  }
+                  console.log(`[TTC] 第 ${index + 1} 行单价=${unitPrice} 数量=${amount} 总价=${totalPrice}`)
+                }
+                
+                // 最后看见 - td5
+                let lastSeen = "未找到最后看见时间信息"
+                if (tds.length >= 5) {
+                  const lastTd = tds[4]
+                  // td5 可能有 x-text 属性或者是直接的文本节点
+                  const xText = lastTd.getAttribute('x-text') || ''
+                  if (xText && xText.includes('formatMinutesElapsed')) {
+                    lastSeen = lastTd.textContent.trim()
+                  } else {
+                    lastSeen = lastTd.textContent.trim()
+                  }
+                  console.log(`[TTC] 第 ${index + 1} 行最后看见: ${lastSeen}`)
+                }
+                
+                // 品质 - 从物品名div的class判断
+                let itemQualityColor = "深灰色"
+                if (itemElement) {
+                  const cls = itemElement.className || ''
+                  if (cls.includes('text-quality-legendary')) itemQualityColor = "金色"
+                  else if (cls.includes('text-quality-epic')) itemQualityColor = "紫色"
+                  else if (cls.includes('text-quality-superior')) itemQualityColor = "蓝色"
+                  else if (cls.includes('text-quality-fine')) itemQualityColor = "中绿色"
+                }
+                
+                // 图标 - td1 内的 img
+                let itemIconUrl = null
+                const firstTd = tds[0]
+                if (firstTd) {
+                  const imgs = firstTd.querySelectorAll('img')
+                  for (const img of imgs) {
+                    if (img.src && img.src.includes('/Content/icons/')) {
+                      itemIconUrl = img.src
+                      if (itemIconUrl.startsWith('//')) {
+                        itemIconUrl = 'https:' + itemIconUrl
+                      }
+                      if (itemIconUrl.startsWith('/Content/icons/')) {
+                        const baseUrl = serverType === 'eu' ? 'https://eu.tamrieltradecentre.com' : 'https://us.tamrieltradecentre.com'
+                        itemIconUrl = baseUrl + itemIconUrl
+                      }
+                      break
+                    }
+                  }
+                }
+                
+                // 特质 - 从 img 的 data-original-title 获取
+                let trait = ""
+                const traitImgs = row.querySelectorAll('img[data-original-title]')
+                for (const img of traitImgs) {
+                  const title = img.getAttribute('data-original-title')
+                  if (title && title.trim()) {
+                    trait = title.replace(/\n/g, ' ').trim()
+                    break
+                  }
+                }
+                
+                // 如果至少提取到物品名或单价，就添加到数据
+                if (item !== "未找到物品信息" || unitPrice !== "未找到单价信息") {
                   data.push([
                     item, level, playerId, location, guild,
                     unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl, trait
                   ])
-                  
-                  // 调试信息
-                  console.log(`[TTC] 提取到数据行 ${index + 1}:`, {
-                    item, level, playerId, location, guild,
-                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl, trait
-                  })
-                  
-                  // 特别调试图标URL
-                  if (itemIconUrl) {
-                    console.log(`[TTC] 第 ${index + 1} 行图标URL: ${itemIconUrl}`)
-                  } else {
-                    console.log(`[TTC] 第 ${index + 1} 行没有图标URL`)
-                  }
+                  console.log(`[TTC] 第 ${index + 1} 行提取成功: ${JSON.stringify({item, level, playerId, location, guild, unitPrice, amount, totalPrice, lastSeen})}`, itemIconUrl ? `图标: ${itemIconUrl}` : '无图标')
                 } else {
-                  console.log(`[TTC] 跳过无效数据行 ${index + 1}:`, {
-                    item, level, playerId, location, guild,
-                    unitPrice, amount, totalPrice, lastSeen, itemQualityColor, itemIconUrl, trait
-                  })
+                  console.log(`[TTC] 第 ${index + 1} 行数据无效，跳过`)
                 }
                 
               } catch (error) {
@@ -3620,7 +3487,7 @@ export class ttc extends plugin {
             
             const pageInfo = `第${currentPage}页/总共${totalPages}页`
             
-            return { hasError: false, data, pageInfo }
+            return { hasError: false, data, pageInfo, firstRowHTML: rows && rows.length > 0 ? rows[0].outerHTML : '' }
           },
           serverType
         )
@@ -3647,6 +3514,12 @@ export class ttc extends plugin {
           })
           
           return { hasError: true, error: '没有符合条件的交易' }
+        }
+        
+        // 保存第一行HTML用于调试
+        if (tradeData.firstRowHTML) {
+          fs.writeFileSync('/tmp/ttc_first_row.html', tradeData.firstRowHTML)
+          logger.info(`[TTC] 第一行HTML已保存到/tmp/ttc_first_row.html`)
         }
         
         // 添加页面信息调试日志
@@ -3759,6 +3632,10 @@ export class ttc extends plugin {
       if (itemIconUrl) {
         itemIconPath = await this.getItemIconPath(itemIconUrl, row[0])
       }
+      
+      logger.info(`[TTC] 提取数据行[${i}]: itemName=${row[0]}, level=${row[1]}, trader=${row[2]}, location=${row[3]}, guild=${row[4]}, unitPrice=${row[5]}, amount=${row[6]}, totalPrice=${row[7]}, lastSeen=${row[8]}, quality=${row[9]}, trait=${trait}`)
+      
+      fs.writeFileSync('/tmp/ttc_extract_log.txt', `row[${i}]: ${JSON.stringify(row, null, 2)}\n`, { flag: 'a' })
       
       tradeRows.push({
         index: i + 1,
