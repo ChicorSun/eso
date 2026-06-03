@@ -6581,6 +6581,8 @@ class database {
       }
       const state = buffDebuffListBuildState
       let scanned = 0
+      let skippedVengeance = 0
+      let skippedBaseSkill = 0
       const seenSkillIds = new Set()
 
       for (const lineKey of Object.keys(skillsData)) {
@@ -6590,6 +6592,14 @@ class database {
         for (const classKey of Object.keys(line)) {
           const cls = line[classKey]
           if (!cls?.skills) continue
+
+          // 排除规则 1：跳过整个复仇系 class（Vengeance / 复仇）
+          // 与 skillsName2Index 中的 enSkipVengeance 行为保持一致
+          if (cls.name && (cls.name.includes('Vengeance') || cls.name.includes('复仇'))) {
+            skippedVengeance++
+            continue
+          }
+
           for (const skillKey of Object.keys(cls.skills)) {
             if (skillKey === 'name' || skillKey === 'id') continue
             const skill = cls.skills[skillKey]
@@ -6613,8 +6623,15 @@ class database {
               scanned++
             }
 
-            scanOne(skill)
-            if (skill.passive === false && skill['1']) scanOne(skill['1'])
+            // 排除规则 2：只扫描已进阶技能（morph 1/2），不扫描基础技能
+            // 与 skillsName2Index 中 upgradeNUM==2 跳过 base 的语义一致
+            if (skill.passive === false && skill['1']) {
+              scanOne(skill['1'])
+            } else {
+              // 被动技能没有 morph，本身就是"已进阶"形态（唯一形态）
+              scanOne(skill)
+              skippedBaseSkill++ // 计入基础/被动形态
+            }
             if (skill.passive === false && skill['2']) scanOne(skill['2'])
           }
         }
@@ -6622,7 +6639,7 @@ class database {
 
       saveBuffDebuffListFile(state)
       buffDebuffListBuildState = null
-      logger.info(`[ESO:图鉴] buff/debuff 技能扫描完成，共 ${scanned} 个技能条目`)
+      logger.info(`[ESO:图鉴] buff/debuff 技能扫描完成，共 ${scanned} 个技能条目（跳过 ${skippedVengeance} 个复仇系 class、${skippedBaseSkill} 个被动/未进阶技能基础形态）`)
     } catch (e) {
       logger.error(`[ESO:图鉴] create_buff_list_for_skills 失败: ${e.message}`)
       if (e.stack) logger.error(e.stack)
