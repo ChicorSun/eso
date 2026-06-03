@@ -112,6 +112,131 @@ function loadDebuffs () {
   return []
 }
 
+/**
+ * 阶段 1A：展开 [前缀1][连接词][前缀2][基础名] 形式的缩写
+ *
+ * 形如：
+ *   "高级和次级活力"     -> "高级活力和次级活力"
+ *   "次级及高级活力"     -> "次级活力及高级活力"
+ *   "高级、次级活力"     -> "高级活力、次级活力"
+ *   "Major and Minor Vitality" -> "Major Vitality and Minor Vitality"
+ *   "Major and Minor Berserk"  -> "Major Berserk and Minor Berserk"
+ *   "Major, Minor Vitality"    -> "Major Vitality, Minor Vitality"
+ *
+ * 展开后两个完整前缀名会自然落到阶段 1 的处理流程中：
+ *   - parseColorTags：分别识别为 major/minor 等级，应用对应颜色样式
+ *   - detectBuffDebuffInText：分别通过 resolveCanonicalBuffDebuffName
+ *     解析为 canonical 中文名并加入 found 集合，最终在生成 buff_debuff.json 时
+ *     分别落到 "高级活力" 和 "次级活力" 两条 buff 的 setsList/skillsList 中
+ *
+ * @param {string} text 原始文本
+ * @returns {string} 展开后的文本
+ */
+function expandPrefixedShorthand (text) {
+  if (text === null || text === undefined) return ''
+  if (typeof text !== 'string') return text
+
+  const CN_PREFIXES = ['高级', '次级']
+  const EN_PREFIXES = ['Major', 'Minor']
+  const CN_CONNECTORS = ['和', '与', '、', '及']
+  // 英文连接词：每个定义为"前缀空白 + word + 后缀空白"
+  const EN_CONNECTOR_PATTERNS = [
+    { word: 'and', re: '\\s+and\\s+' },
+    { word: 'or',  re: '\\s+or\\s+' },
+    { word: ',',   re: '\\s*,\\s*' },
+  ]
+
+  function expandOnce (input, prefixes, connectors, isEnglish) {
+    const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+    const branchList = []
+    for (const p1 of prefixes) {
+      for (const p2 of prefixes) {
+        if (p1 === p2) continue
+        for (const c of connectors) {
+          let connPattern
+          if (isEnglish) {
+            connPattern = c.re
+          } else {
+            connPattern = `${esc(c.word || c)}`
+          }
+          if (isEnglish) {
+            // 单词边界 \b 作为基础名结尾
+            branchList.push(
+              `(?<![A-Za-z0-9])${esc(p1)}${connPattern}${esc(p2)}\\s+(?<bn>[A-Za-z][A-Za-z'’]*(?:\\s+[A-Za-z][A-Za-z'’]*)*?)\\b`
+            )
+          } else {
+            // 中文：P1 前面不能是"高"或"次"（避免"次次级"误匹配），也不能是英数
+            const p1Lookbehind = `(?<![A-Za-z0-9高次])`
+            branchList.push(
+              `${p1Lookbehind}${esc(p1)}${connPattern}${esc(p2)}(?<bn>[\\u4e00-\\u9fa5]+)`
+            )
+          }
+        }
+      }
+    }
+
+    if (branchList.length === 0) return input
+    const re = new RegExp(branchList.join('|'), isEnglish ? 'gi' : 'g')
+
+    return input.replace(re, (match) => {
+      let p1, connStr, p2, bn
+
+      if (isEnglish) {
+        const p1m = match.match(/^([A-Za-z]+)/)
+        if (!p1m) return match
+        p1 = p1m[1]
+        let rest = match.substring(p1.length)
+        let connFound = null
+        for (const c of EN_CONNECTOR_PATTERNS) {
+          if (c.word === ',' && rest.match(/^\s*,/)) {
+            connFound = c
+            rest = rest.replace(/^\s*,\s*/, '')
+            break
+          }
+          if (rest.match(new RegExp(`^\\s+${c.word}\\s+`, 'i'))) {
+            connFound = c
+            rest = rest.replace(new RegExp(`^\\s+${c.word}\\s+`, 'i'), '')
+            break
+          }
+        }
+        if (!connFound) return match
+        connStr = connFound.word
+        const p2m = rest.match(/^([A-Za-z]+)/)
+        if (!p2m) return match
+        p2 = p2m[1]
+        rest = rest.substring(p2.length).replace(/^\s+/, '')
+        bn = rest
+      } else {
+        p1 = match.substring(0, 2)
+        connStr = match[2]
+        p2 = match.substring(3, 5)
+        bn = match.substring(5)
+      }
+
+      if (!p1 || !connStr || !p2 || !bn) return match
+      if (bn.length < 1) return match
+
+      let result
+      if (isEnglish) {
+        if (connStr === ',') {
+          result = `${p1} ${bn}, ${p2} ${bn}`
+        } else {
+          result = `${p1} ${bn} ${connStr} ${p2} ${bn}`
+        }
+      } else {
+        result = `${p1}${bn}${connStr}${p2}${bn}`
+      }
+      return result
+    })
+  }
+
+  let out = text
+  out = expandOnce(out, CN_PREFIXES, CN_CONNECTORS, false)
+  out = expandOnce(out, EN_PREFIXES, EN_CONNECTOR_PATTERNS, true)
+  return out
+}
+
 /** 解析文本颜色标签和样式
  * @param {string} text - 原始文本
  * @returns {string} - 处理后的HTML文本
@@ -161,6 +286,12 @@ export function parseColorTags (text) {
   }
 
   ensureParseColorTagsInitialized()
+
+  // ==================== 阶段 1A：展开 [前缀]和[前缀][基础名] 形式的缩写 ====================
+  // 形如 "高级和次级活力" -> "高级活力和次级活力"，让阶段 1 后续把它识别为两个独立 buff
+  // 形如 "Major and Minor Vitality" -> "Major Vitality and Minor Vitality"
+  // 形如 "高级、次级活力" / "Major, Minor Vitality" 同理（顿号/逗号视为连接词）
+  formattedText = expandPrefixedShorthand(formattedText)
 
   // 阶段1：替换所有完整带前缀的 buff/debuff 名称
   // 使用占位符避免重复替换
@@ -435,6 +566,9 @@ function detectBuffDebuffInText (text) {
   let workingText = stripGameColorCodesForBuffDetect(text)
   const placeholders = new Map()
   let placeholderId = 0
+
+  // 阶段 1A：展开 [前缀]和[前缀][基础名] 形式的缩写
+  workingText = expandPrefixedShorthand(workingText)
 
   for (const name of sortedNamesCache) {
     const info = getParseColorTagsNameInfo(name)
