@@ -2026,6 +2026,8 @@ class database {
     await this.init_databaseEN()
     await this.init_databaseCN()
 
+    await this.enhance_skillsData_extra()
+
     await this.enhance_database()
     await this.init_databaseDG()
     await this.init_databaseArtifact()
@@ -2361,6 +2363,82 @@ class database {
     }
   }
 
+
+  /**
+   * 从 resources/data/extra.json 加载篆刻技能的缺失 morph 中文翻译，
+   * 补齐到 skillsDataCN 中。extra.json 由 generate_extra.mjs 生成，
+   * 包含 EN 端存在但 CN 端缺失的 (focus, signature, affix) 组合对应的 morph 描述。
+   */
+  async enhance_skillsData_extra () {
+    const extraPath = './plugins/eso/resources/data/extra.json'
+    if (!fs.existsSync(extraPath)) {
+      logger.info('[ESO:图鉴] 未找到 extra.json，跳过 morph 补齐')
+      return
+    }
+    let extra
+    try {
+      extra = JSON.parse(fs.readFileSync(extraPath, 'utf8'))
+    } catch (e) {
+      logger.warn(`[ESO:图鉴] 解析 extra.json 失败: ${e.message}`)
+      return
+    }
+
+    // 构建 grimoire id → (lineKey, classKey, skillKey) 索引
+    // grimoire (id=6) 在 dataSkills[2][6].skills[2] → lineKey='2', classKey='6', skillKey='2'
+    const grimoireLocations = {}
+    for (const lineKey of Object.keys(skillsDataCN)) {
+      if (lineKey === 'name' || lineKey === 'id') continue
+      const line = skillsDataCN[lineKey]
+      if (!line || typeof line !== 'object') continue
+      for (const classKey of Object.keys(line)) {
+        if (classKey === 'name') continue
+        const cls = line[classKey]
+        if (!cls?.skills) continue
+        for (const skillKey of Object.keys(cls.skills)) {
+          if (skillKey === 'name' || skillKey === 'id') continue
+          const skill = cls.skills[skillKey]
+          if (skill?.IsCrafted && typeof skill.id === 'number') {
+            if (!grimoireLocations[skill.id]) {
+              grimoireLocations[skill.id] = []
+            }
+            grimoireLocations[skill.id].push({ lineKey, classKey, skillKey })
+          }
+        }
+      }
+    }
+
+    let totalAdded = 0
+    for (const [gidStr, data] of Object.entries(extra)) {
+      const gid = Number(gidStr)
+      const locations = grimoireLocations[gid]
+      if (!locations) continue
+      for (const loc of locations) {
+        const grimoire = skillsDataCN[loc.lineKey]?.[loc.classKey]?.skills?.[loc.skillKey]
+        if (!grimoire) continue
+        for (const m of data.missing) {
+          const morphKey = String(m.key)
+          if (grimoire[morphKey] && typeof grimoire[morphKey] === 'object') continue
+          // 复制 EN morph 的结构但用中文描述
+          grimoire[morphKey] = {
+            parentAbilityId: m.scripts?.parentAbilityId ?? grimoire.id,
+            IsCrafted: true,
+            passive: false,
+            scripts: m.scripts,
+            icon: grimoire.icon,
+            name: m.name || grimoire.name,
+            description: m.description_cn,
+            id: grimoire.id,
+            isDamage: false,
+            isHealer: false,
+            isTank: false,
+            ultimate: false
+          }
+          totalAdded++
+        }
+      }
+    }
+    logger.info(`[ESO:图鉴] 已从 extra.json 补齐 ${totalAdded} 个 grimoire morph 中文翻译`)
+  }
 
   async enhance_skillsData () {
     if('done' == skillID2IndexCN.init)
