@@ -1,7 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import common from '../../../lib/common/common.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
-import database from '../model/database.js'
+import database, { detectBuffDebuffInText } from '../model/database.js'
 import moment from 'moment'
 import md5 from 'md5'
 
@@ -210,6 +210,47 @@ export class atlas extends plugin {
       .trim()
   }
 
+  /** 把已被 transColor 注入 HTML 标签的 msg 段还原成纯文本，用于 buff/debuff 检测 */
+  stripHtmlForBuffDetect (html) {
+    if (!html || typeof html !== 'string') return ''
+    // 去掉所有 HTML 标签（保留标签内文本），把 <br> 换成换行
+    return html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .trim()
+  }
+
+  /** 判断一个 msg 段是否提及给定 buff/debuff canonical name */
+  msgSegmentMentionsBuff (msgSegment, buffName) {
+    if (!msgSegment || !buffName) return false
+    const plain = this.stripHtmlForBuffDetect(msgSegment)
+    if (!plain) return false
+    const found = detectBuffDebuffInText(plain)
+    return found.has(buffName)
+  }
+
+  /**
+   * 对篆刻技能（msg 数组以 "X 阶: ..." 为前缀）的 atlasData.msg 数组做过滤：
+   * 只保留提及查询词 buff/debuff 的阶段描述。非篆刻技能只有一段，不做删减。
+   * 直接修改传入的 atlasData.msg。
+   */
+  filterSkillMsgByBuff (atlasDataItem, buffName) {
+    if (!atlasDataItem?.msg || !Array.isArray(atlasDataItem.msg)) return
+    if (!buffName) return
+    // 非篆刻技能：msg 通常只有 1 段；如果它未提及查询词，**仍然保留**（用户要求不删）
+    // 通过检查 msg[0] 是否以 "X 阶" 开头判断是否为篆刻技能
+    if (!/^[一二三四五六七八九十]+阶\s*[:：]/.test(atlasDataItem.msg[0] || '')) {
+      return
+    }
+    // 篆刻技能：过滤掉不包含 buffName 的阶段
+    atlasDataItem.msg = atlasDataItem.msg.filter(seg => this.msgSegmentMentionsBuff(seg, buffName))
+  }
+
   /**
    * 若关键词精确等于 buff_debuff.json 中的 name，则生成全部关联套装/技能图鉴并合并转发
    * @returns {false|number} false 表示非 buff 查询，交由 showSets；否则已处理
@@ -225,18 +266,28 @@ export class atlas extends plugin {
     const skillKeys = await database.skillIdsToSkillIndices(entry.skillsList || [])
     const total = setKeys.length + skillKeys.length
 
+    // 微信 claw 接口（adapter_id=WeixinOC）单次最多返回 8 张图片；
+    // 若总图鉴数 > 8 且来源是 WeixinOC，则进入"合并模式"：
+    //   - 全部装备图鉴合并成 1 张（每行 3 个）
+    //   - 全部技能图鉴合并成 1 张（每行 3 个）
+    //   - 总共只发 2 张图（不再受 8 张上限影响）
+    const isWeixinOC = e?.adapter_id === 'WeixinOC' || e?.adapter_name === '微信个人号'
+    const useMergeMode = isWeixinOC && total > 8
+
     if (total === 0) {
       await this.reply(`已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，但未找到关联套装或技能。`)
       return 1
     }
 
     await this.reply(
-      `已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，正在生成图鉴（套装 ${setKeys.length} / 技能 ${skillKeys.length}）...`,
+      `已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，正在生成图鉴（套装 ${setKeys.length} / 技能 ${skillKeys.length}${useMergeMode ? '，微信 claw 合并模式' : ''}）...`,
       true
     )
 
-    const fakeMsg = []
-
+    // 收集每个图鉴的 atlasData（合并模式用），并分别尝试单张生成（非合并模式用）
+    const setAtlasDataList = []   // 合并模式：存 setData.atlasData（去 index=0 占位）
+    let setHeader = null          // 合并模式：取首个 setData 的 atlasData[0] 作为页头
+    const setImgs = []            // 非合并模式：存截图
     let setSkipped = 0
     for (const setKey of setKeys) {
       try {
@@ -251,14 +302,26 @@ export class atlas extends plugin {
             setData.atlasData[1].undauntedDates = undauntedDates
           }
         }
-        fakeMsg.push(await this.cache(setData, setImg))
+        if (useMergeMode) {
+          if (!setHeader) setHeader = JSON.parse(JSON.stringify(setData.atlasData[0]))
+          // 合并：取 index>=1 的图鉴数据
+          for (let i = 1; i < setData.atlasData.length; i++) {
+            setAtlasDataList.push(setData.atlasData[i])
+          }
+        } else {
+          setImgs.push(await this.cache(setData, setImg))
+        }
       } catch (err) {
         setSkipped++
         logger.warn(`[ESO:图鉴] 套装图鉴生成跳过 ${setKey}: ${err.message}`)
       }
     }
 
+    const skillAtlasDataList = []
+    let skillHeader = null
+    const skillImgs = []
     let skillSkipped = 0
+    let skillMsgFiltered = 0
     for (const skillKey of skillKeys) {
       try {
         skillData = await database.updateData(skillKey, 2)
@@ -266,7 +329,19 @@ export class atlas extends plugin {
           skillSkipped++
           continue
         }
-        fakeMsg.push(await this.cache(skillData, skillImg))
+        // buff/debuff 阶段过滤：篆刻技能只保留涉及查询词 buff/debuff 的阶段描述
+        const beforeLen = (skillData.atlasData[1].msg || []).length
+        this.filterSkillMsgByBuff(skillData.atlasData[1], entry.name)
+        const afterLen = (skillData.atlasData[1].msg || []).length
+        if (beforeLen !== afterLen) skillMsgFiltered += (beforeLen - afterLen)
+        if (useMergeMode) {
+          if (!skillHeader) skillHeader = JSON.parse(JSON.stringify(skillData.atlasData[0]))
+          for (let i = 1; i < skillData.atlasData.length; i++) {
+            skillAtlasDataList.push(skillData.atlasData[i])
+          }
+        } else {
+          skillImgs.push(await this.cache(skillData, skillImg))
+        }
       } catch (err) {
         skillSkipped++
         logger.warn(`[ESO:图鉴] 技能图鉴生成跳过 ${skillKey}: ${err.message}`)
@@ -278,14 +353,63 @@ export class atlas extends plugin {
     if (skillSkipped > 0) {
       logger.info(`[ESO:图鉴] buff/debuff 查询有 ${skillSkipped} 个技能条目无法生成图鉴，已跳过`)
     }
+    if (skillMsgFiltered > 0) {
+      logger.info(`[ESO:图鉴] buff/debuff「${entry.name}」阶段过滤：共移除 ${skillMsgFiltered} 个不相关阶段描述`)
+    }
+
+    const fakeMsg = []
+
+    if (useMergeMode) {
+      // 合并模式：装备合并 1 张 + 技能合并 1 张
+      if (setAtlasDataList.length > 0) {
+        const mergedSetData = await this.buildMergedAtlasData(e, 'atlas', setHeader, setAtlasDataList)
+        const img = await puppeteer.screenshot('eso', mergedSetData)
+        if (img) fakeMsg.push(img)
+      }
+      if (skillAtlasDataList.length > 0) {
+        const mergedSkillData = await this.buildMergedAtlasData(e, 'skills', skillHeader, skillAtlasDataList)
+        const img = await puppeteer.screenshot('eso', mergedSkillData)
+        if (img) fakeMsg.push(img)
+      }
+    } else {
+      // 非合并模式：单张 + 合并转发
+      for (const img of setImgs) fakeMsg.push(img)
+      for (const img of skillImgs) fakeMsg.push(img)
+    }
+
     if (fakeMsg.length === 0) {
       await this.reply(`已匹配「${entry.name}」，但所有关联图鉴均无法生成。`)
       return 1
     }
 
-    const forwardTitle = `${entry.isBuff ? '增益' : '减益'}·${entry.name}`
+    const forwardTitle = `${entry.isBuff ? '增益' : '减益'}·${entry.name}${useMergeMode ? '（合并）' : ''}`
     await e.reply(await common.makeForwardMsg(e, fakeMsg, forwardTitle, true))
     return 1
+  }
+
+  /**
+   * 构建合并模式的 atlasData：第一个元素是 pageHeader（背景/日期/标题），
+   * 后续元素是拼接的所有图鉴数据。模板用 atlas_merged.html / skills_merged.html。
+   * @param {object} e  事件
+   * @param {string} templateKey  'atlas' 或 'skills'，决定 tplFile
+   * @param {object} pageHeader  来自第一个 setData/skillData 的 atlasData[0]（含 date/pic/des）
+   * @param {Array<object>} itemList  所有图鉴的 atlasData[1..] 数据（去占位）
+   */
+  async buildMergedAtlasData (e, templateKey, pageHeader, itemList) {
+    const _path = process.cwd().replace(/\\/g, '/')
+    const tplFile = `./plugins/eso/resources/html/${templateKey}/${templateKey}_merged.html`
+    return {
+      init: 'done',
+      saveId: e?.user_id ? `merged_${e.user_id}` : 'merged_buff',
+      cwd: _path,
+      tplFile,
+      pluResPath: `${_path}/plugins/eso/resources/`,
+      headStyle: ``,
+      // 独立传入 pageHeader：art-template 不支持 {{arr.0.key}} 的点号数组下标语法
+      pageHeader: pageHeader || null,
+      // atlasData: [pageHeader, ...items]（数组下标在 {{each}} 遍历里才用，这里仅作数据载体）
+      atlasData: [pageHeader, ...itemList]
+    }
   }
 
   async showSets (e) {

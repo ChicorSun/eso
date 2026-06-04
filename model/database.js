@@ -558,7 +558,7 @@ function resolveCanonicalBuffDebuffName (matchedName, levelHint = null, isBuffHi
  * 在文本中检测 buff/debuff（算法与 parseColorTags 一致：完整名 + 省略前缀）
  * @returns {Set<string>} canonical 中文名集合
  */
-function detectBuffDebuffInText (text) {
+export function detectBuffDebuffInText (text) {
   const found = new Set()
   if (!text || typeof text !== 'string') return found
 
@@ -1771,7 +1771,27 @@ let skillMsgIndex = [
   "十七阶",
   "十八阶",
   "十九阶",
-  "二十阶"
+  "二十阶",
+  "二十一阶",
+  "二十二阶",
+  "二十三阶",
+  "二十四阶",
+  "二十五阶",
+  "二十六阶",
+  "二十七阶",
+  "二十八阶",
+  "二十九阶",
+  "三十阶",
+  "三十一阶",
+  "三十二阶",
+  "三十三阶",
+  "三十四阶",
+  "三十五阶",
+  "三十六阶",
+  "三十七阶",
+  "三十八阶",
+  "三十九阶",
+  "四十阶"
 ]
 
 var traits_armor = [
@@ -4512,7 +4532,8 @@ class database {
       let mIndex = 0
       let mIn = 0
       is_repeat = false
-      for (mIndex = 2; mIndex < 20; mIndex++) {
+      // 扫描所有 morph 阶段（最多到 mIndex=99），找出最大 morph 编号
+      for (mIndex = 2; mIndex < 100; mIndex++) {
         if(msgData[mIndex]!= undefined)
         {
           if(baseMsg == msgData[mIndex].description)
@@ -4527,13 +4548,17 @@ class database {
         skillData.atlasData[1].msg[mIn] = skillMsgIndex[mIn] + ': ' + await this.transColor(msgData.description)
         mIn++
       }
-      for (mIndex = 2; mIndex < 20; mIndex++) {
+      // 扫描 morph [2..99] 实际存在于数据库中的阶段
+      for (mIndex = 2; mIndex < 100; mIndex++) {
         if(msgData[mIndex]!= undefined)
         {
-          skillData.atlasData[1].msg[mIn] = skillMsgIndex[mIn] + ': ' + await this.transColor(msgData[mIndex].description)
+          // 防御：超出 skillMsgIndex 范围时使用数字后缀，避免 undefined
+          const stageLabel = skillMsgIndex[mIn] || `第${mIn+1}阶`
+          skillData.atlasData[1].msg[mIn] = stageLabel + ': ' + await this.transColor(msgData[mIndex].description)
           mIn++
         }
       }
+      logger.info(`[ESO:图鉴] 篆刻 ${msgData.name || '?'}: db=${Object.keys(msgData).filter(k => /^[0-9]+$/.test(k)).length} out=${skillData.atlasData[1].msg.length}`)
     }
     
     skillData.atlasData[1].p_name = []

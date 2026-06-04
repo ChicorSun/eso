@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/skills/skills.css" />
+  <link rel="shortcut icon" href="#" />
+  <style>
+    /* 合并模式：3 列网格布局；
+       body 宽度 900px（= 3 × 280 + 3 × 10 margin + 12 padding + 8 padding），
+       每个 .item 真实布局宽 280px，3 个并排刚好填满一整行 */
+    body {
+      width: 900px;
+      transform: scale(1.5);
+      transform-origin: 0 0;
+    }
+    .container {
+      width: 900px;
+      padding: 10px 12px 10px 8px;
+      text-align: center;
+      background-color: #f5f6fb;
+    }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
+    /* 每个 .item 真实宽 280px，3 个并排填满 900px
+       内部 .box 用 transform: scale(0.933) 把单图版的 300px 内容缩到 280px 视觉 */
+    .grid .item {
+      width: 280px;
+      height: 580px;             /* 给定高度避免缩放后撑高 */
+      flex-shrink: 0;
+      margin: 0 0 10px 10px;
+      overflow: hidden;
+    }
+    .grid .item .box {
+      width: 300px;              /* 保持单图版原 CSS 的内部布局 */
+      transform: scale(0.933);   /* 300 * 0.933 ≈ 280 */
+      transform-origin: 0 0;
+      padding: 0 6px 0 6px;
+    }
+  </style>
+</head>
+{{@headStyle}}
+
+<body>
+  <div class="container" id="container">
+    {{if pageHeader && pageHeader.pic}}
+    <style> .container { background: url("{{pluResPath}}img/background/{{pageHeader.pic}}.png") #fff; background-repeat: no-repeat; background-size: 100% 100%; }</style>
+    {{/if}}
+
+    <div class="grid">
+      {{each atlasData val index}}
+      {{if index > 0}}
+      <div class="item">
+        <div class="box">
+          <div class="top">
+            <div class="type">
+              <div class="cnType">{{val.type_cn}}</div>
+              <div class="enType">{{val.type_en}}</div>
+            </div>
+            <div class="place">
+              <div class="cnPlace">{{val.place_cn}}</div>
+              <div class="enPlace">{{val.place_en}}</div>
+            </div>
+          </div>
+          <div class="pic_div">
+            <div class="{{val.src_Skills_class}}">
+              <img class="src_icon" src="{{pluResPath}}img/skills/{{val.src_icon}}.png" />
+            </div>
+            <div class="{{val.arrow_class}}"><img class="arrow" src="{{pluResPath}}img/icon/arrow.png" /></div>
+            <div class="{{val.new_Skills_class}}">
+              <img class="new_icon" src="{{pluResPath}}img/skills/{{val.new_icon}}.png" />
+            </div>
+          </div>
+          <div class="pic_div">
+            <div class="{{val.src_Skills_class}}">
+              <div class="src_nameCN"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.src_cn_name}}</div>
+            </div>
+            <div class="{{val.arrow_class}}"> </div>
+            <div class="{{val.new_Skills_class}}">
+              <div class="new_nameCN"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.new_cn_name}}</div>
+            </div>
+          </div>
+          <div class="pic_div">
+            <div class="{{val.src_Skills_class}}">
+              <div class="src_nameEN"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.src_en_name}}</div>
+            </div>
+            <div class="{{val.arrow_class}}"> </div>
+            <div class="{{val.new_Skills_class}}">
+              <div class="new_nameEN"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.new_en_name}}</div>
+            </div>
+          </div>
+          <img class="line" src="{{pluResPath}}img/icon/line.png" />
+          <div class="{{val.parameter_class}}">
+            <div class="parameters_names">
+              {{each val.p_name item}}
+              <div class="onePara">{{item}}</div>
+              {{/each}}
+            </div>
+            <div class="parameters_values">
+              {{each val.p_value item index}}
+              <div class="onePara" style="color: {{ (val.p_name[index] == '消耗' || val.p_name[index] == ' ') ? val.p_color[index] : 'inherit' }};">{{item}}</div>
+              {{/each}}
+            </div>
+            <img class="line" src="{{pluResPath}}img/icon/line.png" />
+          </div>
+          {{each val.msg item}}
+          <div class="msg">{{@item}}</div>
+          {{/each}}
+          <div class="new_msg">{{@val.new_msg}}</div>
+        </div>
+      </div>
+      {{/if}}
+      {{/each}}
+    </div>
+    <div class="logo">Created By ESO-Bot</div>
+  </div>
+</body>
+
+</html>
