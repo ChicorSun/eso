@@ -162,14 +162,18 @@ function expandPrefixedShorthand (text) {
           }
           if (isEnglish) {
             // 单词边界 \b 作为基础名结尾
+            // 使用 (?:...) 非捕获组 + ([A-Za-z...]) 数字捕获组 1
+            // （JS 限制：同一正则字面量内命名捕获组名必须唯一；
+            //  若用 (?<bn>...) 多个交替分支会冲突，故改用数字 group）
             branchList.push(
-              `(?<![A-Za-z0-9])${esc(p1)}${connPattern}${esc(p2)}\\s+(?<bn>[A-Za-z][A-Za-z'’]*(?:\\s+[A-Za-z][A-Za-z'’]*)*?)\\b`
+              `(?<![A-Za-z0-9])${esc(p1)}${connPattern}${esc(p2)}\\s+([A-Za-z][A-Za-z'’]*(?:\\s+[A-Za-z][A-Za-z'’]*)*?)\\b`
             )
           } else {
             // 中文：P1 前面不能是"高"或"次"（避免"次次级"误匹配），也不能是英数
+            // 使用 ([一-鿿]+) 数字捕获组 1（避免命名冲突）
             const p1Lookbehind = `(?<![A-Za-z0-9高次])`
             branchList.push(
-              `${p1Lookbehind}${esc(p1)}${connPattern}${esc(p2)}(?<bn>[\\u4e00-\\u9fa5]+)`
+              `${p1Lookbehind}${esc(p1)}${connPattern}${esc(p2)}([\\u4e00-\\u9fa5]+)`
             )
           }
         }
@@ -179,8 +183,8 @@ function expandPrefixedShorthand (text) {
     if (branchList.length === 0) return input
     const re = new RegExp(branchList.join('|'), isEnglish ? 'gi' : 'g')
 
-    return input.replace(re, (match) => {
-      let p1, connStr, p2, bn
+    return input.replace(re, (match, bn) => {
+      let p1, connStr, p2
 
       if (isEnglish) {
         const p1m = match.match(/^([A-Za-z]+)/)
@@ -205,13 +209,11 @@ function expandPrefixedShorthand (text) {
         const p2m = rest.match(/^([A-Za-z]+)/)
         if (!p2m) return match
         p2 = p2m[1]
-        rest = rest.substring(p2.length).replace(/^\s+/, '')
-        bn = rest
+        // bn 现在是数字捕获组 1（match.substring(...) 不再需要手动切）
       } else {
         p1 = match.substring(0, 2)
         connStr = match[2]
         p2 = match.substring(3, 5)
-        bn = match.substring(5)
       }
 
       if (!p1 || !connStr || !p2 || !bn) return match
