@@ -6842,7 +6842,10 @@ class database {
       }
     }
 
-    return indices
+    // 篆刻技能（lineKey === '2'）排到末尾，其余技能保持原顺序在前
+    const grimoireKeys = indices.filter(k => k.startsWith('2_'))
+    const otherKeys = indices.filter(k => !k.startsWith('2_'))
+    return [...otherKeys, ...grimoireKeys]
   }
 }
 

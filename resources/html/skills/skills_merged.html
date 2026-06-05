@@ -29,10 +29,8 @@
        内部 .box 用 transform: scale(0.933) 把单图版的 300px 内容缩到 280px 视觉 */
     .grid .item {
       width: 280px;
-      height: 580px;             /* 给定高度避免缩放后撑高 */
       flex-shrink: 0;
       margin: 0 0 10px 10px;
-      overflow: hidden;
     }
     .grid .item .box {
       width: 300px;              /* 保持单图版原 CSS 的内部布局 */
