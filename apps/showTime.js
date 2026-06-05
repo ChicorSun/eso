@@ -27,8 +27,6 @@ export class time extends plugin {
     let utcTime = now-28800000
     let message = moment(now).format('北京时间'+'HH'+'点'+'mm'+'分'+'ss'+'秒').replace(/是0/g, "是").replace(/点0/g, "点")
     let message2 = moment(utcTime).format('UTC时间'+'HH'+'点'+'mm'+'分'+'ss'+'秒').replace(/是0/g, "是").replace(/点0/g, "点")
-    // 调试：打印 adapter_name，用于区分 TRSS-WeChat-OC-Plugin（微信 claw）与其他个人微信/QQ/GSUIDCore 等来源
-    const adapterInfo = `\n[debug] adapter_name=${e?.adapter_name ?? 'undefined'} adapter_id=${e?.adapter_id ?? 'undefined'}`
-    await this.reply(message+'\n'+message2+adapterInfo, false, { recallMsg: -1 })
+    await this.reply(message+'\n'+message2, false, { recallMsg: -1 })
   }
 }

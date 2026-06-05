@@ -269,7 +269,6 @@ export class atlas extends plugin {
     // 任何来源，只要总图鉴数 > 8 就进入合并模式：
     //   - 全部装备图鉴合并成 1 张（每行 3 个）
     //   - 全部技能图鉴合并成 1 张（每行 3 个）
-    // 突破单次最多 8 张图片的限制（微信 claw 等）
     const useMergeMode = total > 8
 
     if (total === 0) {
