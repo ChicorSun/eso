@@ -266,13 +266,11 @@ export class atlas extends plugin {
     const skillKeys = await database.skillIdsToSkillIndices(entry.skillsList || [])
     const total = setKeys.length + skillKeys.length
 
-    // 微信 claw 接口（adapter_id=WeixinOC）单次最多返回 8 张图片；
-    // 若总图鉴数 > 8 且来源是 WeixinOC，则进入"合并模式"：
+    // 任何来源，只要总图鉴数 > 8 就进入合并模式：
     //   - 全部装备图鉴合并成 1 张（每行 3 个）
     //   - 全部技能图鉴合并成 1 张（每行 3 个）
-    //   - 总共只发 2 张图（不再受 8 张上限影响）
-    const isWeixinOC = e?.adapter_id === 'WeixinOC' || e?.adapter_name === '微信个人号'
-    const useMergeMode = isWeixinOC && total > 8
+    // 突破单次最多 8 张图片的限制（微信 claw 等）
+    const useMergeMode = total > 8
 
     if (total === 0) {
       await this.reply(`已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，但未找到关联套装或技能。`)
@@ -280,7 +278,7 @@ export class atlas extends plugin {
     }
 
     await this.reply(
-      `已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，正在生成图鉴（套装 ${setKeys.length} / 技能 ${skillKeys.length}${useMergeMode ? '，微信 claw 合并模式' : ''}）...`,
+      `已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，正在生成图鉴（套装 ${setKeys.length} / 技能 ${skillKeys.length}${useMergeMode ? '，合并模式' : ''}）...`,
       true
     )
 
