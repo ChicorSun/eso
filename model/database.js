@@ -10,6 +10,7 @@ import fetch from 'node-fetch'
 import getimgs from './getimgs.js'
 import fs from 'node:fs'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import md5 from 'md5'
 
 const updateImgMode = 0;
@@ -841,12 +842,23 @@ function getMemoryUsage() {
   return null
 }
 
-// 计算文件的 MD5
+// 计算文件的 MD5（流式 + crypto，避免大文件 OOM / Invalid array length）
 function calculateMD5(filePath) {
   try {
-    const fileBuffer = fs.readFileSync(filePath)
-    let MD5val = md5(JSON.stringify(fileBuffer))
-    return MD5val
+    const hash = crypto.createHash('md5')
+    const fileHandle = fs.openSync(filePath, 'r')
+    const stats = fs.statSync(filePath)
+    const chunkSize = 1024 * 1024 // 1MB
+    const buffer = Buffer.allocUnsafe(chunkSize)
+    let position = 0
+    while (position < stats.size) {
+      const bytesRead = fs.readSync(fileHandle, buffer, 0, chunkSize, position)
+      if (bytesRead <= 0) break
+      hash.update(buffer.slice(0, bytesRead))
+      position += bytesRead
+    }
+    fs.closeSync(fileHandle)
+    return hash.digest('hex')
   } catch (error) {
     logger.error(`[ESO:图鉴] 计算MD5失败: ${error.message}`)
     return null
@@ -2019,9 +2031,9 @@ class database {
   }
 
   async _init_databaseOnce () {
-    // 计算数据文件的 MD5 值
+    // 计算数据文件的 MD5 值（用快速版避免大文件 OOM / Invalid array length）
     if (!currentMD5) {
-      currentMD5 = calculateMD5(dataExtractorCNPath)
+      currentMD5 = calculateMD5Fast(dataExtractorCNPath)
       //logger.info(`[ESO:数据库] 数据文件MD5: ${currentMD5}`)
     }
 
