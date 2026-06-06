@@ -1,0 +1,18 @@
+# 依赖
+node_modules/
+vendor/**/node_modules/
+
+# 本地数据备份与运行时缓存
+resources/data/back/
+resources/data/database-*.json
+resources/data/database-*.md5
+
+# 开发/测试脚本产出
+scripts/
+
+# ESOCN API 探测（本地实验）
+api-docs-captured.json
+esocn-api-usage-guide.txt
+esocn_api_test_results.json
+generate_esocn_guide.cjs
+run_esocn_api_tests.cjs

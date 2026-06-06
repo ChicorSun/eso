@@ -653,7 +653,6 @@ export class askUndaunted extends plugin {
     let tmp = md5(JSON.stringify(data))
     if (cachedata.md5 == tmp) return cachedata.img
 
-    //cachedata.img = 0
     cachedata.img = await puppeteer.screenshot('eso', data) /*html file saved in folder data/html/eso/ */
     cachedata.md5 = tmp
 

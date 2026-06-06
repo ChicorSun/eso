@@ -821,25 +821,8 @@ let currentMD5 = null
 let databaseInitPromise = null
 
 // 内存监控和优化函数
-function optimizeMemoryUsage(context = '') {
-  if (global.gc) {
-    global.gc()
-    logger.info(`[ESO:图鉴] 内存优化: ${context}`)
-  }
-}
-
-// 获取当前内存使用情况（如果可用）
-function getMemoryUsage() {
-  if (process.memoryUsage) {
-    const usage = process.memoryUsage()
-    return {
-      heapUsed: (usage.heapUsed / 1024 / 1024).toFixed(2),
-      heapTotal: (usage.heapTotal / 1024 / 1024).toFixed(2),
-      external: (usage.external / 1024 / 1024).toFixed(2),
-      rss: (usage.rss / 1024 / 1024).toFixed(2)
-    }
-  }
-  return null
+function optimizeMemoryUsage () {
+  if (global.gc) global.gc()
 }
 
 // 计算文件的 MD5（流式 + crypto，避免大文件 OOM / Invalid array length）
@@ -933,7 +916,7 @@ async function parseLuaFileWithMemoryControl(luaFilePath, jsonCachePath, md5File
     await fs.promises.writeFile(jsonCachePath, jsonStr, 'utf8')
     
     // 计算并保存MD5
-    const currentMD5 = calculateMD5Fast(luaFilePath)
+    const currentMD5 = calculateMD5(luaFilePath)
     await fs.promises.writeFile(md5FilePath, currentMD5, 'utf8')
     
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(2)
@@ -1650,6 +1633,9 @@ const ALCHEMY_DATA = {
   }
 }
 
+/** 夜市等非无畏者副本怪物套，不计入 dgSetsTable（#怪物套 仍按 type=8 列出） */
+const UNDAUNTED_EXCLUDED_MONSTER_SET_IDS = new Set([849, 850, 851])
+
 let numDungeons = 0
 let dgList = [
   "Spindleclutch II",
@@ -2033,8 +2019,8 @@ class database {
   async _init_databaseOnce () {
     // 计算数据文件的 MD5 值（用快速版避免大文件 OOM / Invalid array length）
     if (!currentMD5) {
-      currentMD5 = calculateMD5Fast(dataExtractorCNPath)
-      //logger.info(`[ESO:数据库] 数据文件MD5: ${currentMD5}`)
+      currentMD5 = calculateMD5(dataExtractorCNPath)
+      logger.info(`[ESO:图鉴] 中文 Lua MD5: ${currentMD5}`)
     }
 
     await this.init_databaseEN()
@@ -2045,6 +2031,7 @@ class database {
     await this.enhance_database()
     await this.init_databaseDG()
     await this.init_databaseArtifact()
+
     if (isBuffDebuffListCacheValid()) {
       logger.info('[ESO:图鉴] buff/debuff 映射表与 database-cn.md5 一致，跳过生成')
     } else {
@@ -2853,6 +2840,9 @@ class database {
 
       if(setsData[setKey].type == 8)
       {
+        if (UNDAUNTED_EXCLUDED_MONSTER_SET_IDS.has(setsData[setKey].id)) {
+          continue
+        }
         var indexInList = await this.isInList(places.loot_place_en, dgList)
         if(indexInList > -1 && ((places.loot_place_en != 'Naj-Caldeesh') && (places.loot_place_en != 'Black Gem Foundry')))
         {
@@ -2918,6 +2908,7 @@ class database {
         }
       }
     }
+
   }
 
   async init_databaseArtifact () {
@@ -2965,8 +2956,9 @@ class database {
         fs.mkdirSync(cachePath, { recursive: true })
       }
 
-      // 计算源文件MD5
-      const currentMD5 = calculateMD5Fast(dataExtractorENPath)
+      // 计算源文件MD5（全文件，避免 fast 误命中旧缓存）
+      const currentMD5 = calculateMD5(dataExtractorENPath)
+      logger.info(`[ESO:图鉴] 英文 Lua MD5: ${currentMD5}`)
       let lua_code = null
       let cacheFound = false
 
@@ -2977,23 +2969,9 @@ class database {
           const cachedMD5 = (await fs.promises.readFile(jsonCacheMD5PathEN, 'utf8')).trim()
           if (cachedMD5 === currentMD5) {
             logger.info('[ESO:图鉴] 使用缓存加载英文数据库（custome_resources/cache）...')
-            // 优化：使用流式方式读取，减少内存峰值
-            const fileStats = fs.statSync(jsonCachePathEN)
-            const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2)
-            logger.info(`[ESO:图鉴] 缓存文件大小: ${fileSizeMB}MB`)
-            
             const cachedData = await fs.promises.readFile(jsonCachePathEN, 'utf8')
-            const memBefore = getMemoryUsage()
             lua_code = JSON.parse(cachedData)
-            
-            // 立即释放JSON字符串内存
-            const jsonStrRef = cachedData
-            optimizeMemoryUsage('解析JSON后释放字符串')
-            
-            if (memBefore) {
-              const memAfter = getMemoryUsage()
-              logger.info(`[ESO:图鉴] 内存使用: ${memBefore.heapUsed}MB -> ${memAfter.heapUsed}MB`)
-            }
+            optimizeMemoryUsage()
             cacheFound = true
           }
         } catch (error) {
@@ -3073,10 +3051,7 @@ class database {
 
       // 立即释放lua_code对象，只保留需要的数据
       lua_code = null
-      if (global.gc) {
-        global.gc()
-        logger.info('[ESO:图鉴] 已释放解析后的临时对象内存')
-      }
+      optimizeMemoryUsage()
 
       logger.info('[ESO:图鉴] 英文数据库加载完成')
     } catch (error) {
@@ -3109,8 +3084,9 @@ class database {
         fs.mkdirSync(cachePath, { recursive: true })
       }
 
-      // 计算源文件MD5
-      const currentMD5 = calculateMD5Fast(dataExtractorCNPath)
+      // 计算源文件MD5（全文件，避免 fast 误命中旧缓存）
+      const currentMD5 = calculateMD5(dataExtractorCNPath)
+      logger.info(`[ESO:图鉴] 中文 Lua MD5: ${currentMD5}`)
       let lua_code = null
       let cacheFound = false
 
@@ -3121,11 +3097,6 @@ class database {
           const cachedMD5 = (await fs.promises.readFile(jsonCacheMD5PathCN, 'utf8')).trim()
           if (cachedMD5 === currentMD5) {
             logger.info('[ESO:图鉴] 使用缓存加载中文数据库（custome_resources/cache）...')
-            // 优化：使用流式方式读取，减少内存峰值
-            const fileStats = fs.statSync(jsonCachePathCN)
-            const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2)
-            logger.info(`[ESO:图鉴] 缓存文件大小: ${fileSizeMB}MB`)
-            
             const cachedData = await fs.promises.readFile(jsonCachePathCN, 'utf8')
             lua_code = JSON.parse(cachedData)
             
@@ -3213,10 +3184,7 @@ class database {
 
       // 立即释放lua_code对象，只保留需要的数据
       lua_code = null
-      if (global.gc) {
-        global.gc()
-        logger.info('[ESO:图鉴] 已释放解析后的临时对象内存')
-      }
+      optimizeMemoryUsage()
 
       logger.info('[ESO:图鉴] 中文数据库加载完成')
     } catch (error) {
