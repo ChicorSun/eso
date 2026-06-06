@@ -68,6 +68,11 @@ export class atlas extends plugin {
       /** 匹配不同的关键词 */
       rule: [
         {
+          /** 游戏内物品链接等：任意文本中含 item:205008: 即查 #ITEMID205008 */
+          reg: /item:\d+:/i,
+          fnc: 'showAtlasByItemLink'
+        },
+        {
           /** 命令正则匹配 */
           reg: '^#.*$',
           /** 执行方法 */
@@ -136,6 +141,19 @@ export class atlas extends plugin {
                       +`!!小瓜尔兽(可省略"图鉴")`)
   }
 
+
+  /** 从消息中解析 item:数字:（与 #ITEMID数字 等价） */
+  extractItemIdFromLink (text) {
+    const match = String(text || '').match(/item:(\d+):/i)
+    return match ? match[1] : null
+  }
+
+  async showAtlasByItemLink (e) {
+    const text = await this.trimText(e)
+    const itemId = this.extractItemIdFromLink(text)
+    if (!itemId) return 0
+    return await this.showSets(e, `#ITEMID${itemId}`)
+  }
 
   async showAtlas (e) {
     let name = await this.trimText(e)
@@ -428,8 +446,8 @@ export class atlas extends plugin {
     }
   }
 
-  async showSets (e) {
-    let name = await this.trimText(e)
+  async showSets (e, nameOverride) {
+    let name = nameOverride ?? await this.trimText(e)
     let noMaxLimit = false
     let showEnglish = false
     let objSets = await database.name2index(name,1)
