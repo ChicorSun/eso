@@ -1960,6 +1960,97 @@ var extra_set_data = {
   "846": { type: 9, place: { '1': 'Solstice'}, place_cn: { '1': '至日岛'}, categoryName: 'Solstice', categoryName_cn: '至日岛'}
 }
 
+/** @returns {{ setKey: string, itemId: string|null }} */
+export function resolveSetIndexEntry (entry) {
+  if (entry != null && typeof entry === 'object' && entry.setKey != null) {
+    return {
+      setKey: String(entry.setKey),
+      itemId: entry.itemId != null ? String(entry.itemId) : null
+    }
+  }
+  return { setKey: entry != null ? String(entry) : '', itemId: null }
+}
+
+export function getSetKeyFromIndexEntry (entry) {
+  return resolveSetIndexEntry(entry).setKey
+}
+
+export function isSetIndexResultEmpty (objSets) {
+  if (!objSets?.length) return true
+  const first = objSets[0]
+  if (first === -1 || first === '-1') return true
+  if (typeof first === 'object' && (first.setKey == null || first.setKey === -1 || first.setKey === '-1')) {
+    return true
+  }
+  return false
+}
+
+function parseItemIdFromKeyword (keyword) {
+  if (!keyword || !/ITEMID/i.test(keyword)) return null
+  const match = String(keyword).match(/ITEMID\s*(\d+)/i)
+  return match ? match[1] : null
+}
+
+function normalizeSetIndexResults (objSets, itemIdFromKeyword) {
+  if (!itemIdFromKeyword || !Array.isArray(objSets)) return objSets
+  return objSets.map(entry => {
+    const { setKey, itemId } = resolveSetIndexEntry(entry)
+    if (!setKey || setKey === '-1') return entry
+    if (!itemId) return { setKey, itemId: itemIdFromKeyword }
+    return entry
+  })
+}
+
+function isRichSetItemEntry (entry) {
+  return entry && typeof entry === 'object' && !Array.isArray(entry) && (entry.name != null || entry.icon)
+}
+
+function extractSetItemIconKey (iconPath) {
+  if (!iconPath || typeof iconPath !== 'string') return ''
+  if (iconPath.includes('icons/')) return iconPath.split('.')[0].split('icons/')[1]
+  const parts = iconPath.split('/')
+  return parts[parts.length - 1]?.split('.')[0] || ''
+}
+
+function formatSetItemWeight (item) {
+  const armorNames = { 1: '轻甲', 2: '中甲', 3: '重甲' }
+  const equipNames = {
+    1: '头部', 2: '项链', 3: '胸甲', 4: '肩甲', 8: '腰带', 9: '腿甲', 10: '脚部', 13: '手部', 12: '戒指',
+    5: '单手', 6: '双手', 7: '盾牌'
+  }
+  const weaponNames = {
+    1: '单手斧', 2: '单手锤', 3: '单手剑', 4: '双手剑', 5: '双手斧', 6: '双手锤',
+    8: '弓', 9: '恢复法杖', 11: '匕首', 12: '炼狱法杖', 13: '寒冰法杖', 14: '盾牌', 15: '闪电法杖'
+  }
+  const parts = []
+  if (item.weaponType > 0) {
+    if (item.equipType === 5) parts.push('单手')
+    else if (item.equipType === 6) parts.push('双手')
+    parts.push(weaponNames[item.weaponType] || `武器${item.weaponType}`)
+  } else if (item.armorType > 0) {
+    if (armorNames[item.armorType]) parts.push(armorNames[item.armorType])
+    if (equipNames[item.equipType]) parts.push(equipNames[item.equipType])
+  } else if (equipNames[item.equipType]) {
+    parts.push(equipNames[item.equipType])
+  }
+  return parts.filter(Boolean).join(' · ')
+}
+
+function lookupSetItemEntry (setsData, setKey, itemId) {
+  if (!itemId || !setsData[setKey]?.itemIDs) return null
+  const table = setsData[setKey].itemIDs
+  return table[itemId] ?? table[Number(itemId)] ?? null
+}
+
+function lookupSetItemEntryCN (setsData, setsDataCN, setKey, itemId) {
+  if (!itemId) return null
+  const setId = setsData[setKey]?.id
+  const cnSet = setsDataCN[setId] ?? setsDataCN[setKey]
+  const table = cnSet?.itemIDs
+  if (!table) return null
+  return table[itemId] ?? table[Number(itemId)] ?? null
+}
+
 class database {
   async isInList (keyword, objectList) {
     var index = 0
@@ -2244,38 +2335,46 @@ class database {
 
       if(updateImgMode == 1)
       {
-        // 收集该套装下所有部位的图标（仅处理实际存在的部件）
         let iconKeys = new Set()
         const addIcon = (iconStr) => {
-          if (iconStr && typeof iconStr === 'string' && iconStr.includes('icons/')) {
-            let key = iconStr.split('.')[0].split('icons/')[1]
-            if (key) iconKeys.add(key)
-          }
+          const key = extractSetItemIconKey(iconStr)
+          if (key) iconKeys.add(key)
         }
-        if (setsData[setKey].icon) addIcon(setsData[setKey].icon)
-        if (setsData[setKey].styles) {
-          if (setsData[setKey].styles.Apparel) {
-            let apparel = setsData[setKey].styles.Apparel
-            if (apparel.Head) {
-              if (apparel.Head.Light?.icon) addIcon(apparel.Head.Light.icon)
-              if (apparel.Head.Medium?.icon) addIcon(apparel.Head.Medium.icon)
-              if (apparel.Head.Heavy?.icon) addIcon(apparel.Head.Heavy.icon)
-            } else {
-              for (let weight of Object.keys(apparel)) {
-                let slotMap = apparel[weight]
-                if (slotMap && typeof slotMap === 'object')
-                  for (let slot of Object.keys(slotMap))
-                    if (slotMap[slot]?.icon) addIcon(slotMap[slot].icon)
-              }
+        const itemTable = setsData[setKey]?.itemIDs
+        if (itemTable && typeof itemTable === 'object') {
+          for (const entry of Object.values(itemTable)) {
+            if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+              addIcon(entry.icon)
             }
           }
-          if (setsData[setKey].styles.Weapon) {
-            let weapon = setsData[setKey].styles.Weapon
-            for (let weight of Object.keys(weapon)) {
-              let typeMap = weapon[weight]
-              if (typeMap && typeof typeMap === 'object')
-                for (let typeKey of Object.keys(typeMap))
-                  if (typeMap[typeKey]?.icon) addIcon(typeMap[typeKey].icon)
+        }
+        // 极少数无 itemIDs 的套装仍走 styles 回退
+        if (iconKeys.size === 0) {
+          if (setsData[setKey].icon) addIcon(setsData[setKey].icon)
+          if (setsData[setKey].styles) {
+            if (setsData[setKey].styles.Apparel) {
+              let apparel = setsData[setKey].styles.Apparel
+              if (apparel.Head) {
+                if (apparel.Head.Light?.icon) addIcon(apparel.Head.Light.icon)
+                if (apparel.Head.Medium?.icon) addIcon(apparel.Head.Medium.icon)
+                if (apparel.Head.Heavy?.icon) addIcon(apparel.Head.Heavy.icon)
+              } else {
+                for (let weight of Object.keys(apparel)) {
+                  let slotMap = apparel[weight]
+                  if (slotMap && typeof slotMap === 'object')
+                    for (let slot of Object.keys(slotMap))
+                      if (slotMap[slot]?.icon) addIcon(slotMap[slot].icon)
+                }
+              }
+            }
+            if (setsData[setKey].styles.Weapon) {
+              let weapon = setsData[setKey].styles.Weapon
+              for (let weight of Object.keys(weapon)) {
+                let typeMap = weapon[weight]
+                if (typeMap && typeof typeMap === 'object')
+                  for (let typeKey of Object.keys(typeMap))
+                    if (typeMap[typeKey]?.icon) addIcon(typeMap[typeKey].icon)
+              }
             }
           }
         }
@@ -3267,9 +3366,8 @@ class database {
       isThisOne = false
       if(enitemIDMode)
       {
-        //logger.info(setsData[setKey].itemIDs)
-        if(setsData[setKey].itemIDs[name])
-        {
+        const itemTable = setsData[setKey].itemIDs
+        if (itemTable && (itemTable[name] != null || itemTable[Number(name)] != null)) {
           isThisOne = true
         }
       }
@@ -3359,45 +3457,44 @@ class database {
 
       if(isThisOne)
       {
-        objSets[index] = setKey
+        objSets[index] = enitemIDMode ? { setKey, itemId: String(name) } : setKey
         index++
       }
     }
     let setNum = index
 
     //如果要求显示普通版本的装备，去除结果中的完美版本
-    if(setNum > 1 && onlyNormal)
+    if(!enitemIDMode && setNum > 1 && onlyNormal)
     {
       for (let i = 0; i < setNum; i++) {
-        //logger.info('[' + i + '|' + objSets[i] + ']' + setsDataCN[objSets[i]].name)
-        if(setsDataCN[objSets[i]].name.includes("完美"))
+        const sk = getSetKeyFromIndexEntry(objSets[i])
+        if(setsDataCN[setsData[sk].id].name.includes("完美"))
         {
-          //logger.info('Delete [' + i + '|' + objSets[i] + ']' + setsDataCN[objSets[i]].name)
           objSets.splice(i, 1)
           i--
           setNum--
         }
       }
     }
-    else if(setNum > 1)//对于有完美版本的装备，只保留完美版本
+    else if(!enitemIDMode && setNum > 1)//对于有完美版本的装备，只保留完美版本
     {
       for (let i = 0; i < setNum; i++) {
-        //logger.info('[' + i + '|' + objSets[i] + ']' + setsDataCN[objSets[i]].name)
-        if(!setsDataCN[objSets[i]].name.includes("完美"))
+        const sk = getSetKeyFromIndexEntry(objSets[i])
+        if(!setsDataCN[setsData[sk].id].name.includes("完美"))
         {
           let isNormal = false
-          let tmpObjName = setsDataCN[objSets[i]].name
+          let tmpObjName = setsDataCN[setsData[sk].id].name
           tmpObjName = tmpObjName.replace("的", "").replace("的", "").replace("的", "")
           let tmpName = '完美' + tmpObjName
           for (let n = 0; n < setNum; n++) {
-            if(tmpName == setsDataCN[objSets[n]].name.replace("的", "").replace("的", "").replace("的", "")){
+            const sn = getSetKeyFromIndexEntry(objSets[n])
+            if(tmpName == setsDataCN[setsData[sn].id].name.replace("的", "").replace("的", "").replace("的", "")){
               isNormal = true
               break
             }
           }
           if(isNormal)
           {
-            //logger.info('Delete [' + i + '|' + objSets[i] + ']' + setsDataCN[objSets[i]].name)
             objSets.splice(i, 1)
             i--
             setNum--
@@ -4173,14 +4270,25 @@ class database {
     
     // 检查缓存
     const cacheManager = getCacheManager(type)
+    const itemIdFromKeyword = type === 1 ? parseItemIdFromKeyword(name) : null
     const cachedResult = cacheManager.get(name)
     if (cachedResult !== null) {
+      if (itemIdFromKeyword) {
+        const normalized = normalizeSetIndexResults(cachedResult, itemIdFromKeyword)
+        if (JSON.stringify(normalized) !== JSON.stringify(cachedResult)) {
+          cacheManager.set(name, normalized)
+        }
+        return normalized
+      }
       return cachedResult
     }
     let result
     if(type == 1) //this is name for sets
     {
       result = await this.setsName2Index(name)
+      if (itemIdFromKeyword) {
+        result = normalizeSetIndexResults(result, itemIdFromKeyword)
+      }
       cacheManager.set(name, result)
       return result
     }
@@ -4236,7 +4344,7 @@ class database {
     return ret
   }
 
-  async updateSetData (setKey, showEnglish) {
+  async updateSetData (setKey, showEnglish, itemId = null) {
     let setData = {
       init: 'none',
       atlasData: [{}]
@@ -4423,6 +4531,22 @@ class database {
       place_en: "<Wayrest Sewers>"
       msg:
     */
+    const setCnName = setsDataCN[setsData[setKey].id]?.name ?? ''
+    const setEnName = setsData[setKey]?.name ?? ''
+    const itemEntryEn = lookupSetItemEntry(setsData, setKey, itemId)
+    const itemEntryCn = lookupSetItemEntryCN(setsData, setsDataCN, setKey, itemId)
+    if (itemId && isRichSetItemEntry(itemEntryEn)) {
+      const cnItemName = itemEntryCn?.name || setCnName
+      const enItemName = itemEntryEn.name || setEnName
+      setData.atlasData[1].set_name = setCnName
+      setData.atlasData[1].name = showEnglish ? enItemName : cnItemName
+      setData.atlasData[1].name_en = '<' + enItemName + '>'
+      const itemIcon = extractSetItemIconKey(itemEntryEn.icon ?? itemEntryCn?.icon)
+      if (itemIcon) setData.atlasData[1].icon = itemIcon
+      const itemWeight = formatSetItemWeight(itemEntryEn)
+      if (itemWeight) setData.atlasData[1].weight = itemWeight
+    }
+
     let imgPath = await getimgs.realpath(setData.atlasData[1].icon, "sets")
     setData.atlasData[1].icon = `../../../../../` + imgPath
 
@@ -5565,6 +5689,7 @@ class database {
       {
         error_set = 1;
         for (let setKey of objSets) {
+          const { itemId: setItemId } = resolveSetIndexEntry(setKey)
           let setData = await this.updateData(setKey, 1)
           if(setData.atlasData[1].name_en == ('<'+GI.set+'>') || setData.atlasData[1].name == GI.set || itemIDMode)
           {
@@ -5586,12 +5711,10 @@ class database {
             {
               buildData.buildsData[1].gear[index].type_color = 'rgb(221, 221, 221)'
             }
-            if(setData.atlasData[1].type == '神话')
-            {
+            const useItemLevelName = itemIDMode && setItemId != null
+            if (setData.atlasData[1].type == '神话' || useItemLevelName) {
               buildData.buildsData[1].gear[index].name_cn = setData.atlasData[1].name
-            }
-            else
-            {
+            } else {
               buildData.buildsData[1].gear[index].name_cn = setData.atlasData[1].name + await this.transTypeName(GI.type, index)
             }
             buildData.buildsData[1].gear[index].name_en = setData.atlasData[1].name_en.replace("Perfected ", "")
@@ -6379,9 +6502,10 @@ class database {
   }
 
   async updateData (setKey, type) {
+    const { setKey: resolvedSetKey, itemId } = resolveSetIndexEntry(setKey)
     if(type == 1) //this is name for sets
     {
-      return await this.updateSetData(setKey, 0)
+      return await this.updateSetData(resolvedSetKey, 0, itemId)
     }
     if(type == 2) //this is name for skills
     {
@@ -6414,7 +6538,7 @@ class database {
 
     if(type == 11) //this is name for sets-english
     {
-      return await this.updateSetData(setKey, 1)
+      return await this.updateSetData(resolvedSetKey, 1, itemId)
     }
     if(type == 21) //this is name for skills-english
     {

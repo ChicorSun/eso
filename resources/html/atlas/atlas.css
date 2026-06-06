@@ -81,6 +81,11 @@ body {
   color: #FFE62D;
 }
 
+.dec.set-name {
+  font-size: 12px;
+  color: #FFFFFF;
+}
+
 .msg{
   font-size: 14px;
   line-height:150%;

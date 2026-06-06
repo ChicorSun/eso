@@ -29,6 +29,9 @@
         <img class="icon" src="{{pluResPath}}img/sets/{{val.icon}}.png" />
         <div class="text"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.name}}</div>
         <div class="dec"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.name_en}}</div>
+        {{if val.set_name}}
+        <div class="dec set-name">所属套装：{{val.set_name}}</div>
+        {{/if}}
         <img class="line" src="{{pluResPath}}img/icon/line.png" />
         {{each val.msg item}}
         <div class="msg">{{@item}}</div>

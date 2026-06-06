@@ -1,7 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import General from '../model/general.js'
-import database from '../model/database.js'
+import database, { isSetIndexResultEmpty } from '../model/database.js'
 import getimgs from '../model/getimgs.js'
 import fetch from 'node-fetch'
 import moment from 'moment'
@@ -164,7 +164,7 @@ export class goldenVendor extends plugin {
     let desc = '<' + setName + '>'
     let msg = []
     const objSets = await database.name2index(setName, 1)
-    if (!objSets || objSets.length <= 0 || objSets[0] < 0) {
+    if (isSetIndexResultEmpty(objSets)) {
       return icon ? { icon, title: '', desc, msg, item_class: 'item_split2 set_info_big' } : null
     }
     let type = ''
@@ -299,7 +299,7 @@ export class goldenVendor extends plugin {
     let place = ''
     let objSets = await database.name2index(setName,1)
     let setNum = objSets.length
-    if((objSets[0] < 0) || (setNum <= 0))
+    if(isSetIndexResultEmpty(objSets) || (setNum <= 0))
     {
       return -1
     }

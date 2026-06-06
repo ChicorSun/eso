@@ -1,7 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import common from '../../../lib/common/common.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
-import database, { detectBuffDebuffInText } from '../model/database.js'
+import database, { detectBuffDebuffInText, isSetIndexResultEmpty } from '../model/database.js'
 import moment from 'moment'
 import md5 from 'md5'
 
@@ -294,7 +294,8 @@ export class atlas extends plugin {
           continue
         }
         if (setData.atlasData[1].type === '副本' || setData.atlasData[1].type === '怪物') {
-          const undauntedDates = await this.getUndauntedDates(setData.atlasData[1].name)
+          const undauntedSetName = setData.atlasData[1].set_name || setData.atlasData[1].name
+          const undauntedDates = await this.getUndauntedDates(undauntedSetName)
           if (undauntedDates.length > 0) {
             setData.atlasData[1].undauntedDates = undauntedDates
           }
@@ -426,7 +427,7 @@ export class atlas extends plugin {
 
     //logger.info('setNum:' + setNum)
     //logger.info('objSets:' + objSets)
-    if((objSets[0] < 0) || (setNum <= 0))
+    if(isSetIndexResultEmpty(objSets) || (setNum <= 0))
     {
       return await this.reply(`抱歉,无法理解您的意思\n您或许需要以*开头查询技能，以%开头查询食物，以!开头查询家具，或以!!开头查询收藏品家具`)
     }
@@ -499,7 +500,8 @@ export class atlas extends plugin {
       // 如果装备类型为"副本"（type=6），添加无畏者副本日期信息
       //logger.info(setData.atlasData[1].type)
       if (setData.atlasData[1].type == "副本" || setData.atlasData[1].type == "怪物") {
-        const undauntedDates = await this.getUndauntedDates(setData.atlasData[1].name)
+        const undauntedSetName = setData.atlasData[1].set_name || setData.atlasData[1].name
+        const undauntedDates = await this.getUndauntedDates(undauntedSetName)
         //logger.info(undauntedDates)
         if (undauntedDates.length > 0) {
           // 将无畏者日期数据添加到atlasData中
