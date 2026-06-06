@@ -5,15 +5,15 @@
   <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/atlas/atlas.css" />
   <link rel="shortcut icon" href="#" />
   <style>
-    /* 合并模式：3 列网格布局；每张图鉴宽 280px，3 列共 840px */
+    /* 合并模式：每行 2 或 3 列；每张图鉴宽 280px */
     body {
-      width: 900px;
+      width: {{pageWidth}}px;
       line-height: normal;
       transform: scale(1.5);
       transform-origin: 0 0;
     }
     .container {
-      width: 900px;
+      width: {{pageWidth}}px;
       padding: 10px 12px 10px 0px;
       text-align: center;
       background-color: #f5f6fb;

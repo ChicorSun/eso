@@ -280,6 +280,8 @@ export class atlas extends plugin {
     const entry = await database.findBuffDebuffByExactName(query)
     if (!entry) return false
 
+    const displayName = entry.displayName || entry.name
+
     const setKeys = await database.setIdsToSetKeys(entry.setsList || [])
     const skillKeys = await database.skillIdsToSkillIndices(entry.skillsList || [])
     const total = setKeys.length + skillKeys.length
@@ -290,12 +292,12 @@ export class atlas extends plugin {
     const useMergeMode = total > 8
 
     if (total === 0) {
-      await this.reply(`已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，但未找到关联套装或技能。`)
+      await this.reply(`已匹配${entry.isBuff ? '增益' : '减益'}「${displayName}」，但未找到关联套装或技能。`)
       return 1
     }
 
     await this.reply(
-      `已匹配${entry.isBuff ? '增益' : '减益'}「${entry.name}」，正在生成图鉴（套装 ${setKeys.length} / 技能 ${skillKeys.length}${useMergeMode ? '，合并模式' : ''}）...`,
+      `已匹配${entry.isBuff ? '增益' : '减益'}「${displayName}」，正在生成图鉴（套装 ${setKeys.length} / 技能 ${skillKeys.length}${useMergeMode ? '，合并模式' : ''}）...`,
       true
     )
 
@@ -402,11 +404,11 @@ export class atlas extends plugin {
     }
 
     if (fakeMsg.length === 0) {
-      await this.reply(`已匹配「${entry.name}」，但所有关联图鉴均无法生成。`)
+      await this.reply(`已匹配「${displayName}」，但所有关联图鉴均无法生成。`)
       return 1
     }
 
-    const forwardTitle = `${entry.isBuff ? '增益' : '减益'}·${entry.name}${useMergeMode ? '（合并）' : ''}`
+    const forwardTitle = `${entry.isBuff ? '增益' : '减益'}·${displayName}${useMergeMode ? '（合并）' : ''}`
     await e.reply(await common.makeForwardMsg(e, fakeMsg, forwardTitle, true))
     return 1
   }
@@ -425,6 +427,15 @@ export class atlas extends plugin {
     }
   }
 
+  /** 合并页宽度：2 条时 2 列，否则 3 列（每卡 280px + 左间距 10px） */
+  getMergedPageWidth (itemCount, templateKey) {
+    const cols = itemCount === 2 ? 2 : 3
+    const leftPad = templateKey === 'skills' ? 8 : 0
+    const rightPad = 12
+    const slack = templateKey === 'skills' ? 10 : 18
+    return leftPad + cols * 290 + rightPad + slack
+  }
+
   /**
    * 构建合并模式的 atlasData：第一个元素是 pageHeader（背景/日期/标题），
    * 后续元素是拼接的所有图鉴数据。模板用 atlas_merged.html / skills_merged.html。
@@ -432,6 +443,7 @@ export class atlas extends plugin {
   async buildMergedAtlasData (e, templateKey, pageHeader, itemList) {
     const _path = process.cwd().replace(/\\/g, '/')
     const tplFile = `./plugins/eso/resources/html/${templateKey}/${templateKey}_merged.html`
+    const pageWidth = this.getMergedPageWidth(itemList.length, templateKey)
     return {
       init: 'done',
       saveId: e?.user_id ? `merged_${e.user_id}` : 'merged_buff',
@@ -441,6 +453,7 @@ export class atlas extends plugin {
       headStyle: ``,
       // 独立传入 pageHeader：art-template 不支持 {{arr.0.key}} 的点号数组下标语法
       pageHeader: pageHeader || null,
+      pageWidth,
       // atlasData: [pageHeader, ...items]（数组下标在 {{each}} 遍历里才用，这里仅作数据载体）
       atlasData: [pageHeader, ...itemList]
     }

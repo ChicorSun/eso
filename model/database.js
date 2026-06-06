@@ -35,6 +35,10 @@ function escapeRegexForParseColorTags (str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/** 中文 buff 名边界：前不接英数；后允许紧跟数字（如 高级力量8秒），仍不接英文字母 */
+const CN_BUFF_NAME_BEFORE = '(?<![a-zA-Z0-9])'
+const CN_BUFF_NAME_AFTER = '(?![a-zA-Z])'
+
 function getParseColorTagsNameInfo (name) {
   return debuffsNameToLevelMap.get(name) ?? buffsNameToLevelMap.get(name)
 }
@@ -240,6 +244,51 @@ function expandPrefixedShorthand (text) {
   return out
 }
 
+/** 含「获得疾驰」/「Gain Gallop」时，裸写「疾驰」「Gallop」视为 高级疾驰 / Major Gallop */
+const GAIN_GALLOP_CANONICAL_CN = '高级疾驰'
+
+function hasGainGallopCnContext (text) {
+  return /获得疾驰/.test(String(text || ''))
+}
+
+function hasGainGallopEnContext (text) {
+  return /Gain\s+Gallop/i.test(String(text || ''))
+}
+
+/** buff 来源扫描：将上下文中的裸「疾驰」「Gallop」记入 高级疾驰 */
+function applyGainGallopBuffDetection (text, found) {
+  const s = String(text || '')
+  if (!found?.add) return
+  if (hasGainGallopCnContext(s) && /(?<![级次])疾驰/.test(s)) {
+    found.add(GAIN_GALLOP_CANONICAL_CN)
+  }
+  if (hasGainGallopEnContext(s) && /\bGallop\b/i.test(s)) {
+    found.add(GAIN_GALLOP_CANONICAL_CN)
+  }
+}
+
+/** 图鉴着色：高亮上下文中的裸「疾驰」「Gallop」（显示原文，样式同 Major） */
+function applyGainGallopColorPlaceholders (formattedText, placeholders, placeholderId, colors) {
+  let out = formattedText
+  let nextId = placeholderId
+
+  if (hasGainGallopCnContext(out)) {
+    out = out.replace(/(?<![级次])疾驰/g, (match) => {
+      const placeholder = `§BUFF_${nextId++}§`
+      placeholders.set(placeholder, { text: match, color: colors.major, isBuff: true, level: 'major' })
+      return placeholder
+    })
+  }
+  if (hasGainGallopEnContext(out)) {
+    out = out.replace(/\bGallop\b/gi, (match) => {
+      const placeholder = `§BUFF_${nextId++}§`
+      placeholders.set(placeholder, { text: match, color: colors.majorEn, isBuff: true, level: 'major' })
+      return placeholder
+    })
+  }
+  return { text: out, placeholderId: nextId }
+}
+
 /** 解析文本颜色标签和样式
  * @param {string} text - 原始文本
  * @returns {string} - 处理后的HTML文本
@@ -316,7 +365,7 @@ export function parseColorTags (text) {
     if (isEnglish) {
       regex = new RegExp(`\\b${escapeRegexForParseColorTags(name)}\\b`, 'g')
     } else {
-      regex = new RegExp(`(?<![a-zA-Z0-9])${escapeRegexForParseColorTags(name)}(?![a-zA-Z0-9])`, 'g')
+      regex = new RegExp(`${CN_BUFF_NAME_BEFORE}${escapeRegexForParseColorTags(name)}${CN_BUFF_NAME_AFTER}`, 'g')
     }
     
     formattedText = formattedText.replace(regex, () => {
@@ -325,6 +374,11 @@ export function parseColorTags (text) {
       return placeholder
     })
   }
+
+  // 阶段 1B：「获得疾驰」「Gain Gallop」中的裸 疾驰 / Gallop → Major 样式
+  ;({ text: formattedText, placeholderId } = applyGainGallopColorPlaceholders(
+    formattedText, placeholders, placeholderId, COLORS
+  ))
 
   // 阶段2：处理省略前缀的合并展示模式
   // 模式：连接词后的基础名称（如"高级活力和闪避"中的"闪避"）
@@ -344,11 +398,10 @@ export function parseColorTags (text) {
         'gi'
       )
     } else {
-      // 中文：前面必须是连接词（和、与、、及）或占位符，或者是字符串开头
-      // 后面不能是字母数字（避免匹配到英文单词的一部分）
+      // 中文：前面必须是连接词（和、与、、及）或占位符；后面允许紧跟数字
       const connectorPattern = '(?:(?:^|和|与|、|及)|§BUFF_\\d+§)'
       regex = new RegExp(
-        `${connectorPattern}(${escapeRegexForParseColorTags(baseName)})(?![a-zA-Z0-9])`,
+        `${connectorPattern}(${escapeRegexForParseColorTags(baseName)})${CN_BUFF_NAME_AFTER}`,
         'g'
       )
     }
@@ -566,7 +619,8 @@ export function detectBuffDebuffInText (text) {
   if (!text || typeof text !== 'string') return found
 
   ensureParseColorTagsInitialized()
-  let workingText = stripGameColorCodesForBuffDetect(text)
+  const plainText = stripGameColorCodesForBuffDetect(text)
+  let workingText = plainText
   const placeholders = new Map()
   let placeholderId = 0
 
@@ -580,7 +634,7 @@ export function detectBuffDebuffInText (text) {
     if (isEnglish) {
       regex = new RegExp(`\\b${escapeRegexForParseColorTags(name)}\\b`, 'g')
     } else {
-      regex = new RegExp(`(?<![a-zA-Z0-9])${escapeRegexForParseColorTags(name)}(?![a-zA-Z0-9])`, 'g')
+      regex = new RegExp(`${CN_BUFF_NAME_BEFORE}${escapeRegexForParseColorTags(name)}${CN_BUFF_NAME_AFTER}`, 'g')
     }
     workingText = workingText.replace(regex, () => {
       const canonical = resolveCanonicalBuffDebuffName(name, info?.level, info?.isBuff)
@@ -604,7 +658,7 @@ export function detectBuffDebuffInText (text) {
     } else {
       const connectorPattern = '(?:(?:^|和|与|、|及)|§BUFF_\\d+§)'
       regex = new RegExp(
-        `${connectorPattern}(${escapeRegexForParseColorTags(baseName)})(?![a-zA-Z0-9])`,
+        `${connectorPattern}(${escapeRegexForParseColorTags(baseName)})${CN_BUFF_NAME_AFTER}`,
         'g'
       )
     }
@@ -630,6 +684,8 @@ export function detectBuffDebuffInText (text) {
       return connector + placeholder
     })
   }
+
+  applyGainGallopBuffDetection(plainText, found)
 
   return found
 }
@@ -6863,12 +6919,26 @@ class database {
     const query = String(name ?? '').trim()
     if (!query) return null
     const data = loadBuffDebuffListFile()
-    for (const buff of data.buffs || []) {
-      if (buff.name === query) return { ...buff, isBuff: true }
+
+    const pickEntry = (list, isBuff, displayName) => {
+      const hit = (list || []).find(b => b.name === query)
+      return hit ? { ...hit, isBuff, displayName } : null
     }
-    for (const debuff of data.debuffs || []) {
-      if (debuff.name === query) return { ...debuff, isBuff: false }
+
+    let entry = pickEntry(data.buffs, true, query) || pickEntry(data.debuffs, false, query)
+    if (entry) return entry
+
+    // 无前缀时默认查「高级」版（如 #疾驰 → 高级疾驰），displayName 保留用户输入
+    if (!/^(高级|次级)/.test(query)) {
+      const majorName = `高级${query}`
+      const pickMajor = (list, isBuff) => {
+        const hit = (list || []).find(b => b.name === majorName)
+        return hit ? { ...hit, isBuff, displayName: query } : null
+      }
+      entry = pickMajor(data.buffs, true) || pickMajor(data.debuffs, false)
+      if (entry) return entry
     }
+
     return null
   }
 

@@ -5,17 +5,15 @@
   <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/skills/skills.css" />
   <link rel="shortcut icon" href="#" />
   <style>
-    /* 合并模式：3 列网格布局；
-       body 宽度 900px（= 3 × 280 + 3 × 10 margin + 12 padding + 8 padding），
-       每个 .item 真实布局宽 280px，3 个并排刚好填满一整行 */
+    /* 合并模式：每行 2 或 3 列；每个 .item 真实布局宽 280px */
     body {
-      width: 900px;
+      width: {{pageWidth}}px;
       line-height: normal;
       transform: scale(1.5);
       transform-origin: 0 0;
     }
     .container {
-      width: 900px;
+      width: {{pageWidth}}px;
       padding: 10px 12px 10px 8px;
       text-align: center;
       background-color: #f5f6fb;
