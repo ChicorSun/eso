@@ -10,6 +10,7 @@
        每个 .item 真实布局宽 280px，3 个并排刚好填满一整行 */
     body {
       width: 900px;
+      line-height: normal;
       transform: scale(1.5);
       transform-origin: 0 0;
     }
@@ -31,12 +32,16 @@
       width: 280px;
       flex-shrink: 0;
       margin: 0 0 10px 10px;
+      padding: 0;
+      line-height: normal;
+      overflow: hidden;
+      box-sizing: border-box;
     }
     .grid .item .box {
-      width: 300px;              /* 保持单图版原 CSS 的内部布局 */
-      transform: scale(0.933);   /* 300 * 0.933 ≈ 280 */
-      transform-origin: 0 0;
-      padding: 0 6px 0 6px;
+      width: 300px;
+      zoom: 0.933;
+      padding: 8px 6px 6px 6px;
+      box-sizing: border-box;
     }
   </style>
 </head>

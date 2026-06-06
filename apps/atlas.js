@@ -358,13 +358,21 @@ export class atlas extends plugin {
     const fakeMsg = []
 
     if (useMergeMode) {
-      // 合并模式：装备合并 1 张 + 技能合并 1 张
-      if (setAtlasDataList.length > 0) {
+      // 合并模式：装备/技能各合并 1 张；仅 1 条时改单卡输出
+      if (setAtlasDataList.length === 1) {
+        const singleSetData = this.buildSingleCardData(e, 'atlas', setHeader, setAtlasDataList[0])
+        const img = await this.cache(singleSetData, setImg)
+        if (img) fakeMsg.push(img)
+      } else if (setAtlasDataList.length > 1) {
         const mergedSetData = await this.buildMergedAtlasData(e, 'atlas', setHeader, setAtlasDataList)
         const img = await puppeteer.screenshot('eso', mergedSetData)
         if (img) fakeMsg.push(img)
       }
-      if (skillAtlasDataList.length > 0) {
+      if (skillAtlasDataList.length === 1) {
+        const singleSkillData = this.buildSingleCardData(e, 'skills', skillHeader, skillAtlasDataList[0])
+        const img = await this.cache(singleSkillData, skillImg)
+        if (img) fakeMsg.push(img)
+      } else if (skillAtlasDataList.length > 1) {
         const mergedSkillData = await this.buildMergedAtlasData(e, 'skills', skillHeader, skillAtlasDataList)
         const img = await puppeteer.screenshot('eso', mergedSkillData)
         if (img) fakeMsg.push(img)
@@ -385,13 +393,23 @@ export class atlas extends plugin {
     return 1
   }
 
+  /** buff/debuff 合并模式下仅 1 条时，拼装单卡截图数据（atlas.html / skills.html） */
+  buildSingleCardData (e, templateKey, pageHeader, item) {
+    const _path = process.cwd().replace(/\\/g, '/')
+    return {
+      init: 'done',
+      saveId: e?.user_id ? `buff_single_${templateKey}_${e.user_id}` : `buff_single_${templateKey}`,
+      cwd: _path,
+      tplFile: `./plugins/eso/resources/html/${templateKey}/${templateKey}.html`,
+      pluResPath: `${_path}/plugins/eso/resources/`,
+      headStyle: ``,
+      atlasData: [pageHeader || {}, item]
+    }
+  }
+
   /**
    * 构建合并模式的 atlasData：第一个元素是 pageHeader（背景/日期/标题），
    * 后续元素是拼接的所有图鉴数据。模板用 atlas_merged.html / skills_merged.html。
-   * @param {object} e  事件
-   * @param {string} templateKey  'atlas' 或 'skills'，决定 tplFile
-   * @param {object} pageHeader  来自第一个 setData/skillData 的 atlasData[0]（含 date/pic/des）
-   * @param {Array<object>} itemList  所有图鉴的 atlasData[1..] 数据（去占位）
    */
   async buildMergedAtlasData (e, templateKey, pageHeader, itemList) {
     const _path = process.cwd().replace(/\\/g, '/')
@@ -969,11 +987,17 @@ export class atlas extends plugin {
   }
 
   async cache (data, cachedata) {
-    let tmp = md5(JSON.stringify(data))
+    const layoutVer = 'atlasCardV11'
+    let tmp = md5(JSON.stringify(data) + layoutVer)
     if (cachedata.md5 == tmp) return cachedata.img
 
+    const isSingleCard = data.tplFile && !/_merged\.html$/i.test(data.tplFile)
     //cachedata.img = 0
-    cachedata.img = await puppeteer.screenshot('eso', data) /*html file saved in folder data/html/eso/ */
+    cachedata.img = await puppeteer.screenshot('eso', {
+      ...data,
+      imgType: 'png',
+      omitBackground: isSingleCard
+    }) /*html file saved in folder data/html/eso/ */
     cachedata.md5 = tmp
 
     return cachedata.img

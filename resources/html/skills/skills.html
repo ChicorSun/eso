@@ -7,13 +7,11 @@
 </head>
 {{@headStyle}}
 
-<body>
-  <div class="container" id="container">
+<body class="atlas-single">
+  <div class="container single-card" id="container">
 
     {{each atlasData val index}}
-    {{if index==0}}
-    <style> .container { background: url("{{pluResPath}}img/background/{{val.pic}}.png") #fff; background-repeat: no-repeat; background-size: 100% 100%; }</style>
-    {{else}}
+    {{if index > 0}}
     <div class="item">
       <div class="box">
         <div class="top">
@@ -98,11 +96,11 @@
           {{/if}}
         </div>
         {{/if}}
+        <div class="logo">Created By ESO-Bot</div>
       </div>
     </div>
     {{/if}}
     {{/each}}
-    <div class="logo">Created By ESO-Bot</div>
   </div>
 </body>
 
