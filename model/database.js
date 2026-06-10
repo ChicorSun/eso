@@ -870,6 +870,12 @@ const jsonDataPathCN = './plugins/eso/resources/data/database-cn.json'
 const jsonDataMD5PathEN = './plugins/eso/resources/data/database-en.md5'
 const jsonDataMD5PathCN = './plugins/eso/resources/data/database-cn.md5'
 
+// 分段 JSON 缓存路径（v3 lua 拆分后存储，每类一个 JSON 文件，避免 OOM）
+const segmentsDirCache = './data/eso/custome_resources/cache/segments'        // 运行时主缓存
+const segmentsDirBackup = './plugins/eso/resources/data/segments'               // git 仓库内备份
+const segmentsMD5PathCache = (lang) => `./data/eso/custome_resources/cache/segments/segments.${lang}.md5`
+const segmentsMD5PathBackup = (lang) => `./plugins/eso/resources/data/segments/segments.${lang}.md5`
+
 // 数据文件的 MD5 值
 let currentMD5 = null
 
@@ -3092,262 +3098,175 @@ class database {
   }
 
   async init_databaseEN () {
-    try {
-      //检查英文数据库是否已加载
-      var keysSet = Object.keys(setsData)
-      var numSets = keysSet.length
-      var keysSkill = Object.keys(skillsData)
-      var numSkills = keysSkill.length
-
-      if (numSets > 10 && numSkills > 3) {
-        //logger.info("英文数据库已加载，无需更新")
-        return
-      }
-
-      logger.info('[ESO:图鉴] 正在加载英文数据库...')
-      
-      // 检查缓存目录
-      if (!fs.existsSync(cachePath)) {
-        fs.mkdirSync(cachePath, { recursive: true })
-      }
-
-      // 计算源文件MD5（全文件，避免 fast 误命中旧缓存）
-      const currentMD5 = calculateMD5(dataExtractorENPath)
-      logger.info(`[ESO:图鉴] 英文 Lua MD5: ${currentMD5}`)
-      let lua_code = null
-      let cacheFound = false
-
-      // 三级缓存查找策略
-      // 1. 优先查找 custome_resources/cache 下的缓存
-      if (fs.existsSync(jsonCachePathEN) && fs.existsSync(jsonCacheMD5PathEN)) {
-        try {
-          const cachedMD5 = (await fs.promises.readFile(jsonCacheMD5PathEN, 'utf8')).trim()
-          if (cachedMD5 === currentMD5) {
-            logger.info('[ESO:图鉴] 使用缓存加载英文数据库（custome_resources/cache）...')
-            const cachedData = await fs.promises.readFile(jsonCachePathEN, 'utf8')
-            lua_code = JSON.parse(cachedData)
-            optimizeMemoryUsage()
-            cacheFound = true
-          }
-        } catch (error) {
-          logger.warn(`[ESO:图鉴] 读取缓存MD5失败: ${error.message}`)
-        }
-      }
-
-      // 2. 如果没找到，查找 resources 下的备份缓存
-      if (!cacheFound && fs.existsSync(jsonDataPathEN) && fs.existsSync(jsonDataMD5PathEN)) {
-        try {
-          const cachedMD5 = (await fs.promises.readFile(jsonDataMD5PathEN, 'utf8')).trim()
-          if (cachedMD5 === currentMD5) {
-            logger.info('[ESO:图鉴] 使用备份缓存加载英文数据库（resources）...')
-            const cachedData = await fs.promises.readFile(jsonDataPathEN, 'utf8')
-            lua_code = JSON.parse(cachedData)
-            
-            // 立即释放JSON字符串内存
-            if (global.gc) {
-              global.gc()
-            }
-            cacheFound = true
-            
-            // 将备份缓存复制到主缓存位置
-            await fs.promises.copyFile(jsonDataPathEN, jsonCachePathEN)
-            await fs.promises.copyFile(jsonDataMD5PathEN, jsonCacheMD5PathEN)
-            logger.info('[ESO:图鉴] 已将备份缓存复制到主缓存位置')
-          }
-        } catch (error) {
-          logger.warn(`[ESO:图鉴] 读取备份缓存失败: ${error.message}`)
-        }
-      }
-
-      // 3. 如果都没找到，解析Lua文件并生成缓存
-      if (!cacheFound) {
-        logger.info('[ESO:图鉴] 缓存未找到，开始解析Lua文件...')
-        lua_code = await parseLuaFileWithMemoryControl(
-          dataExtractorENPath,
-          jsonCachePathEN,
-          jsonCacheMD5PathEN,
-          '英文数据库'
-        )
-      }
-      
-      if (!lua_code?.DataExtractorSavedVariables?.Default) {
-        logger.error('[ESO:图鉴] 英文数据文件格式错误')
-        return
-      }
-
-      // 获取第一个账号的数据
-      const firstAccount = Object.keys(lua_code.DataExtractorSavedVariables.Default)[0]
-      if (!firstAccount) {
-        logger.error('[ESO:图鉴] 英文数据文件中未找到账号数据')
-        return
-      }
-
-      const accountData = lua_code.DataExtractorSavedVariables.Default[firstAccount]['$AccountWide']
-      if (!accountData) {
-        logger.error('[ESO:图鉴] 英文数据文件中未找到账号全局数据')
-        return
-      }
-
-      // 加载物品数据
-      const itemsData = accountData.dataItems
-      if (itemsData) {
-        setsData = itemsData['Sets'] || [{}]
-        recipesData = itemsData['Recipes'] || [{}]
-        furnituresData = itemsData['Furniture'] || [{}]
-        collfurnituresData = itemsData['CollectibleFurniture'] || [{}]
-        foodsData = itemsData['Foods'] || [{}]
-      }
-
-      // 加载技能数据
-      skillsData = accountData['dataSkills'] || [{}]
-
-      // 加载试炼/副本/竞技场数据（dataRaids 含 trial/dungeon/arena）
-      dataRaids = accountData['dataRaids'] || [{}]
-
-      // 立即释放lua_code对象，只保留需要的数据
-      lua_code = null
-      optimizeMemoryUsage()
-
-      logger.info('[ESO:图鉴] 英文数据库加载完成')
-    } catch (error) {
-      logger.error(`[ESO:图鉴] 加载英文数据库失败: ${error.message}`)
-      if (error.stack) {
-        logger.error(`[ESO:图鉴] 错误堆栈: ${error.stack}`)
-      }
-    }
+    await this._loadLangData('en', dataExtractorENPath)
   }
 
   async init_databaseCN () {
+    await this._loadLangData('cn', dataExtractorCNPath)
+  }
+
+  /**
+   * 通用数据加载（支持 EN/CN）
+   * 加载顺序（每级独立 MD5 校验）：
+   *   1. data/eso/custome_resources/cache/segments  (运行时主缓存)
+   *   2. plugins/eso/resources/data/segments         (git 仓库内备份)
+   *   3. plugins/eso/resources/data/DataExtractor-*.lua  (源文件，触发解析)
+   * 解析完成后立即写回 1，并复制 2 → 1（如果 2 命中）
+   */
+  async _loadLangData (lang, luaPath) {
     try {
-      //检查中文数据库是否已加载
-      var keysSet = Object.keys(setsDataCN)
-      var numSets = keysSet.length
-      var keysSkill = Object.keys(skillsDataCN)
-      var numSkills = keysSkill.length
-
-      var keysRaids = Object.keys(dataRaidsCN)
-      var numRaids = keysRaids.length
-      if (numSets > 10 && numSkills > 3 && numRaids > 5) {
-        //logger.info("中文数据库已加载，无需更新")
+      // 1. 早期返回：内存中已有数据
+      const curSets = (lang === 'en') ? setsData : setsDataCN
+      const curSkills = (lang === 'en') ? skillsData : skillsDataCN
+      if (Object.keys(curSets).length > 10 && Object.keys(curSkills).length > 3) {
         return
       }
 
-      logger.info('[ESO:图鉴] 正在加载中文数据库...')
-      
-      // 检查缓存目录
-      if (!fs.existsSync(cachePath)) {
-        fs.mkdirSync(cachePath, { recursive: true })
+      logger.info(`[ESO:图鉴] 正在加载${lang === 'en' ? '英文' : '中文'}数据库...`)
+
+      // 2. 计算源文件 MD5
+      if (!fs.existsSync(luaPath)) {
+        logger.error(`[ESO:图鉴] ${lang} 端 lua 文件不存在: ${luaPath}`)
+        return
       }
+      const luaMD5 = calculateMD5(luaPath)
+      logger.info(`[ESO:图鉴] ${lang === 'en' ? '英文' : '中文'} Lua MD5: ${luaMD5}`)
 
-      // 计算源文件MD5（全文件，避免 fast 误命中旧缓存）
-      const currentMD5 = calculateMD5(dataExtractorCNPath)
-      logger.info(`[ESO:图鉴] 中文 Lua MD5: ${currentMD5}`)
-      let lua_code = null
-      let cacheFound = false
+      // 3. 三级缓存查找
+      let source = null  // 'cache' | 'backup' | 'lua'
 
-      // 三级缓存查找策略
-      // 1. 优先查找 custome_resources/cache 下的缓存
-      if (fs.existsSync(jsonCachePathCN) && fs.existsSync(jsonCacheMD5PathCN)) {
+      // Level 1: 运行时主缓存
+      if (this._segmentsMD5Match(segmentsDirCache, lang, luaMD5)) {
+        logger.info(`[ESO:图鉴] 使用 segments 缓存加载${lang === 'en' ? '英文' : '中文'}数据库（cache）...`)
+        source = 'cache'
+      }
+      // Level 2: git 仓库内备份
+      else if (this._segmentsMD5Match(segmentsDirBackup, lang, luaMD5)) {
+        logger.info(`[ESO:图鉴] 使用 segments 备份缓存加载${lang === 'en' ? '英文' : '中文'}数据库（resources）...`)
+        // 复制到运行时缓存
+        await this._copySegments(segmentsDirBackup, segmentsDirCache, lang)
+        source = 'backup'
+      }
+      // Level 3: 解析 lua
+      else {
+        logger.info(`[ESO:图鉴] segments 缓存未找到或过期，开始解析 lua 文件...`)
         try {
-          const cachedMD5 = (await fs.promises.readFile(jsonCacheMD5PathCN, 'utf8')).trim()
-          if (cachedMD5 === currentMD5) {
-            logger.info('[ESO:图鉴] 使用缓存加载中文数据库（custome_resources/cache）...')
-            const cachedData = await fs.promises.readFile(jsonCachePathCN, 'utf8')
-            lua_code = JSON.parse(cachedData)
-            
-            // 立即释放JSON字符串内存（如果可用）
-            if (global.gc) {
-              global.gc()
-            }
-            cacheFound = true
-          }
-        } catch (error) {
-          logger.warn(`[ESO:图鉴] 读取缓存MD5失败: ${error.message}`)
+          // 动态 import 避免循环依赖
+          const lua2json = await import('./lua2json.js')
+          await lua2json.generateAllCategoryJsons(luaPath, lang, segmentsDirCache)
+          source = 'lua'
+        } catch (err) {
+          logger.error(`[ESO:图鉴] 解析${lang} 端 lua 失败: ${err.message}`)
+          if (err.stack) logger.error(`[ESO:图鉴] 错误堆栈: ${err.stack}`)
+          return
         }
       }
 
+      // 4. 加载 segments 数据到内存
+      await this._applySegmentsToMemory(segmentsDirCache, lang, source)
 
-      // 2. 如果没找到，查找 resources 下的备份缓存
-      if (!cacheFound && fs.existsSync(jsonDataPathCN) && fs.existsSync(jsonDataMD5PathCN)) {
-        try {
-          const cachedMD5 = (await fs.promises.readFile(jsonDataMD5PathCN, 'utf8')).trim()
-          if (cachedMD5 === currentMD5) {
-            logger.info('[ESO:图鉴] 使用备份缓存加载中文数据库（resources）...')
-            const cachedData = await fs.promises.readFile(jsonDataPathCN, 'utf8')
-            lua_code = JSON.parse(cachedData)
-            
-            // 立即释放JSON字符串内存
-            if (global.gc) {
-              global.gc()
-            }
-            cacheFound = true
-            
-            // 将备份缓存复制到主缓存位置
-            await fs.promises.copyFile(jsonDataPathCN, jsonCachePathCN)
-            await fs.promises.copyFile(jsonDataMD5PathCN, jsonCacheMD5PathCN)
-            logger.info('[ESO:图鉴] 已将备份缓存复制到主缓存位置')
-          }
-        } catch (error) {
-          logger.warn(`[ESO:图鉴] 读取备份缓存失败: ${error.message}`)
-        }
-      }
-
-      // 3. 如果都没找到，解析Lua文件并生成缓存
-      if (!cacheFound) {
-        logger.info('[ESO:图鉴] 缓存未找到，开始解析Lua文件...')
-        lua_code = await parseLuaFileWithMemoryControl(
-          dataExtractorCNPath,
-          jsonCachePathCN,
-          jsonCacheMD5PathCN,
-          '中文数据库'
-        )
-      }
-      
-      if (!lua_code?.DataExtractorSavedVariables?.Default) {
-        logger.error('[ESO:图鉴] 中文数据文件格式错误')
-        return
-      }
-
-      // 获取第一个账号的数据
-      const firstAccount = Object.keys(lua_code.DataExtractorSavedVariables.Default)[0]
-      if (!firstAccount) {
-        logger.error('[ESO:图鉴] 中文数据文件中未找到账号数据')
-        return
-      }
-
-      const accountData = lua_code.DataExtractorSavedVariables.Default[firstAccount]['$AccountWide']
-      if (!accountData) {
-        logger.error('[ESO:图鉴] 中文数据文件中未找到账号全局数据')
-        return
-      }
-
-      // 加载物品数据
-      const itemsData = accountData.dataItems
-      if (itemsData) {
-        setsDataCN = itemsData['Sets'] || [{}]
-        recipesDataCN = itemsData['Recipes'] || [{}]
-        furnituresDataCN = itemsData['Furniture'] || [{}]
-        collfurnituresDataCN = itemsData['CollectibleFurniture'] || [{}]
-        foodsDataCN = itemsData['Foods'] || [{}]
-      }
-
-      // 加载技能数据
-      skillsDataCN = accountData['dataSkills'] || [{}]
-
-      // 加载试炼/副本/竞技场数据（与 dataRaids 同结构，用于中英对照）
-      dataRaidsCN = accountData['dataRaids'] || [{}]
-
-      // 立即释放lua_code对象，只保留需要的数据
-      lua_code = null
-      optimizeMemoryUsage()
-
-      logger.info('[ESO:图鉴] 中文数据库加载完成')
+      logger.info(`[ESO:图鉴] ${lang === 'en' ? '英文' : '中文'}数据库加载完成`)
     } catch (error) {
-      logger.error(`[ESO:图鉴] 加载中文数据库失败: ${error.message}`)
-      if (error.stack) {
-        logger.error(`[ESO:图鉴] 错误堆栈: ${error.stack}`)
+      logger.error(`[ESO:图鉴] 加载${lang === 'en' ? '英文' : '中文'}数据库失败: ${error.message}`)
+      if (error.stack) logger.error(`[ESO:图鉴] 错误堆栈: ${error.stack}`)
+    }
+  }
+
+  /** 检查 segments 目录 MD5 是否匹配（且所有 13 个 JSON 都存在） */
+  _segmentsMD5Match (segmentsDir, lang, luaMD5) {
+    if (!fs.existsSync(segmentsDir)) return false
+    const md5File = path.join(segmentsDir, `segments.${lang}.md5`)
+    if (!fs.existsSync(md5File)) return false
+    try {
+      const cachedMD5 = fs.readFileSync(md5File, 'utf-8').trim()
+      if (cachedMD5 !== luaMD5) return false
+    } catch {
+      return false
+    }
+    // 检查所有 13 个 JSON 文件都存在
+    for (const cat of [
+      'dataAchievs', 'dataAllItems', 'dataAntiquities', 'dataCollectibles',
+      'dataCpSkills', 'dataDyes', 'dataHouses', 'dataItems',
+      'dataOutfitStyles', 'dataPotions', 'dataRaids', 'dataSkills', 'dataStyles'
+    ]) {
+      if (!fs.existsSync(path.join(segmentsDir, `${cat}${lang.toUpperCase()}.json`))) {
+        return false
       }
     }
+    return true
+  }
+
+  /** 复制 segments 目录中指定语言的所有 JSON + MD5 到目标目录 */
+  async _copySegments (srcDir, dstDir, lang) {
+    if (!fs.existsSync(dstDir)) {
+      fs.mkdirSync(dstDir, { recursive: true })
+    }
+    const cats = [
+      'dataAchievs', 'dataAllItems', 'dataAntiquities', 'dataCollectibles',
+      'dataCpSkills', 'dataDyes', 'dataHouses', 'dataItems',
+      'dataOutfitStyles', 'dataPotions', 'dataRaids', 'dataSkills', 'dataStyles'
+    ]
+    for (const cat of cats) {
+      const src = path.join(srcDir, `${cat}${lang.toUpperCase()}.json`)
+      const dst = path.join(dstDir, `${cat}${lang.toUpperCase()}.json`)
+      if (fs.existsSync(src)) {
+        await fs.promises.copyFile(src, dst)
+      }
+    }
+    const srcMd5 = path.join(srcDir, `segments.${lang}.md5`)
+    const dstMd5 = path.join(dstDir, `segments.${lang}.md5`)
+    if (fs.existsSync(srcMd5)) {
+      await fs.promises.copyFile(srcMd5, dstMd5)
+    }
+  }
+
+  /** 从 segments 目录读取所有数据并写入内存中的模块级变量 */
+  async _applySegmentsToMemory (segmentsDir, lang, source) {
+    // 根据 lang 决定写入哪些变量
+    const isEN = lang === 'en'
+    const cats = [
+      'dataAchievs', 'dataAllItems', 'dataAntiquities', 'dataCollectibles',
+      'dataCpSkills', 'dataDyes', 'dataHouses', 'dataItems',
+      'dataOutfitStyles', 'dataPotions', 'dataRaids', 'dataSkills', 'dataStyles'
+    ]
+    // 读取所有 JSON（一次读所有，再分别填入对应变量）
+    const data = {}
+    for (const cat of cats) {
+      const filepath = path.join(segmentsDir, `${cat}${lang.toUpperCase()}.json`)
+      if (!fs.existsSync(filepath)) continue
+      const jsonStr = fs.readFileSync(filepath, 'utf-8')
+      data[cat] = JSON.parse(jsonStr)
+      if (global.gc) global.gc()
+    }
+
+    // 填入模块级变量
+    if (isEN) {
+      // EN 端：dataItems 含 5 个子分类
+      if (data.dataItems) {
+        setsData = data.dataItems['Sets'] || [{}]
+        recipesData = data.dataItems['Recipes'] || [{}]
+        furnituresData = data.dataItems['Furniture'] || [{}]
+        collfurnituresData = data.dataItems['CollectibleFurniture'] || [{}]
+        foodsData = data.dataItems['Foods'] || [{}]
+      }
+      skillsData = data.dataSkills || [{}]
+      dataRaids = data.dataRaids || [{}]
+    } else {
+      // CN 端：dataItems 含 5 个子分类
+      if (data.dataItems) {
+        setsDataCN = data.dataItems['Sets'] || [{}]
+        recipesDataCN = data.dataItems['Recipes'] || [{}]
+        furnituresDataCN = data.dataItems['Furniture'] || [{}]
+        collfurnituresDataCN = data.dataItems['CollectibleFurniture'] || [{}]
+        foodsDataCN = data.dataItems['Foods'] || [{}]
+      }
+      skillsDataCN = data.dataSkills || [{}]
+      dataRaidsCN = data.dataRaids || [{}]
+    }
+
+    // 释放临时 data
+    for (const k of Object.keys(data)) delete data[k]
+    if (global.gc) global.gc()
   }
 
   async setsName2Index (keyword) {
