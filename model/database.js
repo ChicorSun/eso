@@ -4638,6 +4638,37 @@ class database {
     {
       skillData.atlasData[1].type_en = skillsData[enID[0]].name
     }
+    if (cnID['address']?.includes('职业精通'))
+    {
+      if (skillsData[enID[0]][enID[1]].id == '351')
+      {
+        skillData.atlasData[1].type_en = '龙骑士'
+      }
+      if (skillsData[enID[0]][enID[1]].id == '352')
+      {
+        skillData.atlasData[1].type_en = '奥术师'
+      }
+      if (skillsData[enID[0]][enID[1]].id == '353')
+      {
+        skillData.atlasData[1].type_en = '死灵法师'
+      }
+      if (skillsData[enID[0]][enID[1]].id == '354')
+      {
+        skillData.atlasData[1].type_en = '守望者'
+      }
+      if (skillsData[enID[0]][enID[1]].id == '355')
+      {
+        skillData.atlasData[1].type_en = '圣殿骑士'
+      }
+      if (skillsData[enID[0]][enID[1]].id == '356')
+      {
+        skillData.atlasData[1].type_en = '夜刃'
+      }
+      if (skillsData[enID[0]][enID[1]].id == '357')
+      {
+        skillData.atlasData[1].type_en = '巫师'
+      }
+    }
 
     skillData.atlasData[1].place_cn = cnID['address']
     skillData.atlasData[1].place_en = skillsData[enID[0]][enID[1]].name

@@ -670,6 +670,10 @@ export class atlas extends plugin {
     let objSkills = await database.name2index(name,2)
     let skillNum = objSkills.length
 
+    if((name == "*职业精通") || (name == "*精通"))
+    {
+      noMaxLimit = true
+    }
     //logger.info('skillNum:' + skillNum)
     //logger.info('objSkills:' + objSkills)
 
@@ -689,7 +693,8 @@ export class atlas extends plugin {
       let msgList = '我猜您想问的是以下技能之一？'
       for (let skillKey of objSkills) {
         skillData = await database.updateData(skillKey, 2)
-        msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'
+        let class_str = '(' + skillData.atlasData[1].type_en + ')'
+        msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'+class_str
       }
       msgList += `\n`+'图片太多，不再一一列出'
       await this.reply(msgList)
