@@ -786,8 +786,15 @@ export class atlas extends plugin {
           let msgList = '我猜您想问的是以下技能之一？'
           for (let skillKey of objSkills) {
             skillData = await database.updateData(skillKey, 2)
-            let class_str = '(' + skillData.atlasData[1].type_en + ')'
-            msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'+class_str
+            if (skillData.atlasData[1].place_cn?.includes('职业精通'))
+            {
+                let class_str = '(' + skillData.atlasData[1].type_en + ')'
+                msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'+class_str
+            }
+            else
+            {
+                msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'
+            }
           }
           msgList += `\n`+'图片太多，不再一一列出'
           await this.reply(msgList)
@@ -847,8 +854,15 @@ export class atlas extends plugin {
       let msgList = '我猜您想问的是以下技能之一？'
       for (let skillKey of objSkills) {
         skillData = await database.updateData(skillKey, 2)
-        let class_str = '(' + skillData.atlasData[1].type_en + ')'
-        msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'+class_str
+        if (skillData.atlasData[1].place_cn?.includes('职业精通'))
+        {
+            let class_str = '(' + skillData.atlasData[1].type_en + ')'
+            msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'+class_str
+        }
+        else
+        {
+            msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'
+        }
       }
       msgList += `\n`+'图片太多，不再一一列出'
       await this.reply(msgList)
