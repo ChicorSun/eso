@@ -757,6 +757,8 @@ export class atlas extends plugin {
       const className = this.parseClassMasteryName(name)
       if (className)
       {
+        // 立即回复用户,告知预计耗时,避免等待焦虑
+        await this.reply(`正在查询 ${className}职业精通，请等待15秒左右...`, true)
         return await this.showClassMastery(e, className)
       }
       // 命令模式命中但职业名未识别: 落回原 showSkills 逻辑兜底
