@@ -55,6 +55,86 @@ let collFurnitureImg = {
   img: ''
 }
 
+// =====================================================================
+// 职业精通映射表: skillId -> 职业中文名 (硬编码, 内置功能)
+// =====================================================================
+const CLASS_MASTERY_MAP = {
+  238232: '龙骑士',
+  240268: '龙骑士',
+  259224: '龙骑士',
+  263220: '龙骑士',
+  263247: '龙骑士',
+
+  263316: '奥术师',
+  263398: '奥术师',
+  263410: '奥术师',
+  263412: '奥术师',
+  263416: '奥术师',
+
+  263448: '死灵法师',
+  263465: '死灵法师',
+  263509: '死灵法师',
+  263549: '死灵法师',
+  263554: '死灵法师',
+
+  263519: '守望者',
+  263520: '守望者',
+  263521: '守望者',
+  263522: '守望者',
+  263523: '守望者',
+
+  263585: '圣殿骑士',
+  263586: '圣殿骑士',
+  263587: '圣殿骑士',
+  263588: '圣殿骑士',
+  263589: '圣殿骑士',
+
+  263603: '夜刃',
+  263604: '夜刃',
+  263605: '夜刃',
+  263606: '夜刃',
+  263607: '夜刃',
+
+  263870: '巫师',
+  263871: '巫师',
+  263872: '巫师',
+  263873: '巫师',
+  263874: '巫师'
+}
+
+// 职业中文名 / 别名 -> 标准职业中文名
+// 老玩家常用别名: 法师=巫师 (奥术师是新职业, 之前巫师叫"法师")
+//                盗贼=夜刃, 甜不辣=圣殿骑士, 窝登=守望者 (音译/常用别名)
+const CLASS_NAME_ALIAS = {
+  '龙骑士': '龙骑士',
+  '龙骑': '龙骑士',
+
+  '奥术师': '奥术师',
+  '奥术': '奥术师',
+
+  '死灵法师': '死灵法师',
+  '死灵': '死灵法师',
+
+  '守望者': '守望者',
+  '守望': '守望者',
+  '窝登': '守望者',
+
+  '圣殿骑士': '圣殿骑士',
+  '圣殿': '圣殿骑士',
+  '圣骑': '圣殿骑士',
+  '圣骑士': '圣殿骑士',
+  '甜不辣': '圣殿骑士',
+
+  '夜刃': '夜刃',
+  '盗贼': '夜刃',
+
+  '巫师': '巫师',
+  '法师': '巫师',
+  '法法': '巫师'
+}
+
+// =====================================================================
+
 export class atlas extends plugin {
   constructor (e) {
     super({
@@ -668,6 +748,19 @@ export class atlas extends plugin {
     let noMaxLimit = false
     let showEnglish = false
 
+    // ========== 新增: 职业精通 (按职业名查指定技能列表, 合并消息) ==========
+    // 支持: *龙骑士精通, *龙骑精通, *奥术师职业精通, *法师精通 (老玩家称呼) 等
+    // 必须在 SKILLID 分支之前识别, 因为法师/盗贼等别名不能误进 SKILLID 路径
+    if (this.isClassMasteryCommand(name))
+    {
+      const className = this.parseClassMasteryName(name)
+      if (className)
+      {
+        return await this.showClassMastery(e, className)
+      }
+      // 命令模式命中但职业名未识别: 落回原 showSkills 逻辑兜底
+    }
+
     // ========== 新增: *SKILLIDxxx 按 ID 匹配 (走 type=21 / mode=1) ==========
     // 不区分大小写, 仅识别紧跟 * 后的 SKILLID 前缀
     if (/SKILLID/i.test(name))
@@ -802,11 +895,76 @@ export class atlas extends plugin {
       {
         skillData = await database.updateData(skillKey, 2)
       }
-      
+
       let img = await this.cache(skillData, skillImg)
       await this.reply(img)
     }
   }
+
+  // ================================================================
+  // 职业精通识别与处理 (新增功能)
+  // 支持: *龙骑士精通, *龙骑士职业精通, *龙骑精通 等
+  // 多个职业都支持, 通过别名映射兼容老玩家称呼
+  // ================================================================
+
+  /** 判断命令是否是职业精通格式 (例如 *龙骑精通 / *奥术师职业精通) */
+  isClassMasteryCommand (name) {
+    // 匹配: 可选 *, (后跟 1-N 个中文字符 (非贪婪), 后跟 精通 或 职业精通
+    return /^[*(（]?\s*[\u4e00-\u9fa5]+?\s*(?:职业精通|精通)\s*$/.test(name)
+  }
+
+  /** 从职业精通命令中解析出标准职业名 (例如 龙骑 -> 龙骑士, 法师 -> 巫师) */
+  parseClassMasteryName (name) {
+    const m = name.match(/^[*(（]?\s*([\u4e00-\u9fa5]+?)\s*(?:职业精通|精通)\s*$/)
+    if (!m) return null
+    const alias = m[1]
+    return CLASS_NAME_ALIAS[alias] || null
+  }
+
+  /** 处理职业精通命令: 生成该职业 5 个精通技能的图鉴, 合并消息发出 */
+  async showClassMastery (e, className) {
+    // 1. 从映射表提取该职业的所有 skillId
+    const skillIds = Object.entries(CLASS_MASTERY_MAP)
+      .filter(([, cls]) => cls === className)
+      .map(([id]) => id)
+
+    if (skillIds.length === 0) {
+      return await this.reply(`未找到「${className}」的职业精通数据。`)
+    }
+
+    // 2. 逐个 ID 查询 -> 渲染图片 -> push 到 fakeMsg
+    const fakeMsg = []
+    let successCount = 0
+    for (const skillId of skillIds) {
+      try {
+        const objSkills = await database.name2index(String(skillId), 21)
+        if (!objSkills || objSkills[0] < 0 || objSkills.length === 0) {
+          continue // ID 在数据库中查不到, 容错跳过
+        }
+        for (const skillKey of objSkills) {
+          const skillData = await database.updateData(skillKey, 2)
+          const img = await this.cache(skillData, skillImg)
+          if (img) {
+            fakeMsg.push(img)
+            successCount++
+          }
+        }
+      } catch (err) {
+        // 单个技能失败不影响其它技能, 仅记录日志
+        logger.warn(`[ESO:职业精通] 渲染 skillId=${skillId} 失败: ${err?.message || err}`)
+      }
+    }
+
+    if (fakeMsg.length === 0) {
+      return await this.reply(`「${className}」职业精通数据查询失败，请联系作者。`)
+    }
+
+    // 3. 合并消息发出 (forward msg, 每张图独立, 不合并图片)
+    const forwardTitle = `「${className}·职业精通」（共${successCount}个技能）`
+    await e.reply(await common.makeForwardMsg(e, fakeMsg, forwardTitle, true))
+    return 1
+  }
+  // ================================================================
 
   async showFoods (e) {
     //return await this.reply(`该功能暂不可用，作者@Chicor正在施工中...`)
