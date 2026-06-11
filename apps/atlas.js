@@ -667,6 +667,64 @@ export class atlas extends plugin {
     let name = await this.trimText(e)
     let noMaxLimit = false
     let showEnglish = false
+
+    // ========== 新增: *SKILLIDxxx 按 ID 匹配 (走 type=21 / mode=1) ==========
+    // 不区分大小写, 仅识别紧跟 * 后的 SKILLID 前缀
+    if (/SKILLID/i.test(name))
+    {
+      let idMatch = name.match(/SKILLID\s*(\d+)/i)
+      if (idMatch)
+      {
+        let skillId = idMatch[1]
+        let objSkills = await database.name2index(skillId, 21)
+        let skillNum = objSkills.length
+
+        if((objSkills[0] < 0) || (skillNum <= 0))
+        {
+          return await this.reply(`抱歉,无法理解您的意思\n您或许需要以#开头查询装备，以%开头查询食物，以!开头查询家具，或以!!开头查询收藏品家具`)
+        }
+
+        // 复制主分支的多候选处理逻辑
+        if((skillNum >= 4 && skillNum <= 25) || noMaxLimit)
+        {
+          let msgList = '我猜您想问的是以下技能之一？'
+          for (let skillKey of objSkills) {
+            skillData = await database.updateData(skillKey, 2)
+            let class_str = '(' + skillData.atlasData[1].type_en + ')'
+            msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'+class_str
+          }
+          msgList += `\n`+'图片太多，不再一一列出'
+          await this.reply(msgList)
+          // 多个候选时不再额外渲染单个图鉴 (SKILLID 模式无法按 name 精确匹配)
+          return 1
+        }
+
+        if(skillNum > 1 && skillNum < 4)
+        {
+          let msgList = '我猜您想问的是以下技能之一？'
+          for (let skillKey of objSkills) {
+            skillData = await database.updateData(skillKey, 2)
+            msgList += `\n*`+skillData.atlasData[1].new_cn_name+'图鉴'
+          }
+          await this.reply(msgList)
+        }
+
+        if(skillNum >= 26 && noMaxLimit==0)
+        {
+          return await this.reply(`对不起，请描述的再详细一点`)
+        }
+
+        if(skillNum <= 0 || skillNum > 4)
+        {
+          return 1
+        }
+
+        await this.showSkillsInfo(objSkills, showEnglish)
+        return 1
+      }
+    }
+    // =================== SKILLID 分支结束 ===================
+
     let objSkills = await database.name2index(name,2)
     let skillNum = objSkills.length
 

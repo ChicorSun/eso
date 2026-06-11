@@ -3598,28 +3598,25 @@ class database {
           var oneSkill = allSkillData[lineKey][classKey].skills[skillKey]
           if(mode == 1) //根据ID匹配
           {
-            if(oneSkill.id == name)
+            // 基础形态 (rank='0'): oneSkill.id
+            if(String(oneSkill.id) === String(name))
             {
               isThisOne = true
               objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_0'
               index++
               //logger.info('              |---[' + lineKey + '_' + classKey + '_' + skillKey + '_0|' + oneSkill.id + ']' + oneSkill.name)
             }
-            if(oneSkill.passive == false && oneSkill['1'])
-            {
-              if(oneSkill[1].id == name)
-              {
+            // 全部 rank 形态: 遍历 oneSkill 的所有 numeric 键
+            // (覆盖主动技能 rank1/2/3/... 和终极技能 ultimate rank 等)
+            // 跳过 '0' (即 oneSkill 自身, 已在上面比较过, 避免重复)
+            const rankKeys = Object.keys(oneSkill).filter(k => /^\d+$/.test(k) && k !== '0')
+            for (const rankKey of rankKeys) {
+              const rankNode = oneSkill[rankKey]
+              if (rankNode && String(rankNode.id) === String(name)) {
                 isThisOne = true
-                objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_1'
+                objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_' + rankKey
                 index++
-                //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_1|' + oneSkill[1].id + ']' + oneSkill[1].name)
-              }
-              if(oneSkill[2].id == name)
-              {
-                isThisOne = true
-                objSkills[index] = lineKey + '_' + classKey + '_' + skillKey + '_2'
-                index++
-                //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_2|' + oneSkill[2].id + ']' + oneSkill[2].name)
+                //logger.info('                     |---[' + lineKey + '_' + classKey + '_' + skillKey + '_' + rankKey + '|' + rankNode.id + ']' + rankNode.name)
               }
             }
           }
