@@ -542,16 +542,33 @@ function loadBuffDebuffListFile () {
   return buffDebuffListFileCache
 }
 
-/** 读取 plugins/eso/resources/data/database-cn.md5 当前内容 */
+/** 读取 data/eso/custome_resources/cache/database-cn.md5 当前内容 */
 function readDatabaseCnMd5Value () {
   try {
-    if (fs.existsSync(jsonDataMD5PathCN)) {
-      return fs.readFileSync(jsonDataMD5PathCN, 'utf8').trim()
+    if (fs.existsSync(jsonCacheMD5PathCN)) {
+      return fs.readFileSync(jsonCacheMD5PathCN, 'utf8').trim()
     }
   } catch (e) {
     logger.warn(`[ESO:图鉴] 读取 database-cn.md5 失败: ${e.message}`)
   }
   return null
+}
+
+/** 中文 Lua MD5 与 database-cn.md5 对齐（缺失或过期时写入运行时缓存目录） */
+function ensureDatabaseCnMd5File (md5) {
+  if (!md5) return
+  try {
+    if (fs.existsSync(jsonCacheMD5PathCN)) {
+      const existing = fs.readFileSync(jsonCacheMD5PathCN, 'utf8').trim()
+      if (existing === md5) return
+    }
+    const dir = path.dirname(jsonCacheMD5PathCN)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(jsonCacheMD5PathCN, md5, 'utf8')
+    logger.info(`[ESO:图鉴] 已写入 database-cn.md5: ${jsonCacheMD5PathCN}`)
+  } catch (e) {
+    logger.warn(`[ESO:图鉴] 写入 database-cn.md5 失败: ${e.message}`)
+  }
 }
 
 /** buff_debuff 缓存是否与当前中文库 MD5 一致且 JSON 已存在 */
@@ -2170,12 +2187,6 @@ class database {
   }
 
   async _init_databaseOnce () {
-    // 计算数据文件的 MD5 值（用快速版避免大文件 OOM / Invalid array length）
-    if (!currentMD5) {
-      currentMD5 = calculateMD5(dataExtractorCNPath)
-      logger.info(`[ESO:图鉴] 中文 Lua MD5: ${currentMD5}`)
-    }
-
     await this.init_databaseEN()
     await this.init_databaseCN()
 
@@ -3129,7 +3140,16 @@ class database {
         logger.error(`[ESO:图鉴] ${lang} 端 lua 文件不存在: ${luaPath}`)
         return
       }
-      const luaMD5 = calculateMD5(luaPath)
+      let luaMD5
+      if (lang === 'cn' && currentMD5) {
+        luaMD5 = currentMD5
+      } else {
+        luaMD5 = calculateMD5(luaPath)
+        if (lang === 'cn') {
+          currentMD5 = luaMD5
+          ensureDatabaseCnMd5File(luaMD5)
+        }
+      }
       logger.info(`[ESO:图鉴] ${lang === 'en' ? '英文' : '中文'} Lua MD5: ${luaMD5}`)
 
       // 3. 三级缓存查找
