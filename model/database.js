@@ -5416,6 +5416,12 @@ class database {
       buildData.buildsData[1].race_name_cn = BD.raceInfo[0].name_cn
       buildData.buildsData[1].race_img = BD.raceInfo[0].img
     }
+    else if (BD.race)
+    {
+      buildData.buildsData[1].race_name_en = BD.race
+      buildData.buildsData[1].race_name_cn = BD.race
+      buildData.buildsData[1].race_img = '../../../../.././plugins/eso/resources/img/races/Dunmer'
+    }
     else
     {
       buildData.buildsData[1].race_name_en = 'unknown'

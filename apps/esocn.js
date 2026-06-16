@@ -1044,9 +1044,12 @@ export class esocn extends plugin {
       '高精灵': { en: 'Altmer', img: 'Altmer' },
       '木精灵': { en: 'Bosmer', img: 'Bosmer' },
       '卡吉特': { en: 'Khajiit', img: 'Khajiit' },
+      '虎人': { en: 'Khajiit', img: 'Khajiit' },
       '布莱顿': { en: 'Breton', img: 'Breton' },
+      '布莱顿人': { en: 'Breton', img: 'Breton' },
       '兽人': { en: 'Orc', img: 'Orc' },
       '红卫': { en: 'Redguard', img: 'Redguard' },
+      '红卫人': { en: 'Redguard', img: 'Redguard' },
       '亚龙人': { en: 'Argonian', img: 'Argonian' },
       '暗精灵': { en: 'Dunmer', img: 'Dunmer' },
       '诺德人': { en: 'Nord', img: 'Nord' },
@@ -1054,7 +1057,13 @@ export class esocn extends plugin {
     }
 
     const raceInfo = raceMap[race]
-    if (!raceInfo) return []
+    if (!raceInfo) {
+      return [{
+        name_en: race,
+        name_cn: race,
+        img: 'Dunmer',
+      }]
+    }
 
     return [{
       name_en: raceInfo.en,
