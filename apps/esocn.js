@@ -714,8 +714,8 @@ export class esocn extends plugin {
     // 转换种族信息
     const raceInfo = this.convertRace(basicInfo.race || data.race)
 
-    // 转换技能线信息
-    const skillLineInfo = this.convertSkillLines(basicInfo.skillLine || data.subClass)
+    // 转换技能线信息（含职业精通 / classMasteryIds）
+    const skillLineInfo = await this.buildSkillLineInfo(buildData, basicInfo, data)
 
     // buildName 存入 title，subtitle 存入 playerName
     const buildTitle = data.buildName || basicInfo.buildName || ''
@@ -798,6 +798,7 @@ export class esocn extends plugin {
       buildName: buildTitle,
       subtitle: subtitle,
       author: author,
+      username: data.username ? String(data.username) : '',
       // 属性点数据
       attributes: basicInfo.attributes || { health: 0, magicka: 0, stamina: 0 },
       // 篆刻技能数据
@@ -1060,6 +1061,65 @@ export class esocn extends plugin {
       name_cn: race,
       img: raceInfo.img
     }]
+  }
+
+  /**
+   * 构建技能线展示数据（SkillLine 区域）
+   * @param {object} buildData data.buildData
+   * @param {object} basicInfo buildData.basicInfo
+   * @param {object} data API data 根对象
+   */
+  async buildSkillLineInfo(buildData, basicInfo, data) {
+    const mapped = this.convertSkillLines(basicInfo.skillLine || data.subClass)
+    const classMasteryIds = Array.isArray(buildData.classMasteryIds) ? buildData.classMasteryIds : []
+    const allSameClassImg = mapped.length > 0 && mapped.every((m) => m.img === mapped[0].img)
+    const collapseToMastery = allSameClassImg || classMasteryIds.length > 0
+
+    const result = []
+    if (mapped.length > 0 && collapseToMastery) {
+      result.push({
+        img: mapped[0].img,
+        class_name: mapped[0].class_name,
+        line_name: '职业精通',
+        imgSkill: false,
+      })
+    } else {
+      for (const item of mapped) {
+        result.push({ ...item, imgSkill: false })
+      }
+    }
+
+    for (const masteryId of classMasteryIds) {
+      const masteryLine = await this.resolveClassMasteryLine(masteryId)
+      if (masteryLine) result.push(masteryLine)
+    }
+
+    return result
+  }
+
+  /**
+   * 按技能 ID 解析职业精通条目（同 *SKILLIDxxx：name2index type=21 + updateData type=2）
+   */
+  async resolveClassMasteryLine(masteryId) {
+    try {
+      const objSkills = await database.name2index(String(masteryId), 21)
+      if (!objSkills?.length || objSkills[0] < 0) {
+        logger.warn(`[ESOCN:职业精通] 未找到技能 ID: ${masteryId}`)
+        return null
+      }
+      const skillData = await database.updateData(objSkills[0], 2)
+      const atlas = skillData?.atlasData?.[1]
+      if (!atlas?.new_cn_name || !atlas?.new_icon) return null
+      return {
+        img: atlas.new_icon,
+        line_name: atlas.new_cn_name,
+        class_name: '',
+        imgSkill: true,
+      }
+    } catch (err) {
+      logger.warn(`[ESOCN:职业精通] ID ${masteryId} 查询失败: ${err.message}`)
+      return null
+    }
   }
 
   /**

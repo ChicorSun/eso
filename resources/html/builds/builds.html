@@ -57,7 +57,11 @@
       <div id="SkillLineInfo">
       {{each val.line item}}
         <div id="SkillLine">
+          {{if item.imgSkill}}
+          <img id="skillLine_pic" src="{{pluResPath}}img/skills/{{item.img}}.png" />
+          {{else}}
           <img id="skillLine_pic" src="{{pluResPath}}img/classes/{{item.img}}.png" />
+          {{/if}}
           <span id="skillLine_string">{{item.line_name}}</span>
         </div>
       {{/each}}

@@ -5366,7 +5366,7 @@ class database {
     if(cardMode == 2 && BD.isESOCN)
     {
       buildData.buildsData[1].head_title = "Build Info from www.esocn.com.cn created by "
-      buildData.buildsData[1].head_title_author = BD.author || BD.playerName
+      buildData.buildsData[1].head_title_author = BD.username || ''
       buildData.buildsData[1].accountName = ''
       buildData.buildsData[1].playerName = BD.playerName
       // 传递 ESOCN 标记和属性点
@@ -6094,7 +6094,8 @@ class database {
           skillLineInfo.push({
             img: eachLine.img,
             class_name: eachLine.class_name,
-            line_name: eachLine.line_name
+            line_name: eachLine.line_name,
+            imgSkill: eachLine.imgSkill || false,
           });
         }
       }
