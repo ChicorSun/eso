@@ -664,11 +664,11 @@ export class esocn extends plugin {
 
     // 职业映射表
     const classMap = {
-      '1': { name: 'Dragonknight', cn: '龙骑' },
-      '2': { name: 'Sorcerer', cn: '巫师' },
-      '3': { name: 'Nightblade', cn: '夜刃' },
-      '4': { name: 'Warden', cn: '窝登' },
-      '5': { name: 'Templar', cn: '圣骑' },
+      '1': { name: 'Warden', cn: '窝登' },
+      '2': { name: 'Templar', cn: '圣骑' },
+      '3': { name: 'Dragonknight', cn: '龙骑' },
+      '4': { name: 'Nightblade', cn: '夜刃' },
+      '5': { name: 'Sorcerer', cn: '巫师' },
       '6': { name: 'Necromancer', cn: '死灵' },
       '7': { name: 'Arcanist', cn: '奥术' }
     }
