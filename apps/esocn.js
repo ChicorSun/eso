@@ -1,6 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import ESOAccount from '../model/esoAccount.js'
 import database, { setAtlasSrcMode } from '../model/database.js'
+import gearConfig from '../model/gearConfig.js'
 import fetch from 'node-fetch'
 import fs from 'node:fs'
 
@@ -567,6 +568,7 @@ export class esocn extends plugin {
    * @returns
    */
   async parseBuildLink(e) {
+    srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     // 检查限流
     const userId = String(e.user_id)

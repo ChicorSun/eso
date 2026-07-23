@@ -2,6 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import General from '../model/general.js'
 import database, { isSetIndexResultEmpty, setAtlasSrcMode } from '../model/database.js'
+import gearConfig from '../model/gearConfig.js'
 import getimgs from '../model/getimgs.js'
 import fetch from 'node-fetch'
 import moment from 'moment'
@@ -51,6 +52,7 @@ export class goldenVendor extends plugin {
    * @提供黄金商人商品查询
    */
   async goldenSets (e) {
+    srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     const data = await this.updateGoldenSets()
     if (!data) return

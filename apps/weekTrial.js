@@ -1,5 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import database, { raidNameMap, setAtlasSrcMode } from '../model/database.js'
+import gearConfig from '../model/gearConfig.js'
 import fetch from 'node-fetch'
 
 const WEEK_TRIAL_API = 'https://api.esocn.com.cn/api/week-trial'
@@ -30,6 +31,7 @@ export class weekTrial extends plugin {
    * 查询周常试炼：拉取 API，结合 raidNameMap 返回中英对照
    */
   async queryWeekTrial (e) {
+    srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     await this.reply('正在查询本周周常试炼…')
 

@@ -2,6 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import common from "../../../lib/common/common.js"
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
+import gearConfig from '../model/gearConfig.js'
 import TTC from '../model/ttc.js'
 import md5 from 'md5'
 import fs from 'node:fs'
@@ -891,6 +892,9 @@ export class ttc extends plugin {
   /** 查询交易 */
   async queryTrade(e) {
     try {
+      if (!gearConfig.isHeavyEnabled()) {
+        return await this.reply('当前为极简挡位（挡位1），TTC 交易查询功能已禁用\n可通过 #设置挡位 2 及以上挡位启用')
+      }
       const userId = e.user_id
       
       // 限流检查

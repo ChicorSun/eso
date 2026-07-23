@@ -3,6 +3,7 @@ import common from '../../../lib/common/common.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database, { detectBuffDebuffInText, isSetIndexResultEmpty, setAtlasSrcMode } from '../model/database.js'
 import apiDataSource from '../model/apiDataSource.js'
+import gearConfig from '../model/gearConfig.js'
 import moment from 'moment'
 import md5 from 'md5'
 
@@ -234,6 +235,7 @@ export class atlas extends plugin {
   }
 
   async showAtlasByItemLink (e) {
+    srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     const text = await this.trimText(e)
     const itemId = this.extractItemIdFromLink(text)
@@ -242,6 +244,7 @@ export class atlas extends plugin {
   }
 
   async showAtlas (e) {
+    srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     let name = await this.trimText(e)
     // 先将全部全角感叹号换成半角感叹号（/g 会替换所有出现的 ！），便于后续统一判断

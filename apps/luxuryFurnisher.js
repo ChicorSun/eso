@@ -1,6 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database, { setAtlasSrcMode } from '../model/database.js'
+import gearConfig from '../model/gearConfig.js'
 import getimgs from '../model/getimgs.js'
 import esoCfg from '../model/esoCfg.js'
 import fetch from 'node-fetch'
@@ -41,6 +42,7 @@ export class luxuryFurnisher extends plugin {
    * 查询豪华家具商：拉取 API，拼装 generalData，用 HTML 模板截图后回复
    */
   async queryLuxuryFurnisher (e) {
+    srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     const data = await this.updateLuxuryFurnisherData(e)
     if (!data) return

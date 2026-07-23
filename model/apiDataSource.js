@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import fetch from 'node-fetch'
 import undauntedApi from './undauntedApi.js'
+import gearConfig from './gearConfig.js'
 
 /**
  * ESOCN API 图鉴数据源
@@ -435,6 +436,14 @@ export default {
     const { furnEN, furnCN } = buildFurnitures(furnitureList)
     const { collEN, collCN } = buildCollFurnitures(collList)
     const { raidsEN, raidsCN } = buildRaids(trialsList)
+
+    // 极简/均衡挡位：释放 API 原始载荷（磁盘缓存保留），降低常驻内存 ~30-50MB
+    if (gearConfig.isLightPayload() && cache && cache.data) {
+      for (const key of ['equipmentAll', 'skillsFull', 'foodsList', 'furnitureList', 'collList', 'idToSetMap', 'dungeonsAll', 'trialsList']) {
+        delete cache.data[key]
+      }
+      logger.info(`${LOG} 极简载荷模式：已释放 API 原始载荷（磁盘缓存保留）`)
+    }
 
     logger.info(`${LOG} 数据构建完成: 套装 ${Object.keys(setsEN).length} / 食物 ${Object.keys(foodsEN).length} / 家具 ${Object.keys(furnEN).length} / 收藏品 ${Object.keys(collEN).length}`)
     return { setsEN, setsCN, skillsEN, skillsCN, foodsEN, foodsCN, furnEN, furnCN, collEN, collCN, raidsEN, raidsCN }

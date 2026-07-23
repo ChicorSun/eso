@@ -2,6 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import common from "../../../lib/common/common.js"
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database, { gearColor, setType, setAtlasSrcMode } from '../model/database.js'
+import gearConfig from '../model/gearConfig.js'
 import CardsList from '../model/cardslist.js'
 import RolesList from '../model/roleslist.js'
 import ESOAccount from '../model/esoAccount.js'
@@ -364,6 +365,10 @@ export class esologPuzzle extends plugin {
    * @提供配装查询与分析
    */
   async logPuzzle (e) {
+    if (!gearConfig.isHeavyEnabled()) {
+      return await this.reply('当前为极简挡位（挡位1），esologs 日志解析功能已禁用\n可通过 #设置挡位 2 及以上挡位启用')
+    }
+    srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     //解析url
     let tmpComPuzzleEnable = 0
@@ -944,7 +949,7 @@ export class esologPuzzle extends plugin {
       // 等待直到有可用的并发槽或超时
       const startTime = Date.now();
       let lastLogTime = 0;
-      while (running_page_num >= MAX_WEB_NUM) {
+      while (running_page_num >= gearConfig.getWebNum()) {
         // 每5秒打印一次日志
         const now = Date.now();
         if (now - lastLogTime >= LOG_INTERVAL) {
@@ -2276,6 +2281,7 @@ export class esologPuzzle extends plugin {
    * @returns 
    */
   async queryRole(e) {
+    srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
@@ -2469,6 +2475,7 @@ export class esologPuzzle extends plugin {
   }
 
   async editBuild(e) {
+    srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
