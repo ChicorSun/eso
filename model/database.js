@@ -15,6 +15,18 @@ import md5 from 'md5'
 
 const updateImgMode = 0;
 
+// ==================== 图鉴数据源模式 ====================
+/** 'local' 本地 segments 数据（默认）| 'api' ESOCN API 数据（由 apps 各模块的 srcMode 注入） */
+let atlasSrcMode = 'local'
+/** 当前内存结构实际加载的数据源（与 atlasSrcMode 不一致时触发重建） */
+let loadedSrcMode = null
+export function setAtlasSrcMode (mode) {
+  atlasSrcMode = (mode === 'api') ? 'api' : 'local'
+}
+export function getAtlasSrcMode () {
+  return atlasSrcMode
+}
+
 // ==================== BUFF/DEBUFF 数据加载 ====================
 const BUFF_JSON_PATH = './plugins/eso/resources/buffs/buff.json'
 const DEBUFF_JSON_PATH = './plugins/eso/resources/buffs/debuff.json'
@@ -2175,6 +2187,13 @@ class database {
   }
 
   async init_database () {
+    // 数据源模式切换：清空结构并重建
+    if (loadedSrcMode !== null && loadedSrcMode !== atlasSrcMode) {
+      logger.info(`[ESO:图鉴] 数据源切换为 ${atlasSrcMode === 'api' ? 'ESOCN API' : '本地 segments'}，重新加载图鉴数据库...`)
+      databaseInitPromise = null
+      this._resetStructures()
+    }
+    loadedSrcMode = atlasSrcMode
     if (databaseInitPromise) return databaseInitPromise
     databaseInitPromise = this._init_databaseOnce()
     try {
@@ -2186,7 +2205,40 @@ class database {
     return databaseInitPromise
   }
 
+  /** 数据源切换时清空模块级结构，保证按新模式完整重建 */
+  _resetStructures () {
+    setsData = [{}]
+    setsDataCN = [{}]
+    recipesData = [{}]
+    recipesDataCN = [{}]
+    furnituresData = [{}]
+    furnituresDataCN = [{}]
+    collfurnituresData = [{}]
+    collfurnituresDataCN = [{}]
+    foodsData = [{}]
+    foodsDataCN = [{}]
+    skillsData = [{}]
+    skillsDataCN = [{}]
+    dataRaids = [{}]
+    dataRaidsCN = [{}]
+    skillID2IndexCN = {}
+    numDungeons = 0
+    numArtifacts = 0
+    artifactList = []
+    dgSetsTable = Array.from({ length: 100 }, () => [0, 0, 0, 0])
+  }
+
   async _init_databaseOnce () {
+    if (atlasSrcMode === 'api') {
+      await this.init_databaseFromAPI()
+      await this.enhance_skillsData_extra()
+      await this.enhance_database()
+      await this.init_databaseDG()
+      await this.init_databaseArtifact()
+      // API 模式不构建 buff/debuff 映射表（查询时走在线反查）
+      return
+    }
+
     await this.init_databaseEN()
     await this.init_databaseCN()
 
@@ -2203,6 +2255,26 @@ class database {
       await this.create_buff_list_for_skills()
     }
     //await this.list_setsData()
+  }
+
+  /** 从 ESOCN API 构建图鉴数据库（与本地 segments 同构，enhance 阶段复用） */
+  async init_databaseFromAPI () {
+    logger.info('[ESO:图鉴] 正在从 ESOCN API 加载图鉴数据库...')
+    const apiDataSource = (await import('./apiDataSource.js')).default
+    const built = await apiDataSource.loadAll()
+    setsData = built.setsEN
+    setsDataCN = built.setsCN
+    skillsData = built.skillsEN
+    skillsDataCN = built.skillsCN
+    foodsData = built.foodsEN
+    foodsDataCN = built.foodsCN
+    furnituresData = built.furnEN
+    furnituresDataCN = built.furnCN
+    collfurnituresData = built.collEN
+    collfurnituresDataCN = built.collCN
+    dataRaids = built.raidsEN
+    dataRaidsCN = built.raidsCN
+    logger.info('[ESO:图鉴] API 图鉴数据库加载完成')
   }
 
   async enhance_database () {

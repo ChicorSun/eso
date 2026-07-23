@@ -1,13 +1,16 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import common from "../../../lib/common/common.js"
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
-import database, { gearColor, setType } from '../model/database.js'
+import database, { gearColor, setType, setAtlasSrcMode } from '../model/database.js'
 import CardsList from '../model/cardslist.js'
 import RolesList from '../model/roleslist.js'
 import ESOAccount from '../model/esoAccount.js'
 import md5 from 'md5'
 import fs from 'node:fs'
 import fetch from 'node-fetch'
+
+/** 图鉴数据源：'local' 本地数据库（默认）| 'api' ESOCN API */
+let srcMode = 'local'
 
 // ESOCN API 配置
 const ESOCN_API = {
@@ -361,6 +364,7 @@ export class esologPuzzle extends plugin {
    * @提供配装查询与分析
    */
   async logPuzzle (e) {
+    setAtlasSrcMode(srcMode)
     //解析url
     let tmpComPuzzleEnable = 0
     let recordEnable = 0
@@ -2272,6 +2276,7 @@ export class esologPuzzle extends plugin {
    * @returns 
    */
   async queryRole(e) {
+    setAtlasSrcMode(srcMode)
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
 
@@ -2464,6 +2469,7 @@ export class esologPuzzle extends plugin {
   }
 
   async editBuild(e) {
+    setAtlasSrcMode(srcMode)
     // 获取用户QQ，转为字符串避免大数精度问题
     const userId = String(e.user_id);
 

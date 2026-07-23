@@ -1,8 +1,11 @@
 import plugin from '../../../lib/plugins/plugin.js'
-import database, { raidNameMap } from '../model/database.js'
+import database, { raidNameMap, setAtlasSrcMode } from '../model/database.js'
 import fetch from 'node-fetch'
 
 const WEEK_TRIAL_API = 'https://api.esocn.com.cn/api/week-trial'
+
+/** 图鉴数据源：'local' 本地数据库（默认）| 'api' ESOCN API */
+let srcMode = 'local'
 
 /** 周常试炼 / 周常副本 触发词 */
 const WEEK_TRIAL_CMD_REG = '^#*(周常试炼|周常副本)$'
@@ -27,6 +30,7 @@ export class weekTrial extends plugin {
    * 查询周常试炼：拉取 API，结合 raidNameMap 返回中英对照
    */
   async queryWeekTrial (e) {
+    setAtlasSrcMode(srcMode)
     await this.reply('正在查询本周周常试炼…')
 
     let res

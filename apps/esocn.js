@@ -1,8 +1,11 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import ESOAccount from '../model/esoAccount.js'
-import database from '../model/database.js'
+import database, { setAtlasSrcMode } from '../model/database.js'
 import fetch from 'node-fetch'
 import fs from 'node:fs'
+
+/** 图鉴数据源：'local' 本地数据库（默认）| 'api' ESOCN API */
+let srcMode = 'local'
 
 // ESOCN API 配置
 const ESOCN_API = {
@@ -564,6 +567,7 @@ export class esocn extends plugin {
    * @returns
    */
   async parseBuildLink(e) {
+    setAtlasSrcMode(srcMode)
     // 检查限流
     const userId = String(e.user_id)
     if (!checkRateLimit(userId)) {

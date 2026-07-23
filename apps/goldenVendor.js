@@ -1,7 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import General from '../model/general.js'
-import database, { isSetIndexResultEmpty } from '../model/database.js'
+import database, { isSetIndexResultEmpty, setAtlasSrcMode } from '../model/database.js'
 import getimgs from '../model/getimgs.js'
 import fetch from 'node-fetch'
 import moment from 'moment'
@@ -10,6 +10,9 @@ import md5 from 'md5'
 
 /** 1=ESOCN API, 2=uesp 页面；失败后切换并重试一次 */
 let src_mode = 2
+
+/** 图鉴数据源：'local' 本地数据库（默认）| 'api' ESOCN API */
+let srcMode = 'local'
 
 const GOLDEN_VENDOR_API = 'https://api.esocn.com.cn/api/golden-vendor'
 const UESP_GOLDEN_URL = 'http://esolog.uesp.net/goldenVendor.php'
@@ -48,6 +51,7 @@ export class goldenVendor extends plugin {
    * @提供黄金商人商品查询
    */
   async goldenSets (e) {
+    setAtlasSrcMode(srcMode)
     const data = await this.updateGoldenSets()
     if (!data) return
 

@@ -1,9 +1,13 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import common from '../../../lib/common/common.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
-import database, { detectBuffDebuffInText, isSetIndexResultEmpty } from '../model/database.js'
+import database, { detectBuffDebuffInText, isSetIndexResultEmpty, setAtlasSrcMode } from '../model/database.js'
+import apiDataSource from '../model/apiDataSource.js'
 import moment from 'moment'
 import md5 from 'md5'
+
+/** 图鉴数据源：'local' 本地数据库（默认）| 'api' ESOCN API（失败请先检查网络，可用 local 兜底） */
+let srcMode = 'local'
 
 //装备图鉴结构体变量
 let setData = {
@@ -230,6 +234,7 @@ export class atlas extends plugin {
   }
 
   async showAtlasByItemLink (e) {
+    setAtlasSrcMode(srcMode)
     const text = await this.trimText(e)
     const itemId = this.extractItemIdFromLink(text)
     if (!itemId) return 0
@@ -237,6 +242,7 @@ export class atlas extends plugin {
   }
 
   async showAtlas (e) {
+    setAtlasSrcMode(srcMode)
     let name = await this.trimText(e)
     // 先将全部全角感叹号换成半角感叹号（/g 会替换所有出现的 ！），便于后续统一判断
     name = name.replace(/！/g, '!')
@@ -358,13 +364,26 @@ export class atlas extends plugin {
     const query = this.extractBuffDebuffQuery(name)
     if (!query) return false
 
-    const entry = await database.findBuffDebuffByExactName(query)
-    if (!entry) return false
+    let entry = null
+    let setKeys = []
+    let skillKeys = []
+
+    if (srcMode === 'api') {
+      // API 模式：在线查询 buff 列表 + enName 反查关联套装/技能
+      const found = await apiDataSource.findBuffDebuff(query)
+      if (!found) return false
+      entry = { name: found.entry.name, displayName: found.entry.name, isBuff: found.entry.isBuff }
+      setKeys = found.sets.map(s => String(s.id)).filter(k => k && k !== 'undefined' && k !== 'null')
+      const skillIds = found.skills.map(s => Number(s.sid ?? s.id)).filter(n => Number.isFinite(n) && n > 0)
+      skillKeys = await database.skillIdsToSkillIndices(skillIds)
+    } else {
+      entry = await database.findBuffDebuffByExactName(query)
+      if (!entry) return false
+      setKeys = await database.setIdsToSetKeys(entry.setsList || [])
+      skillKeys = await database.skillIdsToSkillIndices(entry.skillsList || [])
+    }
 
     const displayName = entry.displayName || entry.name
-
-    const setKeys = await database.setIdsToSetKeys(entry.setsList || [])
-    const skillKeys = await database.skillIdsToSkillIndices(entry.skillsList || [])
     const total = setKeys.length + skillKeys.length
 
     // 任何来源，只要总图鉴数 > 8 就进入合并模式：
@@ -652,9 +671,12 @@ export class atlas extends plugin {
       const setsDataCN = await database.getSetsCN()
       const dgSetsTable = await database.getdgSets()
       const numDungeons = await database.getDgNum()
+      const dgList = await database.getdgList()
 
-      // 无畏者副本序号校准码
-      const adjust = [4, 4, 1]
+      // 无畏者副本序号校准码（API 模式用今日无畏反推，本地模式用硬编码）
+      const adjust = (srcMode === 'api')
+        ? await apiDataSource.getUndauntedAdjust(dgList, numDungeons)
+        : [4, 4, 1]
       const num0 = 12
       const num1 = 12
       const num2 = numDungeons-24
@@ -845,6 +867,10 @@ export class atlas extends plugin {
 
     if(name.includes("英文") || name.includes("英语"))
     {
+      if (srcMode === 'api')
+      {
+        return await this.reply('API 查询模式暂不支持技能英文图鉴，请将 srcMode 切回 local 后重试')
+      }
       showEnglish = true
     }
 
@@ -1002,6 +1028,10 @@ export class atlas extends plugin {
 
     if(name.includes("英文") || name.includes("英语"))
     {
+      if (srcMode === 'api')
+      {
+        return await this.reply('API 查询模式暂不支持食物英文图鉴，请将 srcMode 切回 local 后重试')
+      }
       showEnglish = true
     }
 
@@ -1084,6 +1114,10 @@ export class atlas extends plugin {
 
     if(name.includes("英文") || name.includes("英语"))
     {
+      if (srcMode === 'api')
+      {
+        return await this.reply('API 查询模式暂不支持家具英文图鉴，请将 srcMode 切回 local 后重试')
+      }
       showEnglish = true
     }
 
@@ -1165,6 +1199,10 @@ export class atlas extends plugin {
 
     if(nameForSearch.includes("英文") || nameForSearch.includes("英语"))
     {
+      if (srcMode === 'api')
+      {
+        return await this.reply('API 查询模式暂不支持收藏品家具英文图鉴，请将 srcMode 切回 local 后重试')
+      }
       showEnglish = true
     }
 

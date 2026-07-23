@@ -7,6 +7,10 @@ import moment from 'moment'
 import md5 from 'md5'
 import fs from 'node:fs'
 import path from 'node:path'
+import undauntedApi from '../model/undauntedApi.js'
+
+/** 无畏者查询信息来源：'local' 本地推算（默认）| 'api' ESOCN API 查询（失败自动回退本地） */
+let srcMode = 'local'
 
 /** 头图按日轮换：自该日起第 1 天使用排序后第 1 张 PNG（与 moment 日历日对齐） */
 const NAMECARD_ROTATION_EPOCH = '2026-01-01'
@@ -175,6 +179,16 @@ export class askUndaunted extends plugin {
     let places = ''
     if(now != unData.generalData[0].date)
     {
+      let apiOk = false
+      if (srcMode === 'api') {
+        try {
+          await this.fillSummaryFromApi(unData)
+          apiOk = true
+        } catch (err) {
+          logger.error('[无畏] API 模式失败，回退本地推算: ' + (err && err.message || err))
+        }
+      }
+      if (!apiOk) {
       await this.cal_index(now)
       places = await database.get_setsPlace(dgSetsTable[unIndex.t0][0])
       unData.generalData[1].list[0].title = places.loot_place_cn
@@ -244,6 +258,7 @@ export class askUndaunted extends plugin {
       unData.generalData[3].list[2].title = places.loot_place_cn
       unData.generalData[3].list[2].desc = "<"+places.loot_place_en+">"
 
+      }
       unData.generalData[0].date = now
       //unData.generalData[2].group = '明日无畏';
       //logger.info('[无畏] 计算无畏者日常')
@@ -278,6 +293,16 @@ export class askUndaunted extends plugin {
     let places = ''
     if(now != unTodayData.generalData[0].date)
     {
+      let apiOk = false
+      if (srcMode === 'api') {
+        try {
+          await this.fillDetailFromApi(unTodayData, 'today')
+          apiOk = true
+        } catch (err) {
+          logger.error('[今日无畏] API 模式失败，回退本地推算: ' + (err && err.message || err))
+        }
+      }
+      if (!apiOk) {
       await this.cal_index(now)
       places = await database.get_setsPlace(dgSetsTable[unIndex.t0][0])
       unTodayData.generalData[1].list[0].title = places.loot_place_cn
@@ -360,6 +385,7 @@ export class askUndaunted extends plugin {
       unTodayData.generalData[3].list[4].desc = "<"+setsData[dgSetsTable[unIndex.t2][3]].name+">"
       unTodayData.generalData[3].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.t2][3]].id].bonuses['5'])
 
+      }
       unTodayData.generalData[0].date = now
       //unTodayData.generalData[2].group = '明日无畏';
       //logger.info('[今日无畏] 计算无畏者日常')s
@@ -394,6 +420,16 @@ export class askUndaunted extends plugin {
     let places = ''
     if(now != unYesterdayData.generalData[0].date)
     {
+      let apiOk = false
+      if (srcMode === 'api') {
+        try {
+          await this.fillDetailFromApi(unYesterdayData, 'yesterday')
+          apiOk = true
+        } catch (err) {
+          logger.error('[昨日无畏] API 模式失败，回退本地推算: ' + (err && err.message || err))
+        }
+      }
+      if (!apiOk) {
       await this.cal_index(now)
       places = await database.get_setsPlace(dgSetsTable[unIndex.y0][0])
       unYesterdayData.generalData[1].list[0].title = places.loot_place_cn
@@ -467,6 +503,7 @@ export class askUndaunted extends plugin {
       unYesterdayData.generalData[3].list[4].desc = "<"+setsData[dgSetsTable[unIndex.y2][3]].name+">"
       unYesterdayData.generalData[3].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.y2][3]].id].bonuses['5'])
 
+      }
       unYesterdayData.generalData[0].date = now
       //unYesterdayData.generalData[2].group = '昨日日无畏';
       //logger.info('[昨日无畏] 计算无畏者日常')
@@ -502,6 +539,16 @@ export class askUndaunted extends plugin {
     let places = ''
     if(now != unTomorrowData.generalData[0].date)
     {
+      let apiOk = false
+      if (srcMode === 'api') {
+        try {
+          await this.fillDetailFromApi(unTomorrowData, 'tomorrow')
+          apiOk = true
+        } catch (err) {
+          logger.error('[明日无畏] API 模式失败，回退本地推算: ' + (err && err.message || err))
+        }
+      }
+      if (!apiOk) {
       await this.cal_index(now)
       places = await database.get_setsPlace(dgSetsTable[unIndex.tm0][0])
       unTomorrowData.generalData[1].list[0].title = places.loot_place_cn
@@ -575,6 +622,7 @@ export class askUndaunted extends plugin {
       unTomorrowData.generalData[3].list[4].desc = "<"+setsData[dgSetsTable[unIndex.tm2][3]].name+">"
       unTomorrowData.generalData[3].list[4].msg = await this.bonuses2msg(setsDataCN[setsData[dgSetsTable[unIndex.tm2][3]].id].bonuses['5'])
 
+      }
       unTomorrowData.generalData[0].date = now
       //unTomorrowData.generalData[2].group = '明日无畏'
       //logger.info('[明日无畏] 计算无畏者日常')
@@ -588,6 +636,87 @@ export class askUndaunted extends plugin {
     applyNamecardPageBg(unTomorrowData)
     let img = await this.cache(unTomorrowData, undauntedTomorrowData)
     await this.reply(img)
+  }
+
+  /**
+   * 从 ESOCN API 获取某一天的 3 个无畏者副本及其套装
+   * @param dayKind 'today' | 'yesterday' | 'tomorrow'
+   * @returns {Promise<Array<{dg: {name, enName}, sets: [怪物套, 轻甲套, 中甲套, 重甲套]}>>}
+   */
+  async getApiDayData (dayKind) {
+    const offsets = undauntedApi.resolveOffsets()
+    const pledges = await undauntedApi.getPledges(offsets[dayKind])
+    const days = []
+    for (const dgEn of pledges) {
+      const dg = await undauntedApi.getDungeon(dgEn)
+      const sets = [null, null, null, null]
+      for (const setEn of dg.equipment) {
+        const s = await undauntedApi.getSet(setEn)
+        if (s.type === '8') sets[0] = s
+        else if (s.armor === '轻甲') sets[1] = s
+        else if (s.armor === '中甲') sets[2] = s
+        else if (s.armor === '重甲') sets[3] = s
+      }
+      if (!sets[0] || !sets[1] || !sets[2] || !sets[3]) {
+        logger.warn(`[无畏:API] ${dgEn} 套装分类不完整: [${sets.map(s => (s ? s.enName : 'null')).join(', ')}]`)
+      }
+      days.push({ dg, sets })
+    }
+    return days
+  }
+
+  /** 用 API 数据填充详情模板（今日/昨日/明日共用结构） */
+  async fillDetailFromApi (data, dayKind) {
+    const days = await this.getApiDayData(dayKind)
+    const iconKinds = ['Light', 'Light', 'Medium', 'Heavy']
+    for (let i = 0; i < 3; i++) {
+      const group = data.generalData[i + 1]
+      const { dg, sets } = days[i]
+      group.list[0].title = dg.name
+      group.list[0].msg[0] = `<${dg.enName}>`
+      for (let j = 0; j < 4; j++) {
+        const s = sets[j]
+        if (!s) continue
+        const item = group.list[j + 1]
+        item.icon = s.icons[iconKinds[j]]
+        item.title = s.name
+        item.desc = `<${s.enName}>`
+        item.msg = await this.bonuses2msg(s.bonuses)
+      }
+    }
+  }
+
+  /** 用 API 数据填充 #无畏 汇总模板 */
+  async fillSummaryFromApi (data) {
+    const todayDays = await this.getApiDayData('today')
+    const yesterdayDays = await this.getApiDayData('yesterday')
+    const tomorrowDays = await this.getApiDayData('tomorrow')
+    const iconKinds = ['Light', 'Light', 'Medium', 'Heavy']
+
+    // 今日：3 副本 × (副本名 + 4 套装)
+    const list = data.generalData[1].list
+    for (let i = 0; i < 3; i++) {
+      const { dg, sets } = todayDays[i]
+      list[i * 5].title = dg.name
+      list[i * 5].desc = `<${dg.enName}>`
+      for (let j = 0; j < 4; j++) {
+        const s = sets[j]
+        if (!s) continue
+        const item = list[i * 5 + 1 + j]
+        item.icon = s.icons[iconKinds[j]]
+        item.title = s.name
+        item.desc = `<${s.enName}>`
+      }
+    }
+
+    // 昨日/明日：仅副本名
+    for (const [idx, days] of [[2, yesterdayDays], [3, tomorrowDays]]) {
+      const group = data.generalData[idx]
+      for (let i = 0; i < 3; i++) {
+        group.list[i].title = days[i].dg.name
+        group.list[i].desc = `<${days[i].dg.enName}>`
+      }
+    }
   }
 
   async cal_index (now) {
