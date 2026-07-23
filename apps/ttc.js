@@ -3063,38 +3063,45 @@ export class ttc extends plugin {
         
         // 如果没有找到表格，可能需要等待更长时间或页面结构改变了
         if (!pageContent.hasTable) {
-          logger.info(`[TTC] 页面表格未加载完成，等待额外时间...`)
-          
-          // 尝试等待更长时间
-          await new Promise(resolve => setTimeout(resolve, 8000))
-          
-          // 再次检查，使用更智能的检测
-          const tableCheck = await browserPage.evaluate(() => {
-            const tradeTable = document.querySelector('table.trade-list-table')
-            const anyTable = document.querySelector('table')
-            const dataRows = document.querySelectorAll('tr[data-bind*="TradeAsset"]')
-            const listRows = document.querySelectorAll('.trade-list-table tr')
-            const hasDataContent = document.body.textContent.includes('价格') || 
-                                 document.body.textContent.includes('交易') ||
-                                 document.body.textContent.includes('金币') ||
-                                 document.body.textContent.includes('gold')
-            
-            return {
-              hasTradeTable: !!tradeTable,
-              hasAnyTable: !!anyTable,
-              hasDataRows: dataRows ? dataRows.length : 0,
-              hasListRows: listRows ? listRows.length : 0,
-              hasDataContent: hasDataContent
+          logger.info(`[TTC] 页面表格未加载完成，进入等待重试...`)
+
+          // 最多重试 3 次，每次等待 8 秒（TTC 为 SPA 动态渲染，慢网络下单次 8 秒可能不足）
+          let tableCheck = null
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, 8000))
+
+            // 再次检查，使用更智能的检测
+            tableCheck = await browserPage.evaluate(() => {
+              const tradeTable = document.querySelector('table.trade-list-table')
+              const anyTable = document.querySelector('table')
+              const dataRows = document.querySelectorAll('tr[data-bind*="TradeAsset"]')
+              const listRows = document.querySelectorAll('.trade-list-table tr')
+              const hasDataContent = document.body.textContent.includes('价格') ||
+                                   document.body.textContent.includes('交易') ||
+                                   document.body.textContent.includes('金币') ||
+                                   document.body.textContent.includes('gold')
+
+              return {
+                hasTradeTable: !!tradeTable,
+                hasAnyTable: !!anyTable,
+                hasDataRows: dataRows ? dataRows.length : 0,
+                hasListRows: listRows ? listRows.length : 0,
+                hasDataContent: hasDataContent
+              }
+            })
+
+            logger.info(`[TTC] 第${attempt}次等待后表格检查: 交易表格=${tableCheck.hasTradeTable}, 任意表格=${tableCheck.hasAnyTable}, 数据行=${tableCheck.hasDataRows}, 列表行=${tableCheck.hasListRows}, 有数据内容=${tableCheck.hasDataContent}`)
+
+            if (tableCheck.hasTradeTable || tableCheck.hasAnyTable || tableCheck.hasDataRows > 0 || tableCheck.hasListRows > 0 || tableCheck.hasDataContent) {
+              break
             }
-          })
-          
-          logger.info(`[TTC] 等待后表格检查: 交易表格=${tableCheck.hasTradeTable}, 任意表格=${tableCheck.hasAnyTable}, 数据行=${tableCheck.hasDataRows}, 列表行=${tableCheck.hasListRows}, 有数据内容=${tableCheck.hasDataContent}`)
-          
+          }
+
           if (!tableCheck.hasTradeTable && !tableCheck.hasAnyTable && tableCheck.hasDataRows === 0 && tableCheck.hasListRows === 0 && !tableCheck.hasDataContent) {
-            logger.warn(`[TTC] 等待后仍未找到交易表格，可能页面结构已变更`)
+            logger.warn(`[TTC] 多次等待后仍未找到交易表格，可能页面结构已变更`)
             return { hasError: true, error: '页面结构异常，未找到交易表格' }
           }
-          
+
           logger.info(`[TTC] 等待后成功找到交易数据`)
         }
         
