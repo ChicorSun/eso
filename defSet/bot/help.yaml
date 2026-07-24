@@ -203,6 +203,65 @@
       title: "#插件"
       desc: "获取插件相关信息"
       item_class: item_split2
+- group: Steam功能
+  group_class: data_box_split1
+  list:
+    - icon: ..\icon\ttc
+      title: "#steam绑定 xxx"
+      desc: "绑定Steam账号(ID/好友码/链接)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam信息"
+      desc: "查看Steam用户信息卡"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam游戏"
+      desc: "查看Steam游戏库"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam列表"
+      desc: "查看所有绑定玩家当前状态"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam排行 [天数]"
+      desc: "游戏时长排行榜"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam成就 <游戏ID>"
+      desc: "查看指定游戏的成就进度"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam库存"
+      desc: "查看Steam社区库存"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam愿望单"
+      desc: "查看Steam愿望单"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam搜索 xxx"
+      desc: "搜索Steam商店游戏"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam折扣"
+      desc: "查看当前特惠"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam开启游玩推送"
+      desc: "开启游玩/结束/切换游戏推送"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam开启成就推送"
+      desc: "开启成就解锁推送"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam推送白名单"
+      desc: "主人管理全局游戏推送白名单"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam开启在线推送"
+      desc: "开启上线/下线动态推送"
+      item_class: item_split2
 - group: 群管理功能
   group_class: data_box_split1
   list:

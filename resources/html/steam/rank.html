@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/rank.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 class="title">Steam 时长排行</h1>
+      <div class="sub">{{rangeText}} · 更新：{{updateTime}}</div>
+    </div>
+
+    {{if rows && rows.length > 0}}
+    <div class="rank-list">
+      {{each rows row}}
+      <div class="rank-item {{row.rankClass}}">
+        <div class="rank-no">{{row.rank}}</div>
+        {{if row.avatarImagePath}}
+        <img class="avatar" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/avatar/{{row.avatarImagePath}}" alt="" onerror="this.style.visibility='hidden'" />
+        {{/if}}
+        <div class="info">
+          <div class="name-row">
+            <span class="name">{{row.name}}</span>
+            <span class="total">{{row.totalText}}</span>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill" style="width: {{row.barPct}}%;"></div>
+          </div>
+          <div class="games">{{row.gamesText}}</div>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="empty">该时间段内没有游玩记录</div>
+    {{/if}}
+
+    <div class="footer">ESO-Bot · Steam 时长排行（统计日以凌晨 4 点为界）</div>
+  </div>
+</body>
+</html>

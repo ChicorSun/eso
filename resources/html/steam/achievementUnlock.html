@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/achievementUnlock.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="badge">Steam 成就</span>
+      <span class="time">{{updateTime}}</span>
+    </div>
+
+    <div class="player-row">
+      {{if avatarImagePath}}
+      <img class="avatar" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/avatar/{{avatarImagePath}}" alt="" onerror="this.style.visibility='hidden'" />
+      {{/if}}
+      <div class="player-info">
+        <div class="player-name">{{name}}</div>
+        <div class="action-text">在《{{game}}》中解锁了成就</div>
+      </div>
+    </div>
+
+    <div class="ach-list">
+      {{each achievements ach}}
+      <div class="ach-item{{if ach.rare}} rare{{/if}}">
+        {{if ach.iconPath}}
+        <img class="ach-icon" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/achievements/{{ach.iconPath}}" alt="" onerror="this.style.visibility='hidden'" />
+        {{/if}}
+        <div class="ach-info">
+          <div class="ach-name">{{ach.name}}</div>
+          {{if ach.desc}}
+          <div class="ach-desc">{{ach.desc}}</div>
+          {{/if}}
+        </div>
+        {{if ach.percentText}}
+        <div class="ach-percent{{if ach.rare}} rare{{/if}}">{{ach.percentText}}</div>
+        {{/if}}
+      </div>
+      {{/each}}
+    </div>
+
+    {{if extraCount > 0}}
+    <div class="extra">另有 {{extraCount}} 个新解锁成就未展示</div>
+    {{/if}}
+
+    <div class="footer">ESO-Bot · Steam 成就监控</div>
+  </div>
+</body>
+</html>

@@ -70,8 +70,9 @@ class SteamUserModel {
              bindTime: userData.bindTime || moment().format('YYYY-MM-DD HH:mm:ss'),
              isBind: true, // 第一个绑定默认为当前绑定
              lastUpdate: userData.lastUpdate || moment().format('YYYY-MM-DD HH:mm:ss'),
-             lastOnlineCheck: userData.lastOnlineCheck || 0, // 默认关闭在线推送
-             lastGameCheck: userData.lastGameCheck || 1 // 默认开启游玩推送
+             lastOnlineCheck: userData.lastOnlineCheck ?? 1, // 默认开启在线推送
+             lastGameCheck: userData.lastGameCheck || 1, // 默认开启游玩推送
+             lastAchCheck: userData.lastAchCheck || 1 // 默认开启成就推送
            }]
          }
         migrated = true
@@ -235,8 +236,9 @@ class SteamUserModel {
           bindTime: moment().format('YYYY-MM-DD HH:mm:ss'),
           lastUpdate: moment().format('YYYY-MM-DD HH:mm:ss'),
           isBind: isFirstBinding || !keepCurrentBind, // 第一个绑定默认为当前绑定，或者不保持当前绑定时设为当前绑定
-          lastOnlineCheck: 0, // 默认关闭在线推送
-          lastGameCheck: 1 // 默认开启游玩推送
+          lastOnlineCheck: 1, // 默认开启在线推送
+          lastGameCheck: 1, // 默认开启游玩推送
+          lastAchCheck: 1 // 默认开启成就推送
         })
         
         const newBindingIndex = this.users[userId].bindings.length - 1
@@ -379,8 +381,9 @@ class SteamUserModel {
          bindTime: this.users[userId].bindTime,
          lastUpdate: this.users[userId].lastUpdate,
          isBind: true, // 旧格式只有一个绑定，默认为当前绑定
-         lastOnlineCheck: this.users[userId].lastOnlineCheck || 0,
-         lastGameCheck: this.users[userId].lastGameCheck || 1
+         lastOnlineCheck: this.users[userId].lastOnlineCheck ?? 1,
+         lastGameCheck: this.users[userId].lastGameCheck || 1,
+         lastAchCheck: this.users[userId].lastAchCheck || 1
        }]
      }
     
@@ -754,6 +757,29 @@ class SteamUserModel {
       return false
     } catch (error) {
       console.error(`[ESO:Steam] 更新绑定在线推送失败: ${error.message}`)
+      return false
+    }
+  }
+
+  // 更新绑定信息的成就推送状态
+  updateBindingAchCheck(qqId, steamId, enabled) {
+    try {
+      const userId = qqId.toString()
+      if (!this.users[userId] || !this.users[userId].bindings) {
+        return false
+      }
+      
+      const binding = this.users[userId].bindings.find(b => b.steamId === steamId)
+      if (binding) {
+        binding.lastAchCheck = enabled
+        binding.lastUpdate = moment().format('YYYY-MM-DD HH:mm:ss')
+        this.saveUsers()
+        return true
+      }
+      
+      return false
+    } catch (error) {
+      console.error(`[ESO:Steam] 更新绑定成就推送失败: ${error.message}`)
       return false
     }
   }

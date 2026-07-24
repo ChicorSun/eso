@@ -484,6 +484,42 @@ class SteamModel {
     return null
   }
 
+  // 解析Steam ID / 好友码 / 个人资料链接 / vanity自定义ID（异步，可能需要调API）
+  async resolveSteamId(input) {
+    if (!input) return null
+    input = String(input).trim()
+
+    // 直接解析（17位ID / 好友码）
+    const direct = this.parseSteamId(input)
+    if (direct) return direct
+
+    // 个人资料链接: steamcommunity.com/profiles/<17位ID>
+    const mProfiles = input.match(/steamcommunity\.com\/profiles\/(\d{17})/i)
+    if (mProfiles) return mProfiles[1]
+
+    // vanity 自定义链接或纯ID: steamcommunity.com/id/<vanity>
+    let vanity = ''
+    const mId = input.match(/steamcommunity\.com\/id\/([A-Za-z0-9_-]+)/i)
+    if (mId) {
+      vanity = mId[1]
+    } else if (/^[A-Za-z0-9_-]{2,32}$/.test(input)) {
+      vanity = input
+    }
+    if (!vanity) return null
+
+    try {
+      const apiKey = this.getCurrentApiKey()
+      const data = await this.callApi(
+        `/ISteamUser/ResolveVanityURL/v1/?key=${apiKey}&vanityurl=${encodeURIComponent(vanity)}`, {}, 1)
+      if (data?.response?.success === 1 && data.response.steamid) {
+        return String(data.response.steamid)
+      }
+    } catch (error) {
+      console.error(`[ESO:Steam] vanity解析失败: ${error.message}`)
+    }
+    return null
+  }
+
   // 获取好友码
   getFriendCode(steamId) {
     if (!this.validateSteamId(steamId)) return null

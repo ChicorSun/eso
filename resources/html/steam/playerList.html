@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/playerList.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 class="title">Steam 玩家状态</h1>
+      <div class="sub">在线 {{online}} / {{total}} · 更新：{{updateTime}}</div>
+    </div>
+
+    <div class="player-list">
+      {{each rows row}}
+      <div class="player-item {{row.statusClass}}">
+        {{if row.avatarImagePath}}
+        <img class="avatar" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/avatar/{{row.avatarImagePath}}" alt="" onerror="this.style.visibility='hidden'" />
+        {{/if}}
+        <div class="info">
+          <div class="name">{{row.name}}</div>
+          <div class="status">{{row.statusText}}</div>
+        </div>
+        <div class="dot"></div>
+      </div>
+      {{/each}}
+    </div>
+
+    <div class="footer">ESO-Bot · Steam 状态监控</div>
+  </div>
+</body>
+</html>

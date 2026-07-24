@@ -4,10 +4,15 @@ import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database from '../model/database.js'
 import SteamUser from '../model/steamUser.js'
 import SteamPush from '../model/steamPush.js'
+import SteamMonitor from '../model/steamMonitor.js'
+import SteamAchievements from '../model/steamAchievements.js'
+import SteamPlayRecords from '../model/steamPlayRecords.js'
+import SteamWhitelist from '../model/steamWhitelist.js'
 import Steam from '../model/steam.js'
 import md5 from 'md5'
 import fs from 'node:fs'
 import fetch from 'node-fetch'
+import moment from 'moment'
 import path from 'path'
 import { createRequire } from 'module'
 import { fileURLToPath } from 'url'
@@ -212,6 +217,26 @@ export class steam extends plugin {
           fnc: 'steamToggleOnlinePush'
         },
         {
+          reg: '^#?steam(开启|关闭)成就推送\\s*(\\d*)$',
+          fnc: 'steamToggleAchPush'
+        },
+        {
+          reg: '^#?steam推送白名单$',
+          fnc: 'steamWhitelistShow'
+        },
+        {
+          reg: '^#?steam(开启|关闭)推送白名单$',
+          fnc: 'steamWhitelistToggle'
+        },
+        {
+          reg: '^#?steam添加推送白名单\\s*(\\d+)$',
+          fnc: 'steamWhitelistAdd'
+        },
+        {
+          reg: '^#?steam删除推送白名单\\s*(\\d+)$',
+          fnc: 'steamWhitelistRemove'
+        },
+        {
           reg: '^#?steam信息\\s*(\\d*)$',
           fnc: 'steamInfo'
         },
@@ -251,6 +276,14 @@ export class steam extends plugin {
           reg: '^#?steam统计$',
           fnc: 'steamStats'
         },
+        {
+          reg: '^#?steam列表$',
+          fnc: 'steamPlayerList'
+        },
+        {
+          reg: '^#?steam排行\s*(\d*)$',
+          fnc: 'steamRank'
+        },
                        {
                  reg: '^#?steam设置$',
                  fnc: 'steamSettings'
@@ -267,14 +300,267 @@ export class steam extends plugin {
                  reg: '^#?steamapikey列表$',
                  fnc: 'steamApiKeyList'
                }
+      ],
+      task: [
+        {
+          cron: '*/2 * * * *',
+          name: 'Steam状态监控',
+          fnc: () => this.steamMonitorTick(),
+          log: false
+        },
+        {
+          cron: '30 8 * * *',
+          name: 'Steam每日排行推送',
+          fnc: () => this.steamDailyRankPush()
+        }
       ]
     })
     
     // 初始化目录
     initSteamDirectories()
-    
+
+    // 注入监控播报图渲染钩子（渲染失败会自动回退文本推送）
+    SteamMonitor.renderEvent = ev => this.renderSteamEvent(ev)
+
     // 启动清理任务
     this.startCleanupTask()
+  }
+
+  // ===========================================
+  // Steam监控播报图渲染（开始/结束游戏）
+  // ===========================================
+  async renderSteamEvent (ev) {
+    const tplMap = { start: 'gameStart', switch: 'gameStart', stop: 'gameEnd', achievement: 'achievementUnlock' }
+    const tpl = tplMap[ev.kind]
+    if (!tpl) return null
+
+    const _path = process.cwd().replace(/\\/g, '/')
+
+    let avatarImagePath = ''
+    if (ev.avatar) {
+      avatarImagePath = await this.getSteamImagePath(ev.avatar, 'avatar', ev.steamId)
+    }
+    let gameImagePath = ''
+    if (ev.gameid && ev.kind !== 'achievement') {
+      const coverUrl = Steam.getHeaderImgUrlByAppid(ev.gameid)
+      gameImagePath = await this.getSteamImagePath(coverUrl, 'games', ev.gameid)
+    }
+
+    // 成就事件：下载成就图标
+    let achievements = []
+    if (ev.kind === 'achievement' && Array.isArray(ev.achievements)) {
+      for (const ach of ev.achievements) {
+        let iconPath = ''
+        if (ach.icon) {
+          iconPath = await this.getSteamImagePath(ach.icon, 'achievements', md5(ach.icon))
+        }
+        achievements.push({
+          ...ach,
+          iconPath: iconPath || '',
+          percentText: ach.percent != null ? `${ach.percent}%` : ''
+        })
+      }
+    }
+
+    const fmtTime = ts => ts ? moment(ts).format('MM-DD HH:mm') : ''
+
+    const data = {
+      ...ev,
+      avatarImagePath: avatarImagePath || '',
+      gameImagePath: gameImagePath || '',
+      achievements,
+      currentPlayersText: typeof ev.currentPlayers === 'number'
+        ? String(ev.currentPlayers).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+        : '',
+      totalPlaytime: ev.totalPlaytime || '',
+      durationText: ev.durationMin ? Steam.formatPlaytime(ev.durationMin) : '',
+      startTimeText: fmtTime(ev.startTime),
+      endTimeText: fmtTime(ev.endTime),
+      updateTime: moment(Date.now()).format('YYYY-MM-DD HH:mm'),
+      pluResPath: `${_path}/plugins/eso/resources/`,
+      tplFile: `./plugins/eso/resources/html/steam/${tpl}.html`
+    }
+
+    return await puppeteer.screenshot('eso', data)
+  }
+
+  // ===========================================
+  // Steam时长排行 #steam排行 [天数]
+  // ===========================================
+  async steamRank (e) {
+    const userId = e.user_id
+    if (!checkRateLimit(userId)) {
+      return this.reply('请求过于频繁，请稍后再试')
+    }
+
+    const match = e.msg.match(/^#?steam排行\s*(\d*)$/)
+    let days = parseInt(match?.[1] || '1', 10)
+    if (isNaN(days) || days < 1) days = 1
+    if (days > 30) days = 30
+
+    const img = await this.renderRankImage(days, 0)
+    if (img) return this.reply(img)
+    return this.reply('排行图片生成失败，请稍后再试')
+  }
+
+  // ===========================================
+  // 每日排行定时推送（昨日榜）
+  // ===========================================
+  async steamDailyRankPush () {
+    try {
+      const agg = SteamPlayRecords.aggregate(1, 1)
+      if (!agg.perUser.size) return
+      const groups = SteamPush.getPushGroups()
+      if (!groups.length) return
+      const img = await this.renderRankImage(1, 1)
+      if (!img) return
+      for (const gid of groups) {
+        await SteamMonitor.sendToGroup(gid, img)
+      }
+    } catch (error) {
+      logger.error(`[ESO:Steam] 每日排行推送失败: ${error.message}`)
+    }
+  }
+
+  // ===========================================
+  // 渲染时长排行图片
+  // ===========================================
+  async renderRankImage (days, offset = 0) {
+    const agg = SteamPlayRecords.aggregate(days, offset)
+
+    // 绑定信息（头像/名字）
+    const bindingMap = new Map()
+    for (const [, userData] of Object.entries(SteamUser.getAllUsers())) {
+      const list = userData.bindings || (userData.steamId ? [userData] : [])
+      for (const b of list) {
+        if (b.steamId && !bindingMap.has(String(b.steamId))) {
+          bindingMap.set(String(b.steamId), b)
+        }
+      }
+    }
+
+    const entries = [...agg.perUser.entries()]
+      .map(([steamId, u]) => ({ steamId, ...u }))
+      .sort((a, b) => b.totalMin - a.totalMin)
+      .slice(0, 10)
+
+    const top = entries[0]?.totalMin || 1
+    const rankClasses = ['gold', 'silver', 'bronze']
+    const rows = []
+    for (let i = 0; i < entries.length; i++) {
+      const en = entries[i]
+      const binding = bindingMap.get(en.steamId) || {}
+      const games = [...en.games.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([g, m]) => `《${g}》${Steam.formatPlaytime(m)}`)
+        .join(' · ')
+      rows.push({
+        rank: i + 1,
+        rankClass: rankClasses[i] || '',
+        name: en.name || binding.steamName || en.steamId,
+        avatarImagePath: binding.avatarfull
+          ? await this.getSteamImagePath(binding.avatarfull, 'avatar', en.steamId)
+          : '',
+        totalText: Steam.formatPlaytime(en.totalMin),
+        barPct: Math.max(3, Math.round(en.totalMin / top * 100)),
+        gamesText: games
+      })
+    }
+
+    const _path = process.cwd().replace(/\\/g, '/')
+    const rangeText = agg.startDay === agg.endDay
+      ? `${agg.startDay}`
+      : `${agg.startDay} ~ ${agg.endDay}`
+
+    return await puppeteer.screenshot('eso', {
+      rows,
+      rangeText,
+      updateTime: moment(Date.now()).format('YYYY-MM-DD HH:mm'),
+      pluResPath: `${_path}/plugins/eso/resources/`,
+      tplFile: './plugins/eso/resources/html/steam/rank.html'
+    })
+  }
+
+  // ===========================================
+  // Steam玩家列表 #steam列表
+  // ===========================================
+  async steamPlayerList (e) {
+    const userId = e.user_id
+    if (!checkRateLimit(userId)) {
+      return this.reply('请求过于频繁，请稍后再试')
+    }
+    if (!Steam.hasApiKey()) {
+      return this.reply('未配置Steam API密钥，请使用 #steam设置 查看设置说明')
+    }
+
+    // 收集全部绑定（去重）
+    const seen = new Set()
+    const bindings = []
+    for (const [qqId, userData] of Object.entries(SteamUser.getAllUsers())) {
+      const list = userData.bindings || (userData.steamId ? [userData] : [])
+      for (const b of list) {
+        if (!b.steamId || seen.has(String(b.steamId))) continue
+        seen.add(String(b.steamId))
+        bindings.push({ userId: String(qqId), steamId: String(b.steamId), steamName: b.steamName || '' })
+      }
+    }
+    if (!bindings.length) {
+      return this.reply('还没有任何人绑定Steam账号，使用 #steam绑定 开始吧')
+    }
+
+    await this.reply('正在查询玩家状态，请等待…')
+
+    let players
+    try {
+      players = await SteamMonitor.fetchSummaries(bindings.map(b => b.steamId))
+    } catch (error) {
+      logger.error(`[ESO:Steam] 玩家列表查询失败: ${error.message}`)
+      return this.reply('查询失败，请稍后再试')
+    }
+    const playerMap = new Map(players.map(p => [String(p.steamid), p]))
+
+    // 组装列表数据：游戏中 > 在线 > 离线
+    const rows = []
+    for (const b of bindings) {
+      const p = playerMap.get(b.steamId)
+      if (!p) continue
+      const state = Number(p.personastate || 0)
+      const inGame = !!(p.gameid && p.gameextrainfo)
+      rows.push({
+        sortKey: inGame ? 0 : (state > 0 ? 1 : 2),
+        name: p.personaname || b.steamName || b.steamId,
+        avatarImagePath: p.avatarfull ? await this.getSteamImagePath(p.avatarfull, 'avatar', b.steamId) : '',
+        statusText: inGame ? `正在游玩《${p.gameextrainfo}》` : this.getStatusText(state),
+        statusClass: inGame ? 'gaming' : (state > 0 ? 'online' : 'offline')
+      })
+    }
+    rows.sort((a, b) => a.sortKey - b.sortKey)
+
+    const _path = process.cwd().replace(/\\/g, '/')
+    const data = {
+      rows,
+      total: rows.length,
+      online: rows.filter(r => r.statusClass !== 'offline').length,
+      updateTime: moment(Date.now()).format('YYYY-MM-DD HH:mm'),
+      pluResPath: `${_path}/plugins/eso/resources/`,
+      tplFile: './plugins/eso/resources/html/steam/playerList.html'
+    }
+
+    const img = await puppeteer.screenshot('eso', data)
+    if (img) return this.reply(img)
+    return this.reply('图片生成失败，请稍后再试')
+  }
+
+  // ===========================================
+  // Steam状态监控定时任务
+  // ===========================================
+  async steamMonitorTick () {
+    try {
+      await SteamMonitor.tick()
+    } catch (error) {
+      logger.error(`[ESO:Steam] 监控轮询异常: ${error.message}`)
+    }
   }
 
   // ===========================================
@@ -329,12 +615,16 @@ export class steam extends plugin {
    • #steam关闭游玩推送 [序号] - 关闭游玩状态推送
    • #steam开启在线推送 [序号] - 开启在线状态推送
    • #steam关闭在线推送 [序号] - 关闭在线状态推送
+   • #steam开启成就推送 [序号] - 开启成就解锁推送
+   • #steam关闭成就推送 [序号] - 关闭成就解锁推送
 
  游戏相关：
    • #steam游戏 [SteamID] - 查看游戏库
    • #steam成就 <游戏ID> [SteamID] - 查看游戏成就
    • #steam库存 [SteamID] - 查看库存
    • #steam愿望单 [SteamID] - 查看愿望单
+   • #steam列表 - 查看所有绑定玩家的当前状态
+   • #steam排行 [天数] - 查看游戏时长排行榜
 
  商店相关：
    • #steam搜索 <游戏名> - 搜索Steam游戏
@@ -407,10 +697,10 @@ export class steam extends plugin {
       return this.reply('未配置Steam API密钥，无法进行绑定操作\n请使用 #steam设置 查看设置说明')
     }
     
-    // 解析Steam ID或好友码
-    const steamId = Steam.parseSteamId(input)
+    // 解析Steam ID / 好友码 / 个人资料链接 / vanity
+    const steamId = await Steam.resolveSteamId(input)
     if (!steamId) {
-      return this.reply('参数格式不正确，请输入有效的Steam ID（17位数字）或好友码（数字）')
+      return this.reply('参数格式不正确，请输入有效的Steam ID（17位数字）、好友码、个人资料链接或自定义ID')
     }
 
     await this.reply('正在获取用户信息...')
@@ -431,6 +721,10 @@ export class steam extends plugin {
       // 绑定用户（带参数绑定时不改变当前选择）
       const result = SteamUser.bindUser(userId, steamId, userInfo.personaname, userInfo.avatarfull, true)
       if (result.success) {
+        // 群聊中绑定时登记推送群，游玩推送默认开启即可直接生效
+        if (e.isGroup && e.group_id) {
+          SteamPush.addPushGroup(userId, steamId, e.group_id)
+        }
         // 生成绑定状态图片
         return await this.showBindStatus(e, result.bindingIndex)
       } else {
@@ -630,6 +924,11 @@ export class steam extends plugin {
       // 更新绑定中的lastGameCheck
       const result = SteamUser.updateBindingGameCheck(userId, targetBinding.steamId, enabled)
       if (result) {
+        // 同步推送模型：群聊中开启时登记推送群
+        SteamPush.setUserPush(userId, targetBinding.steamId, 'play', !!enabled)
+        if (enabled && e.isGroup && e.group_id) {
+          SteamPush.addPushGroup(userId, targetBinding.steamId, e.group_id)
+        }
         const statusText = enabled ? '开启' : '关闭'
         return this.reply(`已${statusText} ${targetBinding.steamName} (${targetBinding.steamId}) 的游玩推送`)
       } else {
@@ -686,6 +985,11 @@ export class steam extends plugin {
       // 更新绑定中的lastOnlineCheck
       const result = SteamUser.updateBindingOnlineCheck(userId, targetBinding.steamId, enabled)
       if (result) {
+        // 同步推送模型：群聊中开启时登记推送群
+        SteamPush.setUserPush(userId, targetBinding.steamId, 'state', !!enabled)
+        if (enabled && e.isGroup && e.group_id) {
+          SteamPush.addPushGroup(userId, targetBinding.steamId, e.group_id)
+        }
         const statusText = enabled ? '开启' : '关闭'
         return this.reply(`已${statusText} ${targetBinding.steamName} (${targetBinding.steamId}) 的在线推送`)
       } else {
@@ -695,6 +999,128 @@ export class steam extends plugin {
       console.error(`[ESO:Steam] 切换在线推送失败: ${error.message}`)
       return this.reply('操作失败，请稍后再试')
     }
+  }
+
+  // ===========================================
+  // Steam成就推送开关
+  // ===========================================
+  async steamToggleAchPush(e) {
+    const userId = e.user_id
+    const match = e.msg.match(/^#?steam(开启|关闭)成就推送\s*(\d*)$/)
+    
+    if (!match) {
+      return this.reply('命令格式: #steam开启成就推送 [序号] 或 #steam关闭成就推送 [序号]')
+    }
+    
+    const action = match[1]
+    const indexInput = match[2] ? match[2].trim() : ''
+    
+    if (!checkRateLimit(userId)) {
+      return this.reply('请求过于频繁，请稍后再试')
+    }
+    
+    try {
+      const bindings = SteamUser.getAllBindings(userId)
+      if (bindings.length === 0) {
+        return this.reply('您还没有绑定任何Steam账户')
+      }
+      
+      let targetIndex = 0
+      if (indexInput) {
+        targetIndex = parseInt(indexInput) - 1
+        if (targetIndex < 0 || targetIndex >= bindings.length) {
+          return this.reply(`无效的序号，请输入1-${bindings.length}之间的数字`)
+        }
+      } else {
+        const currentIndex = bindings.findIndex(binding => binding.isBind)
+        if (currentIndex >= 0) {
+          targetIndex = currentIndex
+        }
+      }
+      
+      const targetBinding = bindings[targetIndex]
+      const enabled = action === '开启' ? 1 : 0
+      
+      const result = SteamUser.updateBindingAchCheck(userId, targetBinding.steamId, enabled)
+      if (result) {
+        SteamPush.setUserPush(userId, targetBinding.steamId, 'achievement', !!enabled)
+        if (enabled && e.isGroup && e.group_id) {
+          SteamPush.addPushGroup(userId, targetBinding.steamId, e.group_id)
+        }
+        const statusText = enabled ? '开启' : '关闭'
+        return this.reply(`已${statusText} ${targetBinding.steamName} (${targetBinding.steamId}) 的成就推送`)
+      } else {
+        return this.reply('操作失败，请稍后再试')
+      }
+    } catch (error) {
+      console.error(`[ESO:Steam] 切换成就推送失败: ${error.message}`)
+      return this.reply('操作失败，请稍后再试')
+    }
+  }
+
+  // ===========================================
+  // Steam推送白名单（仅主人）
+  // ===========================================
+  async steamWhitelistShow(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+    const games = SteamWhitelist.list()
+    const status = SteamWhitelist.isEnabled() ? '已启用' : '未启用'
+    if (!games.length) {
+      return this.reply(`Steam推送白名单：${status}\n名单为空（启用后也只推送名单内游戏）\n\n使用 #steam添加推送白名单 <游戏ID> 添加`)
+    }
+    return this.reply([
+      `Steam推送白名单：${status}`,
+      `共 ${games.length} 个游戏：`,
+      games.join(', '),
+      '',
+      '启用后仅推送名单内游戏的开始/结束/切换/成就动态'
+    ].join('\n'))
+  }
+
+  async steamWhitelistToggle(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+    const match = e.msg.match(/^#?steam(开启|关闭)推送白名单$/)
+    const enabled = match[1] === '开启'
+    SteamWhitelist.setEnabled(enabled)
+    const count = SteamWhitelist.list().length
+    if (enabled) {
+      return this.reply(`已开启推送白名单（当前 ${count} 个游戏）\n仅推送白名单内游戏的动态`)
+    }
+    return this.reply('已关闭推送白名单，恢复推送所有游戏的动态')
+  }
+
+  async steamWhitelistAdd(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+    const match = e.msg.match(/^#?steam添加推送白名单\s*(\d+)$/)
+    if (!match) {
+      return this.reply('命令格式: #steam添加推送白名单 <游戏ID>\n例如: #steam添加推送白名单 306130（上古卷轴OL）')
+    }
+    const gameid = match[1]
+    if (SteamWhitelist.add(gameid)) {
+      return this.reply(`已添加游戏 ${gameid} 到推送白名单（当前共 ${SteamWhitelist.list().length} 个）`)
+    }
+    return this.reply(`游戏 ${gameid} 已在白名单中`)
+  }
+
+  async steamWhitelistRemove(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+    const match = e.msg.match(/^#?steam删除推送白名单\s*(\d+)$/)
+    if (!match) {
+      return this.reply('命令格式: #steam删除推送白名单 <游戏ID>')
+    }
+    const gameid = match[1]
+    if (SteamWhitelist.remove(gameid)) {
+      return this.reply(`已从推送白名单移除游戏 ${gameid}（当前共 ${SteamWhitelist.list().length} 个）`)
+    }
+    return this.reply(`游戏 ${gameid} 不在白名单中`)
   }
 
   // ===========================================
@@ -1060,9 +1486,9 @@ export class steam extends plugin {
       userId = String(personID);
     }
 
-    const match = e.msg.match(/^#?steam成就\s*(\d+)\s*(.+)$/)
-    const gameId = match[1]
-    const input = match[2] ? match[2].trim() : ''
+    const match = e.msg.match(/^#?steam成就\s*(\d+)(?:\s+(.+))?$/)
+    const gameId = match ? match[1] : ''
+    const input = match && match[2] ? match[2].trim() : ''
     const steamId = input ? Steam.parseSteamId(input) : SteamUser.getUserSteamId(userId)
     
     // 检查限流
@@ -1071,8 +1497,7 @@ export class steam extends plugin {
     }
     
     // 检查是否提供了游戏ID
-    if (!gameId || gameId.trim() === '') {
-      const helpText = [
+    if (!gameId || gameId.trim() === '') {      const helpText = [
         'Steam成就查询使用说明',
         '',
         '命令格式: #steam成就 <游戏ID> [SteamID或好友码]',
@@ -1098,7 +1523,70 @@ export class steam extends plugin {
       return this.reply(helpText)
     }
     
-    return this.reply('Steam成就查询功能开发中...')
+    if (!steamId) {
+      if (isOther) {
+        return this.reply('该群友尚未绑定Steam账号或指定Steam ID')
+      }
+      return this.reply('请先绑定Steam账号或指定Steam ID')
+    }
+
+    await this.reply('正在获取成就数据...')
+
+    try {
+      const stats = await Steam.getPlayerAchievements(steamId, gameId)
+      if (!stats || !stats.achievements || !stats.achievements.length) {
+        return this.reply('无法获取成就数据，可能是该游戏没有成就、用户未玩过此游戏或资料为私密')
+      }
+
+      const schema = await SteamAchievements.getSchema(gameId)
+      const percents = await SteamAchievements.getPercents(gameId)
+
+      const list = stats.achievements.map(a => {
+        const meta = schema.get(a.apiname) || {}
+        const pct = percents.get(a.apiname)
+        return {
+          name: meta.displayName || a.apiname,
+          description: meta.description || '',
+          icon: meta.icon || '',
+          unlocked: a.achieved === 1,
+          unlocktime: a.unlocktime || 0,
+          unlockTimeText: a.achieved === 1 && a.unlocktime
+            ? new Date(a.unlocktime * 1000).toLocaleDateString('zh-CN')
+            : '',
+          globalPercent: typeof pct === 'number' ? `${pct}` : ''
+        }
+      })
+      // 已解锁在前，按解锁时间倒序
+      list.sort((x, y) => (y.unlocked - x.unlocked) || (y.unlocktime - x.unlocktime))
+
+      const unlockedCount = list.filter(i => i.unlocked).length
+      const userInfo = await Steam.getUserInfo(steamId)
+      const userName = userInfo?.personaname || `用户${steamId}`
+      const gameName = stats.gameName || `App ${gameId}`
+
+      const img = await puppeteer.screenshot('eso', {
+        userName,
+        gameName,
+        playtime: '',
+        totalCount: list.length,
+        unlockedCount,
+        progressPercent: list.length ? Math.round(unlockedCount / list.length * 100) : 0,
+        achievements: list.slice(0, 20),
+        date: new Date().toLocaleDateString('zh-CN'),
+        pluResPath: `${process.cwd().replace(/\\/g, '/')}/plugins/eso/resources/`,
+        tplFile: './plugins/eso/resources/html/steam/achievements.html'
+      })
+
+      if (img) return this.reply(img)
+      return this.reply([
+        `${userName} 的《${gameName}》成就`,
+        `进度: ${unlockedCount}/${list.length}`,
+        ...list.slice(0, 10).map(i => `${i.unlocked ? '✅' : '⬜'} ${i.name}`)
+      ].join('\n'))
+    } catch (error) {
+      console.error(`[ESO:Steam] 成就查询失败: ${error.message}`)
+      return this.reply('成就查询失败，请稍后再试')
+    }
   }
 
   // ===========================================
@@ -1133,7 +1621,66 @@ export class steam extends plugin {
       }
     }
     
-    return this.reply('Steam库存查询功能开发中...')
+    await this.reply('正在获取库存...')
+
+    try {
+      // Steam 社区库存（appid 753 = 社区物品：集换卡/背景/表情等）
+      const url = `https://steamcommunity.com/inventory/${steamId}/753/6?l=schinese&count=50`
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json'
+        },
+        timeout: 20000
+      })
+      if (!res || !res.ok) {
+        return this.reply('无法获取库存，该用户的库存可能为私密')
+      }
+      const data = await res.json()
+      if (!data || !data.assets || !data.assets.length) {
+        return this.reply('库存为空或为私密')
+      }
+
+      const descMap = new Map()
+      for (const d of data.descriptions || []) {
+        descMap.set(`${d.classid}_${d.instanceid || 0}`, d)
+      }
+
+      const items = []
+      for (const asset of data.assets.slice(0, 24)) {
+        const d = descMap.get(`${asset.classid}_${asset.instanceid || 0}`)
+        if (!d) continue
+        const rarityTag = (d.tags || []).find(t => t.category === 'Rarity')
+        items.push({
+          name: d.market_name || d.name || '未知物品',
+          description: d.type || '',
+          icon: d.icon_url ? `https://community.akamai.steamstatic.com/economy/image/${d.icon_url}` : '',
+          rarity: rarityTag ? rarityTag.localized_tag_name : '',
+          rarityClass: rarityTag ? `rarity_${(rarityTag.internal_name || '').toLowerCase()}` : '',
+          type: d.type || '',
+          marketable: d.marketable === 1,
+          tradable: d.tradable === 1
+        })
+      }
+
+      const userInfo = await Steam.getUserInfo(steamId)
+      const img = await puppeteer.screenshot('eso', {
+        userName: userInfo?.personaname || `用户${steamId}`,
+        totalItems: data.total_inventory_count || data.assets.length,
+        marketableCount: items.filter(i => i.marketable).length,
+        tradableCount: items.filter(i => i.tradable).length,
+        items,
+        date: new Date().toLocaleDateString('zh-CN'),
+        pluResPath: `${process.cwd().replace(/\\/g, '/')}/plugins/eso/resources/`,
+        tplFile: './plugins/eso/resources/html/steam/inventory.html'
+      })
+
+      if (img) return this.reply(img)
+      return this.reply(`库存共 ${data.assets.length} 件物品（图片生成失败）`)
+    } catch (error) {
+      console.error(`[ESO:Steam] 库存查询失败: ${error.message}`)
+      return this.reply('库存查询失败，请稍后再试')
+    }
   }
 
   // ===========================================
@@ -1168,7 +1715,68 @@ export class steam extends plugin {
       }
     }
     
-    return this.reply('Steam愿望单查询功能开发中...')
+    await this.reply('正在获取愿望单...')
+
+    try {
+      const headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+      }
+
+      // 分页拉取愿望单
+      const all = {}
+      for (let p = 0; p < 3; p++) {
+        const res = await fetch(`https://store.steampowered.com/wishlist/profiles/${steamId}/wishlistdata/?p=${p}`, { headers, timeout: 20000 })
+        if (!res || !res.ok) break
+        const data = await res.json()
+        if (!data || data.success === 2) break
+        const keys = Object.keys(data)
+        if (!keys.length) break
+        for (const k of keys) all[k] = data[k]
+        if (keys.length < 10) break
+      }
+
+      const appids = Object.keys(all)
+      if (!appids.length) {
+        return this.reply('愿望单为空或为私密')
+      }
+
+      const items = appids.slice(0, 24).map(appid => {
+        const w = all[appid]
+        const sub = (w.subs || [])[0] || {}
+        const discount = sub.discount_pct || ''
+        const price = sub.price ? `¥ ${(Number(sub.price) / 100).toFixed(2)}` : ''
+        return {
+          name: w.name || `App ${appid}`,
+          headerImage: Steam.getHeaderImgUrlByAppid(appid),
+          discount,
+          price,
+          originalPrice: '',
+          releaseDate: '',
+          addedDate: w.added ? new Date(w.added * 1000).toLocaleDateString('zh-CN') : '',
+          tags: [],
+          description: ''
+        }
+      })
+
+      const userInfo = await Steam.getUserInfo(steamId)
+      const img = await puppeteer.screenshot('eso', {
+        userName: userInfo?.personaname || `用户${steamId}`,
+        totalItems: appids.length,
+        discountedCount: items.filter(i => i.discount).length,
+        freeCount: items.filter(i => !i.price).length,
+        items,
+        date: new Date().toLocaleDateString('zh-CN'),
+        pluResPath: `${process.cwd().replace(/\\/g, '/')}/plugins/eso/resources/`,
+        tplFile: './plugins/eso/resources/html/steam/wishlist.html'
+      })
+
+      if (img) return this.reply(img)
+      return this.reply(`愿望单共 ${appids.length} 个游戏（图片生成失败）`)
+    } catch (error) {
+      console.error(`[ESO:Steam] 愿望单查询失败: ${error.message}`)
+      return this.reply('愿望单查询失败，请稍后再试')
+    }
   }
 
   // ===========================================
