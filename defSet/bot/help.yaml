@@ -171,6 +171,14 @@
       title: "#黄金商人"
       desc: "查询黄金商人的商品"
       item_class: item_split2
+    - icon: ..\icon\gold
+      title: "#泰尔瓦石商人"
+      desc: "查询泰尔瓦石商人的商品"
+      item_class: item_split2
+    - icon: ..\icon\guide
+      title: "#无限档案塔"
+      desc: "查询无限档案塔商人的商品"
+      item_class: item_split2
     - icon: ..\icon\alchemy
       title: "#大力丸配方"
       desc: "查询大力丸制作配方"

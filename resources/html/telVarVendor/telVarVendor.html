@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/telVarVendor/telVarVendor.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+<body>
+  <div class="container" id="container">
+    <div class="header">
+      <h1 class="title">泰尔瓦石商人</h1>
+      <div class="update-time">数据周期：{{period}} · 更新：{{updateTime}}</div>
+    </div>
+
+    <div class="item-list">
+      {{each items item}}
+      <div class="goods-item" style="border-left-color: {{item.color}};">
+        <img class="goods-icon" src="{{item.icon}}" alt="" onerror="this.style.visibility='hidden'" />
+        <div class="goods-info">
+          <div class="goods-name-cn">{{item.name}}</div>
+          <div class="goods-name-en">{{item.name_en}}</div>
+        </div>
+        <div class="goods-price">{{item.value}}<span class="currency">泰尔瓦石</span></div>
+      </div>
+      {{/each}}
+    </div>
+
+    <div class="footer">ESO-Bot · 数据来源 api.esocn.com.cn</div>
+  </div>
+</body>
+</html>
