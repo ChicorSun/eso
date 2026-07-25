@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/gamePush.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+<body>
+  <div class="push-row">
+    <!-- 正方形头像（与封面同高，底部叠加群昵称） -->
+    <div class="avatar-box">
+      {{if avatarImagePath}}
+      <img class="avatar" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/avatar/{{avatarImagePath}}" alt="" onerror="this.style.display='none'" />
+      {{/if}}
+      <div class="nickname">{{nickname}}</div>
+    </div>
+
+    <!-- 插头（插脚朝右对封面），状态图标与针脚重合：开始/切换 ⚡，结束 ❌ -->
+    <div class="plug-box">
+      <svg width="34" height="34" viewBox="0 0 34 34">
+        <rect x="3" y="10" width="14" height="14" rx="3" fill="#d4b98c"/>
+        <rect x="17" y="13" width="12" height="3" rx="1.5" fill="#d4b98c"/>
+        <rect x="17" y="18" width="12" height="3" rx="1.5" fill="#d4b98c"/>
+      </svg>
+      <div class="status-icon">
+        {{if kind == 'stop'}}
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <line x1="5" y1="5" x2="19" y2="19" stroke="#e05252" stroke-width="4" stroke-linecap="round"/>
+          <line x1="19" y1="5" x2="5" y2="19" stroke="#e05252" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        {{else}}
+        <svg width="22" height="22" viewBox="0 0 24 24">
+          <polygon points="13,1 4,14 11,14 9,23 20,9 13,9" fill="#f5c542" stroke="#111" stroke-width="1"/>
+        </svg>
+        {{/if}}
+      </div>
+    </div>
+
+    <!-- 游戏封面（与头像同高，底部显示游戏名） -->
+    <div class="cover-box">
+      {{if gameImagePath}}
+      <img class="cover" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/games/{{gameImagePath}}" alt="" onerror="this.style.display='none'" />
+      {{/if}}
+      <div class="game-name">{{game}}</div>
+    </div>
+  </div>
+</body>
+</html>

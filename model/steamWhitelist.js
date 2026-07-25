@@ -18,13 +18,14 @@ class SteamWhitelist {
         const data = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'))
         return {
           enabled: !!data.enabled,
-          games: Array.isArray(data.games) ? data.games.map(String) : []
+          games: Array.isArray(data.games) ? data.games.map(String) : [],
+          names: data.names && typeof data.names === 'object' ? data.names : {}
         }
       }
     } catch (err) {
       logger.error(`[ESO:Steam白名单] 加载失败: ${err.message}`)
     }
-    return { enabled: false, games: [] }
+    return { enabled: false, games: [], names: {} }
   }
 
   save () {
@@ -60,11 +61,24 @@ class SteamWhitelist {
     return false
   }
 
+  /** 缓存/更新游戏名 */
+  setName (gameid, name) {
+    if (!name) return
+    this.data.names[String(gameid)] = String(name)
+    this.save()
+  }
+
+  /** 获取缓存的游戏名 */
+  getName (gameid) {
+    return this.data.names[String(gameid)] || ''
+  }
+
   remove (gameid) {
     const id = String(gameid)
     const idx = this.data.games.indexOf(id)
     if (idx > -1) {
       this.data.games.splice(idx, 1)
+      delete this.data.names[id]
       this.save()
       return true
     }

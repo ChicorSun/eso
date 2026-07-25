@@ -395,6 +395,33 @@ class SteamModel {
     }
   }
 
+  // 获取游戏名（GetAppDetails 优先，商店接口兜底）
+  async getGameName(appId) {
+    try {
+      const info = await this.getGameInfo(appId)
+      if (info && info.name) return info.name
+    } catch (_) { /* 继续兜底 */ }
+
+    try {
+      const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}&l=schinese&filters=name`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json'
+        },
+        timeout: 15000
+      })
+      if (res && res.ok) {
+        const data = await res.json()
+        if (data && data[appId] && data[appId].success && data[appId].data && data[appId].data.name) {
+          return data[appId].data.name
+        }
+      }
+    } catch (error) {
+      console.error(`[ESO:Steam] 商店接口获取游戏名失败: ${error.message}`)
+    }
+    return null
+  }
+
   // 获取当前折扣
   async getCurrentDiscounts() {
     try {

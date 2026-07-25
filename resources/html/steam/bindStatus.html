@@ -55,6 +55,12 @@
                             {{$value.statePush ? '✓' : '✗'}}
                         </span>
                     </div>
+                    <div class="push-item">
+                        <span class="push-label">成就推送:</span>
+                        <span class="push-status {{$value.achPush ? 'enabled' : 'disabled'}}">
+                            {{$value.achPush ? '✓' : '✗'}}
+                        </span>
+                    </div>
                     {{else}}
                     <div class="empty-push">-</div>
                     {{/if}}

@@ -6,9 +6,80 @@ class SteamPushModel {
   constructor() {
     this.pushPath = './data/eso/custome_resources/steam/data/steam_push.json'
     this.onlineStatusPath = './data/eso/custome_resources/steam/data/steam_online_status.json'
+    this.targetsPath = './data/eso/custome_resources/steam/data/steam_push_targets.json'
     this.pushSettings = this.loadPushSettings()
     this.onlineStatus = this.loadOnlineStatus()
+    this.targetGroups = this.loadTargetGroups()
     this.monitoring = false
+  }
+
+  // 加载全局推送目标群列表
+  loadTargetGroups() {
+    try {
+      if (fs.existsSync(this.targetsPath)) {
+        const data = JSON.parse(fs.readFileSync(this.targetsPath, 'utf8'))
+        return Array.isArray(data.groups) ? data.groups.map(String) : []
+      }
+      return []
+    } catch (error) {
+      console.error(`[ESO:Steam] 加载推送目标失败: ${error.message}`)
+      return []
+    }
+  }
+
+  // 保存全局推送目标群列表
+  saveTargetGroups() {
+    try {
+      const dataDir = path.dirname(this.targetsPath)
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true })
+      }
+      fs.writeFileSync(this.targetsPath, JSON.stringify({ groups: this.targetGroups }, null, 2))
+    } catch (error) {
+      console.error(`[ESO:Steam] 保存推送目标失败: ${error.message}`)
+    }
+  }
+
+  // 获取全局推送目标群列表
+  getTargetGroups() {
+    return [...this.targetGroups]
+  }
+
+  // 新增推送目标群（最多 8 个）
+  addTargetGroup(groupId) {
+    const gid = String(groupId)
+    if (this.targetGroups.includes(gid)) {
+      return { success: false, reason: 'exists' }
+    }
+    if (this.targetGroups.length >= 8) {
+      return { success: false, reason: 'full' }
+    }
+    this.targetGroups.push(gid)
+    this.saveTargetGroups()
+    return { success: true }
+  }
+
+  // 按群号删除推送目标
+  removeTargetGroup(groupId) {
+    const gid = String(groupId)
+    const idx = this.targetGroups.indexOf(gid)
+    if (idx > -1) {
+      this.targetGroups.splice(idx, 1)
+      this.saveTargetGroups()
+      return true
+    }
+    return false
+  }
+
+  // 按序号删除推送目标（1 基）
+  removeTargetGroupByIndex(index) {
+    const idx = index - 1
+    if (idx >= 0 && idx < this.targetGroups.length) {
+      const removed = this.targetGroups.splice(idx, 1)[0]
+      this.saveTargetGroups()
+      return removed
+    }
+    return null
   }
 
   // 加载推送设置

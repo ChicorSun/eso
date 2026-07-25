@@ -200,6 +200,7 @@ class SteamMonitor {
       if (b.onlinePush) {
         const stateText = PERSONA_STATE_TEXT[newState] || '在线'
         events.push(mkEvent('online', {
+          state: newState,
           stateText,
           text: `🟢 Steam动态\n${name} 上线了（${stateText}）`
         }))
@@ -270,6 +271,7 @@ class SteamMonitor {
       }
       events.push(mkEvent('stop', {
         game: p.stop.game,
+        gameid: p.stop.gameid,
         durationMin,
         startTime: p.stop.startTime,
         endTime: Date.now(),
@@ -316,6 +318,18 @@ class SteamMonitor {
       }
     }
 
+    // 推送目标群列表启用时：只推送给「目标群 ∩ 该用户已登记群」的群，交集为空则不推送
+    const targets = SteamPush.getTargetGroups()
+    if (targets.length) {
+      const userGroups = SteamPush.getUserPushGroups(ev.userId, ev.steamId)
+      const hit = targets.filter(g => userGroups.includes(g))
+      for (const gid of hit) {
+        await this.sendToGroup(gid, msg)
+      }
+      return
+    }
+
+    // 目标列表为空：维持原有行为（用户登记的群 → 无群记录时私聊本人）
     const groups = SteamPush.getUserPushGroups(ev.userId, ev.steamId)
     if (groups.length) {
       for (const gid of groups) {

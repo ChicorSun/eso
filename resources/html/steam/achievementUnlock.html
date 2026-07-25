@@ -6,27 +6,39 @@
   <link rel="shortcut icon" href="#" />
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <span class="badge">Steam 成就</span>
-      <span class="time">{{updateTime}}</span>
-    </div>
+  <div class="card">
+    <!-- 用户 + 游戏 行 -->
+    <div class="push-row">
+      <div class="avatar-box">
+        {{if avatarImagePath}}
+        <img class="avatar" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/avatar/{{avatarImagePath}}" alt="" onerror="this.style.display='none'" />
+        {{/if}}
+        <div class="nickname">{{nickname}}</div>
+      </div>
 
-    <div class="player-row">
-      {{if avatarImagePath}}
-      <img class="avatar" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/avatar/{{avatarImagePath}}" alt="" onerror="this.style.visibility='hidden'" />
-      {{/if}}
-      <div class="player-info">
-        <div class="player-name">{{name}}</div>
-        <div class="action-text">在《{{game}}》中解锁了成就</div>
+      <div class="plug-box">
+        <svg width="34" height="34" viewBox="0 0 34 34">
+          <rect x="3" y="10" width="14" height="14" rx="3" fill="#d4b98c"/>
+          <rect x="17" y="13" width="12" height="3" rx="1.5" fill="#d4b98c"/>
+          <rect x="17" y="18" width="12" height="3" rx="1.5" fill="#d4b98c"/>
+        </svg>
+      </div>
+
+      <div class="cover-box">
+        {{if gameImagePath}}
+        <img class="cover" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/games/{{gameImagePath}}" alt="" onerror="this.style.display='none'" />
+        {{/if}}
+        <div class="game-name">{{game}}</div>
       </div>
     </div>
 
+    <!-- 成就行 -->
     <div class="ach-list">
       {{each achievements ach}}
-      <div class="ach-item{{if ach.rare}} rare{{/if}}">
+      <div class="ach-row{{if ach.rare}} rare{{/if}}">
+        <span class="star">★</span>
         {{if ach.iconPath}}
-        <img class="ach-icon" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/achievements/{{ach.iconPath}}" alt="" onerror="this.style.visibility='hidden'" />
+        <img class="ach-icon" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/achievements/{{ach.iconPath}}" alt="" onerror="this.style.display='none'" />
         {{/if}}
         <div class="ach-info">
           <div class="ach-name">{{ach.name}}</div>
@@ -35,17 +47,14 @@
           {{/if}}
         </div>
         {{if ach.percentText}}
-        <div class="ach-percent{{if ach.rare}} rare{{/if}}">{{ach.percentText}}</div>
+        <span class="ach-percent{{if ach.rare}} rare{{/if}}">{{ach.percentText}}</span>
         {{/if}}
       </div>
       {{/each}}
+      {{if extraCount > 0}}
+      <div class="extra">另有 {{extraCount}} 个新解锁成就未展示</div>
+      {{/if}}
     </div>
-
-    {{if extraCount > 0}}
-    <div class="extra">另有 {{extraCount}} 个新解锁成就未展示</div>
-    {{/if}}
-
-    <div class="footer">ESO-Bot · Steam 成就监控</div>
   </div>
 </body>
 </html>

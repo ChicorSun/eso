@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{pluResPath}}html/steam/onlinePush.css" />
+  <link rel="shortcut icon" href="#" />
+</head>
+<body>
+  <div class="push-row">
+    <!-- 正方形头像 -->
+    <div class="avatar-box">
+      {{if avatarImagePath}}
+      <img class="avatar" src="{{pluResPath}}../../../data/eso/custome_resources/steam/images/avatar/{{avatarImagePath}}" alt="" onerror="this.style.display='none'" />
+      {{/if}}
+    </div>
+
+    <!-- 右侧两行：名字 + 状态 -->
+    <div class="info-box">
+      <div class="name-line">{{nickname}}</div>
+      {{if kind == 'offline'}}
+      <div class="status-line">
+        <span class="dot red"></span>
+        <span class="status-text red">已离线</span>
+      </div>
+      {{else if state == 1 || !state}}
+      <div class="status-line">
+        <span class="dot green"></span>
+        <span class="status-text green">已上线</span>
+      </div>
+      {{else}}
+      <div class="status-line">
+        <span class="dot yellow"></span>
+        <span class="status-text yellow">{{stateText || '已上线'}}</span>
+      </div>
+      {{/if}}
+    </div>
+  </div>
+</body>
+</html>

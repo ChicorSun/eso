@@ -784,6 +784,67 @@ class SteamUserModel {
     }
   }
 
+  // 更新绑定信息的群昵称（用于推送卡片显示）
+  updateBindingNickname(qqId, steamId, nickname) {
+    try {
+      if (!nickname) return false
+      const userId = qqId.toString()
+      if (!this.users[userId] || !this.users[userId].bindings) {
+        return false
+      }
+      const binding = this.users[userId].bindings.find(b => b.steamId === steamId)
+      if (binding) {
+        binding.nickname = String(nickname)
+        this.saveUsers()
+        return true
+      }
+      return false
+    } catch (error) {
+      return false
+    }
+  }
+
+  // 按 SteamID 查找绑定（返回用户ID与绑定对象）
+  getBindingBySteamId(steamId) {
+    const sid = String(steamId)
+    for (const [userId, userData] of Object.entries(this.users)) {
+      const bindings = userData.bindings || (userData.steamId ? [userData] : [])
+      for (const binding of bindings) {
+        if (String(binding.steamId) === sid) {
+          return { userId, binding }
+        }
+      }
+    }
+    return null
+  }
+
+  // 批量设置所有用户绑定的推送开关（全体操作）
+  // type: 'lastGameCheck' | 'lastOnlineCheck' | 'lastAchCheck'
+  batchSetAllPush(type, enabled) {
+    try {
+      const allowed = ['lastGameCheck', 'lastOnlineCheck', 'lastAchCheck']
+      if (!allowed.includes(type)) return 0
+      
+      let count = 0
+      const now = moment().format('YYYY-MM-DD HH:mm:ss')
+      for (const userData of Object.values(this.users)) {
+        const bindings = userData.bindings || (userData.steamId ? [userData] : [])
+        for (const binding of bindings) {
+          binding[type] = enabled
+          binding.lastUpdate = now
+          count++
+        }
+      }
+      if (count > 0) {
+        this.saveUsers()
+      }
+      return count
+    } catch (error) {
+      console.error(`[ESO:Steam] 批量设置推送失败: ${error.message}`)
+      return 0
+    }
+  }
+
   // 批量更新用户信息
   batchUpdateUserInfo(updates) {
     try {

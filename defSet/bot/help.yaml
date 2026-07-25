@@ -259,6 +259,10 @@
       desc: "主人管理全局游戏推送白名单"
       item_class: item_split2
     - icon: ..\icon\ttc
+      title: "#steam全体开启/关闭游玩推送"
+      desc: "主人批量修改所有用户推送开关"
+      item_class: item_split2
+    - icon: ..\icon\ttc
       title: "#steam开启在线推送"
       desc: "开启上线/下线动态推送"
       item_class: item_split2

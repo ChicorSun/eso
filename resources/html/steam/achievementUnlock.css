@@ -8,94 +8,151 @@
 body {
   font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
   font-size: 14px;
-  width: 520px;
+  width: 480px;
   color: #e0e0e0;
-  background: #000;
+  background: transparent;
   transform: scale(1.5);
   transform-origin: 0 0;
 }
 
-.container {
-  width: 520px;
-  padding: 24px 20px 20px;
-  background: #000;
+.card {
+  width: 480px;
+  padding: 12px 16px;
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 14px;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #2a2a2a;
-}
-
-.header .badge {
-  font-size: 17px;
-  font-weight: 600;
-  color: #d4b98c;
-  letter-spacing: 1px;
-}
-
-.header .time {
-  font-size: 12px;
-  color: #777;
-}
-
-.player-row {
+.push-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  height: 104px;
+}
+
+.avatar-box {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a1a;
 }
 
 .avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2px solid #d4b98c;
+  width: 100px;
+  height: 100px;
+  display: block;
+  object-fit: cover;
+}
+
+.nickname {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 4px 3px;
+  font-size: 11px;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar-box:not(:has(.avatar)) .nickname,
+.avatar-box .nickname:first-child {
+  position: static;
+  padding: 0 4px;
+  line-height: 100px;
+  background: none;
+  color: #999;
+}
+
+.plug-box {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.cover-box {
+  position: relative;
+  height: 100px;
+  flex: 1;
+  min-width: 0;
+  border-radius: 8px;
+  overflow: hidden;
   background: #1a1a1a;
+}
+
+.cover {
+  width: 100%;
+  height: 100px;
+  display: block;
+  object-fit: cover;
+}
+
+.game-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 8px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cover-box:not(:has(.cover)) .game-name,
+.cover-box .game-name:first-child {
+  position: static;
+  padding: 0 8px;
+  line-height: 100px;
+  background: none;
+  color: #d4b98c;
+  text-align: center;
+}
+
+/* 成就列表 */
+.ach-list {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #222;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ach-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.ach-row.rare {
+  background: rgba(212, 185, 140, 0.08);
+  border: 1px solid rgba(212, 185, 140, 0.4);
+}
+
+.star {
+  color: #d4b98c;
+  font-size: 16px;
   flex-shrink: 0;
 }
 
-.player-name {
-  font-size: 17px;
-  font-weight: 600;
-  color: #e8e8e8;
-  line-height: 1.3;
-}
-
-.action-text {
-  font-size: 13px;
-  color: #999;
-  margin-top: 2px;
-}
-
-.ach-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ach-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: #111;
-  border: 1px solid #222;
-  border-radius: 10px;
-}
-
-.ach-item.rare {
-  border-color: #d4b98c;
-  box-shadow: 0 0 8px rgba(212, 185, 140, 0.35);
-}
-
 .ach-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 6px;
+  width: 34px;
+  height: 34px;
+  border-radius: 5px;
   background: #1a1a1a;
   flex-shrink: 0;
 }
@@ -106,16 +163,18 @@ body {
 }
 
 .ach-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #e8e8e8;
   line-height: 1.3;
 }
 
 .ach-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: #888;
-  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ach-percent {
@@ -130,17 +189,7 @@ body {
 }
 
 .extra {
-  margin-top: 10px;
-  font-size: 12px;
+  text-align: center;
+  font-size: 11px;
   color: #777;
-  text-align: center;
-}
-
-.footer {
-  margin-top: 20px;
-  padding-top: 14px;
-  width: 100%;
-  text-align: center;
-  font-size: 12px;
-  color: #555;
 }

@@ -221,8 +221,32 @@ export class steam extends plugin {
           fnc: 'steamToggleAchPush'
         },
         {
+          reg: '^#?steam全体(开启|关闭)游玩推送$',
+          fnc: 'steamBulkTogglePlayPush'
+        },
+        {
+          reg: '^#?steam全体(开启|关闭)在线推送$',
+          fnc: 'steamBulkToggleOnlinePush'
+        },
+        {
           reg: '^#?steam推送白名单$',
           fnc: 'steamWhitelistShow'
+        },
+        {
+          reg: '^#?steam推送目标列表$',
+          fnc: 'steamPushTargetList'
+        },
+        {
+          reg: '^#?steam新增推送目标\\s*(\\d+)$',
+          fnc: 'steamPushTargetAdd'
+        },
+        {
+          reg: '^#?steam删除推送目标\\s*(\\d+)$',
+          fnc: 'steamPushTargetRemove'
+        },
+        {
+          reg: '^#?steam推送测试$',
+          fnc: 'steamPushTest'
         },
         {
           reg: '^#?steam(开启|关闭)推送白名单$',
@@ -330,18 +354,36 @@ export class steam extends plugin {
   // Steam监控播报图渲染（开始/结束游戏）
   // ===========================================
   async renderSteamEvent (ev) {
-    const tplMap = { start: 'gameStart', switch: 'gameStart', stop: 'gameEnd', achievement: 'achievementUnlock' }
+    const tplMap = {
+      start: 'gamePush',
+      switch: 'gamePush',
+      stop: 'gamePush',
+      online: 'onlinePush',
+      offline: 'onlinePush',
+      achievement: 'achievementUnlock'
+    }
     const tpl = tplMap[ev.kind]
     if (!tpl) return null
 
     const _path = process.cwd().replace(/\\/g, '/')
 
+    // 群昵称（绑定/开关时记录），回退到 Steam 名
+    const found = SteamUser.getBindingBySteamId(ev.steamId)
+    const nickname = found?.binding?.nickname || ev.name || ''
+
+    // 头像：QQ 用户用 QQ 头像，其他（如微信）回退 Steam 头像
     let avatarImagePath = ''
-    if (ev.avatar) {
+    if (/^\d{5,}$/.test(String(ev.userId))) {
+      const qqAvatarUrl = `https://q1.qlogo.cn/g?b=qq&nk=${ev.userId}&s=100`
+      avatarImagePath = await this.getSteamImagePath(qqAvatarUrl, 'avatar', `qq_${ev.userId}`)
+    }
+    if (!avatarImagePath && ev.avatar) {
       avatarImagePath = await this.getSteamImagePath(ev.avatar, 'avatar', ev.steamId)
     }
+
+    // 游戏封面
     let gameImagePath = ''
-    if (ev.gameid && ev.kind !== 'achievement') {
+    if (ev.gameid) {
       const coverUrl = Steam.getHeaderImgUrlByAppid(ev.gameid)
       gameImagePath = await this.getSteamImagePath(coverUrl, 'games', ev.gameid)
     }
@@ -362,21 +404,12 @@ export class steam extends plugin {
       }
     }
 
-    const fmtTime = ts => ts ? moment(ts).format('MM-DD HH:mm') : ''
-
     const data = {
       ...ev,
+      nickname,
       avatarImagePath: avatarImagePath || '',
       gameImagePath: gameImagePath || '',
       achievements,
-      currentPlayersText: typeof ev.currentPlayers === 'number'
-        ? String(ev.currentPlayers).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-        : '',
-      totalPlaytime: ev.totalPlaytime || '',
-      durationText: ev.durationMin ? Steam.formatPlaytime(ev.durationMin) : '',
-      startTimeText: fmtTime(ev.startTime),
-      endTimeText: fmtTime(ev.endTime),
-      updateTime: moment(Date.now()).format('YYYY-MM-DD HH:mm'),
       pluResPath: `${_path}/plugins/eso/resources/`,
       tplFile: `./plugins/eso/resources/html/steam/${tpl}.html`
     }
@@ -410,7 +443,9 @@ export class steam extends plugin {
     try {
       const agg = SteamPlayRecords.aggregate(1, 1)
       if (!agg.perUser.size) return
-      const groups = SteamPush.getPushGroups()
+      // 推送目标群列表优先，为空时回退到旧的群推送设置
+      const targets = SteamPush.getTargetGroups()
+      const groups = targets.length ? targets : SteamPush.getPushGroups()
       if (!groups.length) return
       const img = await this.renderRankImage(1, 1)
       if (!img) return
@@ -617,6 +652,14 @@ export class steam extends plugin {
    • #steam关闭在线推送 [序号] - 关闭在线状态推送
    • #steam开启成就推送 [序号] - 开启成就解锁推送
    • #steam关闭成就推送 [序号] - 关闭成就解锁推送
+   • #steam全体开启游玩推送 - 全部用户开启游玩推送（仅主人）
+   • #steam全体关闭游玩推送 - 全部用户关闭游玩推送（仅主人）
+   • #steam全体开启在线推送 - 全部用户开启在线推送（仅主人）
+   • #steam全体关闭在线推送 - 全部用户关闭在线推送（仅主人）
+   • #steam推送目标列表 - 查看推送目标群（仅主人）
+   • #steam新增推送目标<群号> - 添加推送目标群（仅主人）
+   • #steam删除推送目标<序号或群号> - 删除推送目标群（仅主人）
+   • #steam推送测试 - 生成各类推送示例图片（仅主人）
 
  游戏相关：
    • #steam游戏 [SteamID] - 查看游戏库
@@ -721,6 +764,8 @@ export class steam extends plugin {
       // 绑定用户（带参数绑定时不改变当前选择）
       const result = SteamUser.bindUser(userId, steamId, userInfo.personaname, userInfo.avatarfull, true)
       if (result.success) {
+        // 记录群昵称（推送卡片显示用）
+        SteamUser.updateBindingNickname(userId, steamId, e.sender?.card || e.sender?.nickname || '')
         // 群聊中绑定时登记推送群，游玩推送默认开启即可直接生效
         if (e.isGroup && e.group_id) {
           SteamPush.addPushGroup(userId, steamId, e.group_id)
@@ -802,6 +847,7 @@ export class steam extends plugin {
           isBind: binding.isBind,
           playPush: binding.lastGameCheck === 1, // 游玩推送状态
           statePush: binding.lastOnlineCheck === 1, // 在线推送状态
+          achPush: binding.lastAchCheck === undefined ? true : binding.lastAchCheck === 1, // 成就推送状态（旧数据默认开启）
           isNewBinding: highlightIndex === i
         })
       }
@@ -924,6 +970,7 @@ export class steam extends plugin {
       // 更新绑定中的lastGameCheck
       const result = SteamUser.updateBindingGameCheck(userId, targetBinding.steamId, enabled)
       if (result) {
+        SteamUser.updateBindingNickname(userId, targetBinding.steamId, e.sender?.card || e.sender?.nickname || '')
         // 同步推送模型：群聊中开启时登记推送群
         SteamPush.setUserPush(userId, targetBinding.steamId, 'play', !!enabled)
         if (enabled && e.isGroup && e.group_id) {
@@ -985,6 +1032,7 @@ export class steam extends plugin {
       // 更新绑定中的lastOnlineCheck
       const result = SteamUser.updateBindingOnlineCheck(userId, targetBinding.steamId, enabled)
       if (result) {
+        SteamUser.updateBindingNickname(userId, targetBinding.steamId, e.sender?.card || e.sender?.nickname || '')
         // 同步推送模型：群聊中开启时登记推送群
         SteamPush.setUserPush(userId, targetBinding.steamId, 'state', !!enabled)
         if (enabled && e.isGroup && e.group_id) {
@@ -1043,6 +1091,7 @@ export class steam extends plugin {
       
       const result = SteamUser.updateBindingAchCheck(userId, targetBinding.steamId, enabled)
       if (result) {
+        SteamUser.updateBindingNickname(userId, targetBinding.steamId, e.sender?.card || e.sender?.nickname || '')
         SteamPush.setUserPush(userId, targetBinding.steamId, 'achievement', !!enabled)
         if (enabled && e.isGroup && e.group_id) {
           SteamPush.addPushGroup(userId, targetBinding.steamId, e.group_id)
@@ -1059,23 +1108,229 @@ export class steam extends plugin {
   }
 
   // ===========================================
+  // Steam全体推送开关（仅主人）
+  // ===========================================
+  async steamBulkTogglePlayPush(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+    const match = e.msg.match(/^#?steam全体(开启|关闭)游玩推送$/)
+    const enabled = match[1] === '开启' ? 1 : 0
+    const count = SteamUser.batchSetAllPush('lastGameCheck', enabled)
+    if (count > 0) {
+      return this.reply(`已将 ${count} 个绑定的游玩推送全部${match[1]}`)
+    }
+    return this.reply('当前没有任何Steam绑定，无需修改')
+  }
+
+  async steamBulkToggleOnlinePush(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+    const match = e.msg.match(/^#?steam全体(开启|关闭)在线推送$/)
+    const enabled = match[1] === '开启' ? 1 : 0
+    const count = SteamUser.batchSetAllPush('lastOnlineCheck', enabled)
+    if (count > 0) {
+      return this.reply(`已将 ${count} 个绑定的在线推送全部${match[1]}`)
+    }
+    return this.reply('当前没有任何Steam绑定，无需修改')
+  }
+
+  // ===========================================
+  // Steam推送目标群（仅主人）
+  // ===========================================
+  async steamPushTargetList(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+    const groups = SteamPush.getTargetGroups()
+    if (!groups.length) {
+      return this.reply([
+        '推送目标群列表为空（当前按各用户登记的群推送，无群记录时私聊本人）',
+        '',
+        '使用 #steam新增推送目标<群号> 添加（最多 8 个）',
+        '添加后：仅向目标群推送，且只推送该群中已登记用户的信息'
+      ].join('\n'))
+    }
+    return this.reply([
+      `推送目标群列表（${groups.length}/8）：`,
+      '',
+      ...groups.map((g, i) => `${i + 1}. ${g}`),
+      '',
+      '推送规则：只推送本群已登记用户的信息；不在列表中的群不推送',
+      '管理命令: #steam新增推送目标<群号> / #steam删除推送目标<序号或群号>'
+    ].join('\n'))
+  }
+
+  async steamPushTargetAdd(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+    const match = e.msg.match(/^#?steam新增推送目标\s*(\d+)$/)
+    if (!match) {
+      return this.reply('命令格式: #steam新增推送目标<群号>\n例如: #steam新增推送目标12345678')
+    }
+    const gid = match[1]
+    const result = SteamPush.addTargetGroup(gid)
+    if (result.success) {
+      return this.reply([
+        `已添加推送目标群 ${gid}（当前 ${SteamPush.getTargetGroups().length}/8 个）`,
+        '提示：群内成员需在群里使用过 #steam绑定 或推送开关命令，才会收到自己的动态'
+      ].join('\n'))
+    }
+    if (result.reason === 'exists') {
+      return this.reply(`群 ${gid} 已在推送目标列表中`)
+    }
+    return this.reply('推送目标群已达上限（8 个），请先使用 #steam删除推送目标 移除后再添加')
+  }
+
+  async steamPushTargetRemove(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+    const match = e.msg.match(/^#?steam删除推送目标\s*(\d+)$/)
+    if (!match) {
+      return this.reply('命令格式: #steam删除推送目标<序号或群号>\n例如: #steam删除推送目标1 或 #steam删除推送目标12345678')
+    }
+    const input = match[1]
+    const groups = SteamPush.getTargetGroups()
+    if (!groups.length) {
+      return this.reply('推送目标群列表为空，无需删除')
+    }
+
+    // 优先按群号精确匹配；否则 1~2 位数字按序号删除
+    if (groups.includes(input)) {
+      SteamPush.removeTargetGroup(input)
+      return this.reply(`已删除推送目标群 ${input}（当前 ${SteamPush.getTargetGroups().length}/8 个）`)
+    }
+    if (/^\d{1,2}$/.test(input)) {
+      const removed = SteamPush.removeTargetGroupByIndex(parseInt(input, 10))
+      if (removed) {
+        return this.reply(`已删除第 ${input} 个推送目标群 ${removed}（当前 ${SteamPush.getTargetGroups().length}/8 个）`)
+      }
+      return this.reply(`无效的序号，请输入1-${groups.length}之间的数字`)
+    }
+    return this.reply(`群 ${input} 不在推送目标列表中`)
+  }
+
+  // ===========================================
+  // Steam推送测试（仅主人）：仅生成示例图片，不影响正常推送流
+  // ===========================================
+  async steamPushTest(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+
+    await this.reply('正在生成推送测试图片（开始/结束/上线/离线/成就），请等待…')
+
+    // 优先使用主人自己的绑定信息（头像/昵称更真实），无绑定则用示例数据
+    const userId = String(e.user_id)
+    const bindings = SteamUser.getAllBindings(userId)
+    const current = bindings.find(b => b.isBind) || bindings[0] || {}
+    const base = {
+      userId,
+      steamId: current.steamId || '76561198000000001',
+      name: current.steamName || '测试玩家',
+      avatar: current.avatarfull || '',
+      game: 'The Elder Scrolls Online',
+      gameid: '306130'
+    }
+
+    const samples = [
+      { ...base, kind: 'start', text: '' },
+      { ...base, kind: 'stop', durationMin: 135, startTime: Date.now() - 135 * 60000, endTime: Date.now(), text: '' },
+      { ...base, kind: 'online', state: 1, stateText: '在线', text: '' },
+      { ...base, kind: 'offline', text: '' },
+      {
+        ...base,
+        kind: 'achievement',
+        extraCount: 0,
+        achievements: [
+          { name: '示例成就：传说之人', desc: '达成隐藏结局', icon: '', percent: 4.2, rare: true },
+          { name: '示例成就：小有成就', desc: '累计游玩 10 小时', icon: '', percent: 32.1, rare: false }
+        ],
+        text: ''
+      }
+    ]
+
+    let successCount = 0
+    for (const ev of samples) {
+      try {
+        const img = await this.renderSteamEvent(ev)
+        if (img) {
+          await this.reply(img)
+          successCount++
+        } else {
+          await this.reply(`[${ev.kind}] 图片生成失败`)
+        }
+      } catch (error) {
+        console.error(`[ESO:Steam] 推送测试渲染失败(${ev.kind}): ${error.message}`)
+        await this.reply(`[${ev.kind}] 图片生成失败: ${error.message}`)
+      }
+    }
+
+    if (successCount > 0) {
+      await this.reply(`推送测试完成（${successCount}/${samples.length}），以上为纯图片预览，未触发任何真实推送`)
+    }
+  }
+
+  // ===========================================
   // Steam推送白名单（仅主人）
   // ===========================================
   async steamWhitelistShow(e) {
     if (!e.isMaster) {
       return this.reply('该功能仅限机器人主人使用')
     }
-    const games = SteamWhitelist.list()
-    const status = SteamWhitelist.isEnabled() ? '已启用' : '未启用'
-    if (!games.length) {
-      return this.reply(`Steam推送白名单：${status}\n名单为空（启用后也只推送名单内游戏）\n\n使用 #steam添加推送白名单 <游戏ID> 添加`)
+
+    const gameids = SteamWhitelist.list()
+    const statusText = SteamWhitelist.isEnabled() ? '启用中（仅推送名单内游戏）' : '未启用（推送全部游戏）'
+
+    if (!gameids.length) {
+      return this.reply(`Steam推送白名单：${statusText}\n名单为空\n\n使用 #steam添加推送白名单 <游戏ID> 添加`)
     }
+
+    await this.reply('正在获取白名单游戏信息...')
+
+    // 获取每个游戏的名称（缓存优先）与封面
+    const games = []
+    for (const appid of gameids) {
+      let name = SteamWhitelist.getName(appid)
+      if (!name) {
+        try {
+          name = await Steam.getGameName(appid)
+          if (name) SteamWhitelist.setName(appid, name)
+        } catch (_) { /* 使用默认名 */ }
+      }
+      if (!name) name = `App ${appid}`
+
+      let headerImagePath = ''
+      const headerImage = Steam.getHeaderImgUrlByAppid(appid)
+      try {
+        headerImagePath = await this.getSteamImagePath(headerImage, 'games', appid)
+      } catch (_) { /* 封面下载失败则用远程URL */ }
+
+      games.push({ name, appid, headerImage, headerImagePath: headerImagePath || '' })
+    }
+
+    try {
+      const img = await puppeteer.screenshot('eso', {
+        games,
+        totalGames: games.length,
+        statusText,
+        date: new Date().toLocaleDateString('zh-CN'),
+        pluResPath: `${process.cwd().replace(/\\/g, '/')}/plugins/eso/resources/`,
+        tplFile: './plugins/eso/resources/html/steam/whitelist.html'
+      })
+      if (img) return this.reply(img)
+    } catch (error) {
+      console.error(`[ESO:Steam] 白名单图片生成失败: ${error.message}`)
+    }
+
+    // 图片失败回退文本
     return this.reply([
-      `Steam推送白名单：${status}`,
+      `Steam推送白名单：${statusText}`,
       `共 ${games.length} 个游戏：`,
-      games.join(', '),
-      '',
-      '启用后仅推送名单内游戏的开始/结束/切换/成就动态'
+      ...games.map(g => `• ${g.name} (${g.appid})`)
     ].join('\n'))
   }
 
@@ -1103,7 +1358,14 @@ export class steam extends plugin {
     }
     const gameid = match[1]
     if (SteamWhitelist.add(gameid)) {
-      return this.reply(`已添加游戏 ${gameid} 到推送白名单（当前共 ${SteamWhitelist.list().length} 个）`)
+      // 异步解析游戏名并缓存，下次展示直接用
+      let name = ''
+      try {
+        name = await Steam.getGameName(gameid)
+        if (name) SteamWhitelist.setName(gameid, name)
+      } catch (_) { /* 名字稍后展示时再解析 */ }
+      const nameText = name ? `《${name}》` : `游戏 ${gameid}`
+      return this.reply(`已将 ${nameText} (${gameid}) 添加到推送白名单（当前共 ${SteamWhitelist.list().length} 个）`)
     }
     return this.reply(`游戏 ${gameid} 已在白名单中`)
   }
@@ -2240,22 +2502,19 @@ export class steam extends plugin {
       const helpText = [
         'Steam API密钥删除使用说明',
         '',
-        '命令格式: #steam删除apikey <API密钥>',
+        '命令格式: #steam删除apikey <API密钥或序号>',
         '',
         '参数说明:',
-        '• API密钥: 必需参数，要删除的Steam Web API密钥',
-        '',
-        '如何查看当前API密钥:',
-        '1. 使用 #steamapikey列表 查看当前配置的API密钥',
-        '2. 复制要删除的API密钥（部分隐藏的格式）',
-        '3. 使用完整密钥进行删除操作',
+        '• API密钥: 要删除的完整Steam Web API密钥',
+        '• 序号: 要删除的密钥序号（#steamapikey列表 中显示的序号）',
         '',
         '示例:',
-        '• #steam删除apikey ABCDEF1234567890ABCDEF1234567890',
+        '• #steam删除apikey1 - 删除列表中第1个密钥',
+        '• #steam删除apikey ABCDEF1234567890ABCDEF1234567890 - 按完整密钥删除',
         '',
         '注意事项:',
         '• 只有主人可以删除API密钥',
-        '• 删除前请确认API密钥正确',
+        '• 删除前可用 #steamapikey列表 确认序号',
         '• 删除后该密钥将无法恢复',
         '• 建议保留至少一个API密钥'
       ].join('\n')
@@ -2264,9 +2523,27 @@ export class steam extends plugin {
     }
     
     try {
-      const removed = Steam.removeApiKey(apiKey.trim())
+      const input = apiKey.trim()
+      let targetKey = input
+      let indexDesc = ''
+      
+      // 纯数字且长度<=2位：按序号删除（序号为 #steamapikey列表 中的1基序号）
+      if (/^\d{1,2}$/.test(input)) {
+        const apiKeys = Steam.getApiKeys()
+        const idx = parseInt(input, 10) - 1
+        if (idx < 0 || idx >= apiKeys.length) {
+          return this.reply(`无效的序号，请输入1-${apiKeys.length}之间的数字\n可使用 #steamapikey列表 查看当前序号`)
+        }
+        targetKey = apiKeys[idx]
+        indexDesc = `第 ${idx + 1} 个 `
+      }
+      
+      const removed = Steam.removeApiKey(targetKey)
       if (removed) {
-        return this.reply(`API密钥删除成功！当前共有 ${Steam.getApiKeys().length} 个API密钥`)
+        const masked = targetKey.length > 8 ?
+          `${targetKey.substring(0, 4)}...${targetKey.substring(targetKey.length - 4)}` :
+          targetKey
+        return this.reply(`${indexDesc}API密钥 ${masked} 删除成功！当前共有 ${Steam.getApiKeys().length} 个API密钥`)
       } else {
         return this.reply('未找到指定的API密钥')
       }
@@ -2317,7 +2594,8 @@ export class steam extends plugin {
         '',
         keyList,
         '',
-        '注意: 为了安全起见，API密钥已部分隐藏'
+        '注意: 为了安全起见，API密钥已部分隐藏',
+        '提示: 使用 #steam删除apikey<序号> 可按序号删除'
       ].join('\n')
       
       return this.reply(response)
@@ -2421,13 +2699,13 @@ export class steam extends plugin {
       const fileName = `${identifier}.jpg`
       const filePath = path.join(imageDir, fileName)
 
-      // 检查文件是否已存在且未过期
+      // 检查文件是否已存在、非空且未过期
       if (fs.existsSync(filePath)) {
         const stats = fs.statSync(filePath)
         const now = Date.now()
         const maxAge = type === 'avatar' ? 3 * 24 * 60 * 60 * 1000 : 10 * 24 * 60 * 60 * 1000 // 3天或10天
         
-        if (now - stats.mtime.getTime() < maxAge) {
+        if (stats.size > 0 && now - stats.mtime.getTime() < maxAge) {
           // 文件存在且未过期，直接返回文件名
           return fileName
         }
@@ -2437,13 +2715,18 @@ export class steam extends plugin {
       console.log(`[ESO:Steam] 开始下载图片: ${imageUrl} -> ${fileName}`)
       const success = await Bot.download(imageUrl, filePath)
       
-      if (success) {
-        console.log(`[ESO:Steam] 图片下载成功: ${fileName}`)
-        return fileName
-      } else {
-        console.warn(`[ESO:Steam] 下载图片失败: Bot.download返回false`)
-        return null
+      // 校验下载结果：文件必须存在且非空（防止缓存空文件/错误页导致无法回退）
+      if (success && fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath)
+        if (stats.size > 0) {
+          console.log(`[ESO:Steam] 图片下载成功: ${fileName}`)
+          return fileName
+        }
       }
+      // 下载失败或文件为空：删除坏文件，返回 null 让调用方回退
+      try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath) } catch (_) {}
+      console.warn(`[ESO:Steam] 下载图片失败或文件为空: ${imageUrl}`)
+      return null
     } catch (error) {
       console.error(`[ESO:Steam] 下载图片时出错: ${error.message}`)
       return null
