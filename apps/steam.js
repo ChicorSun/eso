@@ -793,6 +793,17 @@ export class steam extends plugin {
   async showBindStatus(e, highlightIndex = null) {
     const userId = e.user_id
     const bindings = SteamUser.getAllBindings(userId)
+
+    // 补录群昵称（老绑定可能没有记录；用于推送卡片显示）
+    const senderName = e.sender?.card || e.sender?.nickname || ''
+    if (senderName) {
+      for (const b of bindings) {
+        if (!b.nickname && b.steamId) {
+          SteamUser.updateBindingNickname(userId, b.steamId, senderName)
+          b.nickname = senderName
+        }
+      }
+    }
     
     // 准备绑定数据
     const bindingData = []
@@ -1338,6 +1349,14 @@ export class steam extends plugin {
         const inGroup = memberMap.has(Number(b.userId)) || memberMap.has(b.userId)
         if (!inGroup) continue
         hitUsers.add(b.userId)
+
+        // 同步群昵称（推送卡片显示用；不覆盖已有记录）
+        const member = memberMap.get(Number(b.userId)) || memberMap.get(b.userId)
+        const memberName = member?.card || member?.nickname || ''
+        const existing = SteamUser.getBindingBySteamId(b.steamId)
+        if (memberName && existing && !existing.binding.nickname) {
+          SteamUser.updateBindingNickname(b.userId, b.steamId, memberName)
+        }
 
         const current = SteamPush.getUserPushGroups(b.userId, b.steamId)
         if (current.includes(gid)) {
