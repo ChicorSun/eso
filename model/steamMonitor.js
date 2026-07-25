@@ -308,9 +308,12 @@ class SteamMonitor {
   /** 推送事件：游戏事件尝试渲染播报图（失败回退文本），优先群推送，无群记录时私聊本人 */
   async dispatch (ev) {
     let msg = ev.text
-    if (this.renderEvent && ['start', 'switch', 'stop'].includes(ev.kind)) {
+    if (this.renderEvent && ['start', 'switch', 'stop', 'online', 'offline', 'achievement'].includes(ev.kind)) {
       try {
-        await this.enrich(ev)
+        // 只有游玩事件需要补充总时长/在线人数（成就与上下线用不到）
+        if (['start', 'switch', 'stop'].includes(ev.kind)) {
+          await this.enrich(ev)
+        }
         const img = await this.renderEvent(ev)
         if (img) msg = img
       } catch (err) {
