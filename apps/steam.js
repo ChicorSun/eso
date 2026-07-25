@@ -249,6 +249,10 @@ export class steam extends plugin {
           fnc: 'steamPushTest'
         },
         {
+          reg: '^#?steam刷新推送$',
+          fnc: 'steamRefreshPush'
+        },
+        {
           reg: '^#?steam(开启|关闭)推送白名单$',
           fnc: 'steamWhitelistToggle'
         },
@@ -660,6 +664,7 @@ export class steam extends plugin {
    • #steam新增推送目标<群号> - 添加推送目标群（仅主人）
    • #steam删除推送目标<序号或群号> - 删除推送目标群（仅主人）
    • #steam推送测试 - 生成各类推送示例图片（仅主人）
+   • #steam刷新推送 - 扫描目标群成员并登记推送（仅主人）
 
  游戏相关：
    • #steam游戏 [SteamID] - 查看游戏库
@@ -1272,6 +1277,88 @@ export class steam extends plugin {
     if (successCount > 0) {
       await this.reply(`推送测试完成（${successCount}/${samples.length}），以上为纯图片预览，未触发任何真实推送`)
     }
+  }
+
+  // ===========================================
+  // Steam刷新推送（仅主人）：扫描推送目标群成员，为群内用户登记推送
+  // ===========================================
+  async steamRefreshPush(e) {
+    if (!e.isMaster) {
+      return this.reply('该功能仅限机器人主人使用')
+    }
+
+    const targets = SteamPush.getTargetGroups()
+    if (!targets.length) {
+      return this.reply('推送目标群列表为空\n请先使用 #steam新增推送目标<群号> 添加目标群')
+    }
+
+    // 收集全部绑定
+    const bindings = []
+    for (const [userId, userData] of Object.entries(SteamUser.getAllUsers())) {
+      const list = userData.bindings || (userData.steamId ? [userData] : [])
+      for (const b of list) {
+        if (b.steamId) {
+          bindings.push({ userId: String(userId), steamId: String(b.steamId), steamName: b.steamName || '' })
+        }
+      }
+    }
+    if (!bindings.length) {
+      return this.reply('还没有任何Steam绑定')
+    }
+
+    await this.reply(`正在扫描 ${targets.length} 个推送目标群的成员...`)
+
+    const lines = []
+    let totalNew = 0
+    let totalExist = 0
+
+    for (const gid of targets) {
+      // 依次尝试各在线 Bot 获取群成员表
+      let memberMap = null
+      for (const id of Object.keys(Bot.bots || {})) {
+        try {
+          const g = Bot.bots[id].pickGroup?.(gid)
+          if (g?.getMemberMap) {
+            memberMap = await g.getMemberMap()
+            if (memberMap) break
+          }
+        } catch (_) { /* 尝试下一个 Bot */ }
+      }
+
+      if (!memberMap || !memberMap.size) {
+        lines.push(`群 ${gid}：无法获取成员列表（机器人不在群内或协议不支持）`)
+        continue
+      }
+
+      // 检查每个绑定用户是否在群内，在则登记推送群（自动去重）
+      let newCount = 0
+      let existCount = 0
+      const hitUsers = new Set()
+      for (const b of bindings) {
+        const inGroup = memberMap.has(Number(b.userId)) || memberMap.has(b.userId)
+        if (!inGroup) continue
+        hitUsers.add(b.userId)
+
+        const current = SteamPush.getUserPushGroups(b.userId, b.steamId)
+        if (current.includes(gid)) {
+          existCount++
+        } else {
+          SteamPush.addPushGroup(b.userId, b.steamId, gid)
+          newCount++
+        }
+      }
+
+      totalNew += newCount
+      totalExist += existCount
+      lines.push(`群 ${gid}（成员 ${memberMap.size} 人）：命中 ${hitUsers.size} 个用户，新登记 ${newCount} 条，已存在 ${existCount} 条`)
+    }
+
+    return this.reply([
+      '推送刷新完成：',
+      ...lines,
+      '',
+      `合计：新登记 ${totalNew} 条，已存在跳过 ${totalExist} 条（不会重复推送）`
+    ].join('\n'))
   }
 
   // ===========================================
