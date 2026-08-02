@@ -5,6 +5,8 @@ import moment from 'moment'
 class SteamUserModel {
   constructor() {
     this.dbPath = './data/eso/custome_resources/steam/data/steam_users.json'
+    // 群体默认推送配置：全体开关命令会更新它，新绑定的用户继承此默认值
+    this.defaultPush = { gameCheck: 1, onlineCheck: 1, achCheck: 1 }
     this.users = this.loadUsers()
     // 数据迁移：将旧格式转换为新格式（异步执行）
     this.migrateData().catch(error => {
@@ -70,9 +72,9 @@ class SteamUserModel {
              bindTime: userData.bindTime || moment().format('YYYY-MM-DD HH:mm:ss'),
              isBind: true, // 第一个绑定默认为当前绑定
              lastUpdate: userData.lastUpdate || moment().format('YYYY-MM-DD HH:mm:ss'),
-             lastOnlineCheck: userData.lastOnlineCheck ?? 1, // 默认开启在线推送
-             lastGameCheck: userData.lastGameCheck || 1, // 默认开启游玩推送
-             lastAchCheck: userData.lastAchCheck || 1 // 默认开启成就推送
+             lastOnlineCheck: userData.lastOnlineCheck ?? this.defaultPush.onlineCheck, // 默认跟随群体配置
+             lastGameCheck: userData.lastGameCheck || this.defaultPush.gameCheck, // 默认跟随群体配置
+             lastAchCheck: userData.lastAchCheck || this.defaultPush.achCheck // 默认跟随群体配置
            }]
          }
         migrated = true
@@ -90,6 +92,8 @@ class SteamUserModel {
     try {
       if (fs.existsSync(this.dbPath)) {
         const data = JSON.parse(fs.readFileSync(this.dbPath, 'utf8'))
+        // 加载群体默认推送配置（旧数据无此字段时保持默认开启）
+        this.defaultPush = { ...this.defaultPush, ...(data.defaultPush || {}) }
         const users = data.users || {}
         
         // 确保每个用户都有当前绑定
@@ -151,12 +155,18 @@ class SteamUserModel {
       
       const data = {
         users: this.users,
+        defaultPush: this.defaultPush,
         lastUpdate: moment().format('YYYY-MM-DD HH:mm:ss')
       }
       fs.writeFileSync(this.dbPath, JSON.stringify(data, null, 2))
     } catch (error) {
       console.error(`[ESO:Steam] 保存用户数据失败: ${error.message}`)
     }
+  }
+
+  // 获取群体默认推送配置（新绑定用户继承此默认值）
+  getDefaultPush() {
+    return { ...this.defaultPush }
   }
 
   // 绑定Steam账户（支持多绑定）
@@ -228,7 +238,8 @@ class SteamUserModel {
           })
         }
         
-        // 添加新绑定
+        // 添加新绑定（推送开关默认值跟随群体配置 defaultPush）
+        const defPush = this.getDefaultPush()
         this.users[userId].bindings.push({
           steamId,
           steamName,
@@ -236,9 +247,9 @@ class SteamUserModel {
           bindTime: moment().format('YYYY-MM-DD HH:mm:ss'),
           lastUpdate: moment().format('YYYY-MM-DD HH:mm:ss'),
           isBind: isFirstBinding || !keepCurrentBind, // 第一个绑定默认为当前绑定，或者不保持当前绑定时设为当前绑定
-          lastOnlineCheck: 1, // 默认开启在线推送
-          lastGameCheck: 1, // 默认开启游玩推送
-          lastAchCheck: 1 // 默认开启成就推送
+          lastOnlineCheck: defPush.onlineCheck, // 默认跟随群体配置
+          lastGameCheck: defPush.gameCheck, // 默认跟随群体配置
+          lastAchCheck: defPush.achCheck // 默认跟随群体配置
         })
         
         const newBindingIndex = this.users[userId].bindings.length - 1
@@ -820,11 +831,12 @@ class SteamUserModel {
 
   // 批量设置所有用户绑定的推送开关（全体操作）
   // type: 'lastGameCheck' | 'lastOnlineCheck' | 'lastAchCheck'
+  // 同时更新群体默认配置 defaultPush，使后续新绑定的用户继承相同的默认值
   batchSetAllPush(type, enabled) {
     try {
       const allowed = ['lastGameCheck', 'lastOnlineCheck', 'lastAchCheck']
       if (!allowed.includes(type)) return 0
-      
+
       let count = 0
       const now = moment().format('YYYY-MM-DD HH:mm:ss')
       for (const userData of Object.values(this.users)) {
@@ -835,7 +847,21 @@ class SteamUserModel {
           count++
         }
       }
-      if (count > 0) {
+
+      // 同步群体默认配置（新绑定继承）
+      const defaultFieldMap = {
+        lastGameCheck: 'gameCheck',
+        lastOnlineCheck: 'onlineCheck',
+        lastAchCheck: 'achCheck'
+      }
+      const defaultField = defaultFieldMap[type]
+      const defaultChanged = defaultField !== undefined && this.defaultPush[defaultField] !== enabled
+      if (defaultChanged) {
+        this.defaultPush[defaultField] = enabled
+      }
+
+      // 无绑定但群体默认有变化时也要持久化，否则重启后丢失
+      if (count > 0 || defaultChanged) {
         this.saveUsers()
       }
       return count
