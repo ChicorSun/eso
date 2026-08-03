@@ -6,9 +6,99 @@ import gearConfig from '../model/gearConfig.js'
 import CardsList from '../model/cardslist.js'
 import RolesList from '../model/roleslist.js'
 import ESOAccount from '../model/esoAccount.js'
+import esologsApi from '../model/esologsApi.js'
 import md5 from 'md5'
 import fs from 'node:fs'
 import fetch from 'node-fetch'
+
+// ==================== ESOLogs API 数据映射常量 ====================
+// gear.slot 数字 → 显示文本（esologs 装备栏位，实测顺序：0头 1胸 2肩 3腰 4手 5腿 6脚）
+const ESOLOG_SLOTS = ['Head', 'Chest', 'Shoulders', 'Waist', 'Hands', 'Legs', 'Feet', 'Neck', 'Ring 1', 'Ring 2', 'Main Hand', 'Off Hand', 'Main Hand Backup', 'Off Hand Backup']
+
+// gear.type 数字 → 护甲/首饰文本（武器类型走物品名推断，见 esoGearType）
+const ESOLOG_ARMOR_TYPE = { 1: 'Light', 2: 'Medium', 3: 'Heavy', 4: 'Jewelry' }
+
+// gear.trait 数字 → trait 英文名（护甲 1-11 / 首饰 12-22 / 武器 23-33 的全局 id 推断表）
+const ESOLOG_TRAITS = {
+  1: 'Infused', 2: 'Sturdy', 3: 'Reinforced', 4: 'Impenetrable', 5: 'Well-fitted',
+  6: 'Training', 7: 'Invigorating', 8: 'Divines', 9: 'Nirnhorned', 10: 'Ornate', 11: 'Intricate',
+  12: 'Healthy', 13: 'Arcane', 14: 'Robust', 15: 'Bloodthirsty', 16: 'Harmony',
+  17: 'Infused', 18: 'Triune', 19: 'Protective', 20: 'Swift', 21: 'Ornate', 22: 'Intricate',
+  23: 'Powered', 24: 'Charged', 25: 'Precise', 26: 'Infused', 27: 'Defending',
+  28: 'Training', 29: 'Sharpened', 30: 'Decisive', 31: 'Nirnhoned', 32: 'Ornate', 33: 'Intricate'
+}
+
+// gear.enchantType 数字 → 附魔英文名（按 meta 推断，未覆盖项显示数字原文）
+const ESOLOG_ENCHANTS = {
+  2: 'Absorb Magicka', 3: 'Weapon Damage', 5: 'Berserker', 8: 'Reduce Armor',
+  12: 'Flame', 16: 'Stamina', 19: 'Magicka Regen', 21: 'Increase Spell Damage',
+  22: 'Magicka', 23: 'Health Regen', 24: 'Shock', 26: 'Health',
+  28: 'Frost', 32: 'Prismatic Onslaught', 33: 'Reduce Spell Cost', 35: 'Prismatic Defense'
+}
+
+// 职业英文名 → 中文名（esologs 显示用）
+const ESOLOG_CLASS_CN = {
+  Arcanist: '奥术', Dragonknight: '龙骑', Necromancer: '死灵',
+  Nightblade: '夜刃', Sorcerer: '巫师', Templar: '圣骑', Warden: '窝登'
+}
+
+/** 装备品质颜色（quality 5=传说金，走 database.js 的金色转换逻辑） */
+function esoQualityColor (quality) {
+  return quality >= 5 ? 'rgb(229, 204, 128)' : 'rgb(221, 221, 221)'
+}
+
+/** 物品名 → esologs 显示的装备类型文本（武器） */
+function esoGearType (gear) {
+  const n = gear.name || ''
+  if (n.includes('Restoration Staff')) return 'Healing Staff'
+  if (n.includes('Lightning Staff')) return 'Lightning Staff'
+  if (n.includes('Inferno Staff')) return 'Fire Staff'
+  if (n.includes('Ice Staff')) return 'Frost Staff'
+  if (n.includes('Greatsword')) return '2H Sword'
+  if (n.includes('Dagger')) return 'Dagger'
+  if (n.includes('Shield')) return 'Shield'
+  if (n.includes('Bow')) return 'Bow'
+  if (n.includes('Maul')) return 'Hammer'
+  if (n.includes('Battle Axe')) return 'Axe'
+  if (n.includes('Sword')) return 'Sword'
+  if (n.includes('Axe')) return 'Axe'
+  return ESOLOG_ARMOR_TYPE[gear.type] || ''
+}
+
+/** 定位文本（'Healer'/'Tank'/'Stamina'/'Magicka'/'Werewolf'...）→ esologs roleName/roleNameCN */
+function esoRole (roleText) {
+  const t = (roleText || '').toLowerCase()
+  if (t.includes('heal')) return { roleName: 'Healer', roleNameCN: '奶妈' }
+  if (t.includes('tank')) return { roleName: 'Tank', roleNameCN: '坦克' }
+  if (t.includes('stamina')) return { roleName: 'StaminaDPS', roleNameCN: '耐系' }
+  if (t.includes('magicka')) return { roleName: 'MagickaDPS', roleNameCN: '法系' }
+  if (t.includes('werewolf')) return { roleName: 'WerewolfDPS', roleNameCN: '狼人' }
+  return { roleName: roleText || '', roleNameCN: roleText || '' }
+}
+
+/** 职业英文名（可能大小写不一）→ esologs className/classNameCN */
+function esoClass (className) {
+  if (!className) return { className: '', classNameCN: '' }
+  // 归一化：DragonKnight → Dragonknight（与本地图鉴/图标命名一致）
+  let name = className
+  if (name === 'DragonKnight') name = 'Dragonknight'
+  return { className: name, classNameCN: ESOLOG_CLASS_CN[name] || name }
+}
+
+/** 由 playerDetails 的 icon（如 'Arcanist-Healer'）提取定位文本 */
+function esoRoleFromIcon (icon) {
+  if (!icon) return ''
+  const idx = icon.lastIndexOf('-')
+  return idx >= 0 ? icon.substring(idx + 1) : icon
+}
+
+/** 校验 esologs 报告/战斗参数（防 GraphQL 注入） */
+function esoValidateParams (reportsID, fightIndex, sourceIndex) {
+  if (!/^[A-Za-z0-9]+$/.test(reportsID || '')) return false
+  if (fightIndex !== undefined && !/^\d+$/.test(String(fightIndex))) return false
+  if (sourceIndex !== undefined && !/^\d+$/.test(String(sourceIndex))) return false
+  return true
+}
 
 /** 图鉴数据源：'local' 本地数据库（默认）| 'api' ESOCN API */
 let srcMode = 'local'
@@ -258,6 +348,12 @@ export class esologPuzzle extends plugin {
           reg: '^#(更新头像)$',
           /** 执行方法 */
           fnc: 'updateAvatar'
+        },
+        {
+          /** 配置 ESOLogs API 凭证（仅私聊+主人） */
+          reg: '^#*esolog设置apikey.+$',
+          /** 执行方法 */
+          fnc: 'setApiKey'
         }
       ]
     })
@@ -367,6 +463,9 @@ export class esologPuzzle extends plugin {
   async logPuzzle (e) {
     if (!gearConfig.isHeavyEnabled()) {
       return await this.reply('当前为极简挡位（挡位1），esologs 日志解析功能已禁用\n可通过 #设置挡位 2 及以上挡位启用')
+    }
+    if (!esologsApi.hasCredentials()) {
+      return await this.reply('未配置 ESOLogs API 凭证，无法解析\n请私聊主人使用 #esolog设置apikey{clientId}:{clientSecret} 配置（在 https://www.esologs.com/api/clients/ 创建应用获取）')
     }
     srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
@@ -670,9 +769,7 @@ export class esologPuzzle extends plugin {
   }
 
   async getGroupLog (reportsID, fightIndex) {
-    let groupURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&type=summary&translate=true`
-
-    let GD = JSON.parse(JSON.stringify(await this.getWebData(groupURL, 'group')))
+    let GD = JSON.parse(JSON.stringify(await this.getWebData(() => this.getGroupData(reportsID, fightIndex))))
     if(!GD.virtual)
     {
       let groupData = {
@@ -813,14 +910,8 @@ export class esologPuzzle extends plugin {
       logger.error(`[ESO:战斗日志] 检查已有记录失败: ${error.message}`);
     }
 
-    let summaryURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&type=summary&translate=true`
-    let buffsURL = `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${sourceIndex}&target=${sourceIndex}&type=auras&translate=true`
-    let buffInfo = ''
-    //logger.info('summaryURL:' + summaryURL)
-    //logger.info('buffsURL:' + buffsURL)
-
-    let BD = JSON.parse(JSON.stringify(await this.getWebData(summaryURL, 'summary')))
-    let SD = JSON.parse(JSON.stringify(await this.getWebData(buffsURL, 'buffs')))
+    let BD = JSON.parse(JSON.stringify(await this.getWebData(() => this.getSummaryLog(reportsID, fightIndex, sourceIndex))))
+    let SD = JSON.parse(JSON.stringify(await this.getWebData(() => this.getBuffsLog(reportsID, fightIndex, sourceIndex))))
 
     if(SD.virtual)
     {
@@ -942,7 +1033,7 @@ export class esologPuzzle extends plugin {
     }
   }
 
-  async getWebData (url, type) {
+  async getWebData (fnc) {
     let result;
     
     try {
@@ -953,7 +1044,7 @@ export class esologPuzzle extends plugin {
         // 每5秒打印一次日志
         const now = Date.now();
         if (now - lastLogTime >= LOG_INTERVAL) {
-          logger.info(`[ESO:战斗日志] 当前运行页面数: ${running_page_num}，等待可用槽位...`);
+          logger.info(`[ESO:战斗日志] 当前运行请求数: ${running_page_num}，等待可用槽位...`);
           lastLogTime = now;
         }
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -964,317 +1055,115 @@ export class esologPuzzle extends plugin {
         }
       }
 
-      // 增加运行页面计数
+      // 增加运行请求计数
       running_page_num++;
-      logger.info(`[ESO:战斗日志] 页面数+1: ${running_page_num}`);
+      logger.info(`[ESO:战斗日志] 请求数+1: ${running_page_num}`);
 
-      switch (type) {
-        case 'summary':
-          result = await this.getSummaryLog(url);
-          break;
-        case 'buffs':
-          result = await this.getBuffsLog(url);
-          break;
-        case 'group':
-          result = await this.getGroupData(url);
-          break;
-        case 'rank':
-          result = await this.getRankData(url);
-          break;
-        default:
-          result = await this.getSummaryLog(url);
-          break;
-      }
+      result = await fnc();
 
       return result;
     } catch (error) {
-      logger.error(`[ESO:战斗日志] 获取页面数据出错: ${error.message}`);
+      logger.error(`[ESO:战斗日志] 获取数据出错: ${error.message}`);
       throw error;
     } finally {
-      // 减少运行页面计数
+      // 减少运行请求计数
       running_page_num--;
-      logger.info(`[ESO:战斗日志] 页面数-1: ${running_page_num}`);
+      logger.info(`[ESO:战斗日志] 请求数-1: ${running_page_num}`);
     }
   }
 
-  async getBuffsLog (url) {
-    // 启动浏览器
-    if (!puppeteer.browser) {
-      await puppeteer.browserInit()
-    }
-    const page = await puppeteer.browser.newPage()
+  async getBuffsLog (reportsID, fightIndex, sourceIndex) {
+    // 通过官方 API 获取该角色在指定战斗中的增益（auras）表
     try {
-      // 设置更短的导航超时时间
-      page.setDefaultNavigationTimeout(30000);
-      
-      try {
-        // 使用 domcontentloaded 而不是 load
-        await Promise.race([
-          page.goto(url, { waitUntil: 'domcontentloaded' }),
-          // 一旦发现目标元素就继续执行
-          page.waitForSelector('.spells-table-wrapper', { timeout: 120000 })
-        ]);
-      } catch (navError) {
-        if (navError.message.includes('Navigating frame was detached')) {
-          logger.debug('[ESO:战斗日志] 页面导航中断，继续处理');
-        } else {
-          throw navError;
-        }
+      if (!esoValidateParams(reportsID, fightIndex, sourceIndex)) {
+        return { virtual: 1 }
       }
-
-      // 只等待必要的元素
-      await page.waitForSelector('.spells-table-wrapper', { timeout: 120000 });
-      
-      const data = await page.evaluate(() => {
-        // 获取所有包含auras-table的表格
-        const tables = document.querySelectorAll('.spells-table-wrapper .auras-table');
-        let dataList = [];
-  
-        // 遍历每个表格
-        tables.forEach(table => {
-          // 获取表格的所有行
-          const rows = table.querySelectorAll('tbody tr');
-          // 遍历每一行
-          rows.forEach(row => {
-            // 获取第一列的单元格
-            const firstCell = row.querySelector('td:first-child');
-            if (firstCell) {
-              // 获取img的地址
-              const img = firstCell.querySelector('img')?.src || '';
-              // 获取class包含"tooltip main-table-link school-2"的超链接
-              const linkElement = firstCell.querySelector('a.tooltip.main-table-link');
-              const link = linkElement?.href || '';
-              const buffName = linkElement?.textContent || '';
-              
-              if (img && link && buffName) {
-                // 将数据添加到数组中
-                dataList.push({
-                  img: img,
-                  link: link,
-                  buffName: buffName
-                });
-              }
-            }
-          });
-        });
-  
-        return dataList;
-      });
-
-      let virtual = 0
-      let sd = {
-        virtual,
-        data
-      };
-      return sd
+      const query = `{ reportData { report(code: "${reportsID}") { table(fightIDs: [${fightIndex}], dataType: Buffs, sourceID: ${sourceIndex}) } } }`
+      const data = await esologsApi.graphql(query)
+      const report = data.reportData.report
+      if (!report || !report.table || !report.table.data) {
+        return { virtual: 1 }
+      }
+      const auras = report.table.data.auras || []
+      const dataList = auras
+        .filter(a => a && a.name && a.guid)
+        .map(a => ({
+          img: `https://assets.rpglogs.com/img/eso/abilities/${a.abilityIcon}.png`,
+          link: `https://www.esologs.com/abilities/${a.guid}?ability=${a.guid}`,
+          buffName: a.name
+        }))
+      return { virtual: 0, data: dataList }
     } catch (error) {
-      let virtual = 1
-      let sd = {
-        virtual
-      };
-      return sd
-    } finally {
-      if (page) {
-        await page.close().catch(err => logger.error('[ESO:战斗日志] 关闭页面失败:', err));
-      }
-    }    
+      logger.error(`[ESO:战斗日志] 获取增益数据失败: ${error.message}`)
+      return { virtual: 1 }
+    }
   }
 
-  async getSummaryLog (url) {
-    if (!puppeteer.browser) {
-      await puppeteer.browserInit()
-    }
-    const page = await puppeteer.browser.newPage()
+  async getSummaryLog (reportsID, fightIndex, sourceIndex) {
+    // 通过官方 API 获取该角色在指定战斗中的装备/技能（playerDetails 含 combatantInfo）
     try {
-      // 设置更短的导航超时时间
-      page.setDefaultNavigationTimeout(30000);
-      
-      try {
-        // 使用 domcontentloaded 而不是 load
-        await Promise.race([
-          page.goto(url, { waitUntil: 'domcontentloaded' }),
-          // 一旦发现目标元素就继续执行
-          page.waitForSelector('#summary-gear-0_wrapper', { timeout: 120000 })
-        ]);
-      } catch (navError) {
-        if (navError.message.includes('Navigating frame was detached')) {
-          logger.debug('[ESO:战斗日志] 页面导航中断，继续处理');
-        } else {
-          throw navError;
-        }
+      if (!esoValidateParams(reportsID, fightIndex, sourceIndex)) {
+        return { virtual: 1 }
+      }
+      const query = `{ reportData { report(code: "${reportsID}") { playerDetails(fightIDs: [${fightIndex}], includeCombatantInfo: true) } } }`
+      const data = await esologsApi.graphql(query)
+      const report = data.reportData.report
+      if (!report || !report.playerDetails || !report.playerDetails.data) {
+        return { virtual: 1 }
+      }
+      const groups = report.playerDetails.data.playerDetails
+      const allPlayers = [...(groups.healers || []), ...(groups.dps || []), ...(groups.tanks || [])]
+      const p = allPlayers.find(x => x.id === Number(sourceIndex))
+      if (!p || !p.combatantInfo) {
+        return { virtual: 1 }
       }
 
-      // 只等待必要的元素
-      await page.waitForSelector('#summary-gear-0_wrapper', { timeout: 120000 });
-      
-      const actorName = await page.evaluate(() => {
-        const actorElement = document.getElementById('filter-source-text');
-        const actorName = actorElement ? actorElement.textContent : 'NONE';
+      const playerName = p.name
+      const accountName = p.displayName || ''
+      const { className, classNameCN } = esoClass(p.type)
+      const { roleName, roleNameCN } = esoRole(esoRoleFromIcon(p.icon) || (p.specs && p.specs[0] && p.specs[0].spec))
 
-        return actorName
-      });
-      let playerName = actorName.replace(" ", "")
-
-      const links = await page.evaluate(() => {
-        const anchors = Array.from(document.querySelectorAll('#filter-source-text a'));
-        return anchors.map(anchor => anchor.href);
-      });
-            
-      const actorTable = [];
-      // 使用页面评估函数来提取角色名和账户名
-      const result = await page.evaluate(() => {
-        const container = document.getElementById("filter-source-selection-container")
-        const table = container.querySelector("table.actor-menu-table")
-        const uls = table.querySelectorAll("ul")
-        uls.forEach(ul => ul.remove());
-
-        const actorMenuItems = table.querySelectorAll('.actor-menu-item > a.actor-menu-link');
-        // 遍历每个角色菜单项
-        return Array.from(actorMenuItems).map(item => {
-          // 提取角色名
-          const actorName = item.textContent.trim();
-
-          const img = item.querySelector("img")
-          const img_class = img.getAttribute("class")
-
-          // 提取账户名，它位于角色名同一行的下一个td元素中
-          const accountId = item.closest('tr').querySelector('.ability-menu-id')?.textContent.trim() || '';
-      
-          return { actorName, img_class, accountId };
-        });
-      });
-      actorTable.push(...result);
-      //logger.info(actorTable)
-
-      const gearData = await page.evaluate(() => {
-        // 获取表格中所有的行（除去标题行）
-        const rows = Array.from(document.querySelectorAll('#summary-gear-0 tbody tr'));
-
-        // 映射每一行数据，创建装备信息对象
-        const gearItems = rows.map(row => {
-          // 获取单元格数据
-          const cells = row.querySelectorAll('td');
-          const nameAnchor = cells[3].querySelector('a');
-          const enchantCell = cells[6];
-
-          // 构建装备对象
-          return {
-            level: cells[0].textContent.trim(), // 勇士等级
-            type: cells[1].textContent.trim(), // 类型
-            slot: cells[2].textContent.trim(), // 插槽
-            name: {
-              text: nameAnchor ? nameAnchor.textContent.trim() : '', // 名称文本
-              link: nameAnchor ? nameAnchor.href : '', // 对应链接
-              color: nameAnchor ? window.getComputedStyle(nameAnchor).getPropertyValue('color') : '', // 名称颜色
-              image: nameAnchor ? nameAnchor.querySelector('img') ? nameAnchor.querySelector('img').src : '' : '' // 名称图片地址
-            },
-            set: cells[4].querySelector('a') ? cells[4].querySelector('a').textContent.trim() : '', // 套装
-            trait: cells[5].textContent.trim(), // 特性
-            enchant: {
-              text: enchantCell.textContent.trim(), // 附魔文本
-              color: window.getComputedStyle(enchantCell).getPropertyValue('color') // 附魔颜色
-            }
-          };
-        });
-
-        // 返回装备信息数组
-        return gearItems;
-      });
-
-      const talentData = await page.evaluate(() => {
-        //获取表格中所有的行
-        const rows = Array.from(document.querySelectorAll('#summary-talents-0 tbody tr'));
-
-        // 映射每一行数据，创建表格信息对象
-        const talentItems = rows.map(row => {
-          // 获取单元格数据
-          const cells = row.querySelectorAll('td');
-          const mainSkillCell = cells[0];
-          const offSkillCell = cells[1];
-
-          // 获取图标和文本信息
-          const mainSkill = {
-            icon: mainSkillCell.querySelector('img') ? mainSkillCell.querySelector('img').src : '',
-            text: mainSkillCell.querySelector('span') ? mainSkillCell.querySelector('span').textContent.trim() : '',
-            color: mainSkillCell.querySelector('span') ? window.getComputedStyle(mainSkillCell.querySelector('span')).getPropertyValue('color') : '' // 颜色
-          };
-
-          const offSkill = {
-            icon: offSkillCell.querySelector('img') ? offSkillCell.querySelector('img').src : '',
-            text: offSkillCell.querySelector('span') ? offSkillCell.querySelector('span').textContent.trim() : '',
-            color: offSkillCell.querySelector('span') ? window.getComputedStyle(offSkillCell.querySelector('span')).getPropertyValue('color') : '' // 颜色
-          };
-
-          // 返回行对象
-          return {
-            mainSkill,
-            offSkill
-          };
-        });
-
-        // 返回技能信息数组
-        return talentItems;
-      });
-
-      let accountName = ''
-      let className = ''
-      let roleName = ''
-      let classNameCN = ''
-      let roleNameCN = ''
-      let has_find = false
-      for (let oneActor of actorTable) {
-        oneActor.actorName = oneActor.actorName.replace("+", "")
-        if(!has_find && oneActor.actorName == playerName)
-        {
-          //logger.info(oneActor.img_class)
-          if(oneActor.img_class.includes("Arcanist")) {
-            className = "Arcanist"
-            classNameCN = "奥术"
-          } else if(oneActor.img_class.includes("Dragonknight")) {
-            className = "Dragonknight"
-            classNameCN = "龙骑"
-          } else if(oneActor.img_class.includes("Necromancer")) {
-            className = "Necromancer"
-            classNameCN = "死灵"
-          } else if(oneActor.img_class.includes("Nightblade")) {
-            className = "Nightblade"
-            classNameCN = "夜刃"
-          } else if(oneActor.img_class.includes("Sorcerer")) {
-            className = "Sorcerer"
-            classNameCN = "巫师"
-          } else if(oneActor.img_class.includes("Templar")) {
-            className = "Templar"
-            classNameCN = "圣骑"
-          } else if(oneActor.img_class.includes("Warden")) {
-            className = "Warden"
-            classNameCN = "窝登"
+      // 装备：14 格（slot 0-13），空装备（id=0）跳过
+      const gearData = []
+      for (const g of (p.combatantInfo.gear || [])) {
+        if (!g || !g.id || g.slot >= 14) continue
+        gearData.push({
+          level: String(g.championPoints || ''),
+          type: esoGearType(g),
+          slot: ESOLOG_SLOTS[g.slot] || String(g.slot),
+          name: {
+            text: g.name || '',
+            link: `https://www.esologs.com/items/${g.id}?pcs=${g.setID || 0}`,
+            color: esoQualityColor(g.quality),
+            image: `https://assets.rpglogs.com/img/eso/abilities/${g.icon}.png`
+          },
+          set: g.setName || '',
+          trait: ESOLOG_TRAITS[g.trait] !== undefined ? ESOLOG_TRAITS[g.trait] : String(g.trait),
+          enchant: {
+            text: ESOLOG_ENCHANTS[g.enchantType] !== undefined ? ESOLOG_ENCHANTS[g.enchantType] : String(g.enchantType),
+            color: 'rgb(170, 170, 170)'
           }
-
-          if(oneActor.img_class.includes("StaminaDPS")) {
-            roleName = "StaminaDPS"
-            roleNameCN = "耐系"
-          } else if(oneActor.img_class.includes("MagickaDPS")) {
-            roleName = "MagickaDPS"
-            roleNameCN = "法系"
-          } else if(oneActor.img_class.includes("Healer")) {
-            roleName = "Healer"
-            roleNameCN = "奶妈"
-          } else if(oneActor.img_class.includes("Tank")) {
-            roleName = "Tank"
-            roleNameCN = "坦克"
-          }
-          
-          accountName = oneActor.accountId
-          //logger.info(oneActor.img_class)
-          has_find = true
-        }
+        })
       }
-      
+
+      // 技能：talents 按返回顺序前一半/后一半分为主/副技能条
+      const talents = p.combatantInfo.talents || []
+      const talentData = []
+      const barLen = Math.ceil(talents.length / 2)
+      const mk = (t) => t && t.name ? {
+        icon: `https://assets.rpglogs.com/img/eso/abilities/${t.abilityIcon}.png`,
+        text: t.name,
+        color: 'rgb(221, 221, 221)'
+      } : { icon: '', text: '', color: '' }
+      for (let i = 0; i < barLen; i++) {
+        talentData.push({ mainSkill: mk(talents[i]), offSkill: mk(talents[i + barLen]) })
+      }
+
       let race = ''
-      let stoneInfo = [];
-      let foodInfo = [];
-      let raceInfo = [];
-      let skillLineInfo = [];
+      let stoneInfo = []
+      let foodInfo = []
+      let raceInfo = []
+      let skillLineInfo = []
       let food = ''
       let food_icon = ''
       let potion = ''
@@ -1289,7 +1178,7 @@ export class esologPuzzle extends plugin {
         classNameCN,
         roleName,
         roleNameCN,
-        links,
+        links: [],
         gearData,
         talentData,
         race,
@@ -1301,147 +1190,49 @@ export class esologPuzzle extends plugin {
         food_icon,
         potion,
         potion_icon,
-      };
-      //logger.info(bd.playerName)
-      //logger.info(bd.accountName)
-      //logger.info(bd.className)
-      //logger.info(bd.roleName)
-
+      }
       return bd
     } catch (error) {
-      let virtual = 1
-      let bd = {
-        virtual
-      };
-      return bd
-    } finally {
-      if (page) {
-        await page.close().catch(err => logger.error('[ESO:战斗日志] 关闭页面失败:', err));
-      }
-    }    
+      logger.error(`[ESO:战斗日志] 获取装备技能数据失败: ${error.message}`)
+      return { virtual: 1 }
+    }
   }
 
-  async getGroupData (url) {
-    if (!puppeteer.browser) {
-      await puppeteer.browserInit()
-    }
-    const page = await puppeteer.browser.newPage()
+  async getGroupData (reportsID, fightIndex) {
+    // 通过官方 API 获取团队信息（playerDetails 按定位分组，含职业/账号/角色名）
     try {
-      // 设置更短的导航超时时间
-      page.setDefaultNavigationTimeout(30000);
-      
-      try {
-        // 使用 domcontentloaded 而不是 load
-        await Promise.race([
-          page.goto(url, { waitUntil: 'domcontentloaded' }),
-          // 一旦发现目标元素就继续执行
-          page.waitForSelector('.character-details-contents', { timeout: 120000 })
-        ]);
-      } catch (navError) {
-        if (navError.message.includes('Navigating frame was detached')) {
-          logger.debug('[ESO:战斗日志] 页面导航中断，继续处理');
-        } else {
-          throw navError;
+      if (!esoValidateParams(reportsID, fightIndex)) {
+        return { virtual: 1 }
+      }
+      const query = `{ reportData { report(code: "${reportsID}") { playerDetails(fightIDs: [${fightIndex}], includeCombatantInfo: false) } } }`
+      const data = await esologsApi.graphql(query)
+      const report = data.reportData.report
+      if (!report || !report.playerDetails || !report.playerDetails.data) {
+        return { virtual: 1 }
+      }
+      const groups = report.playerDetails.data.playerDetails
+      const allPlayers = [...(groups.healers || []), ...(groups.dps || []), ...(groups.tanks || [])]
+      const gdArray = allPlayers.map(p => {
+        const { className } = esoClass(p.type)
+        const { roleName } = esoRole(esoRoleFromIcon(p.icon) || (p.specs && p.specs[0] && p.specs[0].spec))
+        return {
+          link: `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${p.id}`,
+          playerName: p.name,
+          accountName: p.displayName || '',
+          className_roleName: `${className}-${roleName}`,
+          gears: [],
+          talents: []
         }
-      }
-
-      // 只等待必要的元素
-      await page.waitForSelector('.character-details-contents', { timeout: 120000 });
-      
-      const data = await page.evaluate(() => {
-        // 获取character-details-contents下的所有.roles-table-0表格
-        const tables = document.querySelectorAll('.character-details-contents .roles-table-0');
-        let gdArray = [];
-
-        // 遍历每个表格
-        tables.forEach(table => {
-          // 获取表格的所有行
-          const rows = table.querySelectorAll('tbody tr');
-          // 遍历每一行
-          rows.forEach(row => {
-            // 创建一个结构体对象
-            let gdItem = {
-              link: '',
-              playerName: '',
-              accountName: '',
-              className_roleName: '',
-              gears: [],
-              talents: []
-            };
-
-            // 获取第一列的class=name-and-spec的span
-            const nameAndSpecSpan = row.querySelector('td:first-child .name-and-spec');
-            if (nameAndSpecSpan) {
-              // 提取超链接地址和文本
-              const linkAnchor = nameAndSpecSpan.querySelector('a');
-              if (linkAnchor) {
-                gdItem.link = linkAnchor.href;
-                gdItem.playerName = linkAnchor.textContent.trim();
-              }
-              // 提取accountName
-              const accountNameSpan = nameAndSpecSpan.querySelector('.display-name.artifact');
-              if (accountNameSpan) {
-                gdItem.accountName = accountNameSpan.textContent.trim();
-              }
-              // 提取className_roleName
-              const classSpecDescSpan = nameAndSpecSpan.querySelector('.class-spec-desc');
-              if (classSpecDescSpan) {
-                gdItem.className_roleName = classSpecDescSpan.textContent.trim();
-              }
-            }
-
-            // 获取第二列gear-cell中的所有超链接
-            const gearAnchors = row.querySelectorAll('td.gear-cell a');
-            gearAnchors.forEach(anchor => {
-              gdItem.gears.push({
-                gearUrl: anchor.href,
-                gearName: anchor.title,
-                img: anchor.querySelector('img').src
-              });
-            });
-
-            // 获取第三列talents-cell中的所有超链接
-            const talentAnchors = row.querySelectorAll('td.talents-cell a');
-            talentAnchors.forEach(anchor => {
-              gdItem.talents.push({
-                talentUrl: anchor.href,
-                talentName: anchor.title,
-                img: anchor.querySelector('img').src
-              });
-            });
-
-            // 将结构体对象添加到数组中
-            gdArray.push(gdItem);
-          });
-        });
-
-        return gdArray;
-      });
-
-      //logger.info(data)
-      let virtual = 0
-      let gd = {
-        virtual,
-        data,
-      };
-
-      return gd
+      })
+      return { virtual: 0, data: gdArray }
     } catch (error) {
-      let virtual = 1
-      let gd = {
-        virtual,
-      };
-      return gd
-    } finally {
-      if (page) {
-        await page.close().catch(err => logger.error('[ESO:战斗日志] 关闭页面失败:', err));
-      }
-    }    
+      logger.error(`[ESO:战斗日志] 获取团队数据失败: ${error.message}`)
+      return { virtual: 1 }
+    }
   }
 
   async getRankLog (url) {
-    let rankURL = url
-    let BuildTable = JSON.parse(JSON.stringify(await this.getWebData(rankURL, 'rank')))
+    let BuildTable = JSON.parse(JSON.stringify(await this.getWebData(() => this.getRankData(url))))
 
     if(BuildTable.virtual)
     {
@@ -1450,186 +1241,124 @@ export class esologPuzzle extends plugin {
     }
     else
     {
-      let RT = BuildTable.ranks
-      //logger.info(BuildTable.zone)
-      //logger.info(BuildTable.filterInfo)
-      //logger.info('一共' + RT.length + '个目标')
-      //logger.info(RT)
-
-      /*
-      for (let oneInfo of RT) {
-        let msg = ''
-        if(oneInfo.roleName[0] == '-')
-        {
-          oneInfo.roleName = oneInfo.roleName.replace('-','')
-        }
-        oneInfo.accountName = oneInfo.accountName.split('\n')[0];
-        msg += '\n' + 'Class: ' + oneInfo.classType + '\n' + 'RoleName: ' + oneInfo.roleName + '\n' + 'AccountName: ' + oneInfo.accountName
-        let index = 0
-        for (let oneTalent of oneInfo.talents) {
-          msg += '\n' + 'Talents[' + index + ']: ' + oneTalent
-          index++;
-        }
-        index = 0;
-        for (let oneGear of oneInfo.gears) {
-          msg += '\n' + 'Gears[' + index + ']: ' + oneGear.name + '|' + oneGear.icon + '(' + oneGear.quality + ')' + '[' + oneGear.id + ']' //name, icon, quality, id
-          index++;
-        }
-        logger.info(msg)
-      }
-      */
-      
-      
       //更新Build变量
       let rankData = await database.updateData(BuildTable, 4)
       let img = await puppeteer.screenshot('eso', rankData)
       return img
-      //return "text"
     }
   }
 
+  /** 从 rankings URL（query 或 hash）提取参数 */
+  parseRankParam (url, key) {
+    const m = url.match(new RegExp('[?#&]' + key + '=([^&#]*)'))
+    return m ? decodeURIComponent(m[1]) : ''
+  }
+
   async getRankData (url) {
-    if (!puppeteer.browser) {
-      await puppeteer.browserInit()
-    }
-    const page = await puppeteer.browser.newPage()
+    // 通过官方 API 获取排行榜（encounter.characterRankings）
     try {
-      // 设置更短的导航超时时间
-      page.setDefaultNavigationTimeout(30000);
-      
-      try {
-        // 使用 domcontentloaded 而不是 load
-        await Promise.race([
-          page.goto(url, { waitUntil: 'domcontentloaded' }),
-          // 一旦发现目标元素就继续执行
-          page.waitForSelector('#DataTables_Table_0_wrapper', { timeout: 120000 })
-        ]);
-      } catch (navError) {
-        if (navError.message.includes('Navigating frame was detached')) {
-          logger.debug('[ESO:战斗日志] 页面导航中断，继续处理');
-        } else {
-          throw navError;
+      const zoneMatch = url.match(/(?:zone|zones)\/rankings\/(\d+)/)
+      if (!zoneMatch) {
+        logger.error('[ESO:战斗日志] 无法从 URL 解析 zone id: ' + url)
+        return { virtual: 1 }
+      }
+      const zoneId = zoneMatch[1]
+      const boss = this.parseRankParam(url, 'boss')          // encounter id
+      const difficulty = this.parseRankParam(url, 'difficulty')
+      const metric = this.parseRankParam(url, 'metric')
+      const className = this.parseRankParam(url, 'class')
+      const serverSlug = this.parseRankParam(url, 'server')
+      const serverRegion = this.parseRankParam(url, 'region')
+      const partition = this.parseRankParam(url, 'partition')
+      const size = this.parseRankParam(url, 'size')
+      const page = this.parseRankParam(url, 'page')
+
+      // 防注入：zoneId/boss/partition/size/page 必须是数字
+      if (!/^\d+$/.test(zoneId) || !/^\d+$/.test(boss)) {
+        logger.error('[ESO:战斗日志] rankings URL 参数非法: ' + url)
+        return { virtual: 1 }
+      }
+      if (partition && !/^\d+$/.test(partition)) return { virtual: 1 }
+      if (size && !/^\d+$/.test(size)) return { virtual: 1 }
+      if (page && !/^\d+$/.test(page)) return { virtual: 1 }
+      if (metric && !/^[A-Za-z]+$/.test(metric)) return { virtual: 1 }
+      if (difficulty && !/^\d+$/.test(difficulty)) return { virtual: 1 }
+
+      // zone 名称（排行榜标题用）
+      const zoneData = await esologsApi.graphql(`{ worldData { zone(id: ${zoneId}) { name } } }`)
+      const zoneName = zoneData.worldData.zone ? zoneData.worldData.zone.name : ''
+
+      // 构造 characterRankings 查询（仅含已提供参数）
+      const args = []
+      if (metric) args.push(`metric: ${metric}`)
+      if (difficulty) args.push(`difficulty: ${difficulty}`)
+      if (className) args.push(`className: "${className}"`)
+      if (serverSlug) args.push(`serverSlug: "${serverSlug}"`)
+      if (serverRegion) args.push(`serverRegion: "${serverRegion}"`)
+      if (partition) args.push(`partition: ${partition}`)
+      if (size) args.push(`size: ${size}`)
+      if (page) args.push(`page: ${page}`)
+      args.push('includeCombatantInfo: true')
+
+      const rankData = await esologsApi.graphql(
+        `{ worldData { encounter(id: ${boss}) { name characterRankings(${args.join(', ')}) } } }`
+      )
+      const encounter = rankData.worldData.encounter
+      if (!encounter) {
+        return { virtual: 1 }
+      }
+      const rankJson = encounter.characterRankings || {}
+      // 兼容多种返回结构（rankings 数组）
+      const list = Array.isArray(rankJson) ? rankJson : (rankJson.rankings || rankJson.ranks || rankJson.data || rankJson.entries || [])
+      const ranks = list.map(item => {
+        const { roleName } = esoRole(item.spec)
+        // 排行榜判断用大写 K（与 database.js updateRankData 的 classType 判断一致）
+        const classType = `${(item.class || '').replace(/Dragonknight/gi, 'DragonKnight')}-${roleName}`
+        const talents = (item.talents || []).filter(t => t && t.icon)
+          .map(t => `https://assets.rpglogs.com/img/eso/abilities/${t.icon}.png`)
+        const gears = (item.gear || []).filter(g => g && g.id && g.icon && g.icon !== '???').map(g => ({
+          name: g.name,
+          icon: g.icon,
+          quality: g.quality,
+          id: Number(g.id) || 0
+        }))
+        return {
+          classImg: '',
+          classType,
+          link: '',
+          roleName: item.name,
+          accountName: item.displayName || '',
+          talents,
+          gears
         }
+      })
+
+      let zone = {
+        zoneImage: '',
+        zoneName,
+        zoneType: ''
+      }
+      let filterInfo = {
+        metric: metric || '',
+        boss: encounter.name || '',
+        difficulty: difficulty || '',
+        class: className || ''
       }
 
-      // 只等待必要的元素
-      await page.waitForSelector('#DataTables_Table_0_wrapper', { timeout: 120000 });
-      
-      const zoneImage = await page.$eval('#zone-image', img => img.src);
-      const zoneName = await page.$eval('.zone-name', a => a.textContent);
-      const zoneType = await page.$eval('#zone-type', span => span.textContent.trim());
-      let zone = {
-        zoneImage,
-        zoneName,
-        zoneType
-      };
-
-      const filterInfo = await page.evaluate(() => {
-        const filterConfig = {};
-
-        // 提取 metric
-        const metricText = document.querySelector('#filter-metric-text')?.textContent || 'N/A';
-        filterConfig.metric = metricText;
-
-        // 提取 boss
-        const bossText = document.querySelector('#filter-boss-text')?.textContent || 'N/A';
-        filterConfig.boss = bossText;
-
-        // 提取 difficulty
-        const difficultyText = document.querySelector('#filter-difficulty-text')?.textContent || 'N/A';
-        filterConfig.difficulty = difficultyText;
-
-        // 提取 class
-        const classText = document.querySelector('#filter-class-text')?.textContent || 'N/A';
-        filterConfig.class = classText;
-
-        return filterConfig;
-      });
-
-      //#DataTables_Table_0 tbody tr
-      const ranks = await page.evaluate(() => {
-        const rows = document.querySelectorAll('#DataTables_Table_0 tbody tr');
-        const data = [];
-
-        rows.forEach(row => {
-            const classImg = row.querySelector('.players-table-name img').src;
-            const classType = row.querySelector('.players-table-name img').alt;
-            const link = row.querySelector('.players-table-name a').href;
-            const roleName = row.querySelector('.players-table-name a').textContent;
-            const accountName = row.querySelector('.display-name-col').textContent;
-            const scriptText = row.querySelectorAll('script') ? row.querySelectorAll('script')[1].textContent : 0;
-            const talentsCellMatch = scriptText ? scriptText.match(/talentsCell: '([^']+)'/) : 0;
-            let talents = false; // 默认值
-            if(talentsCellMatch != 0 && talentsCellMatch.length > 1)
-            {
-              talents = [];
-              talents = (talentsCellMatch[1].includes("png")) ? talentsCellMatch[1].match(/src="([^"]+)"/g).map(img => img.replace('src="', '').replace('"', '')) : [];
-           }
-            else
-            {
-              talents = [];
-            }
-
-            const gearsMatch = scriptText ? scriptText.match(/talentsAndGear\["row-\d+-\d+"\]\.gear\.push\(([^)]+)\)/g) : 0;
-            
-            const gears = gearsMatch ? gearsMatch.map(gearStr => {
-                const gearObj = {};
-
-                // 使用正则表达式匹配每个属性的值
-                const nameMatch = gearStr.match(/name: "([^"]+)"/);
-                const iconMatch = gearStr.match(/icon: "([^"]+)"/);
-                const qualityMatch = gearStr.match(/quality: "([^"]+)"/);
-                const idMatch = gearStr.match(/id: (\d+)/);
-
-                if (nameMatch) gearObj.name = nameMatch[1];
-                if (iconMatch) gearObj.icon = iconMatch[1];
-                if (qualityMatch) gearObj.quality = qualityMatch[1];
-                if (idMatch) gearObj.id = parseInt(idMatch[1], 10);
-
-                return {
-                    name: gearObj.name,
-                    icon: gearObj.icon,
-                    quality: gearObj.quality,
-                    id: gearObj.id
-                };
-            }) : [];
-
-            data.push({
-                classImg,
-                classType,
-                link,
-                roleName,
-                accountName,
-                talents,
-                gears
-            });
-        });
-
-        return data;
-      });
-
-      //logger.info(ranks)
       let virtual = 0
       let rankTable = {
         virtual,
         zone,
         filterInfo,
         ranks
-      };
-
+      }
       return rankTable
     } catch (error) {
+      logger.error(`[ESO:战斗日志] 获取排行榜数据失败: ${error.message}`)
       let virtual = 1
-      let rankTable = {
-        virtual,
-      };
-
+      let rankTable = { virtual }
       return rankTable
-    } finally {
-      if (page) {
-        await page.close().catch(err => logger.error('[ESO:战斗日志] 关闭页面失败:', err));
-      }
-    }    
+    }
   }
 
   async splitStr (inputStr, beforeStr, afterStr) {
@@ -2178,6 +1907,33 @@ export class esologPuzzle extends plugin {
     } catch (error) {
       logger.error(`[ESO:账号切换] 切换主账号失败: ${error.message}`);
       return await this.reply('切换主账号失败，请稍后重试');
+    }
+  }
+
+  // 配置 ESOLogs API 凭证（仅私聊 + 主人）
+  async setApiKey(e) {
+    if (!e.isMaster) {
+      return e.reply('权限不足', true)
+    }
+    if (e.isGroup) {
+      return e.reply('请私聊使用', true)
+    }
+    const content = e.msg.replace(/^#*esolog设置apikey/i, '').trim()
+    const match = content.match(/^([A-Za-z0-9-]+):([A-Za-z0-9_-]+)$/)
+    if (!match) {
+      return e.reply('格式错误：请使用 #esolog设置apikey{clientId}:{clientSecret}', true)
+    }
+    const ok = esologsApi.setCredentials(match[1], match[2])
+    if (!ok) {
+      return e.reply('凭证保存失败，请检查配置文件权限', true)
+    }
+    // 立即验证凭证有效性
+    try {
+      await esologsApi.getAccessToken(true)
+      const rl = await esologsApi.getRateLimit()
+      return e.reply(`ESOLogs API 凭证已保存并验证通过\n当前限额：每小时 ${rl.limitPerHour} 积分`, true)
+    } catch (err) {
+      return e.reply(`凭证已保存，但验证失败：${err.message}\n请检查 clientId 与 clientSecret 是否正确`, true)
     }
   }
 

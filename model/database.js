@@ -5511,6 +5511,10 @@ class database {
       buildData.buildsData[1].gear[i].type_color = 'rgb(221, 221, 221)'
       buildData.buildsData[1].gear[i].color = 'rgb(170, 170, 170)'
       buildData.buildsData[1].gear[i].icon = 'transparent'
+      // 清理模板占位数据（build.yaml 默认 gear 带示例 set/level）
+      buildData.buildsData[1].gear[i].set_cn = ''
+      buildData.buildsData[1].gear[i].set_en = ''
+      buildData.buildsData[1].gear[i].level = ''
     }
 
     buildData.buildsData[1].gear[0].slot = '头部'

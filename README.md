@@ -91,7 +91,8 @@ pnpm install --filter=eso
 
 | 功能 | 命令 | 权限 | 需要@ | 说明 |
 |------|------|------|-------|------|
-| 网址解析 | 直接发送esolog网址 | 所有人 | 否 | 解析排行榜和个人BD，生成图表 |
+| 网址解析 | 直接发送esolog网址 | 所有人 | 否 | 解析排行榜和个人BD，生成图表（需先配置API凭证） |
+| 配置API凭证 | #esolog设置apikey{clientId}:{clientSecret} | 主人 | 否 | 配置ESOLogs官方API凭证（仅私聊可用） |
 | 绑定账户 | #绑定 账号名 | 所有人 | 否 | 绑定ESOLOG账号 |
 | 切换主账号 | #切换绑定 序号 | 所有人 | 否 | 切换主账号（序号从查询绑定查看） |
 | 查询绑定 | #查询绑定 | 所有人 | 否 | 查询已绑定的账号，支持ESOCN头像显示 |
@@ -215,6 +216,10 @@ pnpm install --filter=eso
 - 直接发送esolog网址即可解析
 - 支持排行榜和个人BD解析
 - 可绑定账户生成角色名片
+- **需要先配置 ESOLogs 官方 API 凭证**（esologs.com 已启用防爬，不再支持网页抓取）：
+  1. 登录 https://www.esologs.com 后在 https://www.esologs.com/api/clients/ 创建客户端应用，获取 clientId 和 clientSecret
+  2. 私聊机器人发送 `#esolog设置apikey{clientId}:{clientSecret}` 完成配置（仅主人可用）
+  3. 凭证保存在 `data/eso/custome_resources/config/esologcfg.json`，不会提交到 git
 
 **TTC交易说明**:
 - 支持美服和欧服查询

@@ -101,6 +101,10 @@
       desc: "发送esolog个人装备技能网址"
       item_class: item_split2
     - icon: ..\icon\esolog
+      title: "配置API凭证"
+      desc: "#esolog设置apikey{id}:{secret}（仅私聊主人）"
+      item_class: item_split2
+    - icon: ..\icon\esolog
       title: "#绑定"
       desc: "绑定玩家账户"
       item_class: item_split2
