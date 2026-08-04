@@ -6178,6 +6178,12 @@ class database {
       talentIndex++
     }
 
+    // 标记空技能栏（全部槽位为 empty/N/A 时隐藏）
+    for (let i = 0; i < 2; i++) {
+      const barArr = buildData.buildsData[1].spell[i].bar || []
+      buildData.buildsData[1].spell[i].isEmpty = barArr.every(b => !b || b.icon === 'empty' || b.name === 'N/A' || !b.name)
+    }
+
     if(skillLineInfo.length < 3)
     {
       for (let eachLine of BD.skillLineInfo) {

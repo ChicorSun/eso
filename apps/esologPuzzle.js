@@ -86,6 +86,24 @@ function esoRole (roleText) {
   return { roleName: roleText || '', roleNameCN: roleText || '' }
 }
 
+/** 狼人系技能名（中英文）：狼人转化 Werewolf Transformation / 群狼之首 Pack Leader / 狼人狂战士 Werewolf Berserker */
+const WOLF_SKILL_RE = /werewolf|pack leader|狼人转化|群狼之首|狼人狂战士/i
+
+/**
+ * 判断技能栏是否含狼人系技能
+ * 兼容两种结构：API 原始 talents（{name}）与组装后 talentData（{mainSkill, offSkill}.text）
+ */
+function esoHasWolfSkill (talentsOrData) {
+  if (!Array.isArray(talentsOrData)) return false
+  return talentsOrData.some(t => {
+    if (!t) return false
+    if (typeof t.name === 'string' && WOLF_SKILL_RE.test(t.name)) return true
+    if (t.mainSkill && typeof t.mainSkill.text === 'string' && WOLF_SKILL_RE.test(t.mainSkill.text)) return true
+    if (t.offSkill && typeof t.offSkill.text === 'string' && WOLF_SKILL_RE.test(t.offSkill.text)) return true
+    return false
+  })
+}
+
 /** 职业英文名（可能大小写不一）→ esologs className/classNameCN */
 function esoClass (className) {
   if (!className) return { className: '', classNameCN: '' }
@@ -835,7 +853,10 @@ export class esologPuzzle extends plugin {
           classNameCN = "窝登"
         }
 
-        if(class_role.includes("Stamina")) {
+        if(class_role.includes("WerewolfDPS")) {
+          roleName = "StaminaDPS"
+          roleNameCN = "狼人"
+        } else if(class_role.includes("Stamina")) {
           roleName = "StaminaDPS"
           roleNameCN = "耐系"
         } else if(class_role.includes("Magicka")) {
@@ -918,6 +939,11 @@ export class esologPuzzle extends plugin {
               if (existingRecord) {
                 logger.info(`[ESO:战斗日志] 发现已有记录: ${targetMember.accountName}/${targetMember.playerName}`);
                 existingBD = existingRecord.buildData;
+                // 缓存记录同样按技能栏判定：含狼人系技能则显示 狼人xx
+                if (existingBD && esoHasWolfSkill(existingBD.talentData)) {
+                  existingBD.roleName = 'StaminaDPS'
+                  existingBD.roleNameCN = '狼人'
+                }
                 return { 
                   BD: existingBD, 
                   recordStatus: shouldRecord ? 2 : -1 
@@ -982,11 +1008,18 @@ export class esologPuzzle extends plugin {
         for (let oneMan of groupsData[recordID].memberData) {
           if(sourceIndex == oneMan.sourceIndex)
           {
+            // 技能栏含狼人系技能时强制显示 狼人xx（不受 icon/specs 定位影响）
+            const wolfBySkills = esoHasWolfSkill(BD.talentData)
             BD.className = oneMan.className
             BD.classNameCN = oneMan.classNameCN
-            BD.roleName = oneMan.roleName
-            BD.roleNameCN = oneMan.roleNameCN
             BD.accountName = oneMan.accountName
+            if (wolfBySkills) {
+              BD.roleName = 'StaminaDPS'
+              BD.roleNameCN = '狼人'
+            } else {
+              BD.roleName = oneMan.roleName
+              BD.roleNameCN = oneMan.roleNameCN
+            }
             break
           }
         }
@@ -1167,10 +1200,11 @@ export class esologPuzzle extends plugin {
         })
       }
 
-      // 技能：talents 按返回顺序前一半/后一半分为主/副技能条
+      // 技能：talents 按每 6 个一组切分（ESO 技能栏固定 6 槽位：5 常规 + 1 大招）
+      // 12 个 = 技能栏1(0-5) + 技能栏2(6-11)；6 个 = 仅技能栏1，技能栏2 留空
       const talents = p.combatantInfo.talents || []
       const talentData = []
-      const barLen = Math.ceil(talents.length / 2)
+      const barLen = 6
       const mk = (t) => t && t.name ? {
         icon: `https://assets.rpglogs.com/img/eso/abilities/${t.abilityIcon}.png`,
         text: t.name,
@@ -1180,8 +1214,8 @@ export class esologPuzzle extends plugin {
         talentData.push({ mainSkill: mk(talents[i]), offSkill: mk(talents[i + barLen]) })
       }
 
-      // 技能栏含狼人系技能（狼人转化 Werewolf Transformation / 群狼之首 Pack Leader / 狼人狂战士 Werewolf Berserker）时视为耐系输出
-      if (talents.some(t => t && t.name && /werewolf|pack leader|狼人转化|群狼之首|狼人狂战士/i.test(t.name))) {
+      // 技能栏含狼人系技能（狼人转化/群狼之首/狼人狂战士，兼容中英文名）时视为耐系输出
+      if (esoHasWolfSkill(talents)) {
         roleName = 'StaminaDPS'
         roleNameCN = '狼人'
       }
@@ -1241,12 +1275,15 @@ export class esologPuzzle extends plugin {
       const allPlayers = [...(groups.healers || []), ...(groups.dps || []), ...(groups.tanks || [])]
       const gdArray = allPlayers.map(p => {
         const { className } = esoClass(p.type)
-        const { roleName } = esoRole(esoRoleFromIcon(p.icon) || (p.specs && p.specs[0] && p.specs[0].spec))
+        const iconRole = esoRoleFromIcon(p.icon) || (p.specs && p.specs[0] && p.specs[0].spec)
+        const { roleName } = esoRole(iconRole)
+        // 狼人角色保留 WerewolfDPS 标识，供 getGroupLog 解析为 狼人 定位
+        const roleTag = /werewolf/i.test(iconRole || '') ? 'WerewolfDPS' : roleName
         return {
           link: `https://www.esologs.com/reports/${reportsID}?fight=${fightIndex}&source=${p.id}`,
           playerName: p.name,
           accountName: p.displayName || '',
-          className_roleName: `${className}-${roleName}`,
+          className_roleName: `${className}-${roleTag}`,
           gears: [],
           talents: []
         }

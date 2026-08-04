@@ -149,6 +149,7 @@
     <div class="spell">
       <table class="spell_table">
         {{each val.spell spell index}}
+        {{if !spell.isEmpty}}
         <tr class="spell_bar">
           {{if index === 0}}
           <td class="weapon_cell">1&nbsp;&nbsp;</td>
@@ -197,6 +198,7 @@
           {{/if}}
           {{/each}}
         </tr>
+        {{/if}}
         {{/each}}
       </table>
       {{if val.isESOCN && val.craftedSkills && val.craftedSkills.length > 0}}
