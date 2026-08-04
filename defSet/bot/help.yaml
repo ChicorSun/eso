@@ -12,9 +12,13 @@
       title: "#服务器公告"
       desc: "查询服务器维护计划"
       item_class: item_split2
+    - icon: ..\icon\notice
+      title: "#服务器通知"
+      desc: "查看当前通知掩码(管理员可设置01串)"
+      item_class: item_split2
     - icon: ..\icon\clock
       title: "#几点了"
-      desc: "查询当前UTC时间"
+      desc: "查询当前北京时间与UTC时间"
       item_class: item_split2
 - group: 无畏者指令
   group_class: data_box_split1
@@ -62,6 +66,14 @@
       title: "%食物名"
       desc: "查询食物的图鉴(%不可省略)"
       item_class: item_split2
+    - icon: u34_mythic_oakensoul_ring
+      title: "!家具名"
+      desc: "查询家具图鉴(!不可省略)"
+      item_class: item_split2
+    - icon: u34_mythic_oakensoul_ring
+      title: "!!收藏品名"
+      desc: "查询收藏品家具图鉴"
+      item_class: item_split2
 - group: TTC交易中心
   group_class: data_box_split1
   list:
@@ -78,34 +90,70 @@
       desc: "查询物品价格信息"
       item_class: item_split2
     - icon: ..\icon\ttc
-      title: "#更新价格表(仅主人可使用)"
-      desc: "更新TTC价格数据"
+      title: "#热销商品"
+      desc: "查询当前热销/快销商品"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#拍卖行"
+      desc: "查询拍卖行NPC位置(支持#公会商人)"
       item_class: item_split2
     - icon: ..\icon\ttc
       title: "#TTC帮助"
       desc: "查看TTC功能帮助"
       item_class: item_split2
     - icon: ..\icon\ttc
+      title: "#更新价格表(仅主人可使用)"
+      desc: "更新TTC价格数据"
+      item_class: item_split2
+    - icon: ..\icon\ttc
       title: "#设置ttc默认 美服/欧服"
       desc: "设置默认TTC服务器"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#更新拍卖行位置(仅主人可使用)"
+      desc: "强制扫描更新拍卖行位置"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#ttc验证码 开启/关闭"
+      desc: "设置验证码自动处理状态"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#ttc代理 <URL>"
+      desc: "设置TTC代理(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#ttc反代理 <URL>"
+      desc: "设置TTC反代理(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#ttc测试代理"
+      desc: "测试代理是否可用(仅主人)"
       item_class: item_split2
 - group: ESOLOG解析
   group_class: data_box_split1
   list:
     - icon: ..\icon\esolog
-      title: "排行榜网址"
-      desc: "发送esolog排行榜网址，生成图表"
-      item_class: item_split2
-    - icon: ..\icon\esolog
-      title: "个人BD网址"
-      desc: "发送esolog个人装备技能网址"
+      title: "esologs网址"
+      desc: "发送esologs网址(排行榜/个人BD/链接)，自动解析生成图表"
       item_class: item_split2
     - icon: ..\icon\esolog
       title: "配置API凭证"
       desc: "#esolog设置apikey{id}:{secret}（仅私聊主人）"
       item_class: item_split2
     - icon: ..\icon\esolog
-      title: "#绑定"
+      title: "#快速分析开/关"
+      desc: "开启/关闭快速分析模式(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#设置解析速度 <数字>"
+      desc: "设置最大并发解析数(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#设置等待时间 <毫秒>"
+      desc: "设置解析等待超时(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#绑定 账号名"
       desc: "绑定玩家账户"
       item_class: item_split2
     - icon: ..\icon\esolog
@@ -113,12 +161,20 @@
       desc: "查询已绑定的账号"
       item_class: item_split2
     - icon: ..\icon\esolog
-      title: "#解绑"
+      title: "#切换绑定 序号"
+      desc: "切换主账号"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#解绑 序号"
       desc: "解除玩家账户绑定"
       item_class: item_split2
     - icon: ..\icon\esolog
       title: "#角色"
       desc: "查看已绑定角色"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#删除角色"
+      desc: "删除指定角色"
       item_class: item_split2
     - icon: ..\icon\esolog
       title: "#编辑角色"
@@ -168,6 +224,14 @@
       title: "#更新头像"
       desc: "更新角色头像"
       item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#BCXXXXXX"
+      desc: "使用ESOCN绑定码绑定，自动同步信息"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#esocn状态"
+      desc: "查看ESOCN绑定状态"
+      item_class: item_split2
 - group: 游戏资讯
   group_class: data_box_split1
   list:
@@ -182,6 +246,14 @@
     - icon: ..\icon\guide
       title: "#无限档案塔"
       desc: "查询无限档案塔商人的商品"
+      item_class: item_split2
+    - icon: ..\icon\gold
+      title: "#家具商人"
+      desc: "查询冷港家具商人的商品"
+      item_class: item_split2
+    - icon: ..\icon\guide
+      title: "#周常试炼"
+      desc: "查询本周试炼信息"
       item_class: item_split2
     - icon: ..\icon\alchemy
       title: "#大力丸配方"
@@ -199,6 +271,18 @@
       title: "#大招药配方"
       desc: "查询大招药制作配方"
       item_class: item_split2
+    - icon: ..\icon\alchemy
+      title: "#炼金配方 / #XX配方"
+      desc: "查询任意炼金配方"
+      item_class: item_split2
+    - icon: ..\icon\guide
+      title: "#新闻列表"
+      desc: "获取游戏新闻列表(#新闻1查详情)"
+      item_class: item_split2
+    - icon: ..\icon\guide
+      title: "#刷新新闻列表"
+      desc: "强制刷新新闻数据"
+      item_class: item_split2
     - icon: ..\icon\guide
       title: "#攻略"
       desc: "获取游戏攻略链接"
@@ -211,24 +295,36 @@
   group_class: data_box_split1
   list:
     - icon: ..\icon\ttc
+      title: "#steam"
+      desc: "查看Steam功能帮助"
+      item_class: item_split2
+    - icon: ..\icon\ttc
       title: "#steam绑定 xxx"
       desc: "绑定Steam账号(ID/好友码/链接)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam解绑 [序号]"
+      desc: "解绑Steam账户"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam切换绑定 <序号>"
+      desc: "切换当前使用的绑定账号"
       item_class: item_split2
     - icon: ..\icon\ttc
       title: "#steam信息"
       desc: "查看Steam用户信息卡"
       item_class: item_split2
     - icon: ..\icon\ttc
+      title: "#steam状态"
+      desc: "查看绑定账号在线状态"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam在线"
+      desc: "查看账号在线信息"
+      item_class: item_split2
+    - icon: ..\icon\ttc
       title: "#steam游戏"
       desc: "查看Steam游戏库"
-      item_class: item_split2
-    - icon: ..\icon\ttc
-      title: "#steam列表"
-      desc: "查看所有绑定玩家当前状态"
-      item_class: item_split2
-    - icon: ..\icon\ttc
-      title: "#steam排行 [天数]"
-      desc: "游戏时长排行榜"
       item_class: item_split2
     - icon: ..\icon\ttc
       title: "#steam成就 <游戏ID>"
@@ -251,24 +347,76 @@
       desc: "查看当前特惠"
       item_class: item_split2
     - icon: ..\icon\ttc
-      title: "#steam开启游玩推送"
-      desc: "开启游玩/结束/切换游戏推送"
+      title: "#steam统计"
+      desc: "查看绑定统计"
       item_class: item_split2
     - icon: ..\icon\ttc
-      title: "#steam开启成就推送"
-      desc: "开启成就解锁推送"
+      title: "#steam列表"
+      desc: "查看所有绑定玩家当前状态"
       item_class: item_split2
     - icon: ..\icon\ttc
-      title: "#steam推送白名单"
-      desc: "主人管理全局游戏推送白名单"
+      title: "#steam排行 [天数]"
+      desc: "游戏时长排行榜"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam开启/关闭游玩推送"
+      desc: "开启/关闭游玩/结束/切换游戏推送"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam开启/关闭在线推送"
+      desc: "开启/关闭上线/下线动态推送"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam开启/关闭成就推送"
+      desc: "开启/关闭成就解锁推送"
       item_class: item_split2
     - icon: ..\icon\ttc
       title: "#steam全体开启/关闭游玩推送"
       desc: "主人批量修改所有用户推送开关"
       item_class: item_split2
     - icon: ..\icon\ttc
-      title: "#steam开启在线推送"
-      desc: "开启上线/下线动态推送"
+      title: "#steam全体开启/关闭在线推送"
+      desc: "主人批量修改所有用户在线推送"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam推送目标列表"
+      desc: "查看推送目标列表(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam新增/删除推送目标"
+      desc: "管理推送目标群(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam推送测试"
+      desc: "测试推送是否正常(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam刷新推送"
+      desc: "手动刷新推送状态(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam推送白名单"
+      desc: "查看全局游戏推送白名单(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam开启/关闭推送白名单"
+      desc: "开启/关闭白名单过滤(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam添加/删除推送白名单"
+      desc: "管理白名单游戏(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam设置"
+      desc: "查看当前配置与API Key管理命令"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steam添加/删除apikey"
+      desc: "管理Steam API Key(仅主人)"
+      item_class: item_split2
+    - icon: ..\icon\ttc
+      title: "#steamapikey列表"
+      desc: "查看已配置的API Key(仅主人)"
       item_class: item_split2
 - group: 群管理功能
   group_class: data_box_split1
@@ -279,15 +427,15 @@
       item_class: item_split2
     - icon: ..\icon\notice
       title: "#禁止全体功能"
-      desc: "禁止用户使用全体功能"
+      desc: "禁止用户使用全体功能(仅主人)"
       item_class: item_split2
     - icon: ..\icon\notice
       title: "#允许使用全体功能"
-      desc: "允许用户使用全体功能"
+      desc: "允许用户使用全体功能(仅主人)"
       item_class: item_split2
     - icon: ..\icon\notice
       title: "#查看全体功能黑名单"
-      desc: "查看全体功能黑名单"
+      desc: "查看全体功能黑名单(仅主人)"
       item_class: item_split2
     - icon: ..\turnplate\base
       title: "#禁言转盘"
@@ -295,7 +443,7 @@
       item_class: item_split2
     - icon: ..\turnplate\base
       title: "#禁言转盘开/关"
-      desc: "开启/关闭禁言转盘功能"
+      desc: "开启/关闭禁言转盘功能(管理员)"
       item_class: item_split2
     - icon: ..\icon\recall
       title: "撤回/撤销"
@@ -305,12 +453,36 @@
       title: "#群昵称格式"
       desc: "查看群昵称格式"
       item_class: item_split2
+    - icon: ..\icon\crowns
+      title: "#开启/关闭群昵称检查"
+      desc: "开启/关闭群昵称格式检查(管理员)"
+      item_class: item_split2
+    - icon: ..\icon\crowns
+      title: "#开启/关闭违规词检查"
+      desc: "开启/关闭群消息违规词检查(管理员)"
+      item_class: item_split2
+    - icon: ..\icon\crowns
+      title: "#设置群昵称违规禁言时长"
+      desc: "设置违规禁言时长(管理员)"
+      item_class: item_split2
 - group: 统计功能
   group_class: data_box_split1
   list:
     - icon: ..\icon\water
-      title: "#发言榜(日榜|月榜)"
+      title: "#发言榜(日榜|月榜|年榜)"
       desc: "群友水群次数排行榜"
+      item_class: item_split2
+    - icon: ..\icon\water
+      title: "#发言统计"
+      desc: "查看自己的发言统计"
+      item_class: item_split2
+    - icon: ..\icon\water
+      title: "#发言成就(列表)"
+      desc: "查看发言成就"
+      item_class: item_split2
+    - icon: ..\icon\water
+      title: "#发言设置显示成就"
+      desc: "设置聊天中显示的成就"
       item_class: item_split2
 - group: 系统管理
   group_class: data_box_split1

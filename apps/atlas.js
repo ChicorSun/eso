@@ -165,6 +165,18 @@ export class atlas extends plugin {
           fnc: 'showAtlas'
         },
         {
+          /** 技能图鉴：* 开头（含全角＊） */
+          reg: '^[*＊].*$',
+          /** 执行方法 */
+          fnc: 'showAtlas'
+        },
+        {
+          /** 食物图鉴：% 开头（含全角％） */
+          reg: '^[%％].*$',
+          /** 执行方法 */
+          fnc: 'showAtlas'
+        },
+        {
           /** 命令正则匹配 */
           reg: '^[!！].*$',
           /** 执行方法 */
