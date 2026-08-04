@@ -535,6 +535,17 @@ export class esologPuzzle extends plugin {
       }
       else
       {
+        // 兼容 fight=last / fight=latest 等非数字写法（esologs 网页支持，API 需要具体战斗 id）
+        if(!/^\d+$/.test(fightIndex))
+        {
+          let resolved = await this.resolveFightIndex(reportsID, fightIndex)
+          if(resolved === null)
+          {
+            return await this.reply('无法解析该战斗编号', true)
+          }
+          fightIndex = String(resolved)
+          logger.info('fightIndex 解析为:' + fightIndex)
+        }
         // 先获取团队信息
         await this.reply('正在为您解析...', true)
         let has_find = false
@@ -1361,8 +1372,32 @@ export class esologPuzzle extends plugin {
     }
   }
 
+  /**
+   * 将 esologs URL 中的非数字 fight 参数（如 last/latest）解析为具体战斗 id
+   * @returns {number|null} 战斗 id，失败返回 null
+   */
+  async resolveFightIndex (reportsID, fightIndex) {
+    try {
+      if (!/^[A-Za-z0-9]+$/.test(reportsID || '')) return null
+      const query = `{ reportData { report(code: "${reportsID}") { fights { id } } } }`
+      const data = await esologsApi.graphql(query)
+      const report = data.reportData.report
+      if (!report || !Array.isArray(report.fights) || report.fights.length === 0) return null
+      const lower = String(fightIndex).toLowerCase()
+      if (lower === 'last' || lower === 'latest') {
+        // 取最后一个战斗 id
+        return report.fights[report.fights.length - 1].id
+      }
+      // 尝试按战斗名匹配（如 fight=Keelcutter）
+      const matched = report.fights.find(f => String(f.name).toLowerCase().includes(lower))
+      return matched ? matched.id : null
+    } catch (error) {
+      logger.error(`[ESO:战斗日志] 解析 fight 参数失败: ${error.message}`)
+      return null
+    }
+  }
+
   async splitStr (inputStr, beforeStr, afterStr) {
-    let sourceStr = inputStr
     let outputStr = ''
 
     if(inputStr.includes(beforeStr)) {
