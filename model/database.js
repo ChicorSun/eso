@@ -5808,7 +5808,18 @@ class database {
           let setData = await this.updateData(setKey, 1)
           if(setData.atlasData[1].name_en == ('<'+GI.set+'>') || setData.atlasData[1].name == GI.set || itemIDMode)
           {
-            buildData.buildsData[1].gear[index].icon = GI.name['image'].split('/eso/abilities/')[1].split('.')[0]
+            // 优先用 esologs 图标；为空时回退到本地图鉴图标（esologs 部分神话/新装备不返回 icon）
+            const esoIcon = (GI.name['image'] || '').split('/eso/abilities/')[1]
+            if (esoIcon && esoIcon !== '.png') {
+              buildData.buildsData[1].gear[index].icon = esoIcon.split('.')[0]
+            } else if (setData.atlasData[1] && setData.atlasData[1].icon) {
+              // setData.atlasData[1].icon 可能是 '../../../../../'+realpath 完整路径或纯图标名，提取末尾文件名
+              const iconStr = String(setData.atlasData[1].icon)
+              const lastSeg = iconStr.split('/').pop().split('.')[0]
+              buildData.buildsData[1].gear[index].icon = lastSeg || ''
+            } else {
+              buildData.buildsData[1].gear[index].icon = ''
+            }
             buildData.buildsData[1].gear[index].type = GI.type
             if(GI.type == 'Light')
             {
@@ -5969,7 +5980,9 @@ class database {
       }
       if(error_set)
       {
-        buildData.buildsData[1].gear[index].icon = await this.splitStr(GI.name['image'], '/eso/abilities/', '.')
+        // 优先用 esologs 图标；为空时留空（渲染端会处理缺图）
+        const esoIcon = (GI.name['image'] || '').split('/eso/abilities/')[1]
+        buildData.buildsData[1].gear[index].icon = (esoIcon && esoIcon !== '.png') ? esoIcon.split('.')[0] : ''
         buildData.buildsData[1].gear[index].type = GI.type
         if(GI.type == 'Light')
         {
