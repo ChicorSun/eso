@@ -42,9 +42,19 @@ const ESOLOG_CLASS_CN = {
   Nightblade: '夜刃', Sorcerer: '巫师', Templar: '圣骑', Warden: '窝登'
 }
 
-/** 装备品质颜色（quality 5=传说金，走 database.js 的金色转换逻辑） */
+/**
+ * 装备品质颜色（与 esocn.js 的五档色板一致）
+ * quality: 1=普通 2=优秀 3=精良 4=史诗 5=传说
+ * 神话档位由 database.js 按图鉴 type 单独处理（橙色），此处不涉及
+ */
 function esoQualityColor (quality) {
-  return quality >= 5 ? 'rgb(229, 204, 128)' : 'rgb(221, 221, 221)'
+  switch (Number(quality)) {
+    case 5: return 'rgb(255, 230, 45)'   // 传说
+    case 4: return 'rgb(163, 53, 238)'   // 史诗
+    case 3: return 'rgb(58, 146, 254)'   // 精良
+    case 2: return 'rgb(47, 213, 14)'    // 优秀
+    default: return 'rgb(170, 170, 170)' // 普通
+  }
 }
 
 /** 物品名 → esologs 显示的装备类型文本（武器） */

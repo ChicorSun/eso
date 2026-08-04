@@ -2308,12 +2308,22 @@ class database {
       let cate_place_cn = ''
       let cate_place_en = ''
 
+      // CN 端 place 缺失时用 EN 端兜底，避免 enhance 阶段抛错
+      const cnSet = setsDataCN[setsData[setKey].id]
+      if (!cnSet?.place && setsData[setKey]?.place) {
+        if (cnSet) {
+          setsDataCN[setsData[setKey].id].place = setsData[setKey].place
+        } else {
+          setsDataCN[setsData[setKey].id] = { place: setsData[setKey].place }
+        }
+      }
+
       if((setsData[setKey].type == 1) || (setsData[setKey].type == 6) || (setsData[setKey].type == 7) || (setsData[setKey].type == 8) || (setsData[setKey].type == 13) || (setsData[setKey].type == 14) || (setsData[setKey].type == 15))
       {
           let index = 0
           let placeStrCN = ''
           let placeStrEN = ''
-          var keysPlaceCN = Object.keys(setsDataCN[setsData[setKey].id].place)
+          var keysPlaceCN = Object.keys(setsDataCN[setsData[setKey].id].place || {})
           index = 0
           for (let placeKey of keysPlaceCN) {
               index++
@@ -2542,7 +2552,7 @@ class database {
 
       if(setsData[setKey].name == "Pillager's Profit")
       {
-        if(setsDataCN[setsData[setKey].id].bonuses['5']['4'].includes('高级力量'))
+        if(setsDataCN[setsData[setKey].id]?.bonuses?.['5']?.['4']?.includes('高级力量'))
         {
           setsDataCN[setsData[setKey].id].bonuses['5']['4'] = "（5件套）[ESOBOT改]在战斗中施放终极技能时，根据你消耗的终极点数量每2秒为12米范围内最多11名其他小队成员提供持续10秒的终极点恢复，每2秒恢复一次，恢复量为施放者消耗终极点的5%，单次恢复值最大为20终极点。"
         }
@@ -2550,7 +2560,7 @@ class database {
       }
       if(setsData[setKey].name == "Perfected Pillager's Profit")
       {
-        if(setsDataCN[setsData[setKey].id].bonuses['5']['5'].includes('高级力量'))
+        if(setsDataCN[setsData[setKey].id]?.bonuses?.['5']?.['5']?.includes('高级力量'))
         {
           setsDataCN[setsData[setKey].id].bonuses['5']['5'] = "（5件套）[ESOBOT改]在战斗中施放终极技能时，根据你消耗的终极点数量每2秒为12米范围内最多11名其他小队成员提供持续10秒的终极点恢复，每2秒恢复一次，恢复量为施放者消耗终极点的5%，单次恢复值最大为20终极点。"
         }
@@ -2559,7 +2569,7 @@ class database {
 
       if(setsData[setKey].name == "Hollowfang Thirst")
       {
-        if(setsDataCN[setsData[setKey].id].bonuses['5']['4'].includes('|cffffff1750|r6'))
+        if(setsDataCN[setsData[setKey].id]?.bonuses?.['5']?.['4']?.includes('|cffffff1750|r6'))
         {
           setsDataCN[setsData[setKey].id].bonuses['5']['4'] = "（5件套）对目标造成暴击治疗或暴击伤害时，在目标位置生成一个血球。2秒后血球爆炸，为你和血球6米范围内的队伍成员恢复1750魔力，并附加次级活力，持续9秒，其受到的治疗和伤害护盾强度提高6%。该效果每9秒可触发一次。"
         }
@@ -2569,7 +2579,7 @@ class database {
 
       if(setsData[setKey].name == "Huntsman's Warmask")
       {
-        if(setsDataCN[setsData[setKey].id].bonuses['5']['1'].includes('Huntsman'))
+        if(setsDataCN[setsData[setKey].id]?.bonuses?.['5']?.['1']?.includes('Huntsman'))
         {
           setsDataCN[setsData[setKey].id].bonuses['5']['1'] = "（1件套）[ESOBOT改]用猛击或完全蓄力的重击造成伤害时，将海尔辛的印记施加于目标身上，持续|cffffff1|r分钟。印记存在期间，你获得次级狂怒，造成的伤害提升|cffffff5|r%，对该目标造成的伤害提升|cffffff15|r%，但对其他所有敌人造成的伤害降低|cffffff50|r%。若被标记的敌人死亡，你恢复|cffffff2418|r点耐力或魔力，取决于你当前最高的资源上限。该效果每|cffffff10|r秒最多触发一次。"
         }
@@ -4576,11 +4586,11 @@ class database {
 
     if(showEnglish)
     {
-      setData.atlasData[1].msg = await this.bonuses2msg(setsData[setKey].bonuses['5'])
+      setData.atlasData[1].msg = await this.bonuses2msg(setsData[setKey].bonuses?.['5'])
     }
     else
     {
-      setData.atlasData[1].msg = await this.bonuses2msg(setsDataCN[setsData[setKey].id].bonuses['5'])
+      setData.atlasData[1].msg = await this.bonuses2msg(setsDataCN[setsData[setKey].id]?.bonuses?.['5'])
     }
     
     /*
@@ -6708,6 +6718,7 @@ class database {
 
   async bonuses2msg (bonuses) {
     let msg = []
+    if (!bonuses || typeof bonuses !== 'object') return msg
     var msgIndex = 0
     var keysBonuses = Object.keys(bonuses)
     var numBonuses = keysBonuses.length
