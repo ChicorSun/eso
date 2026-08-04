@@ -10,14 +10,15 @@
   },
   "dependencies": {
     "cheerio": "^1.2.0",
+    "jimp": "^1.6.1",
+    "jsqr": "^1.4.0",
     "lua-to-json": "file:./vendor/lua-to-json",
     "luaparse": "^0.2.0",
-    "qrcode": "^1.5.4",
     "moment": "^2.30.1",
     "node-fetch": "^3.3.2",
+    "qrcode": "^1.5.4",
     "yaml": "^2.3.4"
   },
-  "devDependencies": {},
   "keywords": [
     "eso",
     "上古卷轴OL"
