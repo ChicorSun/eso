@@ -82,7 +82,7 @@ function esoRole (roleText) {
   if (t.includes('tank')) return { roleName: 'Tank', roleNameCN: '坦克' }
   if (t.includes('stamina')) return { roleName: 'StaminaDPS', roleNameCN: '耐系' }
   if (t.includes('magicka')) return { roleName: 'MagickaDPS', roleNameCN: '法系' }
-  if (t.includes('werewolf')) return { roleName: 'WerewolfDPS', roleNameCN: '狼人' }
+  if (t.includes('werewolf')) return { roleName: 'StaminaDPS', roleNameCN: '狼人' }
   return { roleName: roleText || '', roleNameCN: roleText || '' }
 }
 
@@ -1142,7 +1142,7 @@ export class esologPuzzle extends plugin {
       const playerName = p.name
       const accountName = p.displayName || ''
       const { className, classNameCN } = esoClass(p.type)
-      const { roleName, roleNameCN } = esoRole(esoRoleFromIcon(p.icon) || (p.specs && p.specs[0] && p.specs[0].spec))
+      let { roleName, roleNameCN } = esoRole(esoRoleFromIcon(p.icon) || (p.specs && p.specs[0] && p.specs[0].spec))
 
       // 装备：14 格（slot 0-13），空装备（id=0）跳过
       const gearData = []
@@ -1178,6 +1178,12 @@ export class esologPuzzle extends plugin {
       } : { icon: '', text: '', color: '' }
       for (let i = 0; i < barLen; i++) {
         talentData.push({ mainSkill: mk(talents[i]), offSkill: mk(talents[i + barLen]) })
+      }
+
+      // 技能栏含狼人系技能（狼人转化 Werewolf Transformation / 群狼之首 Pack Leader / 狼人狂战士 Werewolf Berserker）时视为耐系输出
+      if (talents.some(t => t && t.name && /werewolf|pack leader|狼人转化|群狼之首|狼人狂战士/i.test(t.name))) {
+        roleName = 'StaminaDPS'
+        roleNameCN = '狼人'
       }
 
       let race = ''

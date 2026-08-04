@@ -6230,19 +6230,19 @@ class database {
         classIcon = "ON-icon-class-Warden"
         classStr = "守望者"
       }
-      else if(BD.className == 'Warden')
+      else if(BD.className == 'Templar')
       {
         classIcon = "ON-icon-class-Templar"
         classStr = "圣骑士"
       }
-      else if(BD.className == 'Warden')
+      else if(BD.className == 'Dragonknight')
       {
-        classIcon = "Dragonknight"
+        classIcon = "ON-icon-class-Dragonknight"
         classStr = "龙骑士"
       }
-      else if(BD.className == 'Warden')
+      else if(BD.className == 'Nightblade')
       {
-        classIcon = "Nightblade"
+        classIcon = "ON-icon-class-Nightblade"
         classStr = "夜刃"
       }
       else if(BD.className == 'Sorcerer')
