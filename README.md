@@ -1,5 +1,9 @@
 # 🏰 ESO-BOT
 
+<p align="center">
+  <img src="docs/images/esobot.png" alt="ESO-BOT 头图" />
+</p>
+
 [![Yunzai](https://img.shields.io/badge/Yunzai-TRSS--Yunzai-blue)](https://gitee.com/TimeRainStarSky/Yunzai)
 [![License](https://img.shields.io/badge/License-自定义-yellow)](./LICENSE)
 
