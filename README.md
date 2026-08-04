@@ -339,6 +339,7 @@ pnpm install --filter=eso
 
 ## 🙏 鸣谢
 
+- [ESOCN](https://esocn.com.cn/)
 - [ESOLOG](https://www.esologs.com/)
 - [TTC](https://us.tamrieltradecentre.com)
 - [TRSS-Yunzai](https://gitee.com/TimeRainStarSky/Yunzai)
