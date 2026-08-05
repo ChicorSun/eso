@@ -52,8 +52,10 @@
  * │ ③ 分页方法返回 async generator（不是 Promise！）         │
  * │    kasumi 的 list 类方法（guild.list、guild.role.list、 │
  * │    channel.list 等 12 个）返回 async generator，直接     │
- * │    await 会拿到迭代器对象而非数据。本封装已用            │
- * │    _collectPaged() 收集为数组，调用方拿到的是数组。      │
+ * │    await 会拿到迭代器对象而非数据。且 kasumi 的翻页循环  │
+ * │    丢失固定参数（如 guild_id），导致第二页起失败。        │
+ * │    本封装已用 _paged() 手动分页（每页带完整参数），       │
+ * │    调用方拿到的是合并后的完整数组。                      │
  * │                                                         │
  * │ ④ 返回结构：成功 {data}，失败 {err}，不抛异常            │
  * │    kasumi 的 requestor 对非 0 code 返回 {err: RestError}│
@@ -184,19 +186,31 @@ class KOOKAPI {
   }
 
   /**
-   * 收集 multiPageRequest（async generator）的全部页数据
-   * kasumi 的 list 类方法返回 async generator，逐页 yield { data }
-   * 统一返回 items 数组合并结果（多页 items 拼接）；失败返回 null
+   * 手动分页收集（绕开 kasumi multiPageRequest 翻页丢参数的 bug）
+   * kasumi 的 multiPageRequest 第一页带 params（如 guild_id），但翻页循环
+   * 丢失 ...params，导致 role/channel 等接口第二页起请求失败。
+   * 这里直接用 api.rest.get 手动逐页请求，每页都带完整参数。
+   * @param {object} api kasumi API 对象
+   * @param {string} endpoint 接口路径（如 '/guild-role/list'）
+   * @param {object} params 固定参数（如 { guild_id }）
+   * @param {number} pageSize 每页大小（默认 50）
+   * @returns {Promise<Array|null>} 合并的 items 数组
    */
-  async _collectPaged(gen) {
+  async _paged(api, endpoint, params = {}, pageSize = 50) {
+    if (!api?.rest?.get) return null
     const items = []
-    if (!gen || typeof gen[Symbol.asyncIterator] !== 'function') return null
-    for await (const page of gen) {
-      if (page.err) continue
-      const data = page.data
-      if (!data) continue
+    let page = 1
+    let pageTotal = 1
+    while (page <= pageTotal) {
+      const r = await api.rest.get(endpoint, { ...params, page, page_size: pageSize })
+      if (r.err || !r.data) break
+      const data = r.data
       if (Array.isArray(data)) items.push(...data)
       else if (Array.isArray(data.items)) items.push(...data.items)
+      pageTotal = data.meta?.page_total || 1
+      page++
+      // 防御：防止 page_total 异常导致死循环
+      if (page > 100) break
     }
     return items
   }
@@ -320,7 +334,7 @@ class KOOKAPI {
   async dmChatList(e, page, pageSize) {
     const api = this._api(e)
     if (!api) return null
-    return this._collectPaged(api.directMessage.chat.list(page, pageSize))
+    return this._paged(api, '/user-chat/list', {}, pageSize || page)
   }
 
   /** 查看私聊会话 GET /direct-message/chat/view */
@@ -419,7 +433,7 @@ class KOOKAPI {
   async guildList(e, page, pageSize) {
     const api = this._api(e)
     if (!api) return null
-    return this._collectPaged(api.guild.list(page, pageSize))
+    return this._paged(api, '/guild/list', {}, pageSize || page)
   }
 
   /** 查看服务器详情 GET /guild/view */
@@ -438,7 +452,7 @@ class KOOKAPI {
     if (!api) return null
     const gid = await this._guildId(e, opts.guildId)
     if (!gid) return null
-    return this._collectPaged(api.guild.userList({ guildId: gid, ...opts }))
+    return this._paged(api, '/guild/user-list', { guild_id: gid, ...opts }, opts.pageSize)
   }
 
   /** 修改服务器昵称 POST /guild/nickname */
@@ -481,7 +495,7 @@ class KOOKAPI {
     if (!api) return null
     const gid = await this._guildId(e, guildId)
     if (!gid) return null
-    return this._collectPaged(api.guild.role.list(gid, page, pageSize))
+    return this._paged(api, '/guild-role/list', { guild_id: gid }, pageSize || page)
   }
 
   /** 创建服务器角色 POST /guild-role/create */
@@ -552,7 +566,7 @@ class KOOKAPI {
     if (!api) return null
     const gid = await this._guildId(e, guildId)
     if (!gid) return null
-    return this._collectPaged(api.blacklist.list(gid, page, pageSize))
+    return this._paged(api, '/invite/list', { guild_id: gid }, pageSize || page)
   }
 
   /** 封禁用户 POST /guild-ban/create */
@@ -619,7 +633,7 @@ class KOOKAPI {
     if (!api) return null
     const gid = await this._guildId(e, guildId)
     if (!gid) return null
-    return this._collectPaged(api.guild.emoji.list(gid, page, pageSize))
+    return this._paged(api, '/guild-emoji/list', { guild_id: gid }, pageSize || page)
   }
 
   /** 创建服务器表情 POST /guild-emoji/create */
@@ -658,7 +672,7 @@ class KOOKAPI {
     if (!api) return null
     const gid = await this._guildId(e, guildId)
     if (!gid) return null
-    return this._collectPaged(api.guild.boost.history(gid, begin, end, page, pageSize))
+    return this._paged(api, '/guild-boost/history', { guild_id: gid, begin, end }, pageSize || page)
   }
 
   // ================================================================
@@ -671,7 +685,7 @@ class KOOKAPI {
     if (!api) return null
     const gid = await this._guildId(e, guildId)
     if (!gid) return null
-    return this._collectPaged(api.channel.list(gid, type, page, pageSize))
+    return this._paged(api, '/channel/list', { guild_id: gid, type }, pageSize || page)
   }
 
   /** 查看频道详情 GET /channel/view */
@@ -750,7 +764,7 @@ class KOOKAPI {
     if (!api) return null
     const gid = await this._guildId(e, guildId)
     if (!gid) return null
-    return this._collectPaged(api.channel.user.joinedChannel(gid, userId ? kookId(userId) : undefined, page, pageSize))
+    return this._paged(api, '/channel-user/get-joined-channel', { guild_id: gid, user_id: userId ? kookId(userId) : undefined }, pageSize || page)
   }
 
   // ================================================================
@@ -817,7 +831,7 @@ class KOOKAPI {
   async inviteList(e, opts = {}) {
     const api = this._api(e)
     if (!api) return null
-    return this._collectPaged(api.invite.list(opts))
+    return this._paged(api, '/invite/list', opts, opts.pageSize)
   }
 
   /** 创建邀请 POST /invite/create */
@@ -844,7 +858,7 @@ class KOOKAPI {
   async gameList(e, type, page, pageSize) {
     const api = this._api(e)
     if (!api) return null
-    return this._collectPaged(api.game.list(type, page, pageSize))
+    return this._paged(api, '/game', { type }, pageSize || page)
   }
 
   /** 创建游戏 POST /game/create */
@@ -965,7 +979,7 @@ class KOOKAPI {
   async voiceList(e) {
     const api = this._api(e)
     if (!api) return null
-    return this._collectPaged(api.voice.list())
+    return this._paged(api, '/voice/list', {})
   }
 
   /** 离开语音频道 POST /voice/leave */
