@@ -69,12 +69,22 @@ function loadRaids () {
   const idMap = new Map()
   for (const [key, row] of Object.entries(en)) {
     const cnRow = cn?.[key]
-    const cnName = cnRow?.name || row.name
+    let cnName = cnRow?.name || row.name
+    let enName = row.name
+    // 中英文名覆盖表（数据源翻译不准确时在此修正）
+    const NAME_OVERRIDE = {
+      'Wyrd Tree Wayshrine': { cn: '夜市', en: 'Night Market' },
+    }
+    const ov = NAME_OVERRIDE[row.name]
+    if (ov) {
+      if (ov.cn) cnName = ov.cn
+      if (ov.en) enName = ov.en
+    }
     for (const [field, id] of Object.entries(row.achievements || {})) {
       if (!id) continue
       idMap.set(Number(id), {
         raidKey: key,
-        nameEn: row.name,
+        nameEn: enName,
         nameCn: cnName,
         type: row.type || '',
         field, // VET / HM / TRI / EX / SR / ND / midHM1 / midHM2 / fakeTRI
