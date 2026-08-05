@@ -4,8 +4,8 @@
  * 用法：
  *   #上传成就                进入等待状态，回复「请发送PAT成就二维码截图」
  *                            随后发送二维码图片 → 解码 → 保存到 pat.json → 展示报告
- *   #副本成就                查询自己绑定的游戏账号的副本成就
- *   #副本成就@某人           查询被 @ 用户绑定的游戏账号的副本成就
+ *   #副本成就 / #查看成就      查询自己绑定的游戏账号的副本成就
+ *   #副本成就@某人 / #查看成就@某人   查询被 @ 用户绑定的游戏账号的副本成就
  *
  * 数据流：
  *   上传：二维码图片 → jsQR 解码 → 原始字符串 → 提取账号名(@开头) → 保存 pat.json（按账号覆盖）
@@ -26,6 +26,8 @@ import jsQR from 'jsqr'
 import { decodePat, formatPatReport } from '../model/patDecoder.js'
 import PATStore from '../model/patStore.js'
 import ESOAccount from '../model/esoAccount.js'
+import { isKOOK } from '../model/apiKOOK.js'
+import { updateTagForUser } from './updateTag.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -48,8 +50,8 @@ export class pat extends plugin {
           fnc: 'requestQrCode'
         },
         {
-          /** #副本成就 指令（可@某人） */
-          reg: '^#?副本成就.*$',
+          /** #副本成就 / #查看成就 指令（可@某人） */
+          reg: '^#?(副本成就|查看成就).*$',
           fnc: 'queryAchievements'
         },
         {
@@ -74,10 +76,11 @@ export class pat extends plugin {
   async queryAchievements () {
     const e = this.e
     // 确定目标用户：@ 了别人就查别人，否则查自己
+    // KOOK 的 e.at 带 'ko_' 前缀，与 account_data.json 的 key 一致，保留前缀；QQ 的 e.at 为数字，不受影响
     let targetUserId = String(e.user_id)
     let targetUserLabel = '你'
     if (e.at && String(e.at) !== String(e.self_id)) {
-      targetUserId = String(e.at).replace(/^ko_/, '')
+      targetUserId = String(e.at)
       targetUserLabel = `用户 ${e.at}`
     }
 
@@ -106,6 +109,43 @@ export class pat extends plugin {
     const timeStr = record.updateTime || ''
     await e.reply(`${report}\n\n（数据更新于 ${timeStr}，账号 ${accountName}）`)
     return true
+  }
+
+  /**
+   * KOOK 来源 + 上传者绑定账号与 PAT 记录账号一致 → 自动运行 #更新成就
+   *
+   * 触发条件（全部满足才自动更新）：
+   *   1. 消息来自 KOOK（角色在 KOOK 服务器上）
+   *   2. 上传者已绑定主账号
+   *   3. 绑定账号名与 PAT 记录中的账号名一致
+   *
+   * @param {object} e 消息事件对象
+   * @param {object} result decodePat 结果（含 playerName）
+   * @param {object} saved PATStore.set 返回（含 record.accountName）
+   */
+  async maybeAutoUpdateRoles (e, result, saved) {
+    // 1. 仅 KOOK 来源
+    if (!isKOOK(e)) return
+
+    // 2. 上传者绑定的主账号
+    const binding = ESOAccount.getPrimaryBinding(String(e.user_id))
+    if (!binding || !binding.accountName) {
+      await e.reply('ℹ️ 你尚未绑定游戏账号，无法自动更新 KOOK 成就角色。\n可先使用 #绑定@账号名 绑定，再手动执行 #更新成就。')
+      return
+    }
+
+    // 3. 账号名比对（归一化：去空白与开头的 @）
+    const norm = s => String(s || '').trim().replace(/^@/, '')
+    const boundName = norm(binding.accountName)
+    const patName = norm(saved?.record?.accountName || result?.playerName)
+    if (!patName || patName !== boundName) {
+      await e.reply(`ℹ️ PAT 记录账号 ${saved?.record?.accountName || result?.playerName} 与你绑定的账号 @${boundName} 不一致，未自动更新角色。`)
+      return
+    }
+
+    // 4. 账号一致 → 自动执行更新
+    await e.reply(`✅ PAT 账号与绑定账号一致（@${boundName}），正在自动更新 KOOK 成就角色...`)
+    await updateTagForUser(e)
   }
 
   /** 处理图片消息：若该用户在等待二维码，则解码并保存 */
@@ -143,9 +183,12 @@ export class pat extends plugin {
           if (saved.success) {
             const timeStr = saved.record.updateTime
             await e.reply(`${report}\n\n✅ 已保存到账号 ${saved.record.accountName}（记录时间 ${timeStr}）\n可使用 #副本成就 随时查看。`)
+            await this.maybeAutoUpdateRoles(e, result, saved)
           } else if (saved.skipped) {
             // 已有更新/相同日期的记录：只输出解析结果，不覆盖
             await e.reply(`${report}\n\nℹ️ ${saved.message}\n（保留现有记录，本次结果仅供参考）`)
+            // 文件里已有该账号的 PAT 记录，同样尝试自动更新角色
+            await this.maybeAutoUpdateRoles(e, result, saved)
           } else {
             await e.reply(`${report}\n\n⚠️ 保存失败：${saved.message}`)
           }

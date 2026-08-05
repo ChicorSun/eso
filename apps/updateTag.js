@@ -79,25 +79,44 @@ export class updateTag extends plugin {
 
   /** #更新成就 主流程 */
   async updateTag () {
-    const e = this.e
+    return updateTagForUser(this.e)
+  }
+}
 
-    // 1. 仅支持 KOOK 服务器（角色在 KOOK 服务器上）
-    if (!isKOOK(e)) {
-      await e.reply('❌ 该功能仅支持在 KOOK 服务器内使用。')
-      return true
-    }
+/**
+ * 更新用户在 KOOK 服务器上的成就角色（核心流程）
+ *
+ * 独立函数以便 #上传成就（pat.js）在账号一致时自动调用，实现：
+ *   - 查调用者绑定主账号 → PAT 数据 → 计算应得最高档 → 创建/授予/移除角色
+ *
+ * @param {object} e 消息事件对象（需含 reply、user_id、group_id 等）
+ * @returns {Promise<boolean>}
+ */
+export async function updateTagForUser (e) {
+  // 1. 仅支持 KOOK 服务器（角色在 KOOK 服务器上）
+  if (!isKOOK(e)) {
+    await e.reply('❌ 该功能仅支持在 KOOK 服务器内使用。')
+    return true
+  }
 
-    const userId = String(e.user_id)
+  // 2. 确定目标用户：@ 了别人则更新被 @ 用户，否则更新自己
+  //    KOOK 的 e.at / e.user_id 带 'ko_' 前缀，与 account_data.json 的 key 一致，保留前缀直接查绑定
+  let userId = String(e.user_id)
+  let userLabel = '你'
+  if (e.at && String(e.at) !== String(e.self_id)) {
+    userId = String(e.at)
+    userLabel = `用户 ${e.at}`
+  }
 
-    // 2. 查调用者绑定的主账号
-    const binding = ESOAccount.getPrimaryBinding(userId)
-    if (!binding || !binding.accountName) {
-      await e.reply(`❌ 你尚未绑定游戏账号。\n请先使用 #绑定@账号名 绑定后再更新。`)
-      return true
-    }
-    const accountName = `@${binding.accountName}`
+  // 3. 查目标用户绑定的主账号
+  const binding = ESOAccount.getPrimaryBinding(userId)
+  if (!binding || !binding.accountName) {
+    await e.reply(`❌ ${userLabel} 尚未绑定游戏账号。\n请先使用 #绑定@账号名 绑定后再更新。`)
+    return true
+  }
+  const accountName = `@${binding.accountName}`
 
-    // 3. 查 PAT 数据
+  // 4. 查 PAT 数据
     const record = PATStore.get(accountName)
     if (!record || !record.rawString) {
       await e.reply(`❌ 账号 ${accountName} 尚未上传过 PAT 成就二维码。\n请先使用 #上传成就 上传二维码。`)
@@ -109,14 +128,14 @@ export class updateTag extends plugin {
       return true
     }
 
-    // 4. 加载对照表
+    // 5. 加载对照表
     const trials = loadTrialsRoles()
     if (!trials) {
       await e.reply('❌ 成就对照表加载失败，请联系管理员检查。')
       return true
     }
 
-    // 5. 获取服务器角色列表 + 用户当前角色
+    // 6. 获取服务器角色列表 + 用户当前角色
     const roleList = await KOOK.roleList(e)
     if (!Array.isArray(roleList)) {
       await e.reply('❌ 无法获取服务器角色列表（权限不足或 KOOK 未连接）。')
@@ -133,7 +152,7 @@ export class updateTag extends plugin {
       roleList.filter(r => userRoleIds.has(String(r.role_id))).map(r => r.name)
     )
 
-    // 6. 按副本分组计算应得最高档
+    // 7. 按副本分组计算应得最高档
     //    用户已完成的成就 ID 集合（裸 ID + 掩码展开）
     const completedIds = new Set(decoded.completedIds.keys())
 
@@ -159,7 +178,7 @@ export class updateTag extends plugin {
       return true
     }
 
-    // 7. 逐副本执行：移除低等级 role → 设置最高等级 role
+    // 8. 逐副本执行：移除低等级 role → 设置最高等级 role
     const stats = { added: [], upgraded: [], removed: [] }
     const messages = []
     // 第一轮创建失败的角色：等全部其他角色设置完成后统一重试一次
@@ -176,7 +195,7 @@ export class updateTag extends plugin {
         }
       }
 
-      // 7a. 移除用户当前拥有的低等级 role
+      // 8a. 移除用户当前拥有的低等级 role
       const toRemove = [...lowerRoles].filter(r => userRoles.has(r))
       for (const roleName of toRemove) {
         const role = roleByName.get(roleName)
@@ -186,7 +205,7 @@ export class updateTag extends plugin {
         messages.push(`🔻 移除低等级角色 ${roleName}`)
       }
 
-      // 7b. 设置最高等级 role
+      // 8b. 设置最高等级 role
       // 若用户已拥有该副本更高等级的 role（历史遗留，PAT 未显示更高成就）→ 不降级，跳过
       const hasHigher = trial.achievements.some(
         a => a.role && levelIndex(a.level) > levelIndex(target.level) && userRoles.has(a.role)
@@ -240,7 +259,7 @@ export class updateTag extends plugin {
       }
     }
 
-    // 7c. 失败角色重试：全部其他角色设置完成后，再对第一轮创建失败的角色尝试一次
+    // 8c. 失败角色重试：全部其他角色设置完成后，再对第一轮创建失败的角色尝试一次
     if (retryTargets.length) {
       for (const { target, upgraded } of retryTargets) {
         const info = target.roleInfo || {}
@@ -271,7 +290,7 @@ export class updateTag extends plugin {
       }
     }
 
-    // 8. 输出统计
+    // 9. 输出统计
     const lines = []
     lines.push(`📊 本次更新（账号 ${accountName}，PAT 数据日期 ${record.updateTime}）`)
     if (messages.length) lines.push(...messages.map(m => `  ${m}`))
@@ -287,5 +306,4 @@ export class updateTag extends plugin {
 
     await e.reply(lines.join('\n'))
     return true
-  }
 }
