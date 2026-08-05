@@ -499,13 +499,26 @@ class KOOKAPI {
   }
 
   /** 创建服务器角色 POST /guild-role/create */
-  async roleCreate(e, guildId, name) {
+  async roleCreate(e, guildId, name, opts = {}) {
     const api = this._api(e)
     if (!api) return null
     const gid = await this._guildId(e, guildId)
     if (!gid) return null
+    if (opts && Object.keys(opts).length) {
+      // kasumi 的 role.create 只传 name，需带 color/hoist/mentionable/permissions 时走底层 API
+      const r = await api.rest.post('/guild-role/create', { guild_id: gid, name, ...opts })
+      if (r.err) {
+        logger?.error?.(`[ESO:KOOK] 创建角色失败 name=${name} code=${r.err.code} msg=${r.err.message} opts=${JSON.stringify(opts)}`)
+        return null
+      }
+      return r.data
+    }
     const r = await api.guild.role.create(gid, name)
-    return r.err ? null : r.data
+    if (r.err) {
+      logger?.error?.(`[ESO:KOOK] 创建角色失败 name=${name} code=${r.err.code} msg=${r.err.message}`)
+      return null
+    }
+    return r.data
   }
 
   /** 更新服务器角色 POST /guild-role/update */
@@ -535,7 +548,11 @@ class KOOKAPI {
     const gid = await this._guildId(e, guildId)
     if (!gid) return null
     const r = await api.guild.role.grant(gid, roleId, kookId(userId || e.user_id))
-    return r.err ? null : r.data
+    if (r.err) {
+      logger?.error?.(`[ESO:KOOK] 授予角色失败 roleId=${roleId} code=${r.err.code} msg=${r.err.message}`)
+      return null
+    }
+    return r.data
   }
 
   /** 删除用户角色 POST /guild-role/revoke */
@@ -545,7 +562,11 @@ class KOOKAPI {
     const gid = await this._guildId(e, guildId)
     if (!gid) return null
     const r = await api.guild.role.revoke(gid, roleId, kookId(userId || e.user_id))
-    return r.err ? null : r.data
+    if (r.err) {
+      logger?.error?.(`[ESO:KOOK] 移除角色失败 roleId=${roleId} code=${r.err.code} msg=${r.err.message}`)
+      return null
+    }
+    return r.data
   }
 
   /** 便捷：按角色名查找角色 id（找不到返回 null） */

@@ -1,0 +1,980 @@
+[
+  {
+    "raid": "Hel Ra Citadel",
+    "raidCn": "赫尔拉要塞",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 1474,
+        "nameCn": "赫尔拉要塞征服者",
+        "nameEn": "Hel Ra Citadel Conqueror",
+        "role": "VHRC",
+        "roleInfo": {
+          "role_id": 4402185,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 30,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 1136,
+        "nameCn": "赫尔拉要塞（困难模式）",
+        "nameEn": "Hel Ra Citadel Difficult Mode",
+        "extra": "Celest. Warrior",
+        "role": "VHRCHM",
+        "roleInfo": {
+          "role_id": 4402101,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 43,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Aetherian Archive",
+    "raidCn": "艾瑟瑞恩档案塔",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 1503,
+        "nameCn": "艾瑟瑞恩档案塔征服者",
+        "nameEn": "Aetherian Archive Conqueror",
+        "role": "VAA",
+        "roleInfo": {
+          "role_id": 4402173,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 67,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 1137,
+        "nameCn": "艾瑟瑞恩档案塔（困难模式）",
+        "nameEn": "Aetherian Archive Difficult Mode",
+        "extra": "Celest. Mage",
+        "role": "VAAHM",
+        "roleInfo": {
+          "role_id": 4402177,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 45,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Sanctum Ophidia",
+    "raidCn": "乌鞘蛇圣所",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 1462,
+        "nameCn": "乌鞘蛇圣所征服者",
+        "nameEn": "Sanctum Ophidia Conqueror",
+        "role": "VSO",
+        "roleInfo": {
+          "role_id": 4402181,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 29,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 1138,
+        "nameCn": "乌鞘蛇圣所（困难模式）",
+        "nameEn": "Sanctum Ophidia Difficult Mode",
+        "extra": "Celest. Serpent",
+        "role": "VSOHM",
+        "roleInfo": {
+          "role_id": 4402108,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 44,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Maw of Lorkhaj",
+    "raidCn": "洛克汗的巨口",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 1368,
+        "nameCn": "洛克汗的巨口征服者",
+        "nameEn": "Maw of Lorkhaj Conqueror",
+        "role": "VMOL",
+        "roleInfo": {
+          "role_id": 4402293,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 32,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 1344,
+        "nameCn": "洛克汗的巨口（困难模式）",
+        "nameEn": "Maw of Lorkhaj Difficult Mode",
+        "extra": "Rakkhat",
+        "role": "VMOLHM",
+        "roleInfo": {
+          "role_id": 5359356,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 46,
+          "type": 0
+        }
+      },
+      {
+        "level": "EXT",
+        "id": 1391,
+        "nameCn": "洛克汗的巨口：月之勇士",
+        "nameEn": "Maw of Lorkhaj: Moons' Champion",
+        "extra": "Dro-m'Athra Destroyer",
+        "role": "Dro-m'Athra Destroyer",
+        "roleInfo": {
+          "role_id": 4402282,
+          "color": 15844367,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 17,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Halls of Fabrication",
+    "raidCn": "制造大厅",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 1810,
+        "nameCn": "制造大厅征服者",
+        "nameEn": "Halls of Fabrication Conqueror",
+        "role": "VHOF",
+        "roleInfo": {
+          "role_id": 4402195,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 31,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 1829,
+        "nameCn": "机械师的阴谋",
+        "nameEn": "Mechanic's Machinations",
+        "extra": "Assembly Gen.",
+        "role": "VHOFHM",
+        "roleInfo": {
+          "role_id": 4402196,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 48,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 1838,
+        "nameCn": "如钟表般精准",
+        "nameEn": "Like Clockwork",
+        "extra": "Tick-Tock Tormentor",
+        "role": "Tick-Tock Tormentor",
+        "roleInfo": {
+          "role_id": 4402268,
+          "color": 15844367,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 16,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Asylum Sanctorium",
+    "raidCn": "庇护圣所",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 2077,
+        "nameCn": "庇护圣所征服者",
+        "nameEn": "Asylum Sanctorium Conqueror",
+        "role": "VAS+0",
+        "roleInfo": {
+          "role_id": 6023683,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 39,
+          "type": 0
+        }
+      },
+      {
+        "level": "PHM1",
+        "id": 2085,
+        "nameCn": "正义的谴责",
+        "nameEn": "Righteous Condemnation",
+        "extra": "+Llothis",
+        "role": "VAS+Llothis",
+        "roleInfo": {
+          "role_id": 6023584,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 41,
+          "type": 0
+        }
+      },
+      {
+        "level": "PHM2",
+        "id": 2086,
+        "nameCn": "行刑者的审判",
+        "nameEn": "Executioners' Judgment",
+        "extra": "+Felms",
+        "role": "VAS+Felms",
+        "roleInfo": {
+          "role_id": 4402351,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 40,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 2079,
+        "nameCn": "庇护圣所胜利者",
+        "nameEn": "Asylum Sanctorium Vanquisher",
+        "extra": "vAS +2",
+        "role": "VAS+2",
+        "roleInfo": {
+          "role_id": 4402353,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 42,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 2087,
+        "nameCn": "完美净化",
+        "nameEn": "Perfect Purification",
+        "extra": "Saintly Savior",
+        "role": "Immortal Redeemer",
+        "roleInfo": {
+          "role_id": 4402286,
+          "color": 15844367,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 15,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Cloudrest",
+    "raidCn": "云栖城",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 2133,
+        "nameCn": "云栖城征服者",
+        "nameEn": "Cloudrest Conqueror",
+        "role": "VCR+0",
+        "roleInfo": {
+          "role_id": 4402321,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 35,
+          "type": 0
+        }
+      },
+      {
+        "level": "PHM1",
+        "id": 2134,
+        "nameCn": "蛞蝓人和她的幽影",
+        "nameEn": "A Sload and Her Shadow",
+        "extra": "vCR +1",
+        "role": "VCR+1",
+        "roleInfo": {
+          "role_id": 4402334,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 36,
+          "type": 0
+        }
+      },
+      {
+        "level": "PHM2",
+        "id": 2135,
+        "nameCn": "致命三角组合",
+        "nameEn": "Three's Deadly Company",
+        "extra": "vCR +2",
+        "role": "VCR+2",
+        "roleInfo": {
+          "role_id": 4402338,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 37,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 2136,
+        "nameCn": "多多益善",
+        "nameEn": "More the Merrier",
+        "extra": "vCR +3",
+        "role": "VCR+3",
+        "roleInfo": {
+          "role_id": 4402339,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 38,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 2139,
+        "nameCn": "通往阿拉克松的道路",
+        "nameEn": "The Path to Alaxon",
+        "extra": "Gryphon Heart",
+        "role": "Gryphon heart",
+        "roleInfo": {
+          "role_id": 4402267,
+          "color": 15844367,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 14,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Sunspire",
+    "raidCn": "太阳尖顶",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 2435,
+        "nameCn": "太阳尖顶征服者",
+        "nameEn": "Sunspire Conqueror",
+        "role": "VSS",
+        "roleInfo": {
+          "role_id": 4410926,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 33,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 2466,
+        "nameCn": "太阳尖顶胜利者",
+        "nameEn": "Sunspire Vanquisher",
+        "extra": "Nahvi",
+        "role": "VSSHM",
+        "roleInfo": {
+          "role_id": 2741656,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 47,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 2467,
+        "nameCn": "太阳尖顶弑神者",
+        "nameEn": "Godslayer of Sunspire",
+        "extra": "Godslayer",
+        "role": "God slayer",
+        "roleInfo": {
+          "role_id": 4402265,
+          "color": 15844367,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 13,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Kyne's Aegis",
+    "raidCn": "凯恩之盾",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 2734,
+        "nameCn": "凯恩之盾征服者",
+        "nameEn": "Kyne's Aegis Conqueror",
+        "role": "VKA",
+        "roleInfo": {
+          "role_id": 4415674,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 34,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 2739,
+        "nameCn": "堡垒救星",
+        "nameEn": "Savior of the Bastion",
+        "extra": "Falgravn",
+        "role": "VKAHM",
+        "roleInfo": {
+          "role_id": 2741678,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 49,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 2740,
+        "nameCn": "完美破城者",
+        "nameEn": "Stainless Siege-breaker",
+        "extra": "Kyne's Wrath",
+        "role": "Dawnbringer",
+        "roleInfo": {
+          "role_id": 4402278,
+          "color": 15844367,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 12,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Rockgrove",
+    "raidCn": "石林",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 2987,
+        "nameCn": "石林征服者",
+        "nameEn": "Rockgrove Conqueror",
+        "role": "vRG",
+        "roleInfo": {
+          "role_id": 4415157,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 51,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 3007,
+        "nameCn": "石巢神庙的保卫者",
+        "nameEn": "Xanmeer's Protector",
+        "extra": "Xalvakka",
+        "role": "vRGHM",
+        "roleInfo": {
+          "role_id": 4415205,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 52,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 3003,
+        "nameCn": "灵魂救星",
+        "nameEn": "Soul Savior",
+        "extra": "Plane Breaker",
+        "role": "Plane Breaker",
+        "roleInfo": {
+          "role_id": 52141427,
+          "color": 15277667,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 1,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 11,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Dreadsail Reef",
+    "raidCn": "恐帆礁石",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 3244,
+        "nameCn": "恐帆礁石征服者",
+        "nameEn": "Dreadsail Reef Conqueror",
+        "role": "vDSR",
+        "roleInfo": {
+          "role_id": 4599831,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 53,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 3252,
+        "nameCn": "水兵之主",
+        "nameEn": "Master Marine",
+        "extra": "Taleria",
+        "role": "vDSRHM",
+        "roleInfo": {
+          "role_id": 4599841,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 147642888,
+          "position": 54,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 3248,
+        "nameCn": "舰队女王的挫败",
+        "nameEn": "Fleet Queen's Foil",
+        "extra": "Soul of the Squall",
+        "role": "Swashbuckler Superem",
+        "roleInfo": {
+          "role_id": 52141365,
+          "color": 15277667,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 1,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 10,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Sanity's Edge",
+    "raidCn": "理智边缘",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 3560,
+        "nameCn": "理智边缘征服者",
+        "nameEn": "Sanity's Edge Conqueror",
+        "role": "vSE",
+        "roleInfo": {
+          "role_id": 59954156,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 55,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 3568,
+        "nameCn": "坚韧梦想者",
+        "nameEn": "Tenacious Dreamer",
+        "extra": "Ansuul",
+        "role": "vSEHM",
+        "roleInfo": {
+          "role_id": 59954143,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 56,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 3564,
+        "nameCn": "心灵大师",
+        "nameEn": "Master of the Mind",
+        "extra": "Dream Master",
+        "role": "Mindmender",
+        "roleInfo": {
+          "role_id": 52141592,
+          "color": 15277667,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 1,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 9,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Lucent Citadel",
+    "raidCn": "卢晶堡垒",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 4015,
+        "nameCn": "卢晶堡垒征服者",
+        "nameEn": "Lucent Citadel Conqueror",
+        "role": "vLC",
+        "roleInfo": {
+          "role_id": 52141591,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 57,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 4023,
+        "nameCn": "寻回专家",
+        "nameEn": "Retrieval Specialist",
+        "extra": "Arcane Knot",
+        "role": "vLCHM",
+        "roleInfo": {
+          "role_id": 52141627,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 58,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 4019,
+        "nameCn": "奥术稳定者",
+        "nameEn": "Arcane Stabilizer",
+        "extra": "Unstoppable",
+        "role": "The Unstoppable",
+        "roleInfo": {
+          "role_id": 52141628,
+          "color": 15277667,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 1,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 8,
+          "type": 0
+        }
+      }
+    ]
+  },
+  {
+    "raid": "Ossein Cage",
+    "raidCn": "骨笼",
+    "achievements": [
+      {
+        "level": "VET",
+        "id": 4268,
+        "nameCn": "骨笼征服者",
+        "nameEn": "Ossein Cage Conqueror",
+        "role": "vOC",
+        "roleInfo": {
+          "role_id": 59954145,
+          "color": 0,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 65,
+          "type": 0
+        }
+      },
+      {
+        "level": "HM",
+        "id": 4276,
+        "nameCn": "苦难奉献",
+        "nameEn": "Served Suffering",
+        "extra": "Kazpian",
+        "role": "vOCHM",
+        "roleInfo": {
+          "role_id": 59954146,
+          "color": 12745742,
+          "color_map": {},
+          "color_type": 1,
+          "desc": "",
+          "hoist": 0,
+          "mentionable": 0,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 66,
+          "type": 0
+        }
+      },
+      {
+        "level": "TRI",
+        "id": 4272,
+        "nameCn": "痛苦领主",
+        "nameEn": "Lord of Suffering",
+        "extra": "Misery's Master",
+        "role": "Misery’s Master",
+        "roleInfo": {
+          "role_id": 71813609,
+          "color": 15277667,
+          "color_map": {
+            "color_list": [
+              14763802,
+              14401797
+            ]
+          },
+          "color_type": 1,
+          "desc": "",
+          "hoist": 1,
+          "mentionable": 1,
+          "op_permissions": 0,
+          "permissions": 2026691080,
+          "position": 7,
+          "type": 0
+        }
+      }
+    ]
+  }
+]

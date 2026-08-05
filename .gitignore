@@ -16,3 +16,6 @@ esocn-api-usage-guide.txt
 esocn_api_test_results.json
 generate_esocn_guide.cjs
 run_esocn_api_tests.cjs
+
+# KOOK 角色详情调试（测试用，不追踪）
+apps/testkook.js
