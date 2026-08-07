@@ -232,16 +232,16 @@
       title: "#esocn状态"
       desc: "查看ESOCN绑定状态"
       item_class: item_split2
-- group: 成就系统
+- group: 账号绑定
   group_class: data_box_split1
   list:
     - icon: ..\icon\esolog
-      title: "#BCXXXXXX"
-      desc: "ESOCN绑定码绑定，绑定后自动同步成就"
+      title: "#绑定 账号名"
+      desc: "绑定玩家账户"
       item_class: item_split2
     - icon: ..\icon\esolog
-      title: "#esocn状态"
-      desc: "查看ESOCN绑定状态（可@群友）"
+      title: "#查询绑定"
+      desc: "查询已绑定的账号"
       item_class: item_split2
     - icon: ..\icon\esolog
       title: "#切换绑定 序号"
@@ -251,6 +251,17 @@
       title: "#解绑 序号"
       desc: "解除玩家账户绑定"
       item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#BCXXXXXX"
+      desc: "ESOCN绑定码绑定，绑定后自动同步成就"
+      item_class: item_split2
+    - icon: ..\icon\esolog
+      title: "#esocn状态"
+      desc: "查看ESOCN绑定状态（可@群友）"
+      item_class: item_split2
+- group: 成就系统
+  group_class: data_box_split1
+  list:
     - icon: ..\icon\esolog
       title: "#上传成就"
       desc: "发送PAT成就二维码，与本地合并保存"
