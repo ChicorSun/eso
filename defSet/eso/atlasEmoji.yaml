@@ -1,0 +1,5 @@
+# 图鉴物品名 → emoji 图标（resources/img/emoji/ 下的 SVG 文件，不含扩展名）
+# 图鉴卡片左上角物品名右侧会显示对应图标；想加更多只需在此加一行 + 往 resources/img/emoji/ 放同名 SVG
+炼狱法杖: fire
+寒冰法杖: snowflake
+闪电法杖: zap

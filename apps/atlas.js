@@ -4,11 +4,67 @@ import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import database, { detectBuffDebuffInText, isSetIndexResultEmpty, setAtlasSrcMode, getScriptList } from '../model/database.js'
 import apiDataSource from '../model/apiDataSource.js'
 import gearConfig from '../model/gearConfig.js'
+import esoCfg from '../model/esoCfg.js'
 import moment from 'moment'
 import md5 from 'md5'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /** 图鉴数据源：'local' 本地数据库（默认）| 'api' ESOCN API（失败请先检查网络，可用 local 兜底） */
 let srcMode = 'local'
+
+/**
+ * 装备品质颜色（与 esologPuzzle.js / esocn.js 的五档色板一致）
+ * quality: 1=普通 2=优秀 3=精良 4=史诗 5=传说
+ */
+function esoQualityColor (quality) {
+  switch (Number(quality)) {
+    case 5: return 'rgb(255, 230, 45)'   // 传说
+    case 4: return 'rgb(163, 53, 238)'   // 史诗
+    case 3: return 'rgb(58, 146, 254)'   // 精良
+    case 2: return 'rgb(47, 213, 14)'    // 优秀
+    default: return 'rgb(170, 170, 170)' // 普通
+  }
+}
+
+/** item 链接 subtype 表（LibItemLink 提取，401 条：subtype → {level, quality}） */
+let itemSubtypesCache = null
+function loadItemSubtypes () {
+  if (itemSubtypesCache) return itemSubtypesCache
+  try {
+    const p = path.join(__dirname, '../resources/data/item_link_subtypes.json')
+    itemSubtypesCache = JSON.parse(fs.readFileSync(p, 'utf8'))
+  } catch (err) {
+    logger?.error?.(`[ESO:图鉴] 加载 item_link_subtypes.json 失败: ${err?.message || err}`)
+    itemSubtypesCache = {}
+  }
+  return itemSubtypesCache
+}
+
+/**
+ * 根据 item 链接的 SubType 与 InternalLevel 解析品质/等级信息
+ * @param {number|string} subtype 链接第 2 字段（SubType）
+ * @param {number|string} internalLevel 链接第 3 字段（InternalLevel，0-50）
+ * @returns {object|null} { quality, color, level, cp, isCp }；未知 subtype 返回 null
+ */
+function itemSubtypeInfo (subtype, internalLevel) {
+  const table = loadItemSubtypes()
+  const entry = table[String(subtype)]
+  if (!entry) return null
+  const quality = Number(entry.quality) || 1
+  const cpLevel = Number(entry.level) || 1
+  const isCp = cpLevel >= 51 // 51~68 = CP10~CP180
+  return {
+    quality,
+    color: esoQualityColor(quality),
+    level: String(internalLevel ?? 0),     // InternalLevel（CP 装备通常为 50）
+    cp: isCp ? (cpLevel - 50) * 10 : 0,    // CP 点数
+    isCp,
+  }
+}
 
 //装备图鉴结构体变量
 let setData = {
@@ -317,8 +373,8 @@ export class atlas extends plugin {
 
     // 收集所有链接 token（item / crafted_ability），按出现位置排序
     const tokens = []
-    for (const m of str.matchAll(/item:(\d+):/gi)) {
-      tokens.push({ pos: m.index, type: 'item', id: m[1] })
+    for (const m of str.matchAll(/item:(\d+):(\d+):(\d+):/gi)) {
+      tokens.push({ pos: m.index, type: 'item', id: m[1], subtype: m[2], level: m[3] })
     }
     for (const m of str.matchAll(/crafted_ability:(\d+):(\d+):(\d+):(\d+)/gi)) {
       tokens.push({ pos: m.index, type: 'crafted', abilityId: m[1], focusId: m[2], signatureId: m[3], affixId: m[4] })
@@ -329,12 +385,58 @@ export class atlas extends plugin {
     // 依次输出对应图片
     for (const t of tokens) {
       if (t.type === 'item') {
-        await this.showSets(e, `#ITEMID${t.id}`)
+        await this.showSetsByItemLink(e, t)
       } else {
         await this.showCraftedAbilityCard(e, t)
       }
     }
     return true
+  }
+
+  /** 按物品名匹配 defSet/eso/atlasEmoji.yaml，为图鉴注入 emojiIcon（物品名右侧图标） */
+  applyEmojiIcon (setData) {
+    const emojiMap = esoCfg.getdefSet('eso', 'atlasEmoji') || {}
+    const itemName = setData?.atlasData?.[1]?.name || ''
+    for (const [keyword, icon] of Object.entries(emojiMap)) {
+      if (itemName.includes(keyword)) {
+        setData.atlasData[1].emojiIcon = icon
+        break
+      }
+    }
+  }
+
+  /** 按 item 链接输出装备图鉴（注入品质颜色与等级信息） */
+  async showSetsByItemLink (e, t) {
+    srcMode = gearConfig.resolveModuleMode(srcMode)
+    setAtlasSrcMode(srcMode)
+    const objSets = await database.name2index(`#ITEMID${t.id}`, 1)
+    if (isSetIndexResultEmpty(objSets) || objSets.length === 0) {
+      await this.showSets(e, `#ITEMID${t.id}`)
+      return
+    }
+    const setData = await database.updateData(objSets[0], 1)
+    if (setData?.atlasData?.[1]) {
+      // 护甲类型标记（与 esolog/builds 一致：轻甲蓝/中甲绿/重甲红；weight 可能为「重甲 · 脚部」格式）
+      const weightText = setData.atlasData[1].weight || ''
+      const armorColors = { '轻甲': 'rgb(58, 146, 254)', '中甲': 'rgb(47, 213, 14)', '重甲': 'rgb(227, 36, 33)' }
+      for (const [armor, color] of Object.entries(armorColors)) {
+        if (weightText.includes(armor)) {
+          setData.atlasData[1].armorMark = color
+          break
+        }
+      }
+      // 品质颜色 + 等级行（subtype 解析；未知 subtype 时保持原样）
+      const info = itemSubtypeInfo(t.subtype, t.level)
+      if (info) {
+        setData.atlasData[1].name_color = info.color
+        setData.atlasData[1].itemLevel = info.level
+        setData.atlasData[1].itemCp = info.isCp ? info.cp : 0
+      }
+      // 物品名右侧 emoji 图标（defSet/eso/atlasEmoji.yaml 映射）
+      this.applyEmojiIcon(setData)
+    }
+    const img = await this.cache(setData, setImg)
+    if (img) await this.reply(img)
   }
 
   async showAtlas (e) {
@@ -754,6 +856,18 @@ export class atlas extends plugin {
           setData.atlasData[1].undauntedDates = undauntedDates
         }
       }
+
+      // 护甲类型标记（与 esolog/builds 一致：轻甲蓝/中甲绿/重甲红）
+      const armorColors = { '轻甲': 'rgb(58, 146, 254)', '中甲': 'rgb(47, 213, 14)', '重甲': 'rgb(227, 36, 33)' }
+      for (const [armor, color] of Object.entries(armorColors)) {
+        if ((setData.atlasData[1].weight || '').includes(armor)) {
+          setData.atlasData[1].armorMark = color
+          break
+        }
+      }
+
+      // 物品名右侧 emoji 图标（defSet/eso/atlasEmoji.yaml 映射）
+      this.applyEmojiIcon(setData)
       
       let img = await this.cache(setData, setImg)
       await this.reply(img)

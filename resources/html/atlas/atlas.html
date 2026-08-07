@@ -25,12 +25,22 @@
           </div>
         </div>
         <img class="icon" src="{{pluResPath}}img/sets/{{val.icon}}.png" />
-        <div class="text"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.name}}</div>
+        <div class="text"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.name}}{{if val.armorMark}}<span class="armor-dot" style="background: {{val.armorMark}}"></span>{{/if}}{{if val.emojiIcon}}<img class="emoji-icon" src="{{pluResPath}}img/emoji/{{val.emojiIcon}}.svg" />{{/if}}</div>
         <div class="dec"{{if val.name_color}} style="color: {{val.name_color}}"{{/if}}>{{val.name_en}}</div>
         {{if val.set_name}}
         <div class="dec set-name">所属套装：{{val.set_name}}</div>
         {{/if}}
         <img class="line" src="{{pluResPath}}img/icon/line.png" />
+        {{if val.itemLevel != null}}
+        <div class="level-row">
+          {{if val.itemCp > 0}}
+          <div class="level-left">等级{{val.itemLevel}}</div>
+          <div class="level-right"><img class="cp-icon" src="{{pluResPath}}img/icon/champion.png"/>勇士点数{{val.itemCp}}</div>
+          {{else}}
+          <div class="level-center">等级{{val.itemLevel}}</div>
+          {{/if}}
+        </div>
+        {{/if}}
         {{each val.msg item}}
         <div class="msg">{{@item}}</div>
         {{/each}}
