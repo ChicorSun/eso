@@ -28,7 +28,7 @@ import { decodePat, formatPatReport } from '../model/patDecoder.js'
 import { encodePat, metaFromRaw } from '../model/patEncoder.js'
 import PATStore from '../model/patStore.js'
 import ESOAccount from '../model/esoAccount.js'
-import { syncAchievementsForUser } from '../model/patSync.js'
+import { syncAchievementsForUser, remindEsocnBindIfSelf } from '../model/patSync.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -163,6 +163,14 @@ export class pat extends plugin {
     return true
   }
 
+  /**
+   * 目标用户为自己且未绑定 ESOCN → 提醒去网页绑定
+   * @param {object} e 消息事件对象
+   */
+  async remindEsocnBind (e) {
+    await remindEsocnBindIfSelf(e, String(e.user_id))
+  }
+
   /** 处理图片消息：若该用户在等待二维码，则解码并保存 */
   async handleImage () {
     const e = this.e
@@ -209,6 +217,8 @@ export class pat extends plugin {
 
           // 绑定了 ESOCN → 自动走同步成就（合并本地+ESOCN、必要时上传、KOOK 用户更新角色）
           await this.maybeSyncEsocn(e)
+          // 目标用户为自己且未绑定 ESOCN → 提醒绑定
+          await this.remindEsocnBind(e)
         } else {
           // 非 PAT 格式：仍尝试保存原始字符串（按提取的账号名，若无则提示）
           const saved = PATStore.set(content, '')

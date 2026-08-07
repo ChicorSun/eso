@@ -2,17 +2,12 @@ import plugin from '../../../lib/plugins/plugin.js'
 import ESOAccount from '../model/esoAccount.js'
 import database, { setAtlasSrcMode } from '../model/database.js'
 import gearConfig from '../model/gearConfig.js'
+import { ESOCN_API } from '../model/esocnApi.js'
 import fetch from 'node-fetch'
 import fs from 'node:fs'
 
 /** 图鉴数据源：'local' 本地数据库（默认）| 'api' ESOCN API */
 let srcMode = 'local'
-
-// ESOCN API 配置
-export const ESOCN_API = {
-  BASE_URL: 'https://api.esocn.com.cn',
-  TOKEN: 'ESOCN_ESOBOT_SECURE_v1_d8f2a4e9b7c10d5e3a6f8b2c4d9e0a1f72b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7'
-}
 
 // 限流配置
 const RATE_LIMIT = {
@@ -156,7 +151,19 @@ export class esocn extends plugin {
       await this.reply(replyMsg)
 
       // 自动触发查绑定显示状态
-      return await this.showBindStatus(e)
+      await this.showBindStatus(e)
+
+      // 绑定成功后自动同步成就（合并本地 PAT + ESOCN，必要时上传/更新角色）
+      try {
+        const { syncAchievementsForUser } = await import('../model/patSync.js')
+        await e.reply('🔄 正在自动同步成就...')
+        const syncReport = await syncAchievementsForUser(e, String(e.user_id), '你')
+        if (syncReport) await e.reply(syncReport)
+      } catch (syncErr) {
+        logger.error(`[ESOCN:绑定] 自动同步成就失败: ${syncErr?.message || syncErr}`)
+        await e.reply(`⚠️ 自动同步成就失败：${syncErr?.message || syncErr}`)
+      }
+      return true
 
     } catch (error) {
       logger.error(`[ESOCN:绑定] 绑定失败: ${error.message}`)

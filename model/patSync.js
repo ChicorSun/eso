@@ -13,8 +13,8 @@ import ESOAccount from './esoAccount.js'
 import { decodePat, loadRaids } from './patDecoder.js'
 import { encodePat, metaFromRaw } from './patEncoder.js'
 import { isKOOK } from './apiKOOK.js'
-import { ESOCN_API } from '../apps/esocn.js'
-import { updateTagForUser } from '../apps/updateTag.js'
+import { ESOCN_API } from './esocnApi.js'
+import { updateTagForUser } from './roleUpdater.js'
 
 const BASE_URL = ESOCN_API.BASE_URL
 
@@ -111,16 +111,30 @@ function esocnDataToIds (esocnData, raids) {
  * @param {object} e 消息事件对象
  * @param {string} targetUserId 操作对象用户 ID（QQ / ko_xxx / wx_xxx）
  * @param {string} [targetLabel] 展示名（'你' / '用户 xxx'）
+ * @param {object} [opts] 选项
+ * @param {boolean} [opts.forceRoleUpdate] 强制更新角色：#更新成就 场景下，
+ *   即使本地数据无变化也更新 KOOK 角色（默认仅在本地数据被更新时更新）
  * @returns {Promise<string>} 汇报文本（由调用方 reply）
  */
-export async function syncAchievementsForUser (e, targetUserId, targetLabel = '该用户') {
-  // ── 1. 绑定检查（需 ESOCN 账户：user_id 非 0） ──
+export async function syncAchievementsForUser (e, targetUserId, targetLabel = '该用户', opts = {}) {  // ── 1. 绑定检查 ──
   const binding = ESOAccount.getPrimaryBinding(targetUserId)
   if (!binding || !binding.accountName) {
     return `❌ ${targetLabel} 尚未绑定游戏账号。\n请先使用 #绑定@账号名 绑定。`
   }
-  if (!binding.user_id || binding.user_id === 0) {
-    return `❌ ${targetLabel} 尚未绑定 ESOCN 账户。\n请先在 esocn.com.cn 登录并生成绑定码，发送 #BCXXXXXX 完成绑定。`
+  const hasEsocn = !!(binding.user_id && binding.user_id !== 0)
+
+  // #更新成就（forceRoleUpdate）模式且未绑定 ESOCN：
+  // 跳过云端相关操作，仅用本地 PAT 成就更新 KOOK 角色
+  if (!hasEsocn) {
+    if (!opts.forceRoleUpdate) {
+      return `❌ ${targetLabel} 尚未绑定 ESOCN 账户。\n请先在 esocn.com.cn 登录并生成绑定码，发送 #BCXXXXXX 完成绑定。`
+    }
+    if (!isKOOK(e)) {
+      return `ℹ️ ${targetLabel} 未绑定 ESOCN 账户，且当前消息不在 KOOK 服务器，无法更新角色。`
+    }
+    await e.reply(`ℹ️ ${targetLabel} 未绑定 ESOCN 账户，跳过云端同步，仅按本地成就更新角色...`)
+    await updateTagForUser(e) // 内部自行 reply 角色更新结果
+    return '完成更新！\n（未绑定 ESOCN 账户，已跳过云端同步，仅完成本地成就的角色更新。）'
   }
   const accountName = `@${binding.accountName}`
   const esocnUserId = String(binding.user_id).padStart(7, '0')
@@ -169,9 +183,9 @@ export async function syncAchievementsForUser (e, targetUserId, targetLabel = '�
     savedLocal = !!saved.success
   }
 
-  // 更新了本地 + 用户是 KOOK 用户 → 调用 #更新成就 更新角色
+  // 更新了本地（或 #更新成就 强制模式）+ 用户是 KOOK 用户 → 更新角色
   let roleNote = ''
-  if (savedLocal && String(targetUserId).startsWith('ko_')) {
+  if ((opts.forceRoleUpdate || savedLocal) && String(targetUserId).startsWith('ko_')) {
     if (isKOOK(e)) {
       await updateTagForUser(e) // 内部自行 reply 角色更新结果
     } else {
@@ -219,4 +233,20 @@ export async function syncAchievementsForUser (e, targetUserId, targetLabel = '�
   }
   if (roleNote) lines.push(roleNote)
   return lines.join('\n')
+}
+
+/**
+ * 若目标用户与命令输入用户一致、且未绑定 ESOCN 账户，提醒其去 ESOCN 网页绑定
+ * 供 #上传成就 / #更新成就 在完成后调用
+ * @param {object} e 消息事件对象
+ * @param {string} targetUserId 操作目标用户 ID
+ * @returns {Promise<boolean>} 是否发出了提醒
+ */
+export async function remindEsocnBindIfSelf (e, targetUserId) {
+  // 仅当目标 == 命令输入用户时才提醒（@ 别人同步时不打扰）
+  if (String(targetUserId) !== String(e.user_id)) return false
+  const binding = ESOAccount.getPrimaryBinding(targetUserId)
+  if (binding && binding.user_id && binding.user_id !== 0) return false // 已绑定 esocn
+  await e.reply('💡 请访问 esocn 网页，绑定 esobot 后，可实现成就同步展示，以及更多功能。')
+  return true
 }
