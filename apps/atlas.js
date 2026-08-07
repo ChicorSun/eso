@@ -66,6 +66,27 @@ function itemSubtypeInfo (subtype, internalLevel) {
   }
 }
 
+/** 全物品名表（dataAllItemsCN.json，id → {name, itemTypeName}；懒加载缓存） */
+let allItemsCNCache = null
+function loadAllItemsCN () {
+  if (allItemsCNCache) return allItemsCNCache
+  try {
+    const p = path.join(__dirname, '../resources/data/segments/dataAllItemsCN.json')
+    allItemsCNCache = JSON.parse(fs.readFileSync(p, 'utf8'))
+  } catch (err) {
+    logger?.error?.(`[ESO:图鉴] 加载 dataAllItemsCN.json 失败: ${err?.message || err}`)
+    allItemsCNCache = {}
+  }
+  return allItemsCNCache
+}
+
+/** 按 id 查物品中文名（dataAllItemsCN；查不到返回 null） */
+function getItemNameById (id) {
+  if (id == null || id === 0) return null
+  const entry = loadAllItemsCN()[String(id)]
+  return entry?.name || null
+}
+
 //装备图鉴结构体变量
 let setData = {
 }
@@ -373,8 +394,8 @@ export class atlas extends plugin {
 
     // 收集所有链接 token（item / crafted_ability），按出现位置排序
     const tokens = []
-    for (const m of str.matchAll(/item:(\d+):(\d+):(\d+):/gi)) {
-      tokens.push({ pos: m.index, type: 'item', id: m[1], subtype: m[2], level: m[3] })
+    for (const m of str.matchAll(/item:(\d+):(\d+):(\d+):(\d+):/gi)) {
+      tokens.push({ pos: m.index, type: 'item', id: m[1], subtype: m[2], level: m[3], enchantId: m[4] })
     }
     for (const m of str.matchAll(/crafted_ability:(\d+):(\d+):(\d+):(\d+)/gi)) {
       tokens.push({ pos: m.index, type: 'crafted', abilityId: m[1], focusId: m[2], signatureId: m[3], affixId: m[4] })
@@ -431,6 +452,24 @@ export class atlas extends plugin {
         setData.atlasData[1].name_color = info.color
         setData.atlasData[1].itemLevel = info.level
         setData.atlasData[1].itemCp = info.isCp ? info.cp : 0
+      }
+      // 附魔（链接第 4 字段 EnchantId；查本地全物品表拿中文名）
+      let enchantName = getItemNameById(t.enchantId)
+      if (!enchantName) {
+        // 非制作套（掉落套）护甲掉落自带对应附魔：轻甲=魔力/中甲=耐力/重甲=生命（制作套 type=3 无附魔属正常，不显示）
+        const isCrafted = Number(setData.atlasData[1].item_class) === 3
+        if (!isCrafted) {
+          const defaultEnchants = { '轻甲': '真正超凡魔力雕文', '中甲': '真正超凡耐力雕文', '重甲': '真正超凡生命雕文' }
+          for (const [armor, name] of Object.entries(defaultEnchants)) {
+            if (weightText.includes(armor)) {
+              enchantName = name
+              break
+            }
+          }
+        }
+      }
+      if (enchantName) {
+        setData.atlasData[1].enchantName = enchantName
       }
       // 物品名右侧 emoji 图标（defSet/eso/atlasEmoji.yaml 映射）
       this.applyEmojiIcon(setData)

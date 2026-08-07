@@ -41,6 +41,9 @@
           {{/if}}
         </div>
         {{/if}}
+        {{if val.enchantName}}
+        <div class="enchant-row">{{val.enchantName}}附魔</div>
+        {{/if}}
         {{each val.msg item}}
         <div class="msg">{{@item}}</div>
         {{/each}}
