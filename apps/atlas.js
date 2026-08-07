@@ -240,19 +240,28 @@ export class atlas extends plugin {
   }
 
 
-  /** 从消息中解析 item:数字:（与 #ITEMID数字 等价） */
-  extractItemIdFromLink (text) {
-    const match = String(text || '').match(/item:(\d+):/i)
-    return match ? match[1] : null
+  /** 从消息中解析全部 item:数字:（每个与 #ITEMID数字 等价），按出现顺序返回 ID 数组 */
+  extractItemIdsFromLink (text) {
+    const ids = []
+    const matches = String(text || '').matchAll(/item:(\d+):/gi)
+    for (const m of matches) ids.push(m[1])
+    return ids
   }
 
   async showAtlasByItemLink (e) {
     srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     const text = await this.trimText(e)
-    const itemId = this.extractItemIdFromLink(text)
-    if (!itemId) return 0
-    return await this.showSets(e, `#ITEMID${itemId}`)
+    const itemIds = this.extractItemIdsFromLink(text)
+    if (!itemIds.length) return 0
+    // 逐个输出图片（多个物品时提示数量）
+    if (itemIds.length > 1) {
+      await e.reply(`🔍 检测到 ${itemIds.length} 个物品，正在逐个输出：`)
+    }
+    for (const itemId of itemIds) {
+      await this.showSets(e, `#ITEMID${itemId}`)
+    }
+    return true
   }
 
   async showAtlas (e) {
