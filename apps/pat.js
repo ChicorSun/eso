@@ -8,7 +8,8 @@
  *   #副本成就@某人 / #查看成就@某人   查询被 @ 用户绑定的游戏账号的副本成就
  *
  * 数据流：
- *   上传：二维码图片 → jsQR 解码 → 原始字符串 → 提取账号名(@开头) → 保存 pat.json（按账号覆盖）
+ *   上传：二维码图片 → jsQR 解码 → 提取账号名(@开头) → 与本地已存成就【合并】(并集) →
+ *         有变化才打包 rawString 保存 pat.json（force 覆盖，不比较日期）→ 已绑定 ESOCN 则自动走同步成就
  *   查询：用户(或@用户) → ESOAccount 主账号 → pat.json 取原始字符串 → decodePat → 报告
  *
  * 实现说明：
@@ -24,10 +25,10 @@ import { fileURLToPath } from 'node:url'
 import { Jimp } from 'jimp'
 import jsQR from 'jsqr'
 import { decodePat, formatPatReport } from '../model/patDecoder.js'
+import { encodePat, metaFromRaw } from '../model/patEncoder.js'
 import PATStore from '../model/patStore.js'
 import ESOAccount from '../model/esoAccount.js'
-import { isKOOK } from '../model/apiKOOK.js'
-import { updateTagForUser } from './updateTag.js'
+import { syncAchievementsForUser } from '../model/patSync.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -112,40 +113,54 @@ export class pat extends plugin {
   }
 
   /**
-   * KOOK 来源 + 上传者绑定账号与 PAT 记录账号一致 → 自动运行 #更新成就
-   *
-   * 触发条件（全部满足才自动更新）：
-   *   1. 消息来自 KOOK（角色在 KOOK 服务器上）
-   *   2. 上传者已绑定主账号
-   *   3. 绑定账号名与 PAT 记录中的账号名一致
-   *
-   * @param {object} e 消息事件对象
-   * @param {object} result decodePat 结果（含 playerName）
-   * @param {object} saved PATStore.set 返回（含 record.accountName）
+   * 合并本地已存成就与新上传成就（并集，不再比较日期），有变化才打包保存
+   * @param {string} accountName 账号名（@开头）
+   * @param {string} content 新上传的 PAT rawString
+   * @param {object} result decodePat(content) 的结果
+   * @returns {Promise<{changed: boolean, saved: object|null, added: number, mergedSize: number}>}
    */
-  async maybeAutoUpdateRoles (e, result, saved) {
-    // 1. 仅 KOOK 来源
-    if (!isKOOK(e)) return
+  async mergeAndSaveAchievements (accountName, content, result) {
+    const localRecord = accountName ? PATStore.get(accountName) : null
+    const localRaw = localRecord?.rawString || ''
+    const localIds = new Set()
+    if (localRaw) {
+      const localDecoded = await decodePat(localRaw)
+      if (localDecoded?.ok) for (const id of localDecoded.completedIds.keys()) localIds.add(Number(id))
+    }
+    const newIds = new Set()
+    for (const id of result.completedIds.keys()) newIds.add(Number(id))
+    const mergedIds = new Set([...localIds, ...newIds])
+    const changed = mergedIds.size !== localIds.size || [...mergedIds].some(id => !localIds.has(id))
 
-    // 2. 上传者绑定的主账号
+    let saved = null
+    if (changed) {
+      // 打包 rawString：元数据以新上传 PAT 为准（不再受本地日期限制）
+      const n = new Date()
+      const today = `${n.getFullYear()}${String(n.getMonth() + 1).padStart(2, '0')}${String(n.getDate()).padStart(2, '0')}`
+      const meta = metaFromRaw(content, { playerName: accountName || '@Unknown', date: result.date || today })
+      const newRaw = encodePat(mergedIds, meta)
+      saved = PATStore.set(newRaw, accountName, { force: true })
+    }
+    return {
+      changed,
+      saved,
+      added: [...mergedIds].filter(id => !localIds.has(id)).length,
+      mergedSize: mergedIds.size,
+    }
+  }
+
+  /**
+   * 上传者已绑定 ESOCN 账户时，自动执行同步成就
+   * @param {object} e 消息事件对象
+   * @returns {Promise<boolean>} 是否执行了同步
+   */
+  async maybeSyncEsocn (e) {
     const binding = ESOAccount.getPrimaryBinding(String(e.user_id))
-    if (!binding || !binding.accountName) {
-      await e.reply('ℹ️ 你尚未绑定游戏账号，无法自动更新 KOOK 成就角色。\n可先使用 #绑定@账号名 绑定，再手动执行 #更新成就。')
-      return
-    }
-
-    // 3. 账号名比对（归一化：去空白与开头的 @）
-    const norm = s => String(s || '').trim().replace(/^@/, '')
-    const boundName = norm(binding.accountName)
-    const patName = norm(saved?.record?.accountName || result?.playerName)
-    if (!patName || patName !== boundName) {
-      await e.reply(`ℹ️ PAT 记录账号 ${saved?.record?.accountName || result?.playerName} 与你绑定的账号 @${boundName} 不一致，未自动更新角色。`)
-      return
-    }
-
-    // 4. 账号一致 → 自动执行更新
-    await e.reply(`✅ PAT 账号与绑定账号一致（@${boundName}），正在自动更新 KOOK 成就角色...`)
-    await updateTagForUser(e)
+    if (!binding || !binding.user_id || binding.user_id === 0) return false
+    await e.reply('🔄 已绑定 ESOCN，正在执行同步成就...')
+    const syncReport = await syncAchievementsForUser(e, String(e.user_id), '你')
+    if (syncReport) await e.reply(syncReport)
+    return true
   }
 
   /** 处理图片消息：若该用户在等待二维码，则解码并保存 */
@@ -177,21 +192,23 @@ export class pat extends plugin {
         // 解码 PAT 成就内容
         const result = await decodePat(content)
         if (result) {
-          // 保存到 pat.json（日期更新才覆盖）
-          const saved = PATStore.set(content, result.playerName)
           const report = formatPatReport(result, true)
-          if (saved.success) {
-            const timeStr = saved.record.updateTime
-            await e.reply(`${report}\n\n✅ 已保存到账号 ${saved.record.accountName}（记录时间 ${timeStr}）\n可使用 #副本成就 随时查看。`)
-            await this.maybeAutoUpdateRoles(e, result, saved)
-          } else if (saved.skipped) {
-            // 已有更新/相同日期的记录：只输出解析结果，不覆盖
-            await e.reply(`${report}\n\nℹ️ ${saved.message}\n（保留现有记录，本次结果仅供参考）`)
-            // 文件里已有该账号的 PAT 记录，同样尝试自动更新角色
-            await this.maybeAutoUpdateRoles(e, result, saved)
+          // 账号名：以 PAT 内账号为准（@开头）
+          const accountName = result.playerName || ''
+
+          // 合并本地 + 新上传（并集），有变化才保存
+          const { changed, saved } = await this.mergeAndSaveAchievements(accountName, content, result)
+
+          if (!changed) {
+            await e.reply(`${report}\n\nℹ️ 与本地已存成就一致，无需更新。`)
+          } else if (saved?.success) {
+            await e.reply(`${report}\n\n✅ 已合并保存到账号 ${saved.record.accountName}（记录时间 ${saved.record.updateTime}）\n可使用 #副本成就 随时查看。`)
           } else {
-            await e.reply(`${report}\n\n⚠️ 保存失败：${saved.message}`)
+            await e.reply(`${report}\n\n⚠️ 保存失败：${saved?.message || '未知错误'}`)
           }
+
+          // 绑定了 ESOCN → 自动走同步成就（合并本地+ESOCN、必要时上传、KOOK 用户更新角色）
+          await this.maybeSyncEsocn(e)
         } else {
           // 非 PAT 格式：仍尝试保存原始字符串（按提取的账号名，若无则提示）
           const saved = PATStore.set(content, '')

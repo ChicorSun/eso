@@ -22,7 +22,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 /** Pithka 插件掩码组（generateQR.lua 原样）：组名 → 成就 ID 列表（索引 0 = bit 0） */
-const MASK_GROUPS = {
+export const MASK_GROUPS = {
   ta: [1474, 1136, 1503, 1137, 1462, 1138, 1368, 1344, 1391, 1810, 1829, 1838, 1836, 2077, 2085, 2086, 2079, 2087, 2075, 2133, 2134, 2135, 2136, 2139, 2140, 2435, 2469, 2470, 2466, 2467, 2468],
   tb: [2734, 2736, 2737, 2739, 2740, 2746, 2987, 3005, 3006, 3007, 3003, 3004, 3244, 3250, 3251, 3252, 3248, 3249, 3560, 3566, 3567, 3568, 3564, 3565, 4015, 4021, 4022, 4023, 4019, 4020, 4268],
   tc: [4274, 4275, 4276, 4272, 4273, 4517, 4485],
@@ -42,7 +42,7 @@ let raidsCache = null
  * 加载 dataRaids 映射（成就 ID → 副本信息）
  * 优先运行时缓存，回退 git 备份
  */
-function loadRaids () {
+export function loadRaids () {
   if (raidsCache) return raidsCache
   const candidates = [
     './data/eso/custome_resources/cache/segments',

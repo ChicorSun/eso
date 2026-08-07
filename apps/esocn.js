@@ -9,7 +9,7 @@ import fs from 'node:fs'
 let srcMode = 'local'
 
 // ESOCN API 配置
-const ESOCN_API = {
+export const ESOCN_API = {
   BASE_URL: 'https://api.esocn.com.cn',
   TOKEN: 'ESOCN_ESOBOT_SECURE_v1_d8f2a4e9b7c10d5e3a6f8b2c4d9e0a1f72b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7'
 }

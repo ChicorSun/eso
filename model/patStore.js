@@ -84,19 +84,20 @@ class PATStore {
    * 保存一份 PAT 记录（按账号名，日期更新才覆盖）
    * @param {string} rawString PAT 原始字符串
    * @param {string} accountName 账号名（可选，缺省从 rawString 提取）
+   * @param {object} options 选项：{ force: true } 跳过日期检查强制覆盖（同步合并场景用）
    * @returns {object} { success, skipped, record, message }
    *   success: 已保存（新记录或日期更新）
    *   skipped: 已有更新/相同的记录，未覆盖（仍返回 record 供展示）
    */
-  set (rawString, accountName) {
+  set (rawString, accountName, options = {}) {
     const key = (accountName || this.extractAccountName(rawString) || '').trim()
     if (!key) return { success: false, skipped: false, message: '无法从二维码中提取账号名' }
 
     const newDate = this.extractDate(rawString)
     const existing = this.data[key]
 
-    // 已存在记录且新旧都有日期：仅当本次日期更新才覆盖
-    if (existing && newDate && existing.updateTime) {
+    // 已存在记录且新旧都有日期：仅当本次日期更新才覆盖（force 时跳过此规则）
+    if (!options.force && existing && newDate && existing.updateTime) {
       const oldDate = this._normDate(existing.updateTime)
       if (newDate <= oldDate) {
         return {
