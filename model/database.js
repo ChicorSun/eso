@@ -6636,6 +6636,42 @@ class database {
     return buffsData
   }
 
+  /**
+   * 在篆刻基础技能中查找与指定脚本组合精确匹配的 morph 键（按 CN 数据，与图鉴渲染数据源一致）
+   * @param {number|string} abilityId 篆刻基础技能 id（dataSkills 表内 id）
+   * @param {object} scripts 形如 {1: 10, 2: 29, 3: 44}（焦点/签名/词缀脚本 id）
+   * @returns {Promise<string|null>} morph 键（如 '7'），无匹配（或 CN 未收录）返回 null
+   */
+  async findGrimoireMorphKey (abilityId, scripts) {
+    await this.init_database()
+    const target = {}
+    for (const [k, v] of Object.entries(scripts)) target[String(k)] = Number(v)
+    for (const lineKey of Object.keys(skillsDataCN)) {
+      if (lineKey === 'name' || lineKey === 'id' || lineKey === 'scriptList') continue
+      const line = skillsDataCN[lineKey]
+      if (!line || typeof line !== 'object') continue
+      for (const classKey of Object.keys(line)) {
+        if (classKey === 'name') continue
+        const cls = line[classKey]
+        if (!cls || typeof cls !== 'object' || !cls.skills) continue
+        for (const skillKey of Object.keys(cls.skills)) {
+          if (skillKey === 'name' || skillKey === 'id') continue
+          const skill = cls.skills[skillKey]
+          if (!skill || !skill.IsCrafted || Number(skill.id) !== Number(abilityId)) continue
+          for (const mk of Object.keys(skill)) {
+            if (!/^\d+$/.test(mk)) continue
+            const mv = skill[mk]
+            if (!mv || typeof mv !== 'object' || !mv.scripts) continue
+            const sc = {}
+            for (const [k, v] of Object.entries(mv.scripts)) sc[String(k)] = Number(v)
+            if (JSON.stringify(sc) === JSON.stringify(target)) return mk
+          }
+        }
+      }
+    }
+    return null
+  }
+
   async updateData (setKey, type) {
     const { setKey: resolvedSetKey, itemId } = resolveSetIndexEntry(setKey)
     if(type == 1) //this is name for sets
@@ -7106,4 +7142,15 @@ class database {
 }
 
 export { dataRaids, dataRaidsCN, raidNameMap, ALCHEMY_DATA }
+
+/**
+ * 获取篆刻（Scribing）脚本列表：scriptList[脚本id] → {name, description, icon}
+ * 脚本 id 与 crafted_ability 链接参数对应（如 29=刺客的苦难、10=多个目标、44=失衡）
+ * @param {string} lang 'cn'（默认）| 'en'
+ */
+export function getScriptList (lang = 'cn') {
+  const sk = lang === 'en' ? skillsData : skillsDataCN
+  return (sk && typeof sk === 'object' && sk.scriptList) ? sk.scriptList : {}
+}
+
 export default new database()

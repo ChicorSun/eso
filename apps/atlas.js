@@ -1,7 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import common from '../../../lib/common/common.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
-import database, { detectBuffDebuffInText, isSetIndexResultEmpty, setAtlasSrcMode } from '../model/database.js'
+import database, { detectBuffDebuffInText, isSetIndexResultEmpty, setAtlasSrcMode, getScriptList } from '../model/database.js'
 import apiDataSource from '../model/apiDataSource.js'
 import gearConfig from '../model/gearConfig.js'
 import moment from 'moment'
@@ -154,9 +154,14 @@ export class atlas extends plugin {
       /** 匹配不同的关键词 */
       rule: [
         {
+          /** 篆刻技能链接：crafted_ability:基础ID:焦点:签名:词缀 */
+          reg: /crafted_ability:\d+:\d+:\d+:\d+/i,
+          fnc: 'showAtlasByLink'
+        },
+        {
           /** 游戏内物品链接等：任意文本中含 item:205008: 即查 #ITEMID205008 */
           reg: /item:\d+:/i,
-          fnc: 'showAtlasByItemLink'
+          fnc: 'showAtlasByLink'
         },
         {
           /** 命令正则匹配 */
@@ -248,18 +253,86 @@ export class atlas extends plugin {
     return ids
   }
 
-  async showAtlasByItemLink (e) {
+  /** 解析 crafted_ability 链接参数：{ abilityId, focusId, signatureId, affixId } */
+  extractCraftedAbility (text) {
+    const m = String(text || '').match(/crafted_ability:(\d+):(\d+):(\d+):(\d+)/i)
+    if (!m) return null
+    return { abilityId: m[1], focusId: m[2], signatureId: m[3], affixId: m[4] }
+  }
+
+  /** 输出单个篆刻技能卡片：按「基础效果 + 三个脚本效果」合成展示，只输出图片 */
+  async showCraftedAbilityCard (e, ca) {
+    const scriptList = getScriptList()
+    const scriptName = id => (scriptList[id] && scriptList[id].name) ? scriptList[id].name : `脚本#${id}`
+    const scriptDesc = id => (scriptList[id] && scriptList[id].description) ? scriptList[id].description : ''
+
+    // 基础技能按 ID 查 skillKey（*技能图鉴 SKILLID 分支同款 mode=21）
+    const objSkills = await database.name2index(ca.abilityId, 21)
+    if (!Array.isArray(objSkills) || objSkills.length === 0 || String(objSkills[0]).startsWith('-')) {
+      await e.reply(`❌ 未找到篆刻基础技能 ID=${ca.abilityId}。`)
+      return
+    }
+    const baseSkillKey = String(objSkills[0]) // 形如 '2_3_2_0'
+
+    // 合成「基础效果 + 三个脚本效果」作为卡片内容
+    const skillData = await database.updateData(baseSkillKey, 2)
+    const item = skillData?.atlasData?.[1]
+    if (!item) {
+      await this.showSkillsInfo([baseSkillKey], false)
+      return
+    }
+    const segs = []
+    const baseMsg = Array.isArray(item.msg) ? item.msg[0] : null
+    if (baseMsg) {
+      // 去掉基础段的「X阶：」前缀（三个脚本组合场景下无意义）
+      segs.push(String(baseMsg).replace(/^[一二三四五六七八九十]+阶\s*[:：]\s*/, ''))
+    }
+    // 焦点/签名/词缀：采用 #spc「近期无畏出现日期」模块同款低调背景（rgba(255,255,255,0.04)，
+    // 深色卡片上柔和不喧宾夺主），文字用同模块标题色 #9aa8b4，脚本名保持金色
+    const scriptMeta = [
+      [ca.focusId, '焦点'],
+      [ca.signatureId, '签名'],
+      [ca.affixId, '词缀'],
+    ]
+    for (const [sid, role] of scriptMeta) {
+      const name = scriptName(sid)
+      const desc = scriptDesc(sid)
+      const tag = `<span style="display:inline-block;background:rgba(255,255,255,0.04);color:#9aa8b4;border-radius:4px;padding:0 8px;margin-right:6px;font-size:12px;line-height:1.6;vertical-align:baseline;">${role}</span>`
+      const goldName = `<span style="color:#C9A227;font-weight:bold;">${name}</span>`
+      segs.push(`${tag}${goldName}${desc ? '：' + desc : ''}`)
+    }
+    item.msg = segs
+    // 直接渲染修改后的数据（showSkillsInfo 会重新 updateData 覆盖 msg，不能复用）
+    const img = await this.cache(skillData, skillImg)
+    if (img) await this.reply(img)
+  }
+
+  /** 按消息中出现顺序，依次输出全部 item 图鉴与 crafted_ability 技能卡片 */
+  async showAtlasByLink (e) {
+    await e.reply('开始解析，请稍候...')
     srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
     const text = await this.trimText(e)
-    const itemIds = this.extractItemIdsFromLink(text)
-    if (!itemIds.length) return 0
-    // 逐个输出图片（多个物品时提示数量）
-    if (itemIds.length > 1) {
-      await e.reply(`🔍 检测到 ${itemIds.length} 个物品，正在逐个输出：`)
+    const str = String(text || '')
+
+    // 收集所有链接 token（item / crafted_ability），按出现位置排序
+    const tokens = []
+    for (const m of str.matchAll(/item:(\d+):/gi)) {
+      tokens.push({ pos: m.index, type: 'item', id: m[1] })
     }
-    for (const itemId of itemIds) {
-      await this.showSets(e, `#ITEMID${itemId}`)
+    for (const m of str.matchAll(/crafted_ability:(\d+):(\d+):(\d+):(\d+)/gi)) {
+      tokens.push({ pos: m.index, type: 'crafted', abilityId: m[1], focusId: m[2], signatureId: m[3], affixId: m[4] })
+    }
+    tokens.sort((a, b) => a.pos - b.pos)
+    if (tokens.length === 0) return 0
+
+    // 依次输出对应图片
+    for (const t of tokens) {
+      if (t.type === 'item') {
+        await this.showSets(e, `#ITEMID${t.id}`)
+      } else {
+        await this.showCraftedAbilityCard(e, t)
+      }
     }
     return true
   }
