@@ -41,8 +41,7 @@ class getimgs {
           url = `https://q1.qlogo.cn/g?b=qq&nk=${name}&s=160`
         } else if (type == `craftedScripts`) {
           url = `https://storage.esocn.com.cn/esoui/art/icons/${name}.png`
-        } else if (type == 'esocn_avatar' && (typeof name === 'string' && (name.startsWith('http://') || name.startsWith('https://')))) {
-          // ESOCN 头像直接下载
+        } else if (type == 'esocn_avatar' && (typeof name === 'string' && (name.startsWith('http://') || name.startsWith('https://')))) {          // ESOCN 头像直接下载
           const url = name
           const filename = path.basename(url) || 'esocn_' + Date.now() + '.jpg'
           const ext = path.extname(filename) || '.jpg'
@@ -64,6 +63,9 @@ class getimgs {
         } else {
           url = `https://esoicons.uesp.net/esoui/art/icons/${name}.png`
         }
+        // 确保下载目录存在（craftedScripts 等子目录可能尚未创建）
+        const dir = path.dirname(customImg)
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
         logger.info(url + ' is downloading to ' + customImg + '...')
         let ret = await Bot.download(url, customImg)
       }

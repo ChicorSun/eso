@@ -5,6 +5,7 @@ import database, { detectBuffDebuffInText, isSetIndexResultEmpty, setAtlasSrcMod
 import apiDataSource from '../model/apiDataSource.js'
 import gearConfig from '../model/gearConfig.js'
 import esoCfg from '../model/esoCfg.js'
+import sssDecoder from '../model/sssDecoder.js'
 import moment from 'moment'
 import md5 from 'md5'
 import fs from 'node:fs'
@@ -231,6 +232,11 @@ export class atlas extends plugin {
       /** 匹配不同的关键词 */
       rule: [
         {
+          /** SuperStar 分享码：|H1:sss:...|h → 配装卡片（含篆刻技能区域） */
+          reg: /\|H1:sss:/i,
+          fnc: 'showSuperstarBuild'
+        },
+        {
           /** 篆刻技能链接：crafted_ability:基础ID:焦点:签名:词缀 */
           reg: /crafted_ability:\d+:\d+:\d+:\d+/i,
           fnc: 'showAtlasByLink'
@@ -382,6 +388,382 @@ export class atlas extends plugin {
     // 直接渲染修改后的数据（showSkillsInfo 会重新 updateData 覆盖 msg，不能复用）
     const img = await this.cache(skillData, skillImg)
     if (img) await this.reply(img)
+  }
+
+  // ==================== SuperStar 分享码 → 配装卡片 ====================
+
+  /** 技能全表索引缓存：id → {name, icon, tree, ultimate}
+   *  dataSkillsCN 结构：职业 → 技能树 → skills[槽]（槽含 id/name 与各形态变体 children）
+   *  SuperStar 技能栏 id = 变体 id（如 20668 灼热锐爪）；crafted abilityId = 槽 id（如 7 游刃），两者都要索引
+   */
+  getSssSkillIndex () {
+    if (this._sssSkillIndex) return this._sssSkillIndex
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/data/segments/dataSkillsCN.json'), 'utf8'))
+    const idx = {}
+    const walk = (obj, treeName) => {
+      if (!obj || typeof obj !== 'object') return
+      if (obj.id !== undefined && typeof obj.name === 'string' && !(obj.id in idx)) {
+        idx[obj.id] = { name: obj.name, icon: obj.icon, tree: treeName, ultimate: !!obj.ultimate }
+      }
+      // 继续深入（槽的变体 children；无 id/name 的数值/样式对象不会误索引）
+      for (const v of Object.values(obj)) walk(v, treeName)
+    }
+    for (const [cls, trees] of Object.entries(data)) {
+      if (cls === 'scriptList' || !trees || typeof trees !== 'object') continue
+      for (const tree of Object.values(trees)) {
+        if (!tree || typeof tree !== 'object' || !tree.skills) continue
+        walk(tree.skills, tree.name)
+      }
+    }
+    this._sssSkillIndex = idx
+    return idx
+  }
+
+  /** CP 全表索引缓存：id → {dis, name}（读 dataCpSkillsCN.json，dis: crafted/warfare/fitness） */
+  getSssCpIndex () {
+    if (this._sssCpIndex) return this._sssCpIndex
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/data/segments/dataCpSkillsCN.json'), 'utf8'))
+    const disKeyMap = { '1': 'crafted', '2': 'warfare', '3': 'fitness' }
+    const idx = {}
+    for (const [disKey, v] of Object.entries(data)) {
+      const dis = disKeyMap[disKey] || `dis${disKey}`
+      for (const skill of Object.values(v.skills || {})) {
+        if (skill && skill.id !== undefined) idx[skill.id] = { dis, name: skill.name }
+      }
+    }
+    this._sssCpIndex = idx
+    return idx
+  }
+
+  /** 技能树索引缓存：skillLineId → {name}（读 dataSkillsCN.json，tree.id 即 ESO skillLineId） */
+  getSssTreeIndex () {
+    if (this._sssTreeIndex) return this._sssTreeIndex
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/data/segments/dataSkillsCN.json'), 'utf8'))
+    const idx = {}
+    for (const [cls, trees] of Object.entries(data)) {
+      if (cls === 'scriptList' || !trees || typeof trees !== 'object') continue
+      for (const tree of Object.values(trees)) {
+        if (tree && typeof tree === 'object' && tree.id !== undefined && tree.name) {
+          idx[tree.id] = { name: tree.name }
+        }
+      }
+    }
+    this._sssTreeIndex = idx
+    return idx
+  }
+
+  /** 提取 dds/图标路径的文件名（去目录去扩展名） */
+  ddsIconName (iconPath) {
+    if (!iconPath) return ''
+    const name = String(iconPath).split('/').pop()
+    return name.includes('.') ? name.split('.')[0] : name
+  }
+
+  /** 从图鉴数据判断武器类型（esolog 分支 GI.type 用） */
+  weaponTypeOf (atlas) {
+    const n = String(atlas?.name || '') + String(atlas?.place || '')
+    if (n.includes('火焰')) return 'Fire Staff'
+    if (n.includes('寒冰')) return 'Frost Staff'
+    if (n.includes('闪电')) return 'Lightning Staff'
+    if (n.includes('恢复')) return 'Healing Staff'
+    if (n.includes('弓')) return 'Bow'
+    if (n.includes('盾')) return 'Shield'
+    if (n.includes('匕首')) return 'Dagger'
+    if (n.includes('锤')) return 'Hammer'
+    if (n.includes('剑')) return 'Sword'
+    if (n.includes('斧')) return 'Axe'
+    return ''
+  }
+
+  /** 食物 buff bitmask → 本地食物图标名（SuperStar 只存类型，选代表性图标） */
+  foodBuffIcon (type) {
+    const MAX_H = 1, MAX_M = 2, MAX_S = 4, REG_H = 8, REG_M = 16, REG_S = 32
+    if (type & MAX_H && type & MAX_M) return 'crowncrate_magickahealth_food'
+    if (type & MAX_H && type & MAX_S) return 'crowncrate_staminahealth_food'
+    if (type & MAX_M && type & MAX_S) return 'store_magickafood'
+    if (type & MAX_H) return 'store_healthfood'
+    if (type & MAX_M) return 'store_magickafood'
+    if (type & MAX_S) return 'store_staminafood'
+    if (type & REG_H) return 'store_healthdrink'
+    if (type & REG_M) return 'store_magickadrink'
+    if (type & REG_S) return 'store_staminadrink'
+    return ''
+  }
+
+  /** SuperStar 分享码 → 配装卡片（复用 updateBuildData type=10，篆刻技能融入技能栏下方区域） */
+  async showSuperstarBuild (e) {
+    const text = String((await this.trimText(e)) || '')
+    const decoded = sssDecoder.decodeShareLink(text)
+    if (!decoded) {
+      await e.reply('❌ 无法解析 SuperStar 分享码。')
+      return 0
+    }
+    await e.reply('开始解析 SuperStar 配装，请稍候...')
+
+    // 分享码尾部可能附带多条 crafted_ability 链接（主/备栏的篆刻技能）
+    const craftedList = []
+    for (const m of text.matchAll(/crafted_ability:(\d+):(\d+):(\d+):(\d+)/gi)) {
+      craftedList.push({ abilityId: m[1], focusId: m[2], signatureId: m[3], affixId: m[4] })
+    }
+
+    const BD = await this.buildSuperstarBD(decoded, craftedList)
+    const processedData = await database.updateData(BD, 10)
+    const img = await puppeteer.screenshot('eso', processedData)
+    if (img) await this.reply(img)
+    return true
+  }
+
+  /** 解码结果 + 篆刻链接 → updateBuildData(BD,10) 需要的 BD 结构 */
+  async buildSuperstarBD (d, craftedList) {
+    const clsKey = d.class === 117 ? 7 : d.class
+    const classInfo = sssDecoder.CLASSES[clsKey] || { en: '', cn: '' }
+
+    // 种族（图片名与 esocn convertRace 一致）
+    const raceImgMap = {
+      '高精灵': 'Altmer', '木精灵': 'Bosmer', '卡吉特': 'Khajiit', '红卫人': 'Redguard',
+      '兽人': 'Orc', '亚龙人': 'Argonian', '布莱顿人': 'Breton', '暗精灵': 'Dunmer',
+      '诺德人': 'Nord', '帝国': 'Imperial'
+    }
+    const raceInfo = [{
+      name_en: raceImgMap[d.raceName] || d.raceName,
+      name_cn: d.raceName,
+      img: raceImgMap[d.raceName] || 'Dunmer'
+    }]
+
+    // 装备（走 updateBuildData esolog itemIDMode 分支：GI.name.image 留空 + link='?pcs=itemId'）
+    const slotNames = ['Head', 'Neck', 'Chest', 'Shoulders', 'Main Hand', 'Off Hand', 'Waist', 'Legs', 'Feet', 'Ring 1', 'Ring 2', 'Hands', 'Main Hand Backup', 'Off Hand Backup']
+    const gearData = []
+    for (let i = 0; i < d.equipment.length; i++) {
+      const eq = d.equipment[i]
+      if (!eq.occupied) continue
+      let atlas = null
+      try {
+        const objSets = await database.name2index(`ITEMID${eq.itemId}`, 1)
+        if (objSets && objSets.length > 0 && !String(objSets[0]).startsWith('-')) {
+          const setData = await database.updateData(objSets[0], 1)
+          atlas = setData?.atlasData?.[1] || null
+        }
+      } catch (err) {
+        logger.warn(`[ESO:SuperStar] 装备 ${eq.itemId} 查名失败: ${err.message}`)
+      }
+      // 武器类型 / 护甲类型（GI.type 用于 esolog 分支的类型色与武器图标）
+      let type = ''
+      const weightText = String(atlas?.weight || '')
+      if (i === 4 || i === 5 || i === 12 || i === 13) {
+        type = this.weaponTypeOf(atlas)
+      } else if (weightText.includes('轻甲')) {
+        type = 'Light'
+      } else if (weightText.includes('中甲')) {
+        type = 'Medium'
+      } else if (weightText.includes('重甲')) {
+        type = 'Heavy'
+      }
+      const trait = sssDecoder.traitInfo(eq.trait)
+      const enchantName = getItemNameById(eq.enchantId) || ''
+      gearData.push({
+        slot: slotNames[i],
+        type,
+        gearType: '',
+        name: {
+          text: atlas?.name || '',
+          enName: atlas?.name_en || '',
+          color: sssDecoder.qualityColor(eq.quality),
+          image: '',
+          link: '?pcs=' + eq.itemId
+        },
+        set: '',
+        setEn: '',
+        trait: trait ? trait.en : '',
+        enchant: { text: enchantName, color: 'rgb(229, 204, 128)' },
+        level: 'CP160'
+      })
+    }
+
+    // 技能（主/备栏各 6；address=技能树名，ultimate 金色）
+    const skillIdx = this.getSssSkillIndex()
+    const talentData = []
+    for (let i = 0; i < 6; i++) {
+      const mk = (id) => {
+        const info = skillIdx[Number(id)]
+        if (!info) return { icon: '', text: '', address: ' ', color: 'rgb(170, 170, 170)' }
+        return {
+          icon: info.icon,
+          text: info.name,
+          address: info.tree || ' ',
+          color: info.ultimate ? 'rgb(255, 204, 0)' : 'rgb(170, 170, 170)'
+        }
+      }
+      talentData.push({ mainSkill: mk(d.primarySkills[i]), offSkill: mk(d.backupSkills[i]) })
+    }
+
+    // 世界恩赐 / 食物 / 吸血鬼 / 狼人
+    const stoneInfo = d.boonInfo ? [{
+      name: d.boonInfo.cn,
+      name_cn: d.boonInfo.cn,
+      name_en: d.boonInfo.en,
+      img: d.boonInfo.img
+    }] : []
+
+    // 食物：SuperStar 分享码只含 buff 类型 bitmask（如 3=生命+魔力上限），无具体食物名；
+    // 文字显示类型描述（同游戏内 "+ 生命上限"），图标选本地代表性食物图
+    const foodInfo = []
+    if (d.foodBuff && d.foodBuffList.length > 0) {
+      const iconName = this.foodBuffIcon(d.foodBuff)
+      let img = ''
+      if (iconName) {
+        try {
+          const getimgsTmp = (await import('../model/getimgs.js')).default
+          img = await getimgsTmp.realpath(iconName, 'foods')
+        } catch (err) {
+          logger.warn(`[ESO:SuperStar] 食物图标获取失败: ${err.message}`)
+        }
+      }
+      foodInfo.push({
+        name: d.foodBuffList.join('、'),
+        name_cn: '+ ' + d.foodBuffList.join('、'),
+        name_en: '',
+        img
+      })
+    }
+
+    const getimgs = (await import('../model/getimgs.js')).default
+    let vampireInfo = []
+    let wolfInfo = []
+    if (d.vampWWInfo) {
+      const imgName = d.vampWWInfo.type === 'vampire'
+        ? `ability_u26_vampire_infection_stage${d.vampWWInfo.stage}`
+        : 'ability_werewolf_010'
+      try {
+        const imgPath = await getimgs.realpath(imgName, 'skills')
+        if (d.vampWWInfo.type === 'vampire') vampireInfo = [{ name: d.vampWWInfo.name, img: imgPath }]
+        else wolfInfo = [{ name: '狼人病', img: imgPath }]
+      } catch (err) {
+        logger.warn(`[ESO:SuperStar] ${imgName} 图标获取失败: ${err.message}`)
+        if (d.vampWWInfo.type === 'vampire') vampireInfo = [{ name: d.vampWWInfo.name, img: '' }]
+        else wolfInfo = [{ name: '狼人病', img: '' }]
+      }
+    }
+
+    // 篆刻技能（融入技能栏下方区域：bookIcon=基础技能图标，slots1-3=焦点/签名/词缀脚本）
+    const scriptList = getScriptList()
+    const craftedSkills = []
+    for (const ca of craftedList) {
+      const base = skillIdx[Number(ca.abilityId)]
+      const slots = [ca.focusId, ca.signatureId, ca.affixId]
+      const slotData = []
+      for (const sid of slots) {
+        const script = scriptList[Number(sid)]
+        let iconPath = ''
+        if (script?.icon) {
+          try {
+            iconPath = await getimgs.realpath(this.ddsIconName(script.icon), 'craftedScripts')
+          } catch (err) {
+            logger.warn(`[ESO:SuperStar] 脚本 ${sid} 图标失败: ${err.message}`)
+          }
+        }
+        slotData.push({ name: script?.name || `脚本#${sid}`, icon: iconPath })
+      }
+      let bookIcon = ''
+      if (base?.icon) {
+        try {
+          // uesp 缺部分篆刻魔典图标（403），改用 storage.esocn.com.cn 源（craftedScripts 同源）
+          bookIcon = await getimgs.realpath(this.ddsIconName(base.icon), 'craftedScripts')
+        } catch (err) {
+          logger.warn(`[ESO:SuperStar] 篆刻基础技能图标失败: ${err.message}`)
+        }
+      }
+      craftedSkills.push({
+        name: base?.name || `篆刻#${ca.abilityId}`,
+        bookIcon,
+        slots1: slotData[0],
+        slots2: slotData[1],
+        slots3: slotData[2]
+      })
+    }
+
+    // CP 点（按真实所属 discipline 分组）
+    const cpIndex = this.getSssCpIndex()
+    const cpPoints = { crafted: [], warfare: [], fitness: [] }
+    for (const slots of d.cp) {
+      for (const id of slots) {
+        if (!id) continue
+        const info = cpIndex[Number(id)]
+        if (info) cpPoints[info.dis].push({ name: info.name })
+      }
+    }
+
+    // 职业技能线：skLine3==0 → class mastery（2 个被动索引）；否则 subclassing（3 个 LSF 索引）
+    // 展示统一用 imgSkill=false + 职业图（本地 classes 图一定存在，避免技能图标裂图）
+    const skillLineInfo = []
+    const treeIdx = this.getSssTreeIndex()
+    const sl = d.skillLines || []
+    if (sl[2] !== 0) {
+      // subclassing：3 个 LSF 索引 → 技能线（0 为占位跳过）
+      for (const lsf of sl) {
+        if (!lsf) continue
+        const line = sssDecoder.LSF_CLASS_LINES[lsf]
+        if (!line) continue
+        const tree = treeIdx[line.skillLineId]
+        skillLineInfo.push({
+          img: 'ON-icon-class-' + line.className,
+          line_name: tree?.name || `技能线#${lsf}`,
+          class_name: '',
+          imgSkill: false
+        })
+      }
+    } else {
+      // class mastery：前两个值为被动索引（1-5），查精通被动技能名+图标
+      const mastery = sssDecoder.CLASS_MASTERY[d.class === 117 ? 117 : d.class]
+      if (mastery) {
+        for (const pidx of [sl[0], sl[1]]) {
+          if (!pidx || pidx > 5) continue
+          const skillId = sssDecoder.MASTERY_PASSIVES[mastery.lsf]?.[pidx - 1]
+          const skill = skillId ? skillIdx[skillId] : null
+          // 图标：被动技能图标（同 *技能图鉴）；下载失败回退职业图
+          let img = ''
+          if (skill?.icon) {
+            try {
+              const p = await getimgs.realpath(this.ddsIconName(skill.icon), 'skills')
+              if (p) img = '../../../../../' + p
+            } catch (err) {
+              logger.warn(`[ESO:SuperStar] 精通被动图标失败: ${err.message}`)
+            }
+          }
+          skillLineInfo.push({
+            img: img || 'ON-icon-class-' + mastery.className,
+            line_name: skill?.name || `职业精通#${pidx}`,
+            class_name: '',
+            imgSkill: !!img
+          })
+        }
+      }
+    }
+
+    return {
+      virtual: 0,
+      isESOCN: true,
+      username: 'SuperStar',
+      playerName: 'SuperStar 分享码',
+      accountName: '',
+      title: 'SuperStar 配装',
+      buildName: 'SuperStar 配装',
+      className: classInfo.en,
+      classNameCN: classInfo.cn,
+      roleName: '',
+      roleNameCN: '',
+      attributes: d.attributes,
+      race: d.raceName,
+      raceInfo,
+      gearData,
+      talentData,
+      stoneInfo,
+      foodInfo,
+      skillLineInfo,
+      vampireInfo,
+      wolfInfo,
+      craftedSkills,
+      cpPoints
+    }
   }
 
   /** 按消息中出现顺序，依次输出全部 item 图鉴与 crafted_ability 技能卡片 */
