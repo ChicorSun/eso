@@ -575,7 +575,7 @@ export class atlas extends plugin {
         setEn: '',
         trait: trait ? trait.en : '',
         enchant: { text: enchantName, color: 'rgb(229, 204, 128)' },
-        level: 'CP160'
+        level: '160'
       })
     }
 

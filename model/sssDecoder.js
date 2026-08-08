@@ -30,7 +30,9 @@ const BW = {
   FOOD_BUFF: 6
 }
 
-/** 种族（ESO GetUnitRaceId；生成时 race==10(帝国) 被写成 0，解码还原） */
+/** 种族（ESO GetUnitRaceId；生成时 race==10(帝国) 被写成 0，解码还原）
+ *  注意：实测分享码 race 字段为实际 id 的 4bit 循环左移 1 的值（9→3虎人/4→8暗精灵/0→帝国），
+ *  生成端与本地 SuperStar.lua 参考版存在差异，解码时需循环还原 */
 const RACES = {
   1: '高精灵',
   2: '木精灵',
@@ -188,6 +190,8 @@ export function decodeShareLink (text) {
 
   // 种族/职业（生成时 race==10→0、class==117→7，解码还原）
   let race = r.read(BW.RACE)
+  // race 字段为 4bit 循环左移 1 的编码（生成端行为）：还原为实际 race id
+  race = ((race << 1) | (race >> 3)) & 0xF
   if (race === 0) race = 10
   let cls = r.read(BW.CLASS)
   if (cls === 7) cls = 117
