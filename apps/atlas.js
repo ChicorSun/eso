@@ -490,6 +490,32 @@ export class atlas extends plugin {
     return ''
   }
 
+  /** 物品全表索引缓存：id → {name, icon}（读 dataAllItemsCN.json，技能栏武器槽绑定的是武器物品 id） */
+  getSssItemIndex () {
+    if (this._sssItemIndex) return this._sssItemIndex
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/data/segments/dataAllItemsCN.json'), 'utf8'))
+    const idx = {}
+    for (const [id, item] of Object.entries(data)) {
+      if (item && typeof item === 'object' && item.name) {
+        idx[Number(id)] = { name: item.name, icon: item.icon }
+      }
+    }
+    this._sssItemIndex = idx
+    return idx
+  }
+
+  /** 技能栏武器槽（slot3）显示武器图标：dds → 文件名 → realpath('skills') */
+  async resolveWeaponIcon (iconPath) {
+    if (!iconPath) return ''
+    try {
+      const getimgsTmp = (await import('../model/getimgs.js')).default
+      return await getimgsTmp.realpath(this.ddsIconName(iconPath), 'skills')
+    } catch (err) {
+      logger.warn(`[ESO:SuperStar] 武器图标获取失败: ${err.message}`)
+      return ''
+    }
+  }
+
   /** SuperStar 分享码 → 配装卡片（复用 updateBuildData type=10，篆刻技能融入技能栏下方区域） */
   async showSuperstarBuild (e) {
     const text = String((await this.trimText(e)) || '')
@@ -580,20 +606,42 @@ export class atlas extends plugin {
     }
 
     // 技能（主/备栏各 6；address=技能树名，ultimate 金色）
+    // 技能栏 slot3 是武器槽，存的是武器物品 id（法杖等）→ 查不到技能时回退物品表
     const skillIdx = this.getSssSkillIndex()
+    const itemIdx = this.getSssItemIndex()
     const talentData = []
     for (let i = 0; i < 6; i++) {
-      const mk = (id) => {
+      const mk = async (id) => {
         const info = skillIdx[Number(id)]
-        if (!info) return { icon: '', text: '', address: ' ', color: 'rgb(170, 170, 170)' }
+        if (info) {
+          return {
+            icon: info.icon,
+            text: info.name,
+            address: info.tree || ' ',
+            color: info.ultimate ? 'rgb(255, 204, 0)' : 'rgb(170, 170, 170)'
+          }
+        }
+        // 回退：武器物品（技能栏武器槽）
+        const item = itemIdx[Number(id)]
+        if (item) {
+          const weaponIcon = await this.resolveWeaponIcon(item.icon)
+          return {
+            icon: weaponIcon || 'empty',
+            text: item.name,
+            address: '武器',
+            color: 'rgb(170, 170, 170)'
+          }
+        }
+        // 兜底：未收录技能（本地库缺口），显示占位图+id，不空缺
+        logger.warn(`[ESO:SuperStar] 技能 ${id} 未收录（技能库与物品表均无）`)
         return {
-          icon: info.icon,
-          text: info.name,
-          address: info.tree || ' ',
-          color: info.ultimate ? 'rgb(255, 204, 0)' : 'rgb(170, 170, 170)'
+          icon: 'empty',
+          text: `技能#${id}`,
+          address: ' ',
+          color: 'rgb(170, 170, 170)'
         }
       }
-      talentData.push({ mainSkill: mk(d.primarySkills[i]), offSkill: mk(d.backupSkills[i]) })
+      talentData.push({ mainSkill: await mk(d.primarySkills[i]), offSkill: await mk(d.backupSkills[i]) })
     }
 
     // 世界恩赐 / 食物 / 吸血鬼 / 狼人
