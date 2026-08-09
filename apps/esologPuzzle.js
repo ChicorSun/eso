@@ -704,7 +704,9 @@ export class esologPuzzle extends plugin {
                   return {
                     index,
                     isError: false,
-                    data: buildData
+                    data: buildData,
+                    // 匿名处理后的原始 BD（供全队总览图使用）
+                    rawBD: JSON.parse(JSON.stringify(BD))
                   };
                 } else {
                   return {
@@ -730,6 +732,25 @@ export class esologPuzzle extends plugin {
                 // 全队模式：使用合并转发
                 await this.reply('所有数据获取完成，正在生成图片...', true);
                 const fakeMsg = [];
+                // 先生成包含全部人 build 的总览图（模仿 #名片 列表），作为转发第一张
+                const overviewCards = priorityResults.filter(r => !r.isError).map((r, i) => {
+                  const oneMan = groupsData[recordID].memberData[r.index];
+                  return {
+                    index: i + 1,
+                    accountName: oneMan.accountName,
+                    playerName: r.rawBD?.playerName || oneMan.playerName,
+                    buildData: { buildData: r.rawBD }
+                  };
+                });
+                if (overviewCards.length > 0) {
+                  try {
+                    const cardsListData = await this.generateCardsListData(overviewCards);
+                    const overviewImg = await puppeteer.screenshot('eso', cardsListData);
+                    fakeMsg.push(overviewImg);
+                  } catch (err) {
+                    logger.error(`[ESO:战斗日志] 生成团队总览图失败: ${err.message}`);
+                  }
+                }
                 for (const result of priorityResults) {
                   let msg;
                   if (result.isError) {
