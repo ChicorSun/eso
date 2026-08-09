@@ -557,12 +557,13 @@ export class esologPuzzle extends plugin {
       {
         return await this.reply('请发送详细页面的地址', true)
       }
-      else if(fightIndex == '')
-      {
-        return await this.reply('请发送详细的某次战斗的地址', true)
-      }
       else
       {
+        // 无 fight 参数时默认最后一场战斗（等同 ?fight=last）
+        if(fightIndex == '')
+        {
+          fightIndex = 'last'
+        }
         // 兼容 fight=last / fight=latest 等非数字写法（esologs 网页支持，API 需要具体战斗 id）
         if(!/^\d+$/.test(fightIndex))
         {
