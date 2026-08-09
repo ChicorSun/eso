@@ -765,8 +765,9 @@ export class esologPuzzle extends plugin {
                   }
                 }
                 // 非 QQ 来源且团队人数 > 4：不发送合并转发（仅保留总览图，QQ 群转发体验更好）
+                // KOOK 渠道（isKook）无论团队人数都只输出总览图，不发送合并转发
                 const isQQSource = e.adapter_id === 'QQ' || e.adapter_name === 'QQ'
-                if (isQQSource || maxNum <= 4) {
+                if ((isQQSource || maxNum <= 4) && !isKook) {
                   const fakeMsg = [];
                   for (const result of priorityResults) {
                     let msg;
