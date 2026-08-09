@@ -497,6 +497,8 @@ export class esologPuzzle extends plugin {
     }
     srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
+    // KOOK 渠道去掉全部文字说明，只输出图片（错误提示仍保留）
+    const isKook = e.adapter_id === 'KOOK' || e.adapter_name === 'KOOK'
     //解析url
     let tmpComPuzzleEnable = 0
     let recordEnable = 0
@@ -535,7 +537,7 @@ export class esologPuzzle extends plugin {
 
     if(url.includes("rankings"))
     {
-      await this.reply('正在为您查询，请稍后...(大概需要15~25s)', true)
+      if (!isKook) await this.reply('正在为您查询，请稍后...(大概需要15~25s)', true)
       let msg = await this.getRankLog(url)
       await this.reply(msg)
     }
@@ -585,7 +587,7 @@ export class esologPuzzle extends plugin {
           logger.info('fightIndex 解析为:' + fightIndex)
         }
         // 先获取团队信息
-        await this.reply('正在为您解析...', true)
+        if (!isKook) await this.reply('正在为您解析...', true)
         let has_find = false
         let recordID = -1
         let index = 0
@@ -665,15 +667,15 @@ export class esologPuzzle extends plugin {
               if (targetIndex !== -1) {
                 priorityMembers.add(targetIndex);
               }
-              await this.reply('正在为您分析，请稍后...(大概需要15s)', true);
+              if (!isKook) await this.reply('正在为您分析，请稍后...(大概需要15s)', true);
             } else if (recordEnable) {
               // 记录模式
               const currentUserBindings = userBindings.get(String(e.user_id)) || [];
               if (currentUserBindings.length === 0) {
-                await this.reply('未在团队中找到您绑定的角色，将继续处理其他用户绑定的角色。', true);
+                if (!isKook) await this.reply('未在团队中找到您绑定的角色，将继续处理其他用户绑定的角色。', true);
               } else {
                 currentUserBindings.forEach(index => priorityMembers.add(index));
-                await this.reply('正在记录模式解析您的信息，请稍后...', true);
+                if (!isKook) await this.reply('正在记录模式解析您的信息，请稍后...', true);
               }
             } else {
               // 全队模式：按 坦克 → 输出 → 奶妈 顺序解析输出
@@ -688,7 +690,7 @@ export class esologPuzzle extends plugin {
                 priorityMembers.add(i)
               }
               logger.info(`[ESO:战斗日志] 全队解析顺序: ${Array.from(priorityMembers).map(i => `${groupsData[recordID].memberData[i].playerName}@${groupsData[recordID].memberData[i].roleName}`).join(' -> ')}`)
-              await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true);
+              if (!isKook) await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true);
             }
 
             // 第一阶段：并发处理优先成员
@@ -739,7 +741,7 @@ export class esologPuzzle extends plugin {
                 }
               } else {
                 // 全队模式：使用合并转发
-                await this.reply('所有数据获取完成，正在生成图片...', true);
+                if (!isKook) await this.reply('所有数据获取完成，正在生成图片...', true);
                 // 先单独发送包含全部人 build 的总览图（模仿 #名片 列表，放在转发外面）
                 const overviewCards = priorityResults.filter(r => !r.isError).map((r, i) => {
                   const oneMan = groupsData[recordID].memberData[r.index];
@@ -787,7 +789,7 @@ export class esologPuzzle extends plugin {
             priorityMembers.forEach(index => remainingMembers.delete(index));
 
             if (remainingMembers.size > 0) {
-              await this.reply('正在处理其他用户绑定的角色...', true);
+              if (!isKook) await this.reply('正在处理其他用户绑定的角色...', true);
               const remainingResults = await Promise.all(Array.from(remainingMembers).map(async (index) => {
                 const oneMan = groupsData[recordID].memberData[index];
                 const { BD, recordStatus } = await this.getOneManLog(reportsID, fightIndex, oneMan.sourceIndex, false, true);
@@ -848,7 +850,7 @@ export class esologPuzzle extends plugin {
               }
             }
           } else {
-            await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
+            if (!isKook) await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
           }
         }      
       }
