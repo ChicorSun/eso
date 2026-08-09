@@ -497,8 +497,9 @@ export class esologPuzzle extends plugin {
     }
     srcMode = gearConfig.resolveModuleMode(srcMode)
     setAtlasSrcMode(srcMode)
-    // KOOK 渠道去掉全部文字说明，只输出图片（错误提示仍保留）
-    const isKook = e.adapter_id === 'KOOK' || e.adapter_name === 'KOOK'
+    // 非 QQ 平台（KOOK/微信/stdin 等）统一走极简流程：无进度文字说明、图片引用发送、
+    // 团队解析只出总览图；QQ 平台保留合并转发聊天记录与原提示（错误提示各平台都保留）
+    const minimalMode = e.adapter_id !== 'QQ' && e.adapter_name !== 'QQ'
     //解析url
     let tmpComPuzzleEnable = 0
     let recordEnable = 0
@@ -537,7 +538,7 @@ export class esologPuzzle extends plugin {
 
     if(url.includes("rankings"))
     {
-      if (!isKook) await this.reply('正在为您查询，请稍后...(大概需要15~25s)', true)
+      if (!minimalMode) await this.reply('正在为您查询，请稍后...(大概需要15~25s)', true)
       let msg = await this.getRankLog(url)
       await this.reply(msg)
     }
@@ -587,9 +588,9 @@ export class esologPuzzle extends plugin {
           logger.info('fightIndex 解析为:' + fightIndex)
         }
         // 先获取团队信息
-        // KOOK：立刻回复"正在努力分析战斗数据..."（引用用户消息，发图前撤回）；其他渠道保持原提示
+        // 非 QQ 平台：立刻回复"正在努力分析战斗数据..."（引用用户消息，发图前撤回）；QQ 保持原提示
         let kookProgress = null
-        if (isKook) {
+        if (minimalMode) {
           kookProgress = await this.reply('正在努力分析战斗数据...', true)
         } else {
           await this.reply('正在为您解析...', true)
@@ -673,15 +674,15 @@ export class esologPuzzle extends plugin {
               if (targetIndex !== -1) {
                 priorityMembers.add(targetIndex);
               }
-              if (!isKook) await this.reply('正在为您分析，请稍后...(大概需要15s)', true);
+              if (!minimalMode) await this.reply('正在为您分析，请稍后...(大概需要15s)', true);
             } else if (recordEnable) {
               // 记录模式
               const currentUserBindings = userBindings.get(String(e.user_id)) || [];
               if (currentUserBindings.length === 0) {
-                if (!isKook) await this.reply('未在团队中找到您绑定的角色，将继续处理其他用户绑定的角色。', true);
+                if (!minimalMode) await this.reply('未在团队中找到您绑定的角色，将继续处理其他用户绑定的角色。', true);
               } else {
                 currentUserBindings.forEach(index => priorityMembers.add(index));
-                if (!isKook) await this.reply('正在记录模式解析您的信息，请稍后...', true);
+                if (!minimalMode) await this.reply('正在记录模式解析您的信息，请稍后...', true);
               }
             } else {
               // 全队模式：按 坦克 → 输出 → 奶妈 顺序解析输出
@@ -696,7 +697,7 @@ export class esologPuzzle extends plugin {
                 priorityMembers.add(i)
               }
               logger.info(`[ESO:战斗日志] 全队解析顺序: ${Array.from(priorityMembers).map(i => `${groupsData[recordID].memberData[i].playerName}@${groupsData[recordID].memberData[i].roleName}`).join(' -> ')}`)
-              if (!isKook) await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true);
+              if (!minimalMode) await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true);
             }
 
             // 第一阶段：并发处理优先成员
@@ -750,14 +751,14 @@ export class esologPuzzle extends plugin {
                 for (const result of priorityResults) {
                   if (!result.isError) {
                     let msg = await puppeteer.screenshot('eso', result.data);
-                    await this.reply(msg, !!isKook);
+                    await this.reply(msg, !!minimalMode);
                   } else {
-                    await this.reply(result.data, !!isKook);
+                    await this.reply(result.data, !!minimalMode);
                   }
                 }
               } else {
                 // 全队模式：使用合并转发
-                if (!isKook) await this.reply('所有数据获取完成，正在生成图片...', true);
+                if (!minimalMode) await this.reply('所有数据获取完成，正在生成图片...', true);
                 // 先单独发送包含全部人 build 的总览图（模仿 #名片 列表，放在转发外面）
                 const overviewCards = priorityResults.filter(r => !r.isError).map((r, i) => {
                   const oneMan = groupsData[recordID].memberData[r.index];
@@ -775,15 +776,14 @@ export class esologPuzzle extends plugin {
                   try {
                     const cardsListData = await this.generateCardsListData(overviewCards);
                     const overviewImg = await puppeteer.screenshot('eso', cardsListData);
-                    await this.reply(overviewImg, !!isKook);
+                    await this.reply(overviewImg, !!minimalMode);
                   } catch (err) {
                     logger.error(`[ESO:战斗日志] 生成团队总览图失败: ${err.message}`);
                   }
                 }
                 // 非 QQ 来源且团队人数 > 4：不发送合并转发（仅保留总览图，QQ 群转发体验更好）
-                // KOOK 渠道（isKook）无论团队人数都只输出总览图，不发送合并转发
-                const isQQSource = e.adapter_id === 'QQ' || e.adapter_name === 'QQ'
-                if ((isQQSource || maxNum <= 4) && !isKook) {
+                // 仅 QQ 平台保留合并转发聊天记录（其他平台无论团队人数都只输出总览图）
+                if (e.adapter_id === 'QQ' || e.adapter_name === 'QQ') {
                   const fakeMsg = [];
                   for (const result of priorityResults) {
                     let msg;
@@ -806,7 +806,7 @@ export class esologPuzzle extends plugin {
             priorityMembers.forEach(index => remainingMembers.delete(index));
 
             if (remainingMembers.size > 0) {
-              if (!isKook) await this.reply('正在处理其他用户绑定的角色...', true);
+              if (!minimalMode) await this.reply('正在处理其他用户绑定的角色...', true);
               const remainingResults = await Promise.all(Array.from(remainingMembers).map(async (index) => {
                 const oneMan = groupsData[recordID].memberData[index];
                 const { BD, recordStatus } = await this.getOneManLog(reportsID, fightIndex, oneMan.sourceIndex, false, true);
@@ -860,7 +860,7 @@ export class esologPuzzle extends plugin {
               }
 
               // KOOK 渠道隐藏"本次战斗记录结果"（无论是否跳过都不发送任何信息）
-              if (!isKook && (successRecords.length > 0 || existingRecords.length > 0 || failedRecords.length > 0 || (skippedRecords.length > 0 && recordEnable))) {
+              if (!minimalMode && (successRecords.length > 0 || existingRecords.length > 0 || failedRecords.length > 0 || (skippedRecords.length > 0 && recordEnable))) {
                 await this.reply([
                   { type: 'at', qq: e.user_id },
                   { type: 'text', text: reportMsg.join('') }
@@ -868,7 +868,7 @@ export class esologPuzzle extends plugin {
               }
             }
           } else {
-            if (!isKook) await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
+            if (!minimalMode) await this.reply('正在快速解析全队信息，请稍后...(快速解析只会展示简略信息)', true)
           }
         }      
       }
