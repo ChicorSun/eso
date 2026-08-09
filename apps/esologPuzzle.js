@@ -753,17 +753,23 @@ export class esologPuzzle extends plugin {
                     logger.error(`[ESO:战斗日志] 生成团队总览图失败: ${err.message}`);
                   }
                 }
-                const fakeMsg = [];
-                for (const result of priorityResults) {
-                  let msg;
-                  if (result.isError) {
-                    msg = result.data;
-                  } else {
-                    msg = await puppeteer.screenshot('eso', result.data);
+                // 非 QQ 来源且团队人数 > 4：不发送合并转发（仅保留总览图，QQ 群转发体验更好）
+                const isQQSource = e.adapter_id === 'QQ' || e.adapter_name === 'QQ'
+                if (isQQSource || maxNum <= 4) {
+                  const fakeMsg = [];
+                  for (const result of priorityResults) {
+                    let msg;
+                    if (result.isError) {
+                      msg = result.data;
+                    } else {
+                      msg = await puppeteer.screenshot('eso', result.data);
+                    }
+                    fakeMsg.push(msg);
                   }
-                  fakeMsg.push(msg);
+                  await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true));
+                } else {
+                  logger.info(`[ESO:战斗日志] 非QQ来源(${e.adapter_id})且团队${maxNum}人，跳过合并转发（仅总览图）`)
                 }
-                await e.reply(await common.makeForwardMsg(e, fakeMsg, '团队LOG', true));
               }
             }
 
