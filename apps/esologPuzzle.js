@@ -587,7 +587,13 @@ export class esologPuzzle extends plugin {
           logger.info('fightIndex 解析为:' + fightIndex)
         }
         // 先获取团队信息
-        if (!isKook) await this.reply('正在为您解析...', true)
+        // KOOK：立刻回复"正在努力分析战斗数据..."（引用用户消息，发图前撤回）；其他渠道保持原提示
+        let kookProgress = null
+        if (isKook) {
+          kookProgress = await this.reply('正在努力分析战斗数据...', true)
+        } else {
+          await this.reply('正在为您解析...', true)
+        }
         let has_find = false
         let recordID = -1
         let index = 0
@@ -729,14 +735,24 @@ export class esologPuzzle extends plugin {
               }));
 
               // 第二阶段：发送截图
+              // KOOK：发送图片前撤回"正在努力分析战斗数据..."
+              if (kookProgress?.message_id?.[0]) {
+                try {
+                  const pid = kookProgress.message_id[0]
+                  if (this.e.group?.recallMsg) await this.e.group.recallMsg(pid)
+                  else if (this.e.friend?.recallMsg) await this.e.friend.recallMsg(pid)
+                } catch (err) {
+                  logger.warn(`[ESO:战斗日志] 撤回进度提示失败: ${err.message}`)
+                }
+              }
               if (sourceIndex || recordEnable) {
-                // 单人模式和记录模式：直接发送每个截图
+                // 单人模式和记录模式：直接发送每个截图（KOOK 以引用用户消息形式发送）
                 for (const result of priorityResults) {
                   if (!result.isError) {
                     let msg = await puppeteer.screenshot('eso', result.data);
-                    await this.reply(msg);
+                    await this.reply(msg, !!isKook);
                   } else {
-                    await this.reply(result.data);
+                    await this.reply(result.data, !!isKook);
                   }
                 }
               } else {
@@ -759,7 +775,7 @@ export class esologPuzzle extends plugin {
                   try {
                     const cardsListData = await this.generateCardsListData(overviewCards);
                     const overviewImg = await puppeteer.screenshot('eso', cardsListData);
-                    await this.reply(overviewImg);
+                    await this.reply(overviewImg, !!isKook);
                   } catch (err) {
                     logger.error(`[ESO:战斗日志] 生成团队总览图失败: ${err.message}`);
                   }
@@ -843,7 +859,8 @@ export class esologPuzzle extends plugin {
                 reportMsg.push(`\n未绑定的角色（跳过记录）：\n${skippedRecords.join('\n')}`);
               }
 
-              if (successRecords.length > 0 || existingRecords.length > 0 || failedRecords.length > 0 || (skippedRecords.length > 0 && recordEnable)) {
+              // KOOK 渠道隐藏"本次战斗记录结果"（无论是否跳过都不发送任何信息）
+              if (!isKook && (successRecords.length > 0 || existingRecords.length > 0 || failedRecords.length > 0 || (skippedRecords.length > 0 && recordEnable))) {
                 await this.reply([
                   { type: 'at', qq: e.user_id },
                   { type: 'text', text: reportMsg.join('') }
