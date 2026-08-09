@@ -47,7 +47,9 @@
             <div class="col-name">
               <div class="player-name">
                 <div class="player-name-line">{{item.playerName}}</div>
+                {{if item.accountName}}
                 <div class="player-name-line">@{{item.accountName}}</div>
+                {{/if}}
               </div>
             </div>
             <div class="col-sets">

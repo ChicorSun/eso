@@ -734,10 +734,13 @@ export class esologPuzzle extends plugin {
                 // 先单独发送包含全部人 build 的总览图（模仿 #名片 列表，放在转发外面）
                 const overviewCards = priorityResults.filter(r => !r.isError).map((r, i) => {
                   const oneMan = groupsData[recordID].memberData[r.index];
+                  // 使用真实角色名/账号名（不匿名）；账号名去掉 @ 前缀（模板统一加一个 @），
+                  // esologs 无账号时返回字符串 "nil"，视为无账号隐藏
+                  const rawAcct = oneMan.accountName ? String(oneMan.accountName).replace(/^@/, '') : ''
                   return {
                     index: i + 1,
-                    accountName: oneMan.accountName,
-                    playerName: r.rawBD?.playerName || oneMan.playerName,
+                    playerName: oneMan.playerName || r.rawBD?.playerName || '',
+                    accountName: (rawAcct && rawAcct.toLowerCase() !== 'nil') ? rawAcct : '',
                     buildData: { buildData: r.rawBD }
                   };
                 });
