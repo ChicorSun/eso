@@ -731,8 +731,7 @@ export class esologPuzzle extends plugin {
               } else {
                 // 全队模式：使用合并转发
                 await this.reply('所有数据获取完成，正在生成图片...', true);
-                const fakeMsg = [];
-                // 先生成包含全部人 build 的总览图（模仿 #名片 列表），作为转发第一张
+                // 先单独发送包含全部人 build 的总览图（模仿 #名片 列表，放在转发外面）
                 const overviewCards = priorityResults.filter(r => !r.isError).map((r, i) => {
                   const oneMan = groupsData[recordID].memberData[r.index];
                   return {
@@ -746,11 +745,12 @@ export class esologPuzzle extends plugin {
                   try {
                     const cardsListData = await this.generateCardsListData(overviewCards);
                     const overviewImg = await puppeteer.screenshot('eso', cardsListData);
-                    fakeMsg.push(overviewImg);
+                    await this.reply(overviewImg);
                   } catch (err) {
                     logger.error(`[ESO:战斗日志] 生成团队总览图失败: ${err.message}`);
                   }
                 }
+                const fakeMsg = [];
                 for (const result of priorityResults) {
                   let msg;
                   if (result.isError) {
