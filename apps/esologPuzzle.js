@@ -549,6 +549,15 @@ export class esologPuzzle extends plugin {
       fightIndex = await this.splitStr(url, 'fight=', '&')
       sourceIndex = await this.splitStr(url, 'source=', '&')
 
+      // 兼容 KOOK kmarkdown 把链接渲染为 [url](url) 的格式：
+      // 用正则直接从 url 中提取纯参数（只取字母数字/合法字符，排除 markdown 垃圾字符）
+      const reportsMatch = url.match(/esologs\.com\/reports\/([A-Za-z0-9]+)/)
+      if (reportsMatch) reportsID = reportsMatch[1]
+      const fightMatch = url.match(/[?&]fight=([^&\s)\]<>]+)/)
+      if (fightMatch) fightIndex = fightMatch[1]
+      const sourceMatch = url.match(/[?&]source=([^&\s)\]<>]+)/)
+      if (sourceMatch) sourceIndex = sourceMatch[1]
+
       logger.info('reportsID:' + reportsID)
       logger.info('fightIndex:' + fightIndex)
       logger.info('sourceIndex:' + sourceIndex)
