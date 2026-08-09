@@ -667,10 +667,18 @@ export class esologPuzzle extends plugin {
                 await this.reply('正在记录模式解析您的信息，请稍后...', true);
               }
             } else {
-              // 全队模式
+              // 全队模式：按 坦克 → 输出 → 奶妈 顺序解析输出
+              const tankIdx = [], dpsIdx = [], healIdx = []
               for (let i = 0; i < maxNum; i++) {
-                priorityMembers.add(i);
+                const role = String(groupsData[recordID].memberData[i]?.roleName || '').toLowerCase()
+                if (role.includes('tank')) tankIdx.push(i)
+                else if (role.includes('heal')) healIdx.push(i)
+                else dpsIdx.push(i)
               }
+              for (const i of [...tankIdx, ...dpsIdx, ...healIdx]) {
+                priorityMembers.add(i)
+              }
+              logger.info(`[ESO:战斗日志] 全队解析顺序: ${Array.from(priorityMembers).map(i => `${groupsData[recordID].memberData[i].playerName}@${groupsData[recordID].memberData[i].roleName}`).join(' -> ')}`)
               await this.reply('正在完整解析全队信息，请稍后...(可能需要120s)', true);
             }
 
