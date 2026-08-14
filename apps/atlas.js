@@ -419,6 +419,25 @@ export class atlas extends plugin {
     return idx
   }
 
+  /** 全量技能索引缓存：id → {name, icon, ultimate}
+   *  数据源 dataAbilitiesIndexCN.json（从 DataExtractor-cn.lua dataAbilities 段提取，见 tools/extractAbilitiesIndex.py）
+   *  ⚠️ id 体系差异：分享码/GetSlotBoundId 返回 dataAbilities 的 abilityId（如 193398=实用命运雕刻者），
+   *  而 dataSkillsCN.json 的技能树编号是另一套（如 186366=实用命运雕刻者）。
+   *  dataAbilities 含套装被动/新技能等 dataSkillsCN 未收录项；外层 key 与内部 ["id"] 均可能被返回，故双索引合并
+   */
+  getSssAbilityIndex () {
+    if (this._sssAbilityIndex) return this._sssAbilityIndex
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/data/segments/dataAbilitiesIndexCN.json'), 'utf8'))
+    const idx = {}
+    for (const [id, info] of Object.entries(data.byOuterKey)) idx[Number(id)] = info
+    for (const [id, info] of Object.entries(data.byInnerId)) {
+      const n = Number(id)
+      if (!(n in idx)) idx[n] = info
+    }
+    this._sssAbilityIndex = idx
+    return idx
+  }
+
   /** CP 全表索引缓存：id → {dis, name}（读 dataCpSkillsCN.json，dis: crafted/warfare/fitness） */
   getSssCpIndex () {
     if (this._sssCpIndex) return this._sssCpIndex
@@ -520,7 +539,7 @@ export class atlas extends plugin {
 
     // 种族（图片名与 esocn convertRace 一致）
     const raceImgMap = {
-      '高精灵': 'Altmer', '木精灵': 'Bosmer', '卡吉特': 'Khajiit', '红卫人': 'Redguard',
+      '高精灵': 'Altmer', '木精灵': 'Bosmer', '虎人': 'Khajiit', '红卫人': 'Redguard',
       '兽人': 'Orc', '亚龙人': 'Argonian', '布莱顿人': 'Breton', '暗精灵': 'Dunmer',
       '诺德人': 'Nord', '帝国': 'Imperial'
     }
@@ -580,17 +599,38 @@ export class atlas extends plugin {
     }
 
     // 技能（主/备栏各 6；address=技能树名，ultimate 金色）
+    // 三查：dataSkillsCN（带技能线名）→ dataAbilities 全量技能表（分享码 abilityId 体系）→ 兜底 技能#id
     const skillIdx = this.getSssSkillIndex()
+    const abilityIdx = this.getSssAbilityIndex()
     const talentData = []
     for (let i = 0; i < 6; i++) {
       const mk = (id) => {
+        // 1. 职业技能树索引（含武器/公会/世界线，带技能线名）
         const info = skillIdx[Number(id)]
-        if (!info) return { icon: '', text: '', address: ' ', color: 'rgb(170, 170, 170)' }
+        if (info) {
+          return {
+            icon: info.icon,
+            text: info.name,
+            address: info.tree || ' ',
+            color: info.ultimate ? 'rgb(255, 204, 0)' : 'rgb(170, 170, 170)'
+          }
+        }
+        // 2. 全量技能表（dataAbilities：套装被动/U50 新技能等，id 体系与分享码一致；无技能线名）
+        const ab = abilityIdx[Number(id)]
+        if (ab) {
+          return {
+            icon: ab.icon,
+            text: ab.name,
+            address: ' ',
+            color: ab.ultimate ? 'rgb(255, 204, 0)' : 'rgb(170, 170, 170)'
+          }
+        }
+        // 3. 兜底：本地库均未收录（占位图 + id，不空缺）
         return {
-          icon: info.icon,
-          text: info.name,
-          address: info.tree || ' ',
-          color: info.ultimate ? 'rgb(255, 204, 0)' : 'rgb(170, 170, 170)'
+          icon: 'empty',
+          text: `技能#${id}`,
+          address: ' ',
+          color: 'rgb(170, 170, 170)'
         }
       }
       talentData.push({ mainSkill: mk(d.primarySkills[i]), offSkill: mk(d.backupSkills[i]) })
