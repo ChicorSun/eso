@@ -3285,12 +3285,14 @@ class database {
     } catch {
       return false
     }
-    // 检查所有 13 个 JSON 文件都存在
-    for (const cat of [
+    // 检查所有 13 个 JSON 文件都存在（CN 另需 dataAbilitiesIndex，SuperStar 查名索引）
+    const cats = [
       'dataAchievs', 'dataAllItems', 'dataAntiquities', 'dataCollectibles',
       'dataCpSkills', 'dataDyes', 'dataHouses', 'dataItems',
       'dataOutfitStyles', 'dataPotions', 'dataRaids', 'dataSkills', 'dataStyles'
-    ]) {
+    ]
+    if (lang === 'cn') cats.push('dataAbilitiesIndex')
+    for (const cat of cats) {
       if (!fs.existsSync(path.join(segmentsDir, `${cat}${lang.toUpperCase()}.json`))) {
         return false
       }
@@ -3308,6 +3310,7 @@ class database {
       'dataCpSkills', 'dataDyes', 'dataHouses', 'dataItems',
       'dataOutfitStyles', 'dataPotions', 'dataRaids', 'dataSkills', 'dataStyles'
     ]
+    if (lang === 'cn') cats.push('dataAbilitiesIndex')
     for (const cat of cats) {
       const src = path.join(srcDir, `${cat}${lang.toUpperCase()}.json`)
       const dst = path.join(dstDir, `${cat}${lang.toUpperCase()}.json`)

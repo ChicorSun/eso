@@ -8,6 +8,12 @@ dataSkillsCN.json 的技能树编号（如 186366=实用命运雕刻者）是两
 dataAbilities 段是 ESO 全量技能表（含套装被动/新技能等），外层 key 与内部 ["id"]
 都可能被 GetSlotBoundId 返回，故建立双索引 byOuterKey / byInnerId。
 
+⚠️ 已由 model/lua2json.js 的 extractAbilitiesIndexFromLua() 取代（流式 JS 实现，
+   已接入 generateAllCategoryJsons 自动缓存链路：lua 更新后随 13 个分类一起
+   自动重新生成，不再需要手动调用本脚本）。本脚本仅作历史参考/对比校验。
+   已知差异：Python strip('"') 会把 lua 转义引号 \" 的引号剥掉（如 key 10541），
+   JS 版保留转义原文，更忠实于 lua 数据。
+
 用法：python3 tools/extractAbilitiesIndex.py
 输出：resources/data/segments/dataAbilitiesIndexCN.json
 """

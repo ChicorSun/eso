@@ -427,7 +427,16 @@ export class atlas extends plugin {
    */
   getSssAbilityIndex () {
     if (this._sssAbilityIndex) return this._sssAbilityIndex
-    const data = JSON.parse(fs.readFileSync(path.join(__dirname, '../resources/data/segments/dataAbilitiesIndexCN.json'), 'utf8'))
+    // 优先读运行时缓存（dataAbilitiesIndexCN.json 随 lua 自动更新，见 lua2json.js/database.js）；
+    // 缓存缺失或损坏时回退 git 仓库内备份
+    const cachePath = path.resolve(process.cwd(), 'data/eso/custome_resources/cache/segments/dataAbilitiesIndexCN.json')
+    const backupPath = path.join(__dirname, '../resources/data/segments/dataAbilitiesIndexCN.json')
+    let data = null
+    try {
+      data = JSON.parse(fs.readFileSync(cachePath, 'utf8'))
+    } catch {
+      data = JSON.parse(fs.readFileSync(backupPath, 'utf8'))
+    }
     const idx = {}
     for (const [id, info] of Object.entries(data.byOuterKey)) idx[Number(id)] = info
     for (const [id, info] of Object.entries(data.byInnerId)) {

@@ -4,6 +4,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import readline from 'node:readline'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
@@ -25,6 +26,56 @@ export const TARGET_CATEGORIES = [
   'dataSkills',
   'dataPotions'
 ]
+
+// dataAbilities 段 → 双索引（分享码/GetSlotBoundId 的 abilityId 体系，SuperStar 查名专用，仅 CN 生成）
+export const ABILITIES_INDEX_CATEGORY = 'dataAbilitiesIndex'
+
+/**
+ * 从 DataExtractor-*.lua 流式提取 dataAbilities 段 → byOuterKey / byInnerId 双索引。
+ * 不依赖 lua-to-json 全量解析（339MB lua 会 OOM），逐行正则扫描，与
+ * tools/extractAbilitiesIndex.py 的提取语义一致：
+ *   仅收录有 name 的对象；内部 id 存在时同时进 byInnerId。
+ * 段边界：["dataAbilities"] = 起，["dataRaids"] = 止。
+ * @param {string} luaPath
+ * @returns {Promise<{byOuterKey: object, byInnerId: object}>}
+ */
+export async function extractAbilitiesIndexFromLua (luaPath) {
+  const byOuterKey = {}
+  const byInnerId = {}
+  let inSegment = false
+  let cur = null
+  const rl = readline.createInterface({ input: fs.createReadStream(luaPath, 'utf8'), crlfDelay: Infinity })
+  for await (const line of rl) {
+    if (!inSegment) {
+      if (line.includes('["dataAbilities"] =')) inSegment = true
+      continue
+    }
+    if (line.includes('["dataRaids"] =')) break
+    const m = /^ {20}\[(\d+)\] = /.exec(line)
+    if (m) {
+      cur = { outer: m[1], name: '', icon: '', ultimate: false, innerId: null }
+      continue
+    }
+    if (!cur) continue
+    const fm = /^ {24}\["(name|icon|ultimate|id)"\] = (.*),$/.exec(line)
+    if (fm) {
+      const k = fm[1]
+      const v = fm[2]
+      if (k === 'name') cur.name = v.slice(1, -1)
+      else if (k === 'icon') cur.icon = v.slice(1, -1)
+      else if (k === 'ultimate') cur.ultimate = v === 'true'
+      else if (k === 'id') cur.innerId = Number(v)
+    } else if (/^ {20}\},$/.test(line)) {
+      if (cur && cur.name) {
+        const info = { name: cur.name, icon: cur.icon, ultimate: cur.ultimate }
+        byOuterKey[cur.outer] = info
+        if (cur.innerId !== null) byInnerId[String(cur.innerId)] = info
+      }
+      cur = null
+    }
+  }
+  return { byOuterKey, byInnerId }
+}
 
 /**
  * 计算文件 MD5（流式，不 OOM）
@@ -138,6 +189,14 @@ export async function generateAllCategoryJsons(luaPath, lang, segmentsDir) {
       delete categories[cat]
       if (global.gc) global.gc()
     }
+  }
+
+  // 2.5 生成 dataAbilitiesIndex（仅 CN：SuperStar 分享码查名专用索引；流式提取，不 OOM）
+  if (lang === 'cn') {
+    const idx = await extractAbilitiesIndexFromLua(luaPath)
+    const r = await writeCategoryJson(segmentsDir, lang, ABILITIES_INDEX_CATEGORY, idx)
+    results.push({ category: ABILITIES_INDEX_CATEGORY, ...r })
+    globalThis.logger?.info?.(`[ESO:图鉴] dataAbilitiesIndex 已生成: ${r.size} bytes (outer=${Object.keys(idx.byOuterKey).length})`)
   }
 
   // 3. 写入 segments.md5
