@@ -421,9 +421,10 @@ export class atlas extends plugin {
 
   /** 全量技能索引缓存：id → {name, icon, ultimate}
    *  数据源 dataAbilitiesIndexCN.json（从 DataExtractor-cn.lua dataAbilities 段提取，见 tools/extractAbilitiesIndex.py）
-   *  ⚠️ id 体系差异：分享码/GetSlotBoundId 返回 dataAbilities 的 abilityId（如 193398=实用命运雕刻者），
-   *  而 dataSkillsCN.json 的技能树编号是另一套（如 186366=实用命运雕刻者）。
-   *  dataAbilities 含套装被动/新技能等 dataSkillsCN 未收录项；外层 key 与内部 ["id"] 均可能被返回，故双索引合并
+   *  ⚠️ id 体系差异：分享码/GetSlotBoundId 返回 dataAbilities 对象内部 ["id"]（inner，如 193398=实用命运雕刻者、
+   *  39073=不稳定风暴之墙、85130=雷霆之怒），dataSkillsCN.json 的技能树编号是另一套（如 186366=实用命运雕刻者）。
+   *  合并规则：inner 优先、outer（外层数组下标）兜底——外层 key 1..151867 与部分小数值 inner id 大面积重叠
+   *  （73845 个同 key 不同对象），若 outer 优先会把冲突 id 解析成错误技能（曾误判 39073=召唤獸群、85130=娜扎莱）。
    */
   getSssAbilityIndex () {
     if (this._sssAbilityIndex) return this._sssAbilityIndex
@@ -438,8 +439,8 @@ export class atlas extends plugin {
       data = JSON.parse(fs.readFileSync(backupPath, 'utf8'))
     }
     const idx = {}
-    for (const [id, info] of Object.entries(data.byOuterKey)) idx[Number(id)] = info
-    for (const [id, info] of Object.entries(data.byInnerId)) {
+    for (const [id, info] of Object.entries(data.byInnerId)) idx[Number(id)] = info
+    for (const [id, info] of Object.entries(data.byOuterKey)) {
       const n = Number(id)
       if (!(n in idx)) idx[n] = info
     }
