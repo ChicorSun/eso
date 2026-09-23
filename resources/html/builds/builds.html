@@ -12,6 +12,12 @@
     {{each buildsData val index}}
     {{if index==0}}
     {{else}}
+    <div class="CoverArea">
+    {{if val.coverPath}}
+    <div class="CoverBg" style="background-image: url('{{val.coverPath}}');"></div>
+    <div class="CoverBgBlur" style="background-image: url('{{val.coverPath}}');"></div>
+    <div class="CoverBgShade"></div>
+    {{/if}}
     <div  class="Up_Border"  id="Up_Border"></div>
     <div class="Title" id="Title">{{val.head_title}}{{if val.isESOCN}}<span class="head_title_author">{{val.head_title_author}}</span>{{/if}}</div>
     <div class="Header" id="Header">
@@ -20,16 +26,16 @@
       </div>
 
       {{if val.isESOCN}}
-      <div id="title_div" style="width: 47%;">
+      <div id="title_div" style="width: 46%;">
       {{else}}
-      <div id="title_div" style="width: 52%;">
+      <div id="title_div" style="width: 51%;">
       {{/if}}
         <div id="build_title_div">
-          <span id="build_title">{{val.title}}</span>
+          <span id="build_title" style="font-size: {{val.titleFontSize || 40}}px;">{{val.title}}</span>
         </div>
         <div id="name_div">
           {{if val.isESOCN}}
-          <span id="name_string" style="font-size: 24px; color: #AAAAAA;">{{val.playerName}}</span>
+          <span id="name_string" style="font-size: {{val.subtitleFontSize || 24}}px; color: #AAAAAA;">{{val.playerName}}</span>
           {{else}}
           <span id="name_string" style="font-size: {{val.fontSize}};">{{val.playerName}}{{val.accountName}}</span>
           {{/if}}
@@ -118,6 +124,78 @@
 
       </div>
     </div>
+        {{if val.isESOCN && val.craftedSkills && val.craftedSkills.length > 0}}
+        <div class="craftedSkills_div" style="font-size: {{val.craftedFontSize || 22}}px;">
+          {{each val.craftedSkills skill}}
+          <div class="crafted_skill_item">
+            <div class="crafted_skill_main">
+              <img src="{{pluResPath}}img/skills/../../../../../{{skill.bookIcon}}.png" class="crafted_skill_icon">
+              <div class="crafted_skill_content">
+                <div class="crafted_skill_name">{{skill.name}}</div>
+                <div class="crafted_scripts">
+                  <div class="crafted_script">
+                    <img src="{{pluResPath}}img/skills/../../../../../{{skill.slots1.icon}}.png" class="crafted_script_icon">
+                    <span class="crafted_script_text">{{skill.slots1.name}}</span>
+                  </div>
+                  <div class="crafted_script">
+                    <img src="{{pluResPath}}img/skills/../../../../../{{skill.slots2.icon}}.png" class="crafted_script_icon">
+                    <span class="crafted_script_text">{{skill.slots2.name}}</span>
+                  </div>
+                  <div class="crafted_script">
+                    <img src="{{pluResPath}}img/skills/../../../../../{{skill.slots3.icon}}.png" class="crafted_script_icon">
+                    <span class="crafted_script_text">{{skill.slots3.name}}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        {{/if}}
+        {{if val.isESOCN && val.cpPoints && (((val.cpPoints.crafted || []).length + (val.cpPoints.warfare || []).length + (val.cpPoints.fitness || []).length) > 0)}}
+        <div class="cpPoints_div" style="--cp-font: {{val.cpFontSize || 20}}px;">
+          {{if val.cpPoints.crafted && val.cpPoints.crafted.length > 0}}
+          <div class="cpCategory">
+            <div class="cpCategoryHeader">
+              <img src="{{pluResPath}}img/icon/ON-icon-Champion_Stamina.png" class="cpCategoryIcon">
+              <span class="cpCategoryName">制作</span>
+            </div>
+            <div class="cpItems">
+              {{each val.cpPoints.crafted item}}
+              <div class="cpItem">{{item.name}}</div>
+              {{/each}}
+            </div>
+          </div>
+          {{/if}}
+          {{if val.cpPoints.warfare && val.cpPoints.warfare.length > 0}}
+          <div class="cpCategory">
+            <div class="cpCategoryHeader">
+              <img src="{{pluResPath}}img/icon/ON-icon-Champion_Magicka.png" class="cpCategoryIcon">
+              <span class="cpCategoryName">战争</span>
+            </div>
+            <div class="cpItems">
+              {{each val.cpPoints.warfare item}}
+              <div class="cpItem">{{item.name}}</div>
+              {{/each}}
+            </div>
+          </div>
+          {{/if}}
+          {{if val.cpPoints.fitness && val.cpPoints.fitness.length > 0}}
+          <div class="cpCategory">
+            <div class="cpCategoryHeader">
+              <img src="{{pluResPath}}img/icon/ON-icon-Champion_Health.png" class="cpCategoryIcon">
+              <span class="cpCategoryName">强健</span>
+            </div>
+            <div class="cpItems">
+              {{each val.cpPoints.fitness item}}
+              <div class="cpItem">{{item.name}}</div>
+              {{/each}}
+            </div>
+          </div>
+          {{/if}}
+        </div>
+        {{/if}}
+    </div>
     <div class="gears">
       {{each val.gear item}}
       <div class="gear">
@@ -127,6 +205,7 @@
           <img class="level_icon" style="display: {{item.level_class}};" src="{{pluResPath}}img/icon/champion.png" />
           <div class="level_value" style="display: {{item.level_class}};">{{item.level}}</div>
         </div>
+        {{if item.name_cn && item.name_cn !== 'N/A'}}
         <div class="intervory">
           <div class="intv" style="color: {{item.color}};">
             <img class="intv_pic" src="{{pluResPath}}img/sets/{{item.icon}}.png">
@@ -135,14 +214,11 @@
             <div class="intv_en">{{item.name_en}}</div>
           </div>
           <div class="trans">
-            {{if item.trait == '牢不可破<Impenetrable>'}}
-            <div class="tran" style="width: 317px; margin: -5px -5px 0px -33px;">{{item.trait}}</div>
-            {{else}}
             <div class="tran">{{item.trait}}</div>
-            {{/if}}
             <div class="enchant" style="color: {{item.enchantColor}};">{{item.enchant}}</div>
           </div>
         </div>
+        {{/if}}
       </div>
       {{/each}}
     </div>
@@ -201,77 +277,6 @@
         {{/if}}
         {{/each}}
       </table>
-      {{if val.isESOCN && val.craftedSkills && val.craftedSkills.length > 0}}
-      <div class="craftedSkills_div">
-        {{each val.craftedSkills skill}}
-        <div class="crafted_skill_item">
-          <div class="crafted_skill_main">
-            <img src="{{pluResPath}}img/skills/../../../../../{{skill.bookIcon}}.png" class="crafted_skill_icon">
-            <div class="crafted_skill_content">
-              <div class="crafted_skill_name">{{skill.name}}</div>
-              <div class="crafted_scripts">
-                <div class="crafted_script">
-                  <img src="{{pluResPath}}img/skills/../../../../../{{skill.slots1.icon}}.png" class="crafted_script_icon">
-                  <span class="crafted_script_text">{{skill.slots1.name}}</span>
-                </div>
-                <div class="crafted_script">
-                  <img src="{{pluResPath}}img/skills/../../../../../{{skill.slots2.icon}}.png" class="crafted_script_icon">
-                  <span class="crafted_script_text">{{skill.slots2.name}}</span>
-                </div>
-                <div class="crafted_script">
-                  <img src="{{pluResPath}}img/skills/../../../../../{{skill.slots3.icon}}.png" class="crafted_script_icon">
-                  <span class="crafted_script_text">{{skill.slots3.name}}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        {{/each}}
-      </div>
-      {{/if}}
-      {{if val.isESOCN && val.cpPoints}}
-      <div class="cpPoints_div">
-        {{if val.cpPoints.crafted && val.cpPoints.crafted.length > 0}}
-        <div class="cpCategory">
-          <div class="cpCategoryHeader">
-            <img src="{{pluResPath}}img/icon/ON-icon-Champion_Stamina.png" class="cpCategoryIcon">
-            <span class="cpCategoryName">制作</span>
-          </div>
-          <div class="cpItems">
-            {{each val.cpPoints.crafted item}}
-            <div class="cpItem">{{item.name}}</div>
-            {{/each}}
-          </div>
-        </div>
-        {{/if}}
-        {{if val.cpPoints.warfare && val.cpPoints.warfare.length > 0}}
-        <div class="cpCategory">
-          <div class="cpCategoryHeader">
-            <img src="{{pluResPath}}img/icon/ON-icon-Champion_Magicka.png" class="cpCategoryIcon">
-            <span class="cpCategoryName">战争</span>
-          </div>
-          <div class="cpItems">
-            {{each val.cpPoints.warfare item}}
-            <div class="cpItem">{{item.name}}</div>
-            {{/each}}
-          </div>
-        </div>
-        {{/if}}
-        {{if val.cpPoints.fitness && val.cpPoints.fitness.length > 0}}
-        <div class="cpCategory">
-          <div class="cpCategoryHeader">
-            <img src="{{pluResPath}}img/icon/ON-icon-Champion_Health.png" class="cpCategoryIcon">
-            <span class="cpCategoryName">强健</span>
-          </div>
-          <div class="cpItems">
-            {{each val.cpPoints.fitness item}}
-            <div class="cpItem">{{item.name}}</div>
-            {{/each}}
-          </div>
-        </div>
-        {{/if}}
-      </div>
-      {{/if}}
     </div>
     {{/if}}
     {{/each}}

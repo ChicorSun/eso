@@ -5,9 +5,35 @@ import gearConfig from '../model/gearConfig.js'
 import { ESOCN_API } from '../model/esocnApi.js'
 import fetch from 'node-fetch'
 import fs from 'node:fs'
+import path from 'node:path'
 
 /** 图鉴数据源：'local' 本地数据库（默认）| 'api' ESOCN API */
 let srcMode = 'local'
+
+/** ESOCN 静态资源（图片）托管地址：相对路径字段（cover/avatar 等）都拼到这里 */
+const ESOCN_STORAGE_BASE = 'https://storage.esocn.com.cn'
+
+/** 配装封面本地缓存目录（同 news 封面思路，独立子目录） */
+const BD_COVER_DIR = path.join(process.cwd(), 'data', 'eso', 'custome_resources', 'img', 'bd_covers')
+const COVER_CLEANUP_AGE_MS = 30 * 24 * 60 * 60 * 1000
+
+/** 清理长期未访问的配装封面缓存（避免目录无限增长，删掉后下次自动重新下载） */
+function cleanupOldCovers (maxAgeMs = COVER_CLEANUP_AGE_MS) {
+  if (!fs.existsSync(BD_COVER_DIR)) return
+  try {
+    const now = Date.now()
+    for (const f of fs.readdirSync(BD_COVER_DIR)) {
+      const fp = path.join(BD_COVER_DIR, f)
+      const stat = fs.statSync(fp)
+      if (stat.isFile() && now - stat.mtimeMs > maxAgeMs) {
+        fs.unlinkSync(fp)
+        logger.info('[ESOCN:封面] 删除过期封面: ' + fp)
+      }
+    }
+  } catch (err) {
+    logger.error('[ESOCN:封面] 清理失败: ' + (err?.message || err))
+  }
+}
 
 // 限流配置
 const RATE_LIMIT = {
@@ -610,7 +636,9 @@ export class esocn extends plugin {
       let processedData = await database.updateData(BD, 10)
       
       let image = await puppeteer.screenshot('eso', processedData)
-      
+
+      cleanupOldCovers()
+
       return await this.reply(image)
 
     } catch (error) {
@@ -780,6 +808,9 @@ export class esocn extends plugin {
     // 转换篆刻技能数据
     const craftedSkills = await this.convertCraftedSkills(buildData.craftedSkills)
 
+    // 配装封面（ESOCN 返回相对路径，如 /builds/qhhM53uW.jpeg，实际托管在 storage.esocn.com.cn）
+    const coverPath = await this.buildCoverPath(data)
+
     // 转换 CP 数据
     const cpPoints = this.convertCPPoints(buildData)
 
@@ -814,6 +845,8 @@ export class esocn extends plugin {
       username: data.username ? String(data.username) : '',
       // 属性点数据
       attributes: basicInfo.attributes || { health: 0, magicka: 0, stamina: 0 },
+      // 配装封面（本地缓存后的相对路径，供模板做顶部背景图）
+      coverPath: coverPath,
       // 篆刻技能数据
       craftedSkills: craftedSkills,
       // CP 点数数据
@@ -1193,6 +1226,26 @@ export class esocn extends plugin {
   }
 
   /**
+   * 下载配装封面到本地缓存目录 data/eso/custome_resources/img/bd_covers
+   * ESOCN 的 cover 字段是站内相对路径（/builds/xxx.jpeg），图片托管在 storage.esocn.com.cn
+   * @param {object} data getBuildDetail 返回的 data 对象
+   * @returns {string} 本地图片相对路径（供 html 直接引用），失败返回 ''
+   */
+  async buildCoverPath (data) {
+    const cover = String(data?.cover || '').trim()
+    if (!cover) return ''
+    const isUrl = /^https?:\/\//i.test(cover)
+    const url = isUrl ? cover : `${ESOCN_STORAGE_BASE}${cover.startsWith('/') ? '' : '/'}${cover}`
+    try {
+      const getimgs = (await import('../model/getimgs.js')).default
+      return await getimgs.realpath(url, 'bd_covers')
+    } catch (err) {
+      logger.warn(`[ESOCN:封面] 获取失败: ${err?.message || err}`)
+      return ''
+    }
+  }
+
+  /**
    * 转换篆刻技能数据
    * @param {array} craftedSkills 篆刻技能数组
    * @returns {array} 处理后的篆刻技能数组
@@ -1205,31 +1258,23 @@ export class esocn extends plugin {
     const getimgs = (await import('../model/getimgs.js')).default
     const result = []
 
+    // 提取图标名：ESOCN 图典/脚本图标混用 .webp 与 .png，不能用固定后缀匹配
+    const extractIconName = (iconPath) => {
+      if (!iconPath || typeof iconPath !== 'string') return ''
+      const clean = iconPath.split('?')[0].split('#')[0].trim()
+      const match = clean.match(/\/([^\/]+?)(?:\.(?:webp|png|jpe?g|gif))?$/i)
+      return match ? match[1] : ''
+    }
+
     for (const skill of craftedSkills) {
       // 提取篆刻技能图标名称（技能效果图标）
-      let skillIconName = ''
-      if (skill.icon) {
-        const match = skill.icon.match(/\/([^\/]+)\.webp$/)
-        if (match) {
-          skillIconName = match[1]
-        }
-      }
+      const skillIconName = extractIconName(skill.icon)
 
       // 提取魔典图标名称（book-icon）
-      let bookIconName = ''
-      if (skill['book-icon']) {
-        const match = skill['book-icon'].match(/\/([^\/]+)\.webp$/)
-        if (match) {
-          bookIconName = match[1]
-        }
-      }
+      const bookIconName = extractIconName(skill['book-icon'])
 
       // 提取脚本图标名称
-      const extractScriptIcon = (iconPath) => {
-        if (!iconPath) return ''
-        const match = iconPath.match(/\/([^\/]+)\.webp$/)
-        return match ? match[1] : ''
-      }
+      const extractScriptIcon = extractIconName
 
       const slots1IconName = extractScriptIcon(skill.slots1?.icon)
       const slots2IconName = extractScriptIcon(skill.slots2?.icon)

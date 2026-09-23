@@ -15,6 +15,24 @@ import md5 from 'md5'
 
 const updateImgMode = 0;
 
+/**
+ * 按文本估算宽度挑选字号（头图区自适应用）
+ * 全角/CJK 按 1em、其它按 0.55em 估算，取不超过 baseSize 且能放进 maxWidth 的最大字号
+ * @param {string} text 文本
+ * @param {number} maxWidth 可用宽度(px)
+ * @param {number} baseSize 基准字号(px)
+ * @param {number} minSize 最小字号(px)，低于此值就让它折行
+ * @returns {number} 字号(px)
+ */
+function fitFontSize (text, maxWidth, baseSize, minSize) {
+  const str = String(text || '')
+  if (!str) return baseSize
+  let em = 0
+  for (const ch of str) em += /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch) ? 1 : 0.55
+  if (em <= 0) return baseSize
+  return Math.max(minSize, Math.min(baseSize, Math.floor(maxWidth / em)))
+}
+
 // ==================== 图鉴数据源模式 ====================
 /** 'local' 本地 segments 数据（默认）| 'api' ESOCN API 数据（由 apps 各模块的 srcMode 注入） */
 let atlasSrcMode = 'local'
@@ -5465,6 +5483,8 @@ class database {
       buildData.buildsData[1].craftedSkills = BD.craftedSkills || []
       // 传递 CP 点数信息
       buildData.buildsData[1].cpPoints = BD.cpPoints || { crafted: [], warfare: [], fitness: [] }
+      // 传递配装封面（顶部区域背景图，未下载到时为空字符串）
+      buildData.buildsData[1].coverPath = BD.coverPath || ''
     }
     else
     {
@@ -6311,6 +6331,16 @@ class database {
     {
       right_weapon = 'empty'
     }
+
+    // 头图区自适应字号：标题/副标题按标题列可用宽度（46% × 1080 ≈ 480px）估算，长文本自动缩小
+    buildData.buildsData[1].titleFontSize = fitFontSize(buildData.buildsData[1].title, 470, 40, 24)
+    buildData.buildsData[1].subtitleFontSize = fitFontSize(BD.playerName || BD.accountName || '', 470, 24, 15)
+    // 勇士点数条目越多字号越小（避免换行过多把封面区撑高）
+    const cpTotal = ((BD.cpPoints && BD.cpPoints.crafted) || []).length +
+      ((BD.cpPoints && BD.cpPoints.warfare) || []).length +
+      ((BD.cpPoints && BD.cpPoints.fitness) || []).length
+    buildData.buildsData[1].cpFontSize = cpTotal > 14 ? 17 : cpTotal > 10 ? 18 : cpTotal > 7 ? 19 : 20
+    buildData.buildsData[1].craftedFontSize = (BD.craftedSkills || []).length >= 3 ? 20 : 22
 
     buildData.buildsData[1].spell_weapon_left = left_weapon
     buildData.buildsData[1].spell_weapon_right = right_weapon

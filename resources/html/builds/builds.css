@@ -29,6 +29,62 @@ body {
   height: 10px;
 }
 
+/* 配装封面区（装备区以上的整个顶部：Up_Border + Title + Header + 篆刻技能 + 勇士点数）
+   宽度固定为页面宽度(1080)，高度随内容自适应；封面展示区上部保持原图清晰，
+   仅底部 38%（以可见区域高度计）做渐变虚化 + 压暗，到底边完全融入装备区背景色 */
+.CoverArea {
+  position: relative;
+  width: 1080px;
+  padding-bottom: 8px;
+}
+
+/* 封面底图：从图片正中间向上下两边对称截取（宽度=1080，高度按原图比例自动）——不虚化不压暗 */
+.CoverBg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 1080px auto;
+  pointer-events: none;
+}
+
+/* 底部渐变虚化层：只保留可见区域底部 38%（top 62% 处开始） */
+.CoverBgBlur {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 1080px auto;
+  filter: blur(7px);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 62%, rgba(0, 0, 0, 0.3) 74%, rgba(0, 0, 0, 0.7) 88%, #000 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 62%, rgba(0, 0, 0, 0.3) 74%, rgba(0, 0, 0, 0.7) 88%, #000 100%);
+  pointer-events: none;
+}
+
+/* 底部压暗层：同一起始位置，到卡片底边 100% 变为装备区背景色 #131014 */
+.CoverBgShade {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(to bottom, rgba(19, 16, 20, 0) 62%, rgba(19, 16, 20, 0.35) 74%, rgba(19, 16, 20, 0.75) 88%, #131014 100%);
+  pointer-events: none;
+}
+
+/* 封面层之上的所有内容 */
+.CoverArea > *:not(.CoverBg):not(.CoverBgBlur):not(.CoverBgShade) {
+  position: relative;
+  z-index: 3;
+}
+
+/* 封面之上文字的可读性：用描边阴影代替全图压暗（亮色封面也不会糊字） */
+#Title, #build_title, #name_string, .attr_value,
+#SkillLine span, #Race span, #Food span, #Stone span, #Vampire span, #Wolf span,
+.crafted_skill_name, .crafted_script_text, .cpCategoryName, .cpItem {
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.7);
+}
+
 #Title{
   height: 38px;
   font-size: 20px;
@@ -43,14 +99,22 @@ body {
 }
 
 #Header{
-  height: 100px;
+  min-height: 100px; /* min-height 而非 height：让浮动列的内容（食物/吸血鬼行）撑开自身 */
   width: 100%;
   text-align: center;
   margin-bottom: 10px;
 }
 
-  #Class{height:100%;width:13%;float:left;}
-    #class_pic{height:150px;width:150px;float:left;transform:translateY(-35px)}
+/* 清除内部浮动，使 #Header 高度正确参与文档流（封面区域高度才能包住它） */
+#Header::after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
+  #Class{height:100px;width:13%;float:left;position:relative;}
+    /* 职业图标超出列高，改为绝对定位（原先靠 translateY 溢出，会让 clearfix 把 #Header 撑到 150px） */
+    #class_pic{height:150px;width:150px;position:absolute;top:-35px;left:0;}
   #title_div{width:47%;float:left;font-size:32px;text-align: left;}
     #build_title_div{height:50%;}
       #build_title{  font-size: 40px;}
@@ -59,7 +123,7 @@ body {
 
 /* 容器布局 */
 #SkillLineInfo {
-  width:13%;
+  width:17%; /* 需容纳最长技能线名"博学者的严谨"（25px 实测 150px + 32px 图标） */
   float:left;
   display: flex;
   flex-direction: column; /* 从上到下排列 */
@@ -68,7 +132,7 @@ body {
 }
 
 #BuffsInfo {
-  width:18%;
+  width:18%; /* 不要压缩：SuperStar 卡的"＋生命上限、魔力上限"食物文本会溢出被裁 */
   float:left;
   display: flex;
   flex-direction: column; /* 从上到下排列 */
@@ -141,7 +205,7 @@ body {
 
 /* FoodInfo内的Food布局 */
 #Food {
-  width:600px;
+  width: 100%; /* 原 600px：会溢出卡片右边缘（SuperStar 食物 buff 描述较长） */
   display: flex;
   flex-direction: row; /* 从左到右排列 */
   align-items: center; /* 垂直居中对齐 */
@@ -191,12 +255,22 @@ body {
   height: 32px; /* 图片高度 */
   width: 32px; /* 保持纵横比 */
   vertical-align: left; /* 垂直对齐 */
+  flex-shrink: 0;
 }
 
-#SkillLine span, #Race span, #Food span, #Stone span, #Vampire span, #Wolf span {
+#SkillLine span, #Race span, #Stone span, #Vampire span, #Wolf span {
   line-height: 33px; /* 文字高度与图片高度一致 */
   font-size: 25px;
   vertical-align: left; /* 垂直对齐 */
+  white-space: nowrap; /* 技能线/种族名不折行（避免"博学者的严谨"被拆成两行） */
+}
+
+/* 食物 buff 描述可能较长，允许在列内折行（头图区高度自适应，不会再压到装备区） */
+#Food span {
+  line-height: 30px;
+  font-size: 24px;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .gears {
@@ -230,10 +304,11 @@ body {
 
 .gear .level {
   height: 100%;
-  width: 112px;
+  width: 120px; /* 需容纳 ★62px + 等级文字，过窄会把文字挤到装备图标上 */
   display: inline-block;
   text-align:right;
   font-size:32px;
+  white-space: nowrap; /* ★ 与等级数字必须同行，禁止折行 */
 }
 
 .gear .level .level_icon {
@@ -249,17 +324,17 @@ body {
 }
 
 .gear .level .level_value {
-  width: 40px;
+  width: 58px; /* 容纳 "160"，避免文字溢出边界压到装备图标 */
   display: inline-block;
   text-align:left;
   font-size:32px;
   position: relative;
   top: -28px;
-  left: -15px;
+  left: -12px;
 }
 
 .gear .intervory {
-  width: 801px;
+  width: 786px; /* 与 slot/level 同行所需（10+128+120+786+间距 ≈ 1074 < 1080），过宽会整块换行导致图标被裁 */
   display: inline-block;
   text-align:left;
   position: relative;
@@ -271,7 +346,7 @@ body {
 }
 
 .gear .intervory .intv {
-  width: 900px;
+  width: 786px;
   display: inline-block;
   text-align:left;
   font-size:32px;
@@ -320,8 +395,10 @@ body {
 }
 
 .gear .intervory .trans {
-  width: 799px;
-  display: inline-block;
+  width: 786px;
+  display: inline-flex; /* flex 消除 inline-block 空白字符宽度，词缀/附魔宽度可控 */
+  align-items: flex-start;
+  gap: 10px; /* 词缀与附魔之间保留间距（长词缀时不会贴到一起） */
   text-align:left;
   font-size:24px;
   color: #AAAAAA;
@@ -329,13 +406,11 @@ body {
   top: -3px;
   left: 5px;
 
-  margin-top: -20px;
-  margin-bottom: -20px;
   margin: -5px -5px 0px -3px;
 }
 
 .gear .intervory .trans .tran {
-  width: 287px;
+  width: 300px; /* 需容纳最长词缀（牢不可破<Impenetrable> 实测 297px） */
   display: inline-block;
   text-align:left;
   font-size:24px;
@@ -343,24 +418,20 @@ body {
   position: relative;
   top: 0px;
   left: 0px;
-
-  margin-top: -20px;
-  margin-bottom: -20px;
-  margin: -5px -5px 0px -3px;
+  white-space: nowrap; /* 词缀不折行，避免行高不一而压到下一行 */
+  margin: 0;
 }
 
 .gear .intervory .trans .enchant {
-  width: 519px;
+  width: 480px;
   display: inline-block;
   text-align:left;
   font-size:22px;
   position: relative;
   top: 0px;
   left: 0px;
-
-  margin-top: -20px;
-  margin-bottom: -20px;
-  margin: -5px -5px 0px -3px;
+  white-space: nowrap;
+  margin: 0;
 }
 
 .spell {
@@ -397,14 +468,21 @@ spell_cell_f {
 
 .spell_name {
   width: 140px;
-  font-size: 24px;
+  font-size: 22px;
+  line-height: 26px;
+  min-height: 52px; /* 单行/双行技能名统一占两行高度，避免行高参差 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   margin: -10px 5px -10px 5px;
 }
 
 .spell_address {
   width: 140px;
-  font-size: 24px;
+  font-size: 22px;
+  line-height: 24px;
+  min-height: 24px;
   text-align: center;
   margin: -10px 5px -10px 5px;
 }
@@ -418,12 +496,12 @@ spell_cell_f {
   color: #7994a7;
 }
 
-/* Crafted Skills (篆刻技能) Styles */
+/* Crafted Skills (篆刻技能) Styles
+   1×4 横排：[魔典图标] 技能名 脚本1 脚本2 脚本3，每个篆刻技能只占一行 */
 .craftedSkills_div {
   width: 100%;
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  flex-direction: column; /* 多个篆刻技能各占一行 */
   justify-content: flex-start;
   margin-top: 6px;
   padding: 0 8px;
@@ -431,10 +509,11 @@ spell_cell_f {
 
 .crafted_skill_item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   flex: 0 0 auto;
-  max-width: 33.33%;
-  min-width: 280px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin-bottom: 4px;
   box-sizing: border-box;
   padding-right: 6px;
@@ -442,53 +521,63 @@ spell_cell_f {
 
 .crafted_skill_main {
   display: flex;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
 }
 
 .crafted_skill_icon {
-  width: 68px;
-  height: 68px;
-  margin-right: 2px;
+  width: 44px;
+  height: 44px;
+  margin-right: 0;
   flex-shrink: 0;
 }
 
 .crafted_skill_content {
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* 名字与脚本同行，避免叠成两行留空 */
+  align-items: center;
+  gap: 10px;
   min-width: 0;
+  width: 100%;
 }
 
 .crafted_skill_name {
-  font-size: 24px;
+  font-size: 1em;
   color: #FFFFFF;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  margin-bottom: 2px;
+  margin-bottom: 0;
   line-height: 1.1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .crafted_scripts {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
+  gap: 0 10px;
 }
 
 .crafted_script {
   display: flex;
   align-items: center;
-  margin-right: 3px;
+  margin-right: 0;
 }
 
 .crafted_script_icon {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 
 .crafted_script_text {
-  font-size: 16px;
+  font-size: 0.72em;
   color: #e5e2b9;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  margin-left: 1px;
+  margin-left: 2px;
   white-space: nowrap;
 }
 
@@ -496,32 +585,37 @@ spell_cell_f {
 .cpPoints_div {
   width: 100%;
   display: flex;
-  flex-direction: row;
-  margin-top: 10px;
+  flex-wrap: wrap; /* 分类自适应换行，不再均分拉伸造成大片间距 */
+  align-items: center;
+  gap: 2px 18px;
+  margin-top: 6px;
   padding: 0 10px;
 }
 
 .cpCategory {
-  flex: 1;
+  flex: 0 1 auto;
+  max-width: 100%;
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 0 5px;
+  gap: 6px;
+  padding: 0 2px;
   box-sizing: border-box;
 }
 
 .cpCategoryHeader {
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* 图标与分类名同行，不再出现“分类名跑到条目下方”的错位 */
   align-items: center;
-  margin-right: 8px;
+  gap: 3px;
+  margin-right: 0;
   flex-shrink: 0;
 }
 
 .cpCategoryIcon {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 4px;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 0;
 }
 
 .cpCategoryName {
@@ -536,14 +630,16 @@ spell_cell_f {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  flex: 1;
+  gap: 0 12px;
+  flex: 0 1 auto;
 }
 
 .cpItem {
-  width: 50%;
-  font-size: 22px;
+  width: auto;
+  font-size: var(--cp-font, 20px);
   color: #e5e2b9;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  line-height: 1.4;
-  padding: 2px 0;
+  line-height: 1.3;
+  padding: 0;
+  white-space: nowrap;
 }
