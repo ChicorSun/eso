@@ -1743,7 +1743,13 @@ const ALCHEMY_DATA = {
 }
 
 /** 夜市等非无畏者副本怪物套，不计入 dgSetsTable（#怪物套 仍按 type=8 列出） */
-const UNDAUNTED_EXCLUDED_MONSTER_SET_IDS = new Set([849, 850, 851])
+const UNDAUNTED_EXCLUDED_MONSTER_SET_IDS = new Set([
+  849, 850, 851,
+  // U51 单人地下城新增的怪物头肩套（塔赛尔 / 米伦尼·唤月者）：
+  // 它们本质上仍属【月狩要塞 / 献祭之境】两个既有副本，只是新增了「单人」难度模式，
+  // 若不禁用会被 init_databaseDG() 当成新副本处理并覆盖原怪物套的槽位，改变无畏者轮换表。
+  876, 877
+])
 
 let numDungeons = 0
 let dgList = [
@@ -2066,7 +2072,12 @@ export let setType = [
 
 var extra_set_data = {
   "845": { type: 12, place: { '1': 'Solstice'}, place_cn: { '1': '至日岛'}, categoryName: 'Solstice', categoryName_cn: '至日岛'},
-  "846": { type: 9, place: { '1': 'Solstice'}, place_cn: { '1': '至日岛'}, categoryName: 'Solstice', categoryName_cn: '至日岛'}
+  "846": { type: 9, place: { '1': 'Solstice'}, place_cn: { '1': '至日岛'}, categoryName: 'Solstice', categoryName_cn: '至日岛'},
+  // U51 单人地下城怪物头肩套：新数据提取里缺 type / place / categoryName，手工补全（结构对齐“维科萨”月狩要塞）
+  //   876 塔赛尔（Tarcyr）            献祭之境 March of Sacrifices（绿荫 Greenshade）
+  //   877 米伦尼·唤月者（Mylenne …）   月狩要塞 Moon Hunter Keep（收割者之境 Reaper's March）
+  "876": { type: 8, place: { '1': 'Greenshade', '2': 'March of Sacrifices' }, place_cn: { '1': '绿荫', '2': '单人-献祭之境' }, categoryName: 'March of Sacrifices', categoryName_cn: '献祭之境' },
+  "877": { type: 8, place: { '1': "Reaper's March", '2': 'Moon Hunter Keep' }, place_cn: { '1': '收割者之境', '2': '单人-月狩要塞' }, categoryName: 'Moon Hunter Keep', categoryName_cn: '月狩要塞' }
 }
 
 /** @returns {{ setKey: string, itemId: string|null }} */

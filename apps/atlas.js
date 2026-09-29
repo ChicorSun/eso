@@ -1345,6 +1345,26 @@ export class atlas extends plugin {
     }
   }
 
+  /**
+   * 按套装中文名反查它所属副本在 dgList 里的序号（兜底用）
+   * 逻辑：套装 CN 名 → 套装 key → EN place 的最后一项（副本英文名）→ dgList.indexOf
+   * @returns {Promise<number>} 副本序号；找不到返回 -1
+   */
+  async findDungeonIndexBySetName (setName, setsData, setsDataCN, dgList) {
+    for (const setKey of Object.keys(setsData)) {
+      const set = setsData[setKey]
+      const cn = setsDataCN?.[set?.id]
+      if (!cn || cn.name !== setName) continue
+      const place = set.place || {}
+      const keys = Object.keys(place)
+      if (keys.length < 2) return -1          // 第 1 项是大区，最后一项才是副本
+      const dungeonEn = place[keys[keys.length - 1]]
+      const idx = Array.isArray(dgList) ? dgList.indexOf(dungeonEn) : -1
+      if (idx > -1) return idx
+    }
+    return -1
+  }
+
   // 计算未来两次无畏者副本出现特定装备的日期
   async getUndauntedDates(setName) {
     try {
@@ -1382,6 +1402,14 @@ export class atlas extends plugin {
             }
           }
         }
+      }
+
+      if (targetIndices.length === 0) {
+        // 兜底：该套装被排除在无畏者表外（例：U51 单人地下城套 876/877，见 database.js
+        // UNDAUNTED_EXCLUDED_MONSTER_SET_IDS），但它们本质上仍属既有副本，
+        // 所以按其 place 的最后一项（副本英文名）定位副本序号，与同副本原有怪物套共享日期。
+        const dungeonIndex = await this.findDungeonIndexBySetName(setName, setsData, setsDataCN, dgList)
+        if (dungeonIndex > -1) targetIndices.push(dungeonIndex)
       }
 
       if (targetIndices.length === 0) {
