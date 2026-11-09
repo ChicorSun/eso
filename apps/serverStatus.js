@@ -1,7 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 import fetch from 'node-fetch'
-import https from 'https'
 import moment from 'moment'
 import ServerStatus from '../model/serverstatus.js'
 import md5 from 'md5'
@@ -10,217 +9,61 @@ import fs from 'fs'
 import path from 'path'
 
 const CUSTOME_RESOURCES_ROOT = path.join(process.cwd(), 'data', 'eso', 'custome_resources')
-const CONFIG_PATH = path.join(CUSTOME_RESOURCES_ROOT, 'config/serverStatus.json')
 const SERVER_NOTIFY_CONFIG_PATH = path.join(CUSTOME_RESOURCES_ROOT, 'config/serverList.json')
 
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+const OFFICIAL_HELP_USER_AGENT = 'Mozilla/5.0'
+const FETCH_TIMEOUT_MS = 8 * 1000
+const FORCE_OFFICIAL_STATUS_FALLBACK = process.env.ESO_STATUS_FORCE_OFFICIAL_FALLBACK === '1'
 
-/** 1=uesp/论坛 源，2=ESOCN API 源；失败后切换并重试一次 */
-let src_mode = (() => {
-  try {
-    const dir = path.dirname(CONFIG_PATH)
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    if (fs.existsSync(CONFIG_PATH)) {
-      const data = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))
-      const v = Number(data?.src_mode)
-      if (v === 1 || v === 2) return v
-    }
-  } catch (_) {}
-  return 1
-})()
-try { logger.info('[ESO:服务器状态] 加载 src_mode=' + src_mode) } catch (_) {}
+const UESP_SERVER_STATUS_URL = 'https://esolog.uesp.net/getEsoServerStatus.php'
+const OFFICIAL_MAINTENANCE_API = 'https://forums.elderscrollsonline.com/api/v2/discussions?categoryID=180&limit=5&sort=-dateInserted'
+const OFFICIAL_SERVICE_ALERTS_URL = 'https://help.elderscrollsonline.com/app/answers/detail/a_id/4320'
+const MAINTENANCE_MAX_AGE_DAYS = 45
 
-function saveSrcMode() {
+let maintenanceArticle = null
+let statusSource = 'unknown'
+
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
-    const dir = path.dirname(CONFIG_PATH)
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify({ src_mode }, null, 2), 'utf8')
-  } catch (err) {
-    try { logger.error('[ESO:服务器状态] 保存 src_mode 失败: ' + (err?.message || err)) } catch (_) {}
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
   }
 }
 
-const SERVER_STATUS_API = 'https://api.esocn.com.cn/api/server-status'
-const SERVER_STATUS_STREAM_API = 'https://api.esocn.com.cn/api/server-status-stream'
-const MAINTENANCE_API = 'https://api.esocn.com.cn/api/maintenance'
-
-/** ESOCN API 键名 -> status 对象键名 */
-const esocnToStatus = { PCNA: 'pcNA', PCEU: 'pcEU', PCPTS: 'pcPTS', XBOXNA: 'xbNA', XBOXEU: 'xbEU', PSNA: 'psNA', PSEU: 'psEU' }
-
-/** SSE 连接相关 */
-let sseReq = null
-let sseReconnectTimer = null
-const SSE_RECONNECT_DELAY_MS = 10000
-let lastEventForNotify = null
-let serverStatusPluginInstance = null
-
-function isOnlineStatus(value) {
-  return String(value ?? '').trim().toLowerCase() === 'online'
+async function fetchOfficialWithRetry(url, options = {}, attempts = 3) {
+  const retryableStatuses = new Set([401, 403, 408, 425, 429, 500, 502, 503, 504])
+  let lastError = null
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await fetchWithTimeout(url, options)
+      if (response.ok || !retryableStatuses.has(response.status) || attempt === attempts) {
+        return response
+      }
+    } catch (error) {
+      lastError = error
+      if (attempt === attempts) throw error
+    }
+    await new Promise(resolve => setTimeout(resolve, 600 * attempt))
+  }
+  throw lastError || new Error('官方接口请求失败')
 }
 
 function syncLastStatusFromCurrent() {
   lastStatus.time = status.time
-  lastStatus.pcNA = status.pcNA !== 1 ? 0 : 1
-  lastStatus.pcEU = status.pcEU !== 1 ? 0 : 1
-  lastStatus.pcPTS = status.pcPTS !== 1 ? 0 : 1
-  lastStatus.xbNA = status.xbNA !== 1 ? 0 : 1
-  lastStatus.xbEU = status.xbEU !== 1 ? 0 : 1
-  lastStatus.psNA = status.psNA !== 1 ? 0 : 1
-  lastStatus.psEU = status.psEU !== 1 ? 0 : 1
-  lastStatus.msg = []
-  lastStatus.msg += status.msg
+  for (const [serverKey] of serverList) {
+    lastStatus[serverKey] = status[serverKey] === 0 || status[serverKey] === 1
+      ? status[serverKey]
+      : -1
+  }
 }
 
 function ensureConfigDir(filePath) {
   const dir = path.dirname(filePath)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-}
-
-function stopSSEConnection() {
-  if (sseReconnectTimer) {
-    clearTimeout(sseReconnectTimer)
-    sseReconnectTimer = null
-  }
-  if (sseReq) {
-    sseReq.destroy()
-    sseReq = null
-  }
-}
-
-async function fetchMaintenanceOnly() {
-  try {
-    const res = await fetch(MAINTENANCE_API)
-    if (res && res.ok) {
-      const json = await res.json()
-      if (json.success && json.data && json.data.Raw) {
-        status.msg = String(json.data.Raw).trim()
-        return true
-      }
-    }
-    if (!status.msg || status.msg.length === 0) {
-      status.msg = 'Maintenance information unavailable'
-    }
-  } catch (err) {
-    logger.error('[ESO:服务器状态] 获取维护信息失败: ' + (err && err.message))
-  }
-  return false
-}
-
-/**
- * 处理 serverStatusChanged：先拉取维护信息，再更新状态并发送通知
- */
-async function handleServerStatusChanged(eventData, pluginInstance) {
-  await fetchMaintenanceOnly()
-  const changes = eventData?.changes
-  if (!changes || typeof changes !== 'object') return
-  const now = moment().format('YYYY-MM-DD_HH:mm')
-  for (const [apiKey, change] of Object.entries(changes)) {
-    const statusKey = esocnToStatus[apiKey]
-    if (!statusKey || !Object.prototype.hasOwnProperty.call(status, statusKey)) continue
-    const currOnline = isOnlineStatus(change?.current)
-    status[statusKey] = currOnline ? 1 : 0
-    status.time = now
-  }
-  if (pluginInstance && lastEventForNotify) {
-    pluginInstance.e = lastEventForNotify
-    await pluginInstance.checkStatusChange(lastEventForNotify)
-  }
-  syncLastStatusFromCurrent()
-}
-
-/**
- * 从 /api/server-status 拉取初始状态（connected 时使用）
- */
-async function fetchInitialStatus() {
-  try {
-    const res = await fetch(SERVER_STATUS_API)
-    if (res && res.ok) {
-      const json = await res.json()
-      if (json.success && json.data) {
-        const d = json.data
-        for (const [apiKey, statusKey] of Object.entries(esocnToStatus)) {
-          if (Object.prototype.hasOwnProperty.call(status, statusKey) && d[apiKey] != null) {
-            const isOnline = isOnlineStatus(d[apiKey])
-            status[statusKey] = isOnline ? 1 : 0
-            lastStatus[statusKey] = status[statusKey] ? 1 : 0
-          }
-        }
-        status.time = moment().format('YYYY-MM-DD_HH:mm')
-        lastStatus.time = status.time
-      }
-    }
-  } catch (err) {
-    logger.error('[ESO:服务器状态] 获取初始状态失败: ' + (err && err.message))
-  }
-}
-
-function handleSSEEvent(eventData, pluginInstance) {
-  const type = eventData?.type
-  logger.info('[ESO:服务器状态] 收到 SSE 推送 type=' + (type || 'unknown'))
-  if (type === 'connected') {
-    fetchInitialStatus()
-    fetchMaintenanceOnly()
-  } else if (type === 'serverStatusChanged') {
-    handleServerStatusChanged(eventData, pluginInstance)
-  } else if (type === 'heartbeat') {
-  }
-}
-
-function startSSEConnection(pluginInstance) {
-  if (src_mode !== 2) return
-  stopSSEConnection()
-  serverStatusPluginInstance = pluginInstance
-  const url = new URL(SERVER_STATUS_STREAM_API)
-  const opts = {
-    hostname: url.hostname,
-    path: url.pathname + url.search,
-    method: 'GET',
-    headers: { Accept: 'text/event-stream' }
-  }
-  sseReq = https.request(opts, (res) => {
-    if (res.statusCode !== 200) {
-      logger.warn('[ESO:服务器状态] SSE 连接异常 status=' + res.statusCode)
-      scheduleReconnect(pluginInstance)
-      return
-    }
-    let buffer = ''
-    res.on('data', (chunk) => {
-      buffer += chunk.toString()
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-      for (const line of lines) {
-        if (line.startsWith('data:')) {
-          const jsonStr = line.slice(5).trim()
-          if (!jsonStr) continue
-          try {
-            const data = JSON.parse(jsonStr)
-            if (data) handleSSEEvent(data, pluginInstance)
-          } catch (_) {}
-        }
-      }
-    })
-    res.on('error', (err) => {
-      logger.error('[ESO:服务器状态] SSE 流错误: ' + (err && err.message))
-      scheduleReconnect(pluginInstance)
-    })
-    res.on('end', () => {
-      scheduleReconnect(pluginInstance)
-    })
-  })
-  sseReq.on('error', (err) => {
-    logger.error('[ESO:服务器状态] SSE 请求失败: ' + (err && err.message))
-    scheduleReconnect(pluginInstance)
-  })
-  sseReq.end()
-}
-
-function scheduleReconnect(pluginInstance) {
-  if (src_mode !== 2 || sseReconnectTimer) return
-  sseReq = null
-  sseReconnectTimer = setTimeout(() => {
-    sseReconnectTimer = null
-    startSSEConnection(pluginInstance)
-  }, SSE_RECONNECT_DELAY_MS)
 }
 
 // 辅助函数：获取月份数字
@@ -529,54 +372,193 @@ const parseMaintenanceFunctions = {
     }
 };
 
-async function fetchMaintenanceMessage() {
-    const url = 'https://forums.elderscrollsonline.com/en/categories/official-news';
+function htmlFragmentToParagraphs(html) {
+    const $ = cheerio.load(`<div id="maintenance-root">${String(html || '')}</div>`);
+    $('#maintenance-root br').replaceWith('\n');
+    return $('#maintenance-root')
+        .text()
+        .replace(/\u00a0/g, ' ')
+        .replace(/\r/g, '')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean);
+}
 
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': DEFAULT_USER_AGENT
-            }
-        });
+function formatUtcTime(value) {
+    if (!value) return '';
+    const time = moment(value);
+    return time.isValid() ? time.utc().format('YYYY-MM-DD HH:mm [UTC]') : '';
+}
 
-        if (!response || !response.ok) {
-//logger.warn(`[ESO:服务器状态] 获取维护公告失败，状态码: ${response ? response.status : '未知'}`);
-            return '';
+function isRecentMaintenance(value) {
+    const time = moment(value);
+    return time.isValid() && moment().diff(time, 'days') <= MAINTENANCE_MAX_AGE_DAYS;
+}
+
+async function fetchOfficialForumMaintenance() {
+    const response = await fetchOfficialWithRetry(OFFICIAL_MAINTENANCE_API, {
+        headers: {
+            'User-Agent': DEFAULT_USER_AGENT,
+            'Accept': 'application/json'
         }
-
-        const html = await response.text();
-        
-        // 检查是否包含 DismissMessage（与 maintenance.js 逻辑一致）
-        if (!html.includes("DismissMessage")) {
-//logger.warn('[ESO:服务器状态] 未能在官方论坛页面找到维护公告内容');
-            return '';
-        }
-
-        const $ = cheerio.load(html);
-        const dismissMessage = $('.DismissMessage');
-
-        if (!dismissMessage || dismissMessage.length === 0) {
-//logger.warn('[ESO:服务器状态] 未能在官方论坛页面找到维护公告内容');
-            return '';
-        }
-
-        // 直接使用 .text().trim() 获取文本，与 maintenance.js 保持一致
-        const maintenanceMessage = dismissMessage.text().trim();
-//logger.info('[ESO:服务器状态] 获取到的维护公告原始文本:');
-//logger.info(maintenanceMessage);
-//logger.info('[ESO:服务器状态] 维护公告原始文本长度:', maintenanceMessage.length);
-        return maintenanceMessage;
-    } catch (error) {
-//logger.error('[ESO:服务器状态] 拉取维护公告时出现异常:', error);
-        return '';
+    });
+    if (!response || !response.ok) {
+        throw new Error(`官方论坛接口 HTTP ${response ? response.status : 'unknown'}`);
     }
+
+    const discussions = await response.json();
+    if (!Array.isArray(discussions)) throw new Error('官方论坛接口返回格式无效');
+
+    const article = discussions.find(item =>
+        item &&
+        Number(item.categoryID) === 180 &&
+        item.name &&
+        item.body &&
+        isRecentMaintenance(item.dateInserted)
+    );
+    if (!article) return null;
+
+    return {
+        kind: 'maintenance',
+        dateInserted: article.dateInserted,
+        title: String(article.name).trim(),
+        paragraphs: htmlFragmentToParagraphs(article.body),
+        publishedAt: formatUtcTime(article.dateInserted),
+        author: article.insertUser?.name || 'ESO 官方论坛',
+        sourceUrl: article.url || article.canonicalUrl || ''
+    };
+}
+
+function parseServiceAlertDate(paragraphs) {
+    for (const paragraph of paragraphs) {
+        const match = paragraph.match(/(\d{4})\.(\d{2})\.(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*UTC/i);
+        if (!match) continue;
+        const time = moment.utc(
+            `${match[1]}-${match[2]}-${match[3]} ${String(match[4]).padStart(2, '0')}:${match[5]}`,
+            'YYYY-MM-DD HH:mm',
+            true
+        );
+        if (time.isValid()) return time.toISOString();
+    }
+    return '';
+}
+
+function inferServiceAlertStatuses(paragraphs) {
+    const result = {};
+    for (const paragraph of paragraphs) {
+        const text = paragraph.toLowerCase();
+        const online = /\bavailable\b|resolved|restored/.test(text);
+        const offline = /unavailable|maintenance|investigating/.test(text);
+        if (!online && !offline) continue;
+
+        const value = online ? 1 : 0;
+        const platformKeys = [];
+        const northAmerica = /north american/.test(text);
+        const europe = /european/.test(text);
+        const hasSpecificPlatform = /pc\/mac|xbox|playstation/.test(text);
+
+        if (/pc\/mac/.test(text)) {
+            if (northAmerica) platformKeys.push('pcNA');
+            if (europe) platformKeys.push('pcEU');
+        }
+        if (/xbox/.test(text)) {
+            if (northAmerica) platformKeys.push('xbNA');
+            if (europe) platformKeys.push('xbEU');
+        }
+        if (/playstation/.test(text)) {
+            if (northAmerica) platformKeys.push('psNA');
+            if (europe) platformKeys.push('psEU');
+        }
+
+        if (!hasSpecificPlatform && /megaserver/.test(text)) {
+            if (northAmerica) platformKeys.push('pcNA', 'xbNA', 'psNA');
+            if (europe) platformKeys.push('pcEU', 'xbEU', 'psEU');
+        }
+        if (/\bpts\b/.test(text)) platformKeys.push('pcPTS');
+
+        for (const key of platformKeys) {
+            if (!Object.prototype.hasOwnProperty.call(result, key)) result[key] = value;
+        }
+    }
+    return result;
+}
+
+async function fetchOfficialServiceAlerts() {
+    const response = await fetchOfficialWithRetry(OFFICIAL_SERVICE_ALERTS_URL, {
+        headers: {
+            'User-Agent': OFFICIAL_HELP_USER_AGENT
+        }
+    });
+    if (!response || !response.ok) {
+        throw new Error(`官方 Service Alerts HTTP ${response ? response.status : 'unknown'}`);
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const title = $('h1').filter((_, element) => $(element).text().includes('ESO Service Alerts')).first();
+    if (!title.length) throw new Error('未找到 ESO Service Alerts');
+
+    const blocks = [];
+    let currentBlock = [];
+    for (const element of title.nextAll().toArray()) {
+        const tagName = element.tagName?.toLowerCase();
+        if (tagName === 'hr') {
+            if (currentBlock.length) blocks.push(currentBlock);
+            currentBlock = [];
+            continue;
+        }
+        if (tagName !== 'p') continue;
+        const text = $(element).text().replace(/\u00a0/g, ' ').trim();
+        if (text) currentBlock.push(text);
+    }
+    if (currentBlock.length) blocks.push(currentBlock);
+    if (!blocks.length) throw new Error('ESO Service Alerts 暂无内容');
+
+    const latestBlock = blocks[0];
+    const publishedAt = parseServiceAlertDate(latestBlock);
+    const statuses = inferServiceAlertStatuses(blocks.flat());
+
+    return {
+        article: {
+            kind: 'service-alert',
+            dateInserted: publishedAt,
+            title: '当前 ESO 服务告警',
+            paragraphs: latestBlock,
+            publishedAt: formatUtcTime(publishedAt),
+            author: 'ESO Support',
+            sourceUrl: OFFICIAL_SERVICE_ALERTS_URL
+        },
+        statuses
+    };
+}
+
+async function fetchForumMaintenanceSafe() {
+    try {
+        const article = await fetchOfficialForumMaintenance();
+        if (article) return article;
+        logger.warn('[ESO:服务器状态] 官方论坛没有近期维护公告');
+    } catch (error) {
+        logger.warn('[ESO:服务器状态] 获取官方论坛维护公告失败: ' + (error?.message || error));
+    }
+    return null;
+}
+
+async function fetchServiceAlertsSafe() {
+    try {
+        return await fetchOfficialServiceAlerts();
+    } catch (error) {
+        logger.warn('[ESO:服务器状态] 获取官方 Service Alerts 失败: ' + (error?.message || error));
+    }
+    return null;
 }
 
 async function fetchServerStatusRaw() {
-    const url = 'https://esolog.uesp.net/getEsoServerStatus.php';
-
+    if (FORCE_OFFICIAL_STATUS_FALLBACK) {
+        logger.warn('[ESO:服务器状态] 已配置强制使用官方 Service Alerts 兜底');
+        return null;
+    }
     try {
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(UESP_SERVER_STATUS_URL, {
             headers: {
                 'User-Agent': DEFAULT_USER_AGENT
             }
@@ -660,6 +642,11 @@ async function fetchServerStatusRaw() {
 //            psEU: status.psEU
 //        }, null, 2));
 
+        if (serverStatusResults.length === 0) {
+            logger.warn('[ESO:服务器状态] UESP 未返回可识别的服务器状态');
+            return null;
+        }
+
         return {
             raw,
             lastUpdated: lastUpdatedText,
@@ -670,48 +657,6 @@ async function fetchServerStatusRaw() {
 //logger.error('[ESO:服务器状态] 拉取服务器状态数据时出现异常:', error);
         return null;
     }
-}
-
-/**
- * 从 ESOCN API 获取服务器状态与维护信息
- * @returns {{ serverOk: boolean, maintenanceOk: boolean }} 两个接口是否都成功
- */
-async function fetchFromESOCN() {
-    let serverOk = false
-    let maintenanceOk = false
-    try {
-        const [resStatus, resMaint] = await Promise.all([
-            fetch(SERVER_STATUS_API),
-            fetch(MAINTENANCE_API)
-        ])
-        if (resStatus && resStatus.ok) {
-            const json = await resStatus.json()
-            if (json.success && json.data) {
-                const d = json.data
-                const esocnToStatus = { PCNA: 'pcNA', PCEU: 'pcEU', PCPTS: 'pcPTS', XBOXNA: 'xbNA', XBOXEU: 'xbEU', PSNA: 'psNA', PSEU: 'psEU' }
-                for (const [apiKey, statusKey] of Object.entries(esocnToStatus)) {
-                    if (Object.prototype.hasOwnProperty.call(status, statusKey) && d[apiKey] != null) {
-                        const isOnline = isOnlineStatus(d[apiKey])
-                        status[statusKey] = isOnline ? 1 : 0
-                    }
-                }
-                serverOk = true
-            }
-        }
-        if (resMaint && resMaint.ok) {
-            const json = await resMaint.json()
-            if (json.success && json.data && json.data.Raw) {
-                status.msg = String(json.data.Raw).trim()
-                maintenanceOk = true
-            }
-        }
-        if (maintenanceOk === false && (!status.msg || status.msg.length === 0)) {
-            status.msg = 'Maintenance information unavailable'
-        }
-    } catch (err) {
-        logger.error('[ESO:服务器状态] ESOCN API 获取失败: ' + (err && err.message))
-    }
-    return { serverOk, maintenanceOk }
 }
 
 // 维护信息处理函数
@@ -765,6 +710,266 @@ function processMaintenanceInfo(maintenanceMessage) {
 //logger.info('[ESO:服务器状态] processMaintenanceInfo 最终结果:');
 //logger.info(JSON.stringify(finalLines, null, 2));
     return finalLines;
+}
+
+const MONTH_NAMES = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+function parseAnnouncementDate(text, referenceTime) {
+    const match = String(text || '').match(
+        /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?/i
+    );
+    if (!match) return null;
+
+    const month = MONTH_NAMES.indexOf(match[1].slice(0, 3).toLowerCase());
+    const day = Number(match[2]);
+    if (month < 0 || day < 1 || day > 31) return null;
+
+    const reference = moment(referenceTime);
+    let year = Number(match[3]) || (reference.isValid() ? reference.utc().year() : moment().utc().year());
+    if (!match[3] && reference.isValid()) {
+        const candidate = moment.utc({ year, month, day });
+        const monthDistance = candidate.diff(reference.utc(), 'months', true);
+        if (monthDistance > 6) year -= 1;
+        if (monthDistance < -6) year += 1;
+    }
+    return { year, month, day };
+}
+
+function parseUtcTimes(text) {
+    const times = [];
+    const regex = /(?<!\d)(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?\s*UTC/gi;
+    let match;
+    while ((match = regex.exec(String(text || ''))) !== null) {
+        let hour = Number(match[1]);
+        const minute = Number(match[2] || 0);
+        const period = match[3]?.toUpperCase();
+        if (period === 'AM' && hour === 12) hour = 0;
+        if (period === 'PM' && hour < 12) hour += 12;
+        if (hour > 23 || minute > 59) continue;
+        const key = `${hour}:${minute}`;
+        if (!times.some(item => item.key === key)) times.push({ hour, minute, key });
+    }
+    return times;
+}
+
+function parseMaintenanceWindow(article) {
+    const text = [article.title, ...(article.paragraphs || [])].join('\n');
+    const date = parseAnnouncementDate(text, article.dateInserted);
+    const times = parseUtcTimes(text);
+    if (!date || times.length === 0) return null;
+
+    const start = moment.utc({
+        year: date.year,
+        month: date.month,
+        day: date.day,
+        hour: times[0].hour,
+        minute: times[0].minute
+    });
+    let end = null;
+    if (times[1]) {
+        end = start.clone().hour(times[1].hour).minute(times[1].minute).second(0);
+        if (!end.isAfter(start)) end.add(1, 'day');
+    }
+    return { start, end };
+}
+
+function formatBeijingTime(value) {
+    return value ? value.clone().utcOffset(8).format('MM月DD日 HH:mm') : '';
+}
+
+function buildMaintenanceScope(text) {
+    const scope = [];
+    const lower = String(text || '').toLowerCase();
+    if (/all (?:live )?eso megaservers|all megaservers/.test(lower)) {
+        scope.push('全部 ESO 大型服务器');
+    } else {
+        const platforms = [];
+        if (/pc\/mac/.test(lower)) platforms.push('PC/Mac');
+        if (/xbox/.test(lower)) platforms.push('Xbox');
+        if (/playstation/.test(lower)) platforms.push('PlayStation');
+        if (platforms.length) scope.push(`${platforms.join('、')} 服务器`);
+    }
+    if (/eso store and account system/.test(lower)) scope.push('ESO 商店及账号系统');
+    if (/\bpts\b/.test(lower)) scope.push('PTS 测试服');
+    return scope;
+}
+
+function translateServiceAlertLine(text) {
+    const lower = String(text || '').toLowerCase();
+    if (/^\d{4}\.\d{2}\.\d{2}/.test(lower)) return '';
+
+    let target = '';
+    if (/eso store and account system/.test(lower)) {
+        target = 'ESO 商店及账号系统';
+    } else if (/\bpts\b/.test(lower)) {
+        target = 'PTS 测试服';
+    } else {
+        const regions = [];
+        if (/north american/.test(lower)) regions.push('北美');
+        if (/european/.test(lower)) regions.push('欧洲');
+        let platform = '';
+        if (/pc\/mac/.test(lower)) platform = ' PC/Mac';
+        else if (/xbox/.test(lower)) platform = ' Xbox';
+        else if (/playstation/.test(lower)) platform = ' PlayStation';
+        if (regions.length) target = `${regions.join('和')}${platform}大型服务器`;
+    }
+    if (!target) return text;
+
+    let state = '';
+    if (/resolved|restored/.test(lower)) state = '相关问题已解决';
+    else if (/\bavailable\b/.test(lower)) state = '当前可用';
+    else if (/unavailable/.test(lower)) state = '当前不可用，正在维护';
+    else if (/maintenance/.test(lower)) state = '正在维护';
+    else if (/investigating/.test(lower)) state = '正在调查问题';
+    return state ? `${target}${state}` : text;
+}
+
+function buildChineseMaintenanceSummary(article) {
+    if (!article) return [];
+    if (article.kind === 'service-alert') {
+        const lines = [];
+        const alertTime = moment(article.dateInserted);
+        if (alertTime.isValid()) lines.push(`公告时间：北京时间 ${formatBeijingTime(alertTime)}`);
+        for (const paragraph of article.paragraphs || []) {
+            const translated = translateServiceAlertLine(paragraph);
+            if (translated && !lines.includes(translated)) lines.push(translated);
+        }
+        return lines;
+    }
+
+    const text = [article.title, ...(article.paragraphs || [])].join('\n');
+    const lower = text.toLowerCase();
+    if (/no maintenance/.test(lower)) return ['维护安排：本周无需维护'];
+
+    const summary = [];
+    const window = parseMaintenanceWindow(article);
+    if (window) {
+        summary.push(window.end
+            ? `维护时间：北京时间 ${formatBeijingTime(window.start)} 至 ${formatBeijingTime(window.end)}`
+            : `维护时间：北京时间 ${formatBeijingTime(window.start)}`);
+
+        const now = moment.utc();
+        if (now.isBefore(window.start)) summary.push('当前状态：尚未开始');
+        else if (window.end && now.isAfter(window.end)) summary.push('当前状态：已超过公告预计结束时间，请以服务器状态为准');
+        else summary.push('当前状态：维护进行中（按公告时间推算）');
+    }
+
+    const scope = buildMaintenanceScope(text);
+    if (scope.length) summary.push(`影响范围：${scope.join('、')}`);
+
+    if (/backend datacenter fixes and updates/.test(lower)) {
+        summary.push('维护内容：季度后端数据中心修复与更新');
+    } else if (/patch|update/.test(lower)) {
+        summary.push('维护内容：版本更新');
+    } else if (/maintenance/.test(lower)) {
+        summary.push('维护内容：服务器维护');
+    }
+    return summary;
+}
+
+function buildFallbackMaintenancePlatformLines(article) {
+    const text = [article.title, ...(article.paragraphs || [])].join('\n');
+    const lower = text.toLowerCase();
+    const window = parseMaintenanceWindow(article);
+    if (!window) return [];
+
+    const platforms = [];
+    if (/all (?:live )?eso megaservers|all megaservers/.test(lower)) {
+        platforms.push('PC', 'Mac', 'Xbox', 'PlayStation');
+    } else {
+        if (/pc\/mac/.test(lower)) platforms.push('PC', 'Mac');
+        else {
+            if (/\bpc\b/.test(lower)) platforms.push('PC');
+            if (/\bmac\b/.test(lower)) platforms.push('Mac');
+        }
+        if (/xbox/.test(lower)) platforms.push('Xbox');
+        if (/playstation/.test(lower)) platforms.push('PlayStation');
+    }
+    if (/\bpts\b/.test(lower)) platforms.push('PTS');
+    if (platforms.length === 0) return [];
+
+    const hasNA = /north american/.test(lower);
+    const hasEU = /european/.test(lower);
+    const region = hasNA && hasEU
+        ? '美服和欧服'
+        : hasNA
+            ? '美服'
+            : hasEU
+                ? '欧服'
+                : /all (?:live )?eso megaservers|all megaservers/.test(lower)
+                    ? '美服和欧服'
+                    : '';
+
+    const now = moment.utc();
+    let status = '[待更新]';
+    let color = 'rgb(255, 165, 0)';
+    if (!now.isBefore(window.start) && (!window.end || !now.isAfter(window.end))) {
+        status = '[维护中]';
+        color = 'rgb(255, 105, 180)';
+    }
+
+    const timeText = window.end
+        ? `北京时间${formatBeijingTime(window.start)} 至 ${formatBeijingTime(window.end)}`
+        : `北京时间${formatBeijingTime(window.start)}`;
+    const lines = platforms.map(platform => ({
+        text: `${status} ${platform}：${region}维护 - ${timeText}`,
+        color
+    }));
+
+    if (/eso store and account system/.test(lower)) {
+        lines.push({
+            text: `${status} ESO 商店及账号系统：维护`,
+            color
+        });
+    }
+    return lines;
+}
+
+function buildMaintenanceInfo(article) {
+    if (!article) {
+        return ['Maintenance information unavailable'];
+    }
+
+    const rawText = (article.paragraphs || []).join('\n').trim();
+    let parsed = {};
+    try {
+        parsed = processMaintenanceInfo(rawText);
+    } catch (error) {
+        logger.warn('[ESO:服务器状态] 解析维护信息失败: ' + (error?.message || error));
+    }
+
+    const lines = [];
+    if (parsed.header) lines.push(parsed.header);
+    const hasParsedPlatformLines = ['PC', 'Mac', 'Xbox', 'PlayStation']
+        .some(platform => parsed[platform]);
+    for (const platform of ['PC', 'Mac', 'Xbox', 'PlayStation']) {
+        const platformLines = parsed[platform];
+        if (Array.isArray(platformLines)) lines.push(...platformLines);
+        else if (platformLines) lines.push(platformLines);
+    }
+    if (!hasParsedPlatformLines) {
+        lines.push(...buildFallbackMaintenancePlatformLines(article));
+    }
+
+    const rawLines = rawText
+        .split('\n')
+        .filter(line => line.trim() !== '')
+        .map(line => line.replace(/\t/g, ''));
+    lines.push(...rawLines);
+    return lines;
+}
+
+function buildDataSourceLabel() {
+    const sources = [];
+    if (statusSource === 'uesp') sources.push('UESP');
+    else if (statusSource === 'official') sources.push('ESO Service Alerts');
+    else sources.push('服务器状态不可用');
+
+    if (maintenanceArticle?.kind === 'maintenance') sources.push('ESO 官方论坛');
+    else if (maintenanceArticle?.kind === 'service-alert') sources.push('ESO Service Alerts');
+    else sources.push('维护公告不可用');
+
+    return [...new Set(sources)].join(' + ');
 }
 
 //serverStatus结构体变量
@@ -878,26 +1083,24 @@ loadServerNotifyMask()
 //服务器状态
 let status = {
   time: '2023-01-01_00:00',
-  msg: 'Not all Systems Operational',
-  pcNA: 1,
-  pcEU: 1,
-  pcPTS: 1,
-  xbNA: 1,
-  xbEU: 1,
-  psNA: 1,
-  psEU: 1,
+  pcNA: -1,
+  pcEU: -1,
+  pcPTS: -1,
+  xbNA: -1,
+  xbEU: -1,
+  psNA: -1,
+  psEU: -1,
 }
 
 let lastStatus = {
   time: '2023-01-01_00:00',
-  msg: 'Not all Systems Operational',
-  pcNA: 1,
-  pcEU: 1,
-  pcPTS: 1,
-  xbNA: 1,
-  xbEU: 1,
-  psNA: 1,
-  psEU: 1,
+  pcNA: -1,
+  pcEU: -1,
+  pcPTS: -1,
+  xbNA: -1,
+  xbEU: -1,
+  psNA: -1,
+  psEU: -1,
 }
 
 export class serverStatus extends plugin {
@@ -928,38 +1131,23 @@ export class serverStatus extends plugin {
       ]
     })
     
-    // 初始化定时器ID为null
+    // 初始化定时器ID
     this.checkInterval = null
-    this.mode2RefreshInterval = null
   }
 
   /**
-   * 启动自动检查；src_mode 1=1分钟轮询，2=SSE 长连接（无轮询）
+   * 启动自动检查，每分钟从 UESP 获取一次服务器状态
    * @private
    */
   async startAutoCheck(e) {
-    lastEventForNotify = e
     if (this.checkInterval) {
       clearInterval(this.checkInterval)
       this.checkInterval = null
     }
-    if (this.mode2RefreshInterval) {
-      clearInterval(this.mode2RefreshInterval)
-      this.mode2RefreshInterval = null
-    }
-    stopSSEConnection()
-    if (src_mode === 1) {
-      const intervalMs = 1 * 60 * 1000
-      this.checkInterval = setInterval(async () => {
-        await this.getESOStatus(this.e)
-      }, intervalMs)
-    } else {
-      startSSEConnection(this)
-      const refreshIntervalMs = 15 * 60 * 1000
-      this.mode2RefreshInterval = setInterval(async () => {
-        await this.activeFetchFromESOCN(lastEventForNotify || this.e)
-      }, refreshIntervalMs)
-    }
+    const intervalMs = 1 * 60 * 1000
+    this.checkInterval = setInterval(async () => {
+      await this.getESOStatus(this.e)
+    }, intervalMs)
   }
 
   /**
@@ -983,73 +1171,9 @@ export class serverStatus extends plugin {
         serverData = ssData
     }
 
-    // 处理维护信息
-//logger.info('[ESO:服务器状态] sendStatus 开始处理维护信息');
-//logger.info('[ESO:服务器状态] sendStatus 当前status.msg:', status.msg);
-    
-    let maintenanceInfo = [];
-    try {
-      const maintenanceData = processMaintenanceInfo(status.msg);
-//logger.info('[ESO:服务器状态] sendStatus processMaintenanceInfo 返回结果:', JSON.stringify(maintenanceData, null, 2));
-      
-      if (maintenanceData.header) {
-//logger.info('[ESO:服务器状态] sendStatus 添加标题:', maintenanceData.header);
-        maintenanceInfo.push(maintenanceData.header);
-      }
-      if (maintenanceData.PC) {
-//logger.info('[ESO:服务器状态] sendStatus PC平台信息:', maintenanceData.PC);
-        if (Array.isArray(maintenanceData.PC)) {
-          maintenanceInfo.push(...maintenanceData.PC);
-        } else {
-          maintenanceInfo.push(maintenanceData.PC);
-        }
-      }
-      if (maintenanceData.Mac) {
-//logger.info('[ESO:服务器状态] sendStatus Mac平台信息:', maintenanceData.Mac);
-        if (Array.isArray(maintenanceData.Mac)) {
-          maintenanceInfo.push(...maintenanceData.Mac);
-        } else {
-          maintenanceInfo.push(maintenanceData.Mac);
-        }
-      }
-      if (maintenanceData.Xbox) {
-//logger.info('[ESO:服务器状态] sendStatus Xbox平台信息:', maintenanceData.Xbox);
-        if (Array.isArray(maintenanceData.Xbox)) {
-          maintenanceInfo.push(...maintenanceData.Xbox);
-        } else {
-          maintenanceInfo.push(maintenanceData.Xbox);
-        }
-      }
-      if (maintenanceData.PlayStation) {
-//logger.info('[ESO:服务器状态] sendStatus PlayStation平台信息:', maintenanceData.PlayStation);
-        if (Array.isArray(maintenanceData.PlayStation)) {
-          maintenanceInfo.push(...maintenanceData.PlayStation);
-        } else {
-          maintenanceInfo.push(maintenanceData.PlayStation);
-        }
-      }
-//logger.info('[ESO:服务器状态] sendStatus 最终maintenanceInfo数组:', JSON.stringify(maintenanceInfo, null, 2));
-    } catch (error) {
-//logger.error('[ESO:服务器状态] 处理维护信息失败:', error);
-//logger.error('[ESO:服务器状态] 错误堆栈:', error.stack);
-    }
-
-    serverData.serverData[1].msg = []
-    let msgIndex = 0
-    
-    // 首先添加维护信息
-    for (let maintenanceMsg of maintenanceInfo) {
-      serverData.serverData[1].msg[msgIndex] = maintenanceMsg
-      msgIndex = msgIndex + 1
-    }
-    
-    // 然后添加原有的服务器状态信息
-    let tmpMsg = status.msg
-    let srcMsgs = tmpMsg.split('\n').filter(line => line.trim() !== '').map(line => line.replace(/\t/g, ''));
-    for (let oneMsg of srcMsgs) {
-      serverData.serverData[1].msg[msgIndex] = oneMsg
-      msgIndex = msgIndex + 1
-    }
+    serverData.serverData[1].msg = buildMaintenanceInfo(maintenanceArticle)
+    serverData.serverData[1].dataSource = buildDataSourceLabel()
+    serverData.serverData[1].announcementPublishedAt = maintenanceArticle?.publishedAt || '未知'
 //logger.info('[ESO:服务器状态] sendStatus 准备生成服务器状态信息');
 //logger.info(`[ESO:服务器状态] sendStatus 当前status对象状态:`);
 //logger.info(JSON.stringify({
@@ -1065,22 +1189,22 @@ export class serverStatus extends plugin {
     serverData.serverData[1].servers = []
 //logger.info('[ESO:服务器状态] sendStatus 开始生成服务器显示信息');
     for (let server of serverList) {
-    	let oneServer = {
-    		name: `PC-NA`,
-    		status: `Online`,
-    		color: `rgb(58, 146, 254)`
-    	};
-    	oneServer.name = server[1]
-    	if(status[server[0]] == 0)
-    	{
-    		oneServer.status = `Offline`
-    		oneServer.color = `rgb(254, 0, 0)`
-    	}
-    	else
-    	{
-    		oneServer.status = `Online`
-    		oneServer.color = `rgb(19, 217, 98)`
-    	}
+        let oneServer = {
+            name: `PC-NA`,
+            status: `Online`,
+            color: `rgb(58, 146, 254)`
+        };
+        oneServer.name = server[1]
+        if (status[server[0]] == 0) {
+            oneServer.status = `Offline`
+            oneServer.color = `rgb(254, 0, 0)`
+        } else if (status[server[0]] == 1) {
+            oneServer.status = `Online`
+            oneServer.color = `rgb(19, 217, 98)`
+        } else {
+            oneServer.status = `Unknown`
+            oneServer.color = `rgb(255, 165, 0)`
+        }
         serverData.serverData[1].servers.push(oneServer);
 //logger.info(`[ESO:服务器状态] sendStatus 服务器 ${oneServer.name} (${server[0]}): 状态=${oneServer.status}, 颜色=${oneServer.color}, 原始值=${status[server[0]]}`);
     }
@@ -1137,72 +1261,52 @@ export class serverStatus extends plugin {
   }
 
   async getESOStatus (e) {
-  	//判断是否需要更新服务器状态变量并执行
-    let now = moment(new Date().getTime()).format('YYYY'+'-'+'MM'+'-'+'DD'+'_'+'HH'+':'+'mm').replace(/是0/g, "是").replace(/点0/g, "点")
-    if(now != status.time)
-    {
-    	const oldMode = src_mode
-    	await this.updateESOStatus()
-    	if (src_mode !== oldMode) {
-    	  await this.startAutoCheck(e)
-    	}
-    	status.time = now
-    	await this.checkStatusChange(e)
+    const now = moment().format('YYYY-MM-DD_HH:mm')
+    if (now !== status.time) {
+      const updated = await this.updateESOStatus()
+      status.time = now
+      if (!updated) return
+      await this.checkStatusChange(e)
       syncLastStatusFromCurrent()
     }
   }
 
   /**
-   * src_mode=2 下，基于 SSE 的定时主动拉取校准
-   */
-  async activeFetchFromESOCN(e) {
-    if (src_mode !== 2) return
-    const { serverOk } = await fetchFromESOCN()
-    if (!serverOk) return
-    status.time = moment(new Date().getTime()).format('YYYY-MM-DD_HH:mm')
-    if (e) {
-      this.e = e
-      await this.checkStatusChange(e)
-    }
-    syncLastStatusFromCurrent()
-  }
-
-  /**
-   * 使用 uesp/论坛 源更新 (src_mode 1)
-   */
-  async _updateFromUesp() {
-    const maintenanceMessage = await fetchMaintenanceMessage()
-    if (maintenanceMessage) {
-      status.msg = maintenanceMessage
-    } else if (!status.msg || status.msg.length === 0) {
-      status.msg = 'Maintenance information unavailable'
-    }
-    const serverStatusData = await fetchServerStatusRaw()
-    return serverStatusData != null
-  }
-
-  /**
-   * 使用 ESOCN API 源更新 (src_mode 2)
-   */
-  async _updateFromESOCN() {
-    const { serverOk } = await fetchFromESOCN()
-    return serverOk
-  }
-
-  /**
-   * @更新服务器状态；按 src_mode 选源，失败则切换并重试一次
+   * 使用 UESP 和 ESO 官方来源更新；UESP 不可用时由官方 Service Alerts 兜底
    */
   async updateESOStatus() {
-    let ok = src_mode === 1 ? await this._updateFromUesp() : await this._updateFromESOCN()
-    if (ok) return
+    const [serverStatusData, forumArticle] = await Promise.all([
+      fetchServerStatusRaw(),
+      fetchForumMaintenanceSafe()
+    ])
+    const serviceAlerts = !serverStatusData || !forumArticle
+      ? await fetchServiceAlertsSafe()
+      : null
+    maintenanceArticle = forumArticle || serviceAlerts?.article || null
 
-    src_mode = src_mode === 1 ? 2 : 1
-    saveSrcMode()
-    logger.info('[ESO:服务器状态] src_mode 已切换为 ' + src_mode)
-    ok = src_mode === 1 ? await this._updateFromUesp() : await this._updateFromESOCN()
-    if (!ok) {
-      logger.warn('[ESO:服务器状态] 两种来源均获取失败')
+    if (serverStatusData) {
+      statusSource = 'uesp'
+      return true
     }
+
+    for (const [serverKey] of serverList) status[serverKey] = -1
+    const fallbackStatuses = serviceAlerts?.statuses || {}
+    let fallbackCount = 0
+    for (const [serverKey, value] of Object.entries(fallbackStatuses)) {
+      if (!Object.prototype.hasOwnProperty.call(status, serverKey)) continue
+      if (value !== 0 && value !== 1) continue
+      status[serverKey] = value
+      fallbackCount += 1
+    }
+
+    statusSource = fallbackCount > 0 ? 'official' : 'unknown'
+    if (fallbackCount === 0) {
+      logger.warn('[ESO:服务器状态] UESP 与官方 Service Alerts 均未能提供服务器状态')
+      return false
+    }
+
+    logger.warn(`[ESO:服务器状态] UESP 不可用，已从官方 Service Alerts 恢复 ${fallbackCount} 个状态`)
+    return true
   }
 
 
@@ -1214,8 +1318,9 @@ export class serverStatus extends plugin {
 
     for (const [serverKey, serverName] of serverList) {
       if (!isServerNotifyEnabled(serverKey)) continue
-      const before = lastStatus[serverKey] === 1 ? 1 : 0
-      const after = status[serverKey] === 1 ? 1 : 0
+      const before = lastStatus[serverKey]
+      const after = status[serverKey]
+      if ((before !== 0 && before !== 1) || (after !== 0 && after !== 1)) continue
       if (before === after) continue
 
       if (before === 1 && after === 0) {

@@ -29,6 +29,7 @@
             {{/if}}
             {{/each}}
           </div>
+          <div class="data-source">数据源：{{val.dataSource}}</div>
           {{each val.servers item}}
           <div class="bar">
             <div class="bar-string">
@@ -39,12 +40,15 @@
             </div>
           </div>
           {{/each}}
+          <div class="card-footer">
+            <div class="announcement-time">公告发布时间：{{val.announcementPublishedAt}}</div>
+            <div class="logo">Created By ESO-Bot</div>
+          </div>
         </div>
         
       </div>
     </div>
     {{/if}}
     {{/each}}
-    <div class="logo">Created By ESO-Bot</div>
   </div>
 </body>

@@ -78,6 +78,14 @@ body {
   margin-bottom: 8px; /* 为每个 .msg 添加一些间距 */
 }
 
+.data-source {
+  width: 400px;
+  margin: -2px auto 7px;
+  text-align: left;
+  font-size: 11px;
+  color: rgba(204, 204, 204, 0.42);
+}
+
 .bar {
   display: flex;
   align-items: center;
@@ -116,10 +124,21 @@ body {
   margin: 0px 0px 0px 0px;
 }
 
+.card-footer {
+  margin-top: 5px;
+  text-align: center;
+}
+
+.announcement-time {
+  font-size: 11px;
+  color: rgba(204, 204, 204, 0.52);
+  margin-bottom: 3px;
+}
+
 .logo {
   font-size: 14px;
   font-family: "tttgbnumber";
   text-align: center;
   color: #b1b4b6;
-  margin: 4px 0px 0px 0px;
+  margin: 0px;
 }
