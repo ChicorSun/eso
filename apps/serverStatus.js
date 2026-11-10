@@ -753,7 +753,8 @@ function parseUtcTimes(text) {
 }
 
 function parseMaintenanceWindow(article) {
-    const text = [article.title, ...(article.paragraphs || [])].join('\n');
+    // 维护时间只以正文为准：标题可能是“new end time”等后续更新，不能参与时间段解析。
+    const text = (article.paragraphs || []).join('\n');
     const date = parseAnnouncementDate(text, article.dateInserted);
     const times = parseUtcTimes(text);
     if (!date || times.length === 0) return null;
@@ -837,7 +838,7 @@ function buildChineseMaintenanceSummary(article) {
         return lines;
     }
 
-    const text = [article.title, ...(article.paragraphs || [])].join('\n');
+    const text = (article.paragraphs || []).join('\n');
     const lower = text.toLowerCase();
     if (/no maintenance/.test(lower)) return ['维护安排：本周无需维护'];
 
@@ -850,7 +851,7 @@ function buildChineseMaintenanceSummary(article) {
 
         const now = moment.utc();
         if (now.isBefore(window.start)) summary.push('当前状态：尚未开始');
-        else if (window.end && now.isAfter(window.end)) summary.push('当前状态：已超过公告预计结束时间，请以服务器状态为准');
+        else if (window.end && now.isAfter(window.end)) summary.push('当前状态：已结束');
         else summary.push('当前状态：维护进行中（按公告时间推算）');
     }
 
@@ -868,7 +869,7 @@ function buildChineseMaintenanceSummary(article) {
 }
 
 function buildFallbackMaintenancePlatformLines(article) {
-    const text = [article.title, ...(article.paragraphs || [])].join('\n');
+    const text = (article.paragraphs || []).join('\n');
     const lower = text.toLowerCase();
     const window = parseMaintenanceWindow(article);
     if (!window) return [];
@@ -903,7 +904,10 @@ function buildFallbackMaintenancePlatformLines(article) {
     const now = moment.utc();
     let status = '[待更新]';
     let color = 'rgb(255, 165, 0)';
-    if (!now.isBefore(window.start) && (!window.end || !now.isAfter(window.end))) {
+    if (window.end && now.isAfter(window.end)) {
+        status = '[已结束]';
+        color = 'rgb(19, 217, 98)';
+    } else if (!now.isBefore(window.start)) {
         status = '[维护中]';
         color = 'rgb(255, 105, 180)';
     }
@@ -918,7 +922,7 @@ function buildFallbackMaintenancePlatformLines(article) {
 
     if (/eso store and account system/.test(lower)) {
         lines.push({
-            text: `${status} ESO 商店及账号系统：维护`,
+            text: `${status} ESO 商店及账号系统：${status === '[已结束]' ? '维护已结束' : '维护'}`,
             color
         });
     }
