@@ -107,8 +107,10 @@ export class warningTips extends plugin {
     let isInList = await this.checkWhiteList(e.user_id)
     if(isInList)
     {
-        return 0
+        return false
     }
+
+    let handled = false
 
     // 确保使用最新的配置
     //await this.loadConfig()
@@ -118,6 +120,7 @@ export class warningTips extends plugin {
     	let checkName = await this.nameWarningTime(e)
     	if(checkName)
     	{
+		handled = true
     		let message = [{ type: 'at', qq: e.user_id},{ type: 'text', text: '\n请按规范修改群昵称'},
     			{ type: 'image', file: './plugins/eso/resources/img/tips/nameTips.jpg', asface: false}]
       		await this.reply(message, false, { recallMsg: -1 })
@@ -140,6 +143,7 @@ export class warningTips extends plugin {
         let checkKeyword = await this.keywordCheck(e)
         if(checkKeyword == 2)
         {
+            handled = true
             e.group.recallMsg(e.message_id)
             let userId = e.user_id;
             let msg = [
@@ -152,6 +156,9 @@ export class warningTips extends plugin {
             e.reply(msg, false, { recallMsg: 60 });//60秒后撤回
         }
     }
+
+    // 这是挂在空正则上的观察规则：没有触发违规时必须放行，后续插件（例如 LLM 对话）才能收到消息。
+    return handled
   }
 
   async sendNickRule (e) {
