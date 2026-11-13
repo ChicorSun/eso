@@ -1353,3 +1353,21 @@ export class serverStatus extends plugin {
     return serverImg.img
   }
 }
+
+/** 纯文字服务器状态，供 TRSS agent 工具复用，不触发图片生成和定时器。 */
+export async function getServerStatusText () {
+  const probe = Object.create(serverStatus.prototype)
+  const updated = await probe.updateESOStatus()
+  if (!updated) throw new Error('UESP 与 ESO 官方 Service Alerts 均未返回可用状态')
+
+  const statusText = { 0: 'Offline', 1: 'Online', '-1': 'Unknown' }
+  const lines = [
+    'ESO 服务器状态',
+    ...serverList.map(([key, name]) => `${name}：${statusText[status[key]] || 'Unknown'}`),
+    `数据源：${buildDataSourceLabel()}`
+  ]
+  const maintenance = buildMaintenanceInfo(maintenanceArticle)
+  if (maintenance.length) lines.push('', '维护信息', ...maintenance)
+  if (maintenanceArticle?.publishedAt) lines.push(`公告发布时间：${maintenanceArticle.publishedAt}`)
+  return lines.join('\n')
+}

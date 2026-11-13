@@ -7102,6 +7102,14 @@ class database {
     return null
   }
 
+  /** 列出本地 buff/debuff 条目，供 agent 工具使用。 */
+  async listBuffDebuff (kind = 'buff', limit = 100) {
+    await this.init_database()
+    const data = loadBuffDebuffListFile()
+    const list = kind === 'debuff' ? data.debuffs : data.buffs
+    return (list || []).slice(0, Math.max(1, Math.min(Number(limit) || 100, 200)))
+  }
+
   /** 套装 ID 列表 -> setsData 索引键 */
   async setIdsToSetKeys (setIds) {
     await this.init_database()

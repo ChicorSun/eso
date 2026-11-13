@@ -1,5 +1,17 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { ensureYunzaiLlmIntegration } from './agent-integration.js'
+
+const llmIntegration = ensureYunzaiLlmIntegration()
+if (llmIntegration.installed.length) {
+  logger.mark(`[ESO:LLM] 已部署: ${llmIntegration.installed.join(', ')}`)
+}
+if (llmIntegration.updated.length) {
+  logger.mark(`[ESO:LLM] 已更新: ${llmIntegration.updated.join(', ')}`)
+}
+if (llmIntegration.kept.length) {
+  logger.warn(`[ESO:LLM] 检测到用户维护文件，未覆盖: ${llmIntegration.kept.join(', ')}`)
+}
 
 const dataCustomeDir = path.join(process.cwd(), 'data', 'eso', 'custome_resources')
 const pluginCustomeDir = path.join(process.cwd(), 'plugins', 'eso', 'custome_resources')
