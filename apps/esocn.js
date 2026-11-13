@@ -78,6 +78,10 @@ export class esocn extends plugin {
         {
           reg: 'esocn.com.cn/build/',
           fnc: 'parseBuildLink'
+        },
+        {
+          reg: '^#*(配装|构筑|[Bb][Uu][Ii][Ll][Dd])\\s*[A-Za-z0-9_-]{6,20}$',
+          fnc: 'parseBuildLink'
         }
       ]
     })
@@ -612,7 +616,7 @@ export class esocn extends plugin {
     // 提取 build ID
     const buildId = this.extractBuildId(e.msg)
     if (!buildId) {
-      return await this.reply('无法解析配装链接，请检查链接格式是否正确\n格式示例: https://esocn.com.cn/build/QAMjcC7k')
+      return await this.reply('无法解析配装，请检查格式是否正确\n格式示例: #配装 QAMjcC7k\n或: https://esocn.com.cn/build/QAMjcC7k')
     }
 
     await this.reply('正在获取配装数据，请稍候...')
@@ -657,6 +661,12 @@ export class esocn extends plugin {
     const match = msg.match(/esocn\.com\.cn\/build\/([A-Za-z0-9]+)/i)
     if (match && match[1]) {
       return match[1]
+    }
+
+    // 支持 #配装 ID / #构筑 ID / #build ID，内部等同于 esocn.com.cn/build/<ID>
+    const command = msg.match(/^#*(?:配装|构筑|build)\s*([A-Za-z0-9_-]{6,20})$/i)
+    if (command && command[1]) {
+      return command[1]
     }
     return null
   }
