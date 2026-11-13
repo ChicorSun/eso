@@ -950,9 +950,10 @@ export class atlas extends plugin {
 
     if(name.includes("#"))
     {
+      name = this.normalizeSetQueryText(name)
       const buffHandled = await this.tryShowBuffDebuffAtlas(e, name)
       if (buffHandled) return buffHandled
-      await this.showSets(e)
+      await this.showSets(e, name)
     }
     else if(name.includes("*"))
     {
@@ -973,6 +974,15 @@ export class atlas extends plugin {
         await this.showFurnitures(e)
       }
     }
+  }
+
+  /** 清理套装查询中的通用占位词，例如“#装备名 SPC”“#套装名 法力治愈”。 */
+  normalizeSetQueryText (name) {
+    return name
+      .replace(/装备名|套装名|装备|套装/g, '')
+      .replace(/\s+/g, ' ')
+      .replace(/^#\s+/, '#')
+      .trim()
   }
 
   /** 从 # 指令中解析 buff/debuff 查询词（精确匹配用） */
