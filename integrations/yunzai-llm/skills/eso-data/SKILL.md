@@ -31,6 +31,8 @@ requires_tools:
 - 家具、食物、收藏品家具：`esocn_furniture`、`esocn_search_furniture`、`esocn_search_food`、`esocn_search_collectible`
 - 官方新闻、社区新闻：`esocn_official_news`、`esocn_community_news`
 - QQ 群主和管理员：`qq_group_role`
+- B 站 UP 主、视频列表、单视频、字幕、搜索：`bili_up`、`bili_up_videos`、`bili_video`、`bili_subs`、`bili_search`、`bili_page`
+- B 站视频深度阅读、评论、弹幕、本地转写或 OCR：`bili_watch`
 
 ## 回答规则
 

@@ -6,6 +6,8 @@ import database, {
 import undauntedApi from './model/undauntedApi.js'
 import { getServerStatusText } from './apps/serverStatus.js'
 import { decodeShareLink } from './model/sssDecoder.js'
+import biliApiTools from './bili-api.js'
+import biliWatchTool from './bili-watch-tool.js'
 
 const API = 'https://api.esocn.com.cn'
 
@@ -564,5 +566,7 @@ const TOOLS = [
     }
   }, groupRole)
 ]
+
+TOOLS.push(...biliApiTools, biliWatchTool)
 
 export default TOOLS
