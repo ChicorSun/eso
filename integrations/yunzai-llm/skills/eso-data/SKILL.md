@@ -33,6 +33,7 @@ requires_tools:
 - QQ 群主和管理员：`qq_group_role`
 - B 站 UP 主、视频列表、单视频、字幕、搜索：`bili_up`、`bili_up_videos`、`bili_video`、`bili_subs`、`bili_search`、`bili_page`
 - B 站视频深度阅读、评论、弹幕、本地转写或 OCR：`bili_watch`
+- 静态 `web_fetch` 只能拿到空壳、内容依赖 JavaScript 渲染时：`browser_fetch`
 
 ## 回答规则
 

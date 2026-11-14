@@ -8,6 +8,7 @@ const OWNED_MARKER = 'TRSS-ESO-MANAGED'
 
 const FILES = [
   ['tools/eso-tools.mjs', 'tools/eso-tools.mjs'],
+  ['tools/browser-fetch.mjs', 'tools/browser-fetch.mjs'],
   ['skills/eso-data/SKILL.md', 'skills/eso-data/SKILL.md'],
 ]
 
