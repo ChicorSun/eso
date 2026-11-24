@@ -66,6 +66,27 @@ async function assertPublicUrl(raw) {
 
 let browserPromise
 let idleTimer
+const mirrorCache = new Map()
+
+function scriptMirror(url) {
+  if (/^https:\/\/ajax\.googleapis\.com\/ajax\/libs\/jquery\/1\.11\.3\/jquery(?:\.min)?\.js(?:\?|$)/i.test(url)) {
+    return 'https://cdn.jsdelivr.net/npm/jquery@1.11.3/dist/jquery.min.js'
+  }
+  return ''
+}
+
+async function loadMirror(url) {
+  if (!mirrorCache.has(url)) {
+    mirrorCache.set(url, fetch(url, { signal: AbortSignal.timeout(15000) }).then(async response => {
+      if (!response.ok) throw new Error(`镜像 HTTP ${response.status}`)
+      return response.text()
+    }).catch(error => {
+      mirrorCache.delete(url)
+      throw error
+    }))
+  }
+  return mirrorCache.get(url)
+}
 
 function scheduleBrowserClose() {
   clearTimeout(idleTimer)
@@ -158,8 +179,25 @@ export default {
         if (!/^https?:/i.test(requestUrl) || ++requestCount > 300) {
           return request.abort().catch(() => {})
         }
+        const mirror = scriptMirror(requestUrl)
+        if (mirror) {
+          try {
+            const body = await loadMirror(mirror)
+            return request.respond({
+              status: 200,
+              contentType: 'application/javascript; charset=utf-8',
+              headers: { 'access-control-allow-origin': '*' },
+              body,
+            })
+          } catch {
+            // 镜像失败时继续尝试原地址。
+          }
+        }
         try {
-          await assertPublicUrl(requestUrl)
+          await Promise.race([
+            assertPublicUrl(requestUrl),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('请求地址校验超时')), 5000)),
+          ])
           await request.continue()
         } catch {
           await request.abort().catch(() => {})
