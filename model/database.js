@@ -12,8 +12,101 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import md5 from 'md5'
+import { ESOCN_API } from './esocnApi.js'
 
 const updateImgMode = 0;
+const antiquityLeadCache = new Map()
+const antiquityListCache = new Map()
+const ANTIQUITY_LEAD_TTL = 6 * 60 * 60 * 1000
+const ANTIQUITY_ICON_BASE = 'https://storage.esocn.com.cn'
+const ANTIQUITY_ICON_DIR = path.resolve(process.cwd(), 'data/eso/custome_resources/img/antiquity')
+
+async function fetchAntiquityLeads (setName) {
+  const name = String(setName || '').trim()
+  if (!name) return []
+  const cached = antiquityLeadCache.get(name)
+  if (cached && Date.now() - cached.at < ANTIQUITY_LEAD_TTL) return cached.data
+  try {
+    const response = await fetch(
+      `${ESOCN_API.BASE_URL}/api/antiquities/byEquipment/${encodeURIComponent(name)}`,
+      { signal: AbortSignal.timeout(15000) }
+    )
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const json = await response.json()
+    const data = json?.success === true && Array.isArray(json.data) ? json.data : []
+    antiquityLeadCache.set(name, { at: Date.now(), data })
+    return data
+  } catch (err) {
+    logger.warn(`[ESO:古物] 查询「${name}」线索失败: ${err?.message || err}`)
+    return []
+  }
+}
+
+function antiquityIconUrl (rawIcon) {
+  const raw = String(rawIcon || '').trim()
+  if (!raw) return ''
+  const pathname = raw.startsWith('/') ? raw : `/${raw}`
+  return `${ANTIQUITY_ICON_BASE}${pathname.replace(/\.webp$/i, '.png')}`
+}
+
+async function normalizeAntiquityLead (lead) {
+  const iconUrl = antiquityIconUrl(lead?.icon)
+  let icon = ''
+  let iconPath = ''
+  if (iconUrl) {
+    try {
+      icon = await getimgs.realpath(iconUrl, 'antiquity')
+      const filename = path.basename(decodeURIComponent(new URL(iconUrl).pathname))
+      iconPath = path.join(ANTIQUITY_ICON_DIR, filename)
+    } catch (err) {
+      logger.warn(`[ESO:古物] 下载线索图标失败「${lead?.name || lead?.enName || '未知'}」: ${err?.message || err}`)
+    }
+  }
+  return {
+    id: lead?.id ?? '',
+    name: String(lead?.name || lead?.enName || '').trim(),
+    enName: String(lead?.enName || '').trim(),
+    icon,
+    iconUrl,
+    iconPath,
+    dropHint: String(lead?.dropHint || lead?.dropShort || lead?.dropType || '').trim(),
+    dropType: String(lead?.dropType || '').trim(),
+    zoneName: String(lead?.zoneName || '').trim(),
+    quality: String(lead?.quality || '').trim(),
+    difficulty: String(lead?.difficulty || '').trim(),
+    setId: lead?.setId ?? '',
+    setName: String(lead?.setName || '').trim(),
+    itemTypeName: String(lead?.itemTypeName || '').trim(),
+    loreEntries: Array.isArray(lead?.loreEntries) ? lead.loreEntries : []
+  }
+}
+
+async function fetchAntiquityList (query, limit = 20) {
+  const keyword = String(query || '').trim()
+  const count = Math.max(1, Math.min(Number(limit) || 20, 50))
+  const cacheKey = `${keyword}\n${count}`
+  const cached = antiquityListCache.get(cacheKey)
+  if (cached && Date.now() - cached.at < ANTIQUITY_LEAD_TTL) return cached.data
+  try {
+    const params = new URLSearchParams({
+      page: '1',
+      limit: String(count),
+      ...(keyword ? { searchQuery: keyword } : {})
+    })
+    const response = await fetch(
+      `${ESOCN_API.BASE_URL}/api/antiquities/list?${params}`,
+      { signal: AbortSignal.timeout(15000) }
+    )
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const json = await response.json()
+    const data = json?.success === true && Array.isArray(json.data?.items) ? json.data.items : []
+    antiquityListCache.set(cacheKey, { at: Date.now(), data })
+    return data
+  } catch (err) {
+    logger.warn(`[ESO:古物] 搜索线索「${keyword || '全部'}」失败: ${err?.message || err}`)
+    return []
+  }
+}
 
 /**
  * 按文本估算宽度挑选字号（头图区自适应用）
@@ -2327,6 +2420,16 @@ class database {
         raidNameMap[enCat] = cnCat
       }
     }
+  }
+
+  async getAntiquityLeads (setName) {
+    const leads = await fetchAntiquityLeads(setName)
+    return Promise.all(leads.map(normalizeAntiquityLead))
+  }
+
+  async searchAntiquityLeads (query, limit = 20) {
+    const leads = await fetchAntiquityList(query, limit)
+    return Promise.all(leads.map(normalizeAntiquityLead))
   }
 
   async get_setsPlace (setKey) {
@@ -4655,6 +4758,16 @@ class database {
 
     let imgPath = await getimgs.realpath(setData.atlasData[1].icon, "sets")
     setData.atlasData[1].icon = `../../../../../` + imgPath
+
+    // 神话套装即通过古物系统获取的物品；兼容未来数据直接标记为“古物”。
+    if (
+      setData.atlasData[1].type === '古物' ||
+      Number(setData.atlasData[1].item_class) === 12
+    ) {
+      setData.atlasData[1].isAntiquity = true
+      const antiquityLeads = await this.getAntiquityLeads(setData.atlasData[1].name)
+      if (antiquityLeads.length > 0) setData.atlasData[1].antiquityLeads = antiquityLeads
+    }
 
     // 默认颜色与CSS中一致
     let name_color = '#FFE62D'

@@ -55,6 +55,23 @@
           {{/each}}
         </div>
         {{/if}}
+        {{if val.antiquityLeads && val.antiquityLeads.length > 0}}
+        <div class="antiquity-section">
+          <div class="antiquity-title">古物线索</div>
+          {{each val.antiquityLeads lead}}
+          <div class="antiquity-row">
+            {{if lead.icon}}<img class="antiquity-icon" src="{{lead.icon}}" />{{/if}}
+            <div class="antiquity-info">
+              <div class="antiquity-name-line">
+                <span class="antiquity-cn">{{lead.name}}</span>
+                {{if lead.enName}}<span class="antiquity-en">&lt;{{lead.enName}}&gt;</span>{{/if}}
+              </div>
+              {{if lead.dropHint}}<div class="antiquity-drop">{{lead.dropHint}}</div>{{/if}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        {{/if}}
         <div class="logo">Created By ESO-Bot</div>
       </div>
     </div>

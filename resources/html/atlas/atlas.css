@@ -212,6 +212,88 @@ body.atlas-single {
   margin: 2px 0;
 }
 
+.antiquity-section {
+  width: calc(100% - 12px);
+  margin: 8px auto 0 auto;
+  padding: 6px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 5px;
+}
+
+.antiquity-title {
+  font-size: 11px;
+  color: #9aa8b4;
+  line-height: 140%;
+  margin: 0 2px 4px 2px;
+  text-align: center;
+}
+
+.antiquity-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.antiquity-row:last-child {
+  border-bottom: 0;
+}
+
+.antiquity-icon {
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.antiquity-info {
+  min-width: 0;
+}
+
+.antiquity-name-line {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.antiquity-cn {
+  font-size: 12px;
+  line-height: 135%;
+  color: #e4c66c;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+}
+
+.antiquity-en {
+  font-size: 10px;
+  line-height: 135%;
+  color: #cda646;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.antiquity-drop {
+  min-width: 0;
+  font-size: 11px;
+  line-height: 135%;
+  color: #d7d2c8;
+  margin-top: 2px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
 .logo {
   font-size: 11px;
   font-family: "tttgbnumber";

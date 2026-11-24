@@ -2014,7 +2014,7 @@ export class atlas extends plugin {
   }
 
   async cache (data, cachedata) {
-    const layoutVer = 'atlasCardV11'
+    const layoutVer = 'atlasCardV12'
     let tmp = md5(JSON.stringify(data) + layoutVer)
     if (cachedata.md5 == tmp) return cachedata.img
 

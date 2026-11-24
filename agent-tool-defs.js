@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import database, {
   getScriptList,
   isSetIndexResultEmpty,
@@ -75,6 +76,48 @@ function itemEn (item) {
   return stripHtml(item?.new_en_name || item?.name_en || item?.src_en_name || item?.enName || '')
 }
 
+function antiquityLeadLines (lead, index, includeLore = false) {
+  const name = lead?.name || lead?.enName || '未知线索'
+  const en = String(lead?.enName || '').replace(/[<>]/g, '')
+  const lines = [`${index}. 【${name}】${en && en !== name ? ` <${en}>` : ''}`]
+  lines.push(`   图标：${lead?.iconUrl || '未获取'}`)
+  if (lead?.dropHint) lines.push(`   出处：${lead.dropHint}`)
+  if (lead?.dropType && lead.dropType !== lead.dropHint) lines.push(`   获取方式：${lead.dropType}`)
+  if (lead?.zoneName) lines.push(`   地区：${lead.zoneName}`)
+  if (lead?.itemTypeName) lines.push(`   物品类型：${lead.itemTypeName}`)
+  if (lead?.quality) lines.push(`   品质：${lead.quality}`)
+  if (lead?.difficulty) lines.push(`   难度：${lead.difficulty}`)
+  if (includeLore && Array.isArray(lead?.loreEntries) && lead.loreEntries.length) {
+    lines.push('   线索故事：')
+    for (const entry of lead.loreEntries) {
+      lines.push(`   · ${entry?.name || '佚名'}：${stripHtml(entry?.description || '')}`)
+    }
+  }
+  return lines
+}
+
+function formatAntiquityLeads (leads, includeLore = false, heading = '古物线索') {
+  if (!Array.isArray(leads) || leads.length === 0) return ''
+  const lines = [`${heading}（${leads.length}）：`]
+  leads.forEach((lead, index) => lines.push(...antiquityLeadLines(lead, index + 1, includeLore)))
+  return lines.join('\n')
+}
+
+function antiquityImageParts (leads, max = 8) {
+  const images = []
+  const seen = new Set()
+  for (const lead of leads) {
+    const file = String(lead?.iconPath || '')
+    if (!file || seen.has(file) || !fs.existsSync(file)) continue
+    try {
+      images.push({ type: 'image', data: fs.readFileSync(file).toString('base64'), mime: 'image/png' })
+      seen.add(file)
+      if (images.length >= max) break
+    } catch {}
+  }
+  return images
+}
+
 function formatItem (item, index = 0) {
   const name = itemName(item)
   const en = itemEn(item)
@@ -95,6 +138,11 @@ function formatItem (item, index = 0) {
   }
   const extra = stripHtml(item.new_msg)
   if (extra && !lines.some(line => line.includes(extra))) lines.push(extra)
+  if (Array.isArray(item.antiquityLeads) && item.antiquityLeads.length) {
+    lines.push('', formatAntiquityLeads(item.antiquityLeads))
+  } else if (item.isAntiquity || item.type === '神话') {
+    lines.push('', '古物线索：暂未查到')
+  }
   return lines.join('\n')
 }
 
@@ -361,6 +409,34 @@ async function searchScribing (query = '') {
   return items.map((item, index) => formatItem(item, index + 1)).join('\n\n')
 }
 
+async function antiquityLeads (query = '', limit = 20, includeLore = false) {
+  const q = cleanQuery(query)
+  if (!q) throw new Error('请给出神话装备名或古物线索名')
+
+  const setItems = await loadAtlasItems(`#${q}`, 1, 1, 8)
+  const mythicItems = setItems.filter(item =>
+    item?.isAntiquity || Number(item?.item_class) === 12 || item?.type === '神话'
+  )
+  const equipped = mythicItems.filter(item => item?.antiquityLeads?.length)
+  if (equipped.length) {
+    const leads = equipped.flatMap(item => item.antiquityLeads)
+    const content = equipped.map(item =>
+      `【${itemName(item)}】${itemEn(item) ? ` <${itemEn(item)}>` : ''}\n${formatAntiquityLeads(item.antiquityLeads, includeLore)}`
+    ).join('\n\n')
+    return { content, images: antiquityImageParts(leads) }
+  }
+
+  const leads = await database.searchAntiquityLeads(q, limit)
+  if (!leads.length) {
+    if (mythicItems.length) return `【${itemName(mythicItems[0])}】暂未查到古物线索。`
+    return `没找到与「${q}」相关的古物线索。`
+  }
+  return {
+    content: formatAntiquityLeads(leads, includeLore, `「${q}」古物线索`),
+    images: antiquityImageParts(leads)
+  }
+}
+
 async function groupRole (args, ctx) {
   const groupId = String(args.group || ctx.e?.group_id || '').trim()
   if (!/^\d+$/.test(groupId)) throw new Error('请给出正确的群号')
@@ -400,7 +476,11 @@ function define (name, description, parameters, execute) {
     parameters,
     async run (args = {}, ctx) {
       try {
-        return { content: String(await execute(args, ctx)) }
+        const result = await execute(args, ctx)
+        if (result && typeof result === 'object' && !Array.isArray(result)) {
+          return { ...result, content: String(result.content ?? '') }
+        }
+        return { content: String(result) }
       } catch (err) {
         return { content: `${description.split('。')[0]}失败：${err?.message || err}`, isError: true }
       }
@@ -427,22 +507,47 @@ const TOOLS = [
   define('esocn_community_news', '查询 ESOCN 社区新闻列表，或按 id 读取详情。', {
     type: 'object', properties: { id: { type: 'string', description: '可选社区新闻 id' } }
   }, args => communityNews(args.id)),
-  define('esocn_search_equip', '搜索 ESO 装备套装，返回类型、护甲、出处和套装效果。', {
+  define('esocn_search_equip', '搜索 ESO 装备套装，返回类型、护甲、出处和套装效果；神话装备还会返回完整古物线索、图标地址和线索出处。', {
     type: 'object', required: ['query'], properties: { query: { type: 'string', description: '套装中英文名或简称' } }
   }, async args => {
     const query = cleanQuery(args.query)
     if (!query) throw new Error('请给出套装名')
     const items = await loadAtlasItems(`#${query}`, 1, 1, 8)
-    return items.length ? items.map(item => formatItem(item)).join('\n\n') : `没找到套装「${query}」。`
+    if (!items.length) return `没找到套装「${query}」。`
+    const leads = items.flatMap(item => item.antiquityLeads || [])
+    return {
+      content: items.map(item => formatItem(item)).join('\n\n'),
+      images: antiquityImageParts(leads)
+    }
   }),
   define('esocn_set_place', '查询某个套装在哪里掉落或获取。', {
     type: 'object', required: ['name'], properties: { name: { type: 'string', description: '套装名' } }
   }, async args => {
     const items = await loadAtlasItems(`#${cleanQuery(args.name)}`, 1, 1, 3)
-    return items.length
-      ? items.map(item => `【${itemName(item)}】\n地点：${item.place || '未知'}\n英文：${stripHtml(item.place_en || '')}`).join('\n\n')
-      : `没找到套装「${args.name}」。`
+    if (!items.length) return `没找到套装「${args.name}」。`
+    const leads = items.flatMap(item => item.antiquityLeads || [])
+    return {
+      content: items.map(item => {
+        const lines = [
+          `【${itemName(item)}】`,
+          `地点：${item.place || '未知'}`,
+          `英文：${stripHtml(item.place_en || '')}`
+        ]
+        if (item.antiquityLeads?.length) lines.push('', formatAntiquityLeads(item.antiquityLeads))
+        return lines.join('\n')
+      }).join('\n\n'),
+      images: antiquityImageParts(leads)
+    }
   }),
+  define('esocn_antiquity_leads', '查询神话装备的古物线索，或按古物中英文名称检索。返回每条线索的中英文名、图标直链、出处、获取方式、地区、物品类型和品质；可按需返回完整线索故事。', {
+    type: 'object',
+    required: ['query'],
+    properties: {
+      query: { type: 'string', description: '神话装备中英文名、简称，或古物线索中英文名' },
+      limit: { type: 'number', description: '按线索名检索时最多返回几条，默认 20，最多 50' },
+      includeLore: { type: 'boolean', description: '是否返回线索故事全文，默认 false' }
+    }
+  }, args => antiquityLeads(args.query, args.limit, args.includeLore === true)),
   define('esocn_search_skill', '搜索技能、职业精通或篆刻技能，返回类型、消耗、参数和效果。', {
     type: 'object', required: ['query'], properties: { query: { type: 'string', description: '技能中英文名或职业精通' } }
   }, async args => {

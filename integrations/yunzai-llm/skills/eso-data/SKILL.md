@@ -4,6 +4,7 @@ name: eso-data
 description: 查询《上古卷轴OL》(ESO)数据时使用；覆盖装备套装、技能与篆刻、Buff 出处、副本、商人、配装、攻略、新闻和服务器状态
 requires_tools:
   - esocn_search_equip
+  - esocn_antiquity_leads
   - esocn_search_skill
 ---
 
@@ -15,7 +16,8 @@ requires_tools:
 
 - 版本或数据新旧：`esocn_version`、`esocn_data_status`
 - 服务器在线与维护：优先 `esocn_server_status`
-- 装备与套装效果：`esocn_search_equip`
+- 装备与套装效果：`esocn_search_equip`；神话装备会附带古物线索
+- 神话装备的古物线索、线索图标、获取地点，或按古物名反查：`esocn_antiquity_leads`
 - 套装出处：`esocn_set_place`
 - 技能、职业精通：`esocn_search_skill`
 - 篆刻魔典、脚本和组合合法性：`esocn_scribing`

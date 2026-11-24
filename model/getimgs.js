@@ -5,7 +5,7 @@ import path from 'node:path'
  *  - news     新闻封面（esosslfiles-a.akamaihd.net）
  *  - bd_covers 配装封面（storage.esocn.com.cn/builds/xxx.jpeg）
  */
-const URL_DOWNLOAD_TYPES = ['news', 'bd_covers']
+const URL_DOWNLOAD_TYPES = ['news', 'bd_covers', 'antiquity']
 
 class getimgs {
   async realpath (name, type) {
@@ -24,7 +24,11 @@ class getimgs {
       const dir = path.dirname(customImg)
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
       if (!fs.existsSync(customImg)) {
-        const label = type === 'news' ? '新闻封面' : '配装封面'
+        const label = {
+          news: '新闻封面',
+          bd_covers: '配装封面',
+          antiquity: '古物线索图标'
+        }[type] || '图片'
         logger.info(`[getimgs] 下载${label}: ` + url + ' -> ' + customImg)
         try {
           await Bot.download(url, customImg)
