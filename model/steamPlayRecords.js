@@ -2,9 +2,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const STORE_PATH = './data/eso/custome_resources/steam/data/steam_play_records.json'
-const KEEP_DAYS = 30
+const KEEP_DAYS = 365
 /** 日分界：凌晨 4 点 */
 const DAY_BOUNDARY_HOUR = 4
+/** Steam 版《上古卷轴OL》AppID；排行榜只统计该游戏。 */
+const ESO_APPID = '306130'
+
+function isRankedApp (appid) {
+  return String(appid || '') === ESO_APPID
+}
 
 class SteamPlayRecords {
   constructor () {
@@ -63,6 +69,38 @@ class SteamPlayRecords {
   }
 
   /**
+   * 查询原始游玩会话。排行榜可以另行过滤，历史查询保留所有游戏。
+   * @param {{ start?: number, end?: number, steamIds?: string[], appid?: string, game?: string, limit?: number, offset?: number }} options
+   */
+  query ({
+    start = 0,
+    end = Date.now(),
+    steamIds = [],
+    appid = '',
+    game = '',
+    limit = 100,
+    offset = 0
+  } = {}) {
+    const ids = new Set(steamIds.map(id => String(id)))
+    const appidText = String(appid || '').trim()
+    const gameText = String(game || '').trim().toLowerCase()
+    const matched = this.records
+      .filter(r => r.end >= start && r.start <= end)
+      .filter(r => !ids.size || ids.has(String(r.steamId)))
+      .filter(r => !appidText || String(r.appid) === appidText)
+      .filter(r => !gameText || String(r.game || '').toLowerCase().includes(gameText))
+      .sort((a, b) => b.start - a.start)
+    const pageLimit = Math.max(1, Math.min(Number(limit) || 100, 500))
+    const pageOffset = Math.max(0, Number(offset) || 0)
+    return {
+      total: matched.length,
+      offset: pageOffset,
+      limit: pageLimit,
+      records: matched.slice(pageOffset, pageOffset + pageLimit)
+    }
+  }
+
+  /**
    * 聚合最近 days 个统计日的数据（含今天）
    * @returns { days, startDay, endDay, perUser: Map(steamId -> {totalMin, games: Map(game -> min)}) }
    */
@@ -74,6 +112,8 @@ class SteamPlayRecords {
 
     const perUser = new Map()
     for (const r of this.records) {
+      // 兼容过滤旧版本写入的其他游戏记录。
+      if (!isRankedApp(r.appid)) continue
       const day = this.statDay(r.end)
       if (!daySet.has(day)) continue
       if (!perUser.has(r.steamId)) {

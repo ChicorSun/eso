@@ -7,6 +7,9 @@ import database, {
 import undauntedApi from './model/undauntedApi.js'
 import { getServerStatusText } from './apps/serverStatus.js'
 import { decodeShareLink } from './model/sssDecoder.js'
+import SpeechAnalytics from './model/speechAnalytics.js'
+import SteamPlayRecords from './model/steamPlayRecords.js'
+import SteamUser from './model/steamUser.js'
 import biliApiTools from './bili-api.js'
 import biliWatchTool from './bili-watch-tool.js'
 
@@ -365,6 +368,54 @@ async function buildDetail (id) {
   return `配装详情：\n${JSON.stringify(data, null, 2).slice(0, 7500)}`
 }
 
+function formatEsocnUser (data, fallbackName) {
+  if (!data?.userId && !data?.username) return ''
+  return [
+    `【${data.username || fallbackName}】ESOCN 账号`,
+    `用户 ID：${data.userId || '未知'}`,
+    `等级：${data.rank === '' || data.rank == null ? '未设置' : data.rank}`,
+    `游戏 ID（CID）：${data.cid || '未设置'}`,
+    `服务器：${data.server || '未设置'}`,
+    `定位标签：${data.roleTag || '未设置'}`,
+    `玩法标签：${data.playstyleTag || '未设置'}`,
+    `头像：${data.avatar || '未设置'}`,
+    `签名：${data.sign || '未设置'}`
+  ].join('\n')
+}
+
+async function esocnUserByName (username) {
+  const name = String(username || '').trim().replace(/^@+/, '')
+  if (!name) throw new Error('请给出 ESOCN 用户名')
+  let data
+  try {
+    data = await apiJson('/api/user/getUserInfoByName', {
+      method: 'POST',
+      body: JSON.stringify({ username: name })
+    })
+  } catch (err) {
+    if (/HTTP 404/.test(String(err?.message || err))) return `没找到 ESOCN 用户「${name}」。`
+    throw err
+  }
+  return formatEsocnUser(data, name) || `没找到 ESOCN 用户「${name}」。`
+}
+
+async function esocnUserById (userId) {
+  const raw = String(userId || '').trim()
+  if (!raw) throw new Error('请给出 ESOCN 用户 ID')
+  const id = /^\d+$/.test(raw) ? raw.padStart(7, '0') : raw
+  let data
+  try {
+    data = await apiJson('/api/user/getUserInfo', {
+      method: 'POST',
+      body: JSON.stringify({ userId: id })
+    })
+  } catch (err) {
+    if (/HTTP 404/.test(String(err?.message || err))) return `没找到 ESOCN 用户 ID「${id}」。`
+    throw err
+  }
+  return formatEsocnUser(data, id) || `没找到 ESOCN 用户 ID「${id}」。`
+}
+
 async function guides (query = '', category = '', limit = 15) {
   const params = new URLSearchParams({ page: '1', limit: '100' })
   if (category) params.set('category', category)
@@ -407,6 +458,196 @@ async function searchScribing (query = '') {
   const items = await loadAtlasItems(`*篆刻${q ? ` ${q}` : ''}`, 2, 2, 12)
   if (!items.length) return `没找到篆刻技能「${q || '全部'}」。`
   return items.map((item, index) => formatItem(item, index + 1)).join('\n\n')
+}
+
+function formatSteamTime (timestamp) {
+  const value = Number(timestamp)
+  if (!Number.isFinite(value)) return '未知'
+  return new Date(value + 8 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ')
+}
+
+function formatSteamDuration (minutes) {
+  const total = Math.max(0, Math.round(Number(minutes) || 0))
+  const hours = Math.floor(total / 60)
+  const mins = total % 60
+  return `${hours ? `${hours}小时` : ''}${mins}分钟`
+}
+
+function steamBindingsForQq (qqId, label = '') {
+  return SteamUser.getAllBindings(qqId).map(binding => ({
+    qqId: String(qqId),
+    label: label || String(qqId),
+    steamId: String(binding.steamId || ''),
+    steamName: String(binding.steamName || '')
+  })).filter(binding => binding.steamId)
+}
+
+async function groupSteamBindings (args, ctx) {
+  const scope = args.scope === 'all' ? 'all' : 'group'
+  if (scope === 'all' && !ctx.isAdmin) throw new Error('只有管理员可以查询全部绑定账号的 Steam 游玩历史')
+
+  if (scope === 'all') {
+    const bindings = []
+    for (const qqId of Object.keys(SteamUser.getAllUsers())) {
+      if (args.qq && String(args.qq) !== String(qqId)) continue
+      bindings.push(...steamBindingsForQq(qqId))
+    }
+    return { scope, groupId: '', bindings }
+  }
+
+  const groupId = String(args.group || ctx.e?.group_id || '').trim()
+  if (!/^\d+$/.test(groupId)) throw new Error('当前不是群聊，请提供群号 group')
+  const group = String(ctx.e?.group_id) === groupId
+    ? ctx.e.group
+    : globalThis.Bot?.[ctx.e?.self_id]?.pickGroup?.(Number(groupId))
+  if (!group) throw new Error(`无法访问群 ${groupId}`)
+
+  const members = await group.getMemberMap()
+  const bindings = []
+  for (const [qqId, member] of members) {
+    if (args.qq && String(args.qq) !== String(qqId)) continue
+    const label = member?.card || member?.nickname || String(qqId)
+    bindings.push(...steamBindingsForQq(qqId, label))
+  }
+  return { scope, groupId, bindings }
+}
+
+async function steamPlayHistory (args = {}, ctx = {}) {
+  const days = Math.max(1, Math.min(Math.floor(Number(args.days) || 365), 365))
+  const page = Math.max(1, Math.floor(Number(args.page) || 1))
+  const pageSize = Math.max(1, Math.min(Math.floor(Number(args.pageSize) || 30), 100))
+  const { scope, groupId, bindings } = await groupSteamBindings(args, ctx)
+
+  const filteredBindings = bindings.filter(binding => {
+    if (args.steamId && String(args.steamId) !== binding.steamId) return false
+    return true
+  })
+  if (!filteredBindings.length) {
+    return scope === 'group'
+      ? `群 ${groupId} 中没有符合条件且已绑定 Steam 的群友。`
+      : '没有符合条件的 Steam 绑定账号。'
+  }
+
+  const bindingMap = new Map()
+  for (const binding of filteredBindings) {
+    if (!bindingMap.has(binding.steamId)) bindingMap.set(binding.steamId, binding)
+  }
+  const end = Date.now()
+  const start = end - days * 24 * 3600 * 1000
+  const offset = (page - 1) * pageSize
+  const result = SteamPlayRecords.query({
+    start,
+    end,
+    steamIds: [...bindingMap.keys()],
+    appid: args.appid,
+    game: args.game,
+    limit: pageSize,
+    offset
+  })
+  const totalPages = Math.max(1, Math.ceil(result.total / pageSize))
+  const scopeText = scope === 'group' ? `群 ${groupId}` : '全部绑定账号'
+  const lines = [
+    `Steam 游玩会话历史（${scopeText}）`,
+    `时间范围：${formatSteamTime(start)} 至 ${formatSteamTime(end)}（北京时间）`,
+    `共 ${result.total} 场，第 ${page}/${totalPages} 页，本页 ${result.records.length} 场`
+  ]
+  if (!result.records.length) return [...lines, '', '该时间范围内没有游玩记录。'].join('\n')
+
+  result.records.forEach((record, index) => {
+    const binding = bindingMap.get(String(record.steamId)) || {}
+    lines.push(
+      '',
+      `${offset + index + 1}. 群友：${binding.label || record.name || record.steamId}（QQ ${binding.qqId || '未知'}）`,
+      `   Steam：${binding.steamName || record.name || record.steamId}（${record.steamId}）`,
+      `   开始：${formatSteamTime(record.start)}`,
+      `   结束：${formatSteamTime(record.end)}`,
+      `   时长：${formatSteamDuration(record.minutes)}`,
+      `   游戏：${record.game || '未知'}`,
+      `   AppID：${record.appid || '未知'}`
+    )
+  })
+  if (page < totalPages) lines.push('', `继续查询下一页请传 page=${page + 1}。`)
+  return lines.join('\n')
+}
+
+function resolveSpeechGroup (args = {}, ctx = {}) {
+  const current = String(ctx.e?.group_id || '').trim()
+  const groupId = String(args.group || current).trim()
+  if (!groupId) throw new Error('当前不是群聊，请提供群号 group')
+  if (!/^[A-Za-z0-9_-]+$/.test(groupId)) throw new Error('群号格式不正确')
+  if (current && groupId !== current && !ctx.isAdmin) throw new Error('只有管理员可以查询其他群的发言统计')
+  if (!current && !ctx.isAdmin) throw new Error('只有管理员可以指定群号查询发言统计')
+  return groupId
+}
+
+function speechRankTool (args = {}, ctx = {}) {
+  const groupId = resolveSpeechGroup(args, ctx)
+  const result = SpeechAnalytics.rank({
+    groupId,
+    period: args.period,
+    date: args.date,
+    metric: args.metric
+  })
+  const periodLabel = { day: '日榜', month: '月榜', year: '近12个月年榜' }[result.period]
+  const metricLabel = result.metric === 'words' ? '文本字符数' : '发言次数'
+  const lines = [
+    `群 ${groupId} 发言${periodLabel} · 按${metricLabel}`,
+    `统计范围：${result.rangeText}`,
+    `参与成员：${result.total} 人 · 发言总数：${result.totalNumber} 次 · 文本总字符数：${result.totalWords}`
+  ]
+  if (!result.entries.length) return [...lines, '', '该时间段没有发言记录。'].join('\n')
+  for (const item of result.entries) {
+    lines.push(`${item.rank}. ${item.nickname}（${item.userId}）：${item.number}次 / ${item.words}字 / 均${item.averageWords}字`)
+  }
+  return lines.join('\n')
+}
+
+function speechMemberTool (args = {}, ctx = {}) {
+  const groupId = resolveSpeechGroup(args, ctx)
+  const member = String(args.member || ctx.e?.user_id || '').trim()
+  if (!member) throw new Error('请提供群友 QQ、平台用户 ID 或昵称')
+  const result = SpeechAnalytics.memberStats({
+    groupId,
+    member,
+    days: args.days
+  })
+  if (result.notFound) {
+    if (!result.candidates.length) return `群 ${groupId} 中没有找到成员「${member}」。`
+    return [
+      `群 ${groupId} 中有多个成员匹配「${member}」，请使用用户 ID 或更完整昵称：`,
+      ...result.candidates.map(item => `· ${item.nickname}（${item.userId}）`)
+    ].join('\n')
+  }
+
+  const activityByMonth = new Map()
+  for (const item of result.activities) {
+    const month = item.date.slice(0, 7)
+    if (!activityByMonth.has(month)) activityByMonth.set(month, [])
+    activityByMonth.get(month).push(`${item.date.slice(8)}日 ${item.number}次/${item.words}字`)
+  }
+  const lines = [
+    `发言成员统计 · 群 ${groupId}`,
+    `成员：${result.member.nickname}（${result.member.userId}）`,
+    `范围：${result.startDate} 至 ${result.endDate}`,
+    `总发言：${result.totalNumber} 次`,
+    `文本总量：${result.totalWords} 个字符`,
+    `平均长度：${result.averageWords} 字/条`,
+    `活跃天数：${result.activeDays} 天`,
+    `当前连续发言：${result.currentStreak} 天（从今天连续向前）`,
+    `最长连续发言：${result.longestStreak} 天`,
+    `首次记录：${result.firstDate || '无'} · 最后记录：${result.lastDate || '无'}`,
+    '',
+    `按月统计（${result.months.length}）：`,
+    ...(result.months.length
+      ? result.months.map(item => `· ${item.month}：${item.number} 次，${item.words} 字，活跃 ${item.activeDays} 天`)
+      : ['（无）']),
+    '',
+    `有发言的日期（${result.activityTotal}）：`,
+    ...(activityByMonth.size
+      ? [...activityByMonth].map(([month, items]) => `· ${month}：${items.join('；')}`)
+      : ['（无）'])
+  ]
+  return lines.join('\n')
 }
 
 async function antiquityLeads (query = '', limit = 20, includeLore = false) {
@@ -597,6 +838,20 @@ const TOOLS = [
   define('esocn_build_detail', '读取 ESOCN 配装 ID、链接或完整 SuperStar 分享码。', {
     type: 'object', required: ['id'], properties: { id: { type: 'string', description: '配装 ID、链接或完整 |H1:sss:...|h 分享码' } }
   }, args => buildDetail(args.id)),
+  define('esocn_user_info_by_name', '按 ESOCN 用户名查询账号公开资料，返回用户 ID、等级 rank、头像、签名、游戏 CID、服务器、定位和玩法标签。', {
+    type: 'object',
+    required: ['username'],
+    properties: {
+      username: { type: 'string', description: 'ESOCN 用户名，可带或不带开头的 @' }
+    }
+  }, args => esocnUserByName(args.username)),
+  define('esocn_user_info_by_id', '按 ESOCN 用户 ID 查询账号公开资料，返回用户名、等级 rank、头像、签名、游戏 CID、服务器、定位和玩法标签。用户 ID 会自动补足 7 位。', {
+    type: 'object',
+    required: ['userId'],
+    properties: {
+      userId: { type: 'string', description: 'ESOCN 用户 ID，例如 0000010；纯数字会自动补足 7 位' }
+    }
+  }, args => esocnUserById(args.userId)),
   define('esocn_buff_list', '列出 ESO 增益或减益 Buff。', {
     type: 'object', properties: {
       kind: { type: 'string', enum: ['buff', 'debuff'], description: '默认 buff' },
@@ -664,6 +919,37 @@ const TOOLS = [
     await database.init_database()
     return `ESOCN 数据版本：${version}\n游戏版本：${gameVersion || '未知'}\n本地 ESO 图鉴数据库：已加载`
   }),
+  define('esocn_steam_play_history', '查询当前群友过去一年内每一次 Steam 游玩会话的北京时间开始时间、结束时间和时长，并标明游戏名与 AppID。记录保留一年、包含所有 Steam 游戏；支持按群、成员、游戏、AppID、时间范围和分页筛选。', {
+    type: 'object',
+    properties: {
+      scope: { type: 'string', enum: ['group', 'all'], description: '默认 group；all 仅管理员可用' },
+      group: { type: 'string', description: '群号；默认当前群' },
+      qq: { type: 'string', description: '可选，只查询指定群友 QQ' },
+      steamId: { type: 'string', description: '可选，只查询指定 SteamID' },
+      days: { type: 'number', description: '默认 365，最多 365 天' },
+      game: { type: 'string', description: '可选，按游戏名关键词筛选' },
+      appid: { type: 'string', description: '可选，按 Steam AppID 精确筛选' },
+      page: { type: 'number', description: '默认第 1 页' },
+      pageSize: { type: 'number', description: '每页条数，默认 30，最多 100' }
+    }
+  }, (args, ctx) => steamPlayHistory(args, ctx)),
+  define('esocn_speech_rank', '查询某群的发言榜，可按日榜、月榜或最近12个月年榜排序，并选择按发言次数或文本字符数排序。一次返回全部成员的发言次数、字符数和平均长度。', {
+    type: 'object',
+    properties: {
+      group: { type: 'string', description: '群号；默认当前群；其他群仅管理员可查' },
+      period: { type: 'string', enum: ['day', 'month', 'year'], description: '默认 day；year 表示截至指定月份的最近12个月' },
+      date: { type: 'string', description: 'day 用 YYYY-MM-DD；month/year 用 YYYY-MM；默认今天/当前月' },
+      metric: { type: 'string', enum: ['number', 'words'], description: '默认 number（发言次数），words 表示文本字符数' }
+    }
+  }, (args, ctx) => speechRankTool(args, ctx)),
+  define('esocn_speech_member_stats', '查询某位群友的发言历史、总发言次数、总字符数、每月累计、全部活跃日期、活跃天数、当前连续和最长连续发言天数。默认统计当前成员最近365天。', {
+    type: 'object',
+    properties: {
+      group: { type: 'string', description: '群号；默认当前群；其他群仅管理员可查' },
+      member: { type: 'string', description: 'QQ/平台用户ID或昵称；默认当前发消息的成员' },
+      days: { type: 'number', description: '回看天数，默认365，最多3650' }
+    }
+  }, (args, ctx) => speechMemberTool(args, ctx)),
   define('qq_group_role', '查询群成员身份、群主和管理员。', {
     type: 'object', properties: {
       group: { type: 'string', description: '群号；默认当前群' },

@@ -672,7 +672,7 @@ export class steam extends plugin {
    • #steam库存 [SteamID] - 查看库存
    • #steam愿望单 [SteamID] - 查看愿望单
    • #steam列表 - 查看所有绑定玩家的当前状态
-   • #steam排行 [天数] - 查看游戏时长排行榜
+   • #steam排行 [天数] - 查看 ESO 游戏时长排行榜（仅统计《上古卷轴OL》）
 
  商店相关：
    • #steam搜索 <游戏名> - 搜索Steam游戏
@@ -2866,4 +2866,4 @@ export class steam extends plugin {
     const fileName = await this.downloadSteamImage(imageUrl, type, identifier)
     return fileName !== null
   }
-} 
+}

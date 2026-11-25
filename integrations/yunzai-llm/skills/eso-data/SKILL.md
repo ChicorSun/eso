@@ -6,6 +6,11 @@ requires_tools:
   - esocn_search_equip
   - esocn_antiquity_leads
   - esocn_search_skill
+  - esocn_steam_play_history
+  - esocn_speech_rank
+  - esocn_speech_member_stats
+  - esocn_user_info_by_name
+  - esocn_user_info_by_id
 ---
 
 # ESO 数据查询
@@ -18,6 +23,9 @@ requires_tools:
 - 服务器在线与维护：优先 `esocn_server_status`
 - 装备与套装效果：`esocn_search_equip`；神话装备会附带古物线索
 - 神话装备的古物线索、线索图标、获取地点，或按古物名反查：`esocn_antiquity_leads`
+- 群友 Steam 每次游玩的开始/结束时间、时长、游戏名和 AppID（默认过去一年）：`esocn_steam_play_history`
+- 群发言日榜、月榜、最近12个月排行，支持按发言次数或字符数：`esocn_speech_rank`
+- 某群友的逐日发言记录、月度累计、总次数/字数、活跃天数和连续发言天数：`esocn_speech_member_stats`
 - 套装出处：`esocn_set_place`
 - 技能、职业精通：`esocn_search_skill`
 - 篆刻魔典、脚本和组合合法性：`esocn_scribing`
@@ -29,6 +37,8 @@ requires_tools:
 - 本周试炼/竞技场：`esocn_weekly_trial`
 - 商人：`esocn_vendor`
 - 配装列表、详情或分享码：`esocn_builds`、`esocn_build_detail`
+- 按用户名查询 ESOCN 账号公开资料和 rank：`esocn_user_info_by_name`
+- 按用户 ID 查询 ESOCN 账号公开资料和 rank：`esocn_user_info_by_id`
 - 攻略：`esocn_guides`，拿到 ID 后再用 `esocn_guide_detail`
 - 家具、食物、收藏品家具：`esocn_furniture`、`esocn_search_furniture`、`esocn_search_food`、`esocn_search_collectible`
 - 官方新闻、社区新闻：`esocn_official_news`、`esocn_community_news`
