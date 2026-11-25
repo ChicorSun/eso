@@ -8,22 +8,6 @@ function groupOf (ctx) {
   return { e, group: e.group, groupId }
 }
 
-function callerRole (ctx) {
-  const e = ctx?.e
-  if (ctx?.isAdmin) return 'owner'
-  const role = String(e?.sender?.role || e?.member?.role || '').toLowerCase()
-  if (role === 'owner' || role === 'admin') return role
-  if (e?.member?.is_owner) return 'owner'
-  if (e?.member?.is_admin) return 'admin'
-  return 'member'
-}
-
-function assertModerator (ctx) {
-  const role = callerRole(ctx)
-  if (role === 'owner' || role === 'admin') return role
-  throw new Error('权限不足：只有群主、管理员或机器人主人可以执行群管理操作')
-}
-
 function memberId (member) {
   return String(member?.user_id ?? member?.qq ?? member?.id ?? '')
 }
@@ -100,7 +84,6 @@ async function sourceMember (group, userId) {
 }
 
 export async function muteGroupMember ({ target, durationSeconds, reason = '' } = {}, ctx) {
-  const caller = assertModerator(ctx)
   const { e, group, groupId } = groupOf(ctx)
   const member = await resolveMember(group, target, e)
   const userId = memberId(member)
@@ -109,7 +92,6 @@ export async function muteGroupMember ({ target, durationSeconds, reason = '' } 
 
   const role = String(member?.role || '').toLowerCase()
   if (role === 'owner') throw new Error('不能禁言群主')
-  if (role === 'admin' && caller !== 'owner') throw new Error('管理员不能禁言其他管理员')
 
   const seconds = Number(durationSeconds)
   if (!Number.isInteger(seconds) || seconds < 0 || seconds > MAX_MUTE_SECONDS) {
@@ -127,7 +109,6 @@ export async function muteGroupMember ({ target, durationSeconds, reason = '' } 
 }
 
 export async function recallGroupMessage ({ messageId = '', useReply = true } = {}, ctx) {
-  assertModerator(ctx)
   const { e, group, groupId } = groupOf(ctx)
   const explicitId = String(messageId || '').trim()
   const sourceId = explicitId || (useReply === false ? '' : replyMessageId(e))

@@ -951,7 +951,7 @@ const TOOLS = [
       days: { type: 'number', description: '回看天数，默认365，最多3650' }
     }
   }, (args, ctx) => speechMemberTool(args, ctx)),
-  define('qq_group_mute', '在当前 QQ 群禁言或解除禁言指定成员。仅群主、管理员或机器人主人可用；不能禁言群主，管理员不能禁言其他管理员，最长30天。', {
+  define('qq_group_mute', '在当前 QQ 群禁言或解除禁言指定成员。不能禁言群主，最长30天。', {
     type: 'object',
     required: ['durationSeconds'],
     properties: {
@@ -960,7 +960,7 @@ const TOOLS = [
       reason: { type: 'string', description: '可选，操作原因，仅用于返回说明' }
     }
   }, (args, ctx) => muteGroupMember(args, ctx)),
-  define('qq_group_recall', '撤回当前 QQ 群的一条指定消息。仅群主、管理员或机器人主人可用；默认使用被回复的消息，也可提供 messageId；不能撤回群主或管理员的消息。', {
+  define('qq_group_recall', '撤回当前 QQ 群的一条指定消息。默认使用被回复的消息，也可提供 messageId；不能撤回群主或管理员的消息。', {
     type: 'object',
     properties: {
       messageId: { type: 'string', description: '要撤回的消息 ID；省略时使用当前回复引用的消息' },
