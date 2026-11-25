@@ -7,6 +7,7 @@ import database, {
 import undauntedApi from './model/undauntedApi.js'
 import { getServerStatusText } from './apps/serverStatus.js'
 import { decodeShareLink } from './model/sssDecoder.js'
+import { muteGroupMember, recallGroupMessage } from './model/groupModeration.js'
 import SpeechAnalytics from './model/speechAnalytics.js'
 import SteamPlayRecords from './model/steamPlayRecords.js'
 import SteamUser from './model/steamUser.js'
@@ -950,6 +951,22 @@ const TOOLS = [
       days: { type: 'number', description: '回看天数，默认365，最多3650' }
     }
   }, (args, ctx) => speechMemberTool(args, ctx)),
+  define('qq_group_mute', '在当前 QQ 群禁言或解除禁言指定成员。仅群主、管理员或机器人主人可用；不能禁言群主，管理员不能禁言其他管理员，最长30天。', {
+    type: 'object',
+    required: ['durationSeconds'],
+    properties: {
+      target: { type: 'string', description: '群友 QQ 号、群名片或昵称；省略时使用当前消息 @ 的成员' },
+      durationSeconds: { type: 'integer', minimum: 0, maximum: 2592000, description: '禁言秒数；0 表示解除禁言；最长 2592000 秒（30天）' },
+      reason: { type: 'string', description: '可选，操作原因，仅用于返回说明' }
+    }
+  }, (args, ctx) => muteGroupMember(args, ctx)),
+  define('qq_group_recall', '撤回当前 QQ 群的一条指定消息。仅群主、管理员或机器人主人可用；默认使用被回复的消息，也可提供 messageId；不能撤回群主或管理员的消息。', {
+    type: 'object',
+    properties: {
+      messageId: { type: 'string', description: '要撤回的消息 ID；省略时使用当前回复引用的消息' },
+      useReply: { type: 'boolean', description: '未提供 messageId 时是否使用被回复消息，默认 true' }
+    }
+  }, (args, ctx) => recallGroupMessage(args, ctx)),
   define('qq_group_role', '查询群成员身份、群主和管理员。', {
     type: 'object', properties: {
       group: { type: 'string', description: '群号；默认当前群' },
