@@ -7,6 +7,7 @@ import database, {
 import undauntedApi from './model/undauntedApi.js'
 import { getServerStatusText } from './apps/serverStatus.js'
 import { decodeShareLink } from './model/sssDecoder.js'
+import { sendGroupMessage } from './model/groupMessenger.js'
 import { muteGroupMember, recallGroupMessage } from './model/groupModeration.js'
 import SpeechAnalytics from './model/speechAnalytics.js'
 import SteamPlayRecords from './model/steamPlayRecords.js'
@@ -951,6 +952,29 @@ const TOOLS = [
       days: { type: 'number', description: '回看天数，默认365，最多3650' }
     }
   }, (args, ctx) => speechMemberTool(args, ctx)),
+  define('qq_group_send_message', '向当前群发送组合消息。支持文字、1到20张图片或文字加图片，可选择 @ 全体、@ 指定成员、同时 @ 全体和指定成员，或不 @ 任何人；发送后本轮结束，不再自动追加其他回复。', {
+    type: 'object',
+    properties: {
+      text: { type: 'string', description: '要发送的文字；纯图片消息可省略' },
+      images: {
+        type: 'array',
+        maxItems: 20,
+        items: { type: 'string' },
+        description: '图片 http(s) URL、base64:// 或本地文件路径，支持 1 到 20 张'
+      },
+      notifyMode: {
+        type: 'string',
+        enum: ['none', 'members', 'all', 'all_and_members'],
+        description: '默认 none；members 通知 notifyMembers；all 通知全体；all_and_members 同时通知全体和指定成员'
+      },
+      notifyMembers: {
+        type: 'array',
+        items: { type: 'string' },
+        description: '要 @ 的 QQ、群名片或昵称；members/all_and_members 模式使用'
+      },
+      quote: { type: 'boolean', description: '是否引用当前请求消息，默认 false' }
+    }
+  }, (args, ctx) => sendGroupMessage(args, ctx)),
   define('qq_group_mute', '在当前 QQ 群禁言或解除禁言指定成员。不能禁言群主，最长30天。', {
     type: 'object',
     required: ['durationSeconds'],

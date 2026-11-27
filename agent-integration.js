@@ -11,6 +11,7 @@ const FILES = [
   ['tools/browser-fetch.mjs', 'tools/browser-fetch.mjs'],
   ['skills/eso-data/SKILL.md', 'skills/eso-data/SKILL.md'],
   ['skills/group-admin/SKILL.md', 'skills/group-admin/SKILL.md'],
+  ['skills/message-sender/SKILL.md', 'skills/message-sender/SKILL.md'],
 ]
 
 function isManaged(file) {

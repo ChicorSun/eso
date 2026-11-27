@@ -16,7 +16,7 @@ function memberName (member) {
   return String(member?.card || member?.nickname || memberId(member) || '未知成员')
 }
 
-async function resolveMember (group, target, e) {
+export async function resolveGroupMember (group, target, e) {
   const raw = String(target || e?.at || '').trim().replace(/^@+/, '')
   if (!raw || raw === 'all') throw new Error('请指定要禁言的群成员')
 
@@ -85,7 +85,7 @@ async function sourceMember (group, userId) {
 
 export async function muteGroupMember ({ target, durationSeconds, reason = '' } = {}, ctx) {
   const { e, group, groupId } = groupOf(ctx)
-  const member = await resolveMember(group, target, e)
+  const member = await resolveGroupMember(group, target, e)
   const userId = memberId(member)
   if (!userId) throw new Error('无法确定要禁言的群成员')
   if (userId === String(e.self_id)) throw new Error('不能禁言机器人自己')
