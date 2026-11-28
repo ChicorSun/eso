@@ -12,6 +12,7 @@ const FILES = [
   ['skills/eso-data/SKILL.md', 'skills/eso-data/SKILL.md'],
   ['skills/group-admin/SKILL.md', 'skills/group-admin/SKILL.md'],
   ['skills/message-sender/SKILL.md', 'skills/message-sender/SKILL.md'],
+  ['skills/steam-data/SKILL.md', 'skills/steam-data/SKILL.md'],
 ]
 
 function isManaged(file) {

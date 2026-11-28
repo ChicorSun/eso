@@ -11,6 +11,7 @@ import { sendGroupMessage } from './model/groupMessenger.js'
 import { muteGroupMember, recallGroupMessage } from './model/groupModeration.js'
 import SpeechAnalytics from './model/speechAnalytics.js'
 import SteamPlayRecords from './model/steamPlayRecords.js'
+import SteamQuery from './model/steamQuery.js'
 import SteamUser from './model/steamUser.js'
 import biliApiTools from './bili-api.js'
 import biliWatchTool from './bili-watch-tool.js'
@@ -572,6 +573,109 @@ async function steamPlayHistory (args = {}, ctx = {}) {
   return lines.join('\n')
 }
 
+function steamBindingText (data) {
+  const lines = [`QQ ${data.qq}：${data.bound ? '已绑定 Steam' : '未绑定 Steam'}`]
+  if (!data.bound) return lines[0]
+  if (data.current) lines.push(`当前绑定：${data.current.steamName || data.current.steamId}（${data.current.steamId}）`)
+  lines.push('', `全部绑定（${data.bindings.length}）：`)
+  for (const item of data.bindings) {
+    lines.push(
+      `${item.current ? '★' : '·'} ${item.steamName || item.steamId}（${item.steamId}）`,
+      `  绑定时间：${item.bindTime || '未知'}｜最近更新：${item.lastUpdate || '未知'}`,
+      `  推送：游玩 ${item.gamePush ? '开' : '关'}｜在线 ${item.onlinePush ? '开' : '关'}｜成就 ${item.achievementPush ? '开' : '关'}`
+    )
+  }
+  return lines.join('\n')
+}
+
+function steamProfileText (data) {
+  return [
+    `Steam 账号：${data.username || data.steamId}`,
+    `SteamID：${data.steamId}`,
+    `好友码：${data.friendCode || '未知'}`,
+    data.qq && `关联 QQ：${data.qq}`,
+    `状态：${data.stateText}`,
+    `资料可见性：${data.visibility}`,
+    data.realName && `真实姓名：${data.realName}`,
+    data.countryCode && `国家/地区：${data.countryCode}`,
+    `创建时间：${data.createdAt || '未知'}`,
+    `最后离线：${data.lastLogoff || '未知'}`,
+    data.currentGame ? `当前游戏：${data.currentGame.name}（AppID ${data.currentGame.appid}）` : '当前游戏：未游玩',
+    `头像：${data.avatar || '无'}`,
+    `个人资料：${data.profileUrl || '无'}`
+  ].filter(Boolean).join('\n')
+}
+
+function steamGamesText (data) {
+  const lines = [
+    `Steam 游戏库（SteamID ${data.steamId}）`,
+    `游戏总数：${data.totalGames}｜匹配：${data.matchedGames}`,
+    `累计总时长：${data.totalPlaytime.text}`,
+    `最近两周总时长：${data.recentTwoWeeks.text}`,
+    `第 ${data.page}/${data.totalPages} 页`
+  ]
+  if (!data.games.length) return [...lines, '', '没有匹配的游戏。'].join('\n')
+  for (const game of data.games) {
+    lines.push(`${game.name}（AppID ${game.appid}）：总计 ${game.playtimeForever.text}，最近两周 ${game.playtimeTwoWeeks.text}`)
+  }
+  if (data.page < data.totalPages) lines.push('', `下一页 page=${data.page + 1}`)
+  return lines.join('\n')
+}
+
+function steamAchievementsText (data) {
+  const lines = [
+    `《${data.gameName}》（AppID ${data.appid}）Steam 成就`,
+    `进度：${data.unlocked}/${data.total}（${data.completionPercent}%），未解锁 ${data.locked}`,
+    `筛选后：${data.matched} 条，第 ${data.page}/${data.totalPages} 页`
+  ]
+  if (!data.achievements.length) return [...lines, '', '没有匹配的成就。'].join('\n')
+  for (const item of data.achievements) {
+    lines.push(
+      `${item.unlocked ? '✅' : '⬜'} ${item.name}（${item.apiName}）`,
+      `  全球解锁率：${item.globalPercent == null ? '未知' : `${item.globalPercent}%`}${item.unlockTime ? `｜解锁时间：${item.unlockTime}` : ''}`,
+      ...(item.description ? [`  ${item.description}`] : [])
+    )
+  }
+  if (data.page < data.totalPages) lines.push('', `下一页 page=${data.page + 1}`)
+  return lines.join('\n')
+}
+
+function steamInventoryText (data) {
+  const lines = [
+    `Steam 社区库存（SteamID ${data.steamId}）`,
+    `总数：${data.total}｜当前已读取：${data.items.length + (data.page - 1) * data.pageSize}`,
+    `第 ${data.page}/${data.totalPages} 页`
+  ]
+  if (!data.items.length) return [...lines, '', '库存为空或无法访问。'].join('\n')
+  for (const item of data.items) {
+    lines.push(
+      `${item.name} ×${item.amount}`,
+      `  类型：${item.type || '未知'}｜稀有度：${item.rarity || '未知'}｜可交易：${item.tradable ? '是' : '否'}｜可出售：${item.marketable ? '是' : '否'}`,
+      `  AssetID：${item.assetId}｜ClassID：${item.classId}`
+    )
+  }
+  if (data.page < data.totalPages) lines.push('', `下一页 page=${data.page + 1}`)
+  return lines.join('\n')
+}
+
+function steamWishlistText (data) {
+  const lines = [
+    `Steam 愿望单（SteamID ${data.steamId}）`,
+    `总数：${data.total}｜本页折扣中：${data.discounted}`,
+    `第 ${data.page}/${data.totalPages} 页`
+  ]
+  if (!data.items.length) return [...lines, '', '愿望单为空或无法访问。'].join('\n')
+  for (const item of data.items) {
+    const price = item.priceCents == null ? '价格未知' : `${(item.priceCents / 100).toFixed(2)} ${item.currency || ''}`.trim()
+    lines.push(
+      `${item.name}（AppID ${item.appid}）${item.discountPercent ? ` -${item.discountPercent}%` : ''}：${price}`,
+      `  加入时间：${item.addedAt || '未知'}｜优先级：${item.priority ?? '未知'}｜发行：${item.releaseString || '未知'}`
+    )
+  }
+  if (data.page < data.totalPages) lines.push('', `下一页 page=${data.page + 1}`)
+  return lines.join('\n')
+}
+
 function resolveSpeechGroup (args = {}, ctx = {}) {
   const current = String(ctx.e?.group_id || '').trim()
   const groupId = String(args.group || current).trim()
@@ -921,6 +1025,61 @@ const TOOLS = [
     await database.init_database()
     return `ESOCN 数据版本：${version}\n游戏版本：${gameVersion || '未知'}\n本地 ESO 图鉴数据库：已加载`
   }),
+  define('esocn_steam_binding', '查询某个 QQ 是否绑定了 Steam，并返回当前绑定、全部绑定、Steam 名称、SteamID、绑定时间及各类推送开关。', {
+    type: 'object',
+    properties: {
+      qq: { type: 'string', description: '要查询的 QQ；默认当前发消息的 QQ' }
+    }
+  }, async (args, ctx) => steamBindingText(await SteamQuery.binding(args.qq, ctx))),
+  define('esocn_steam_profile', '查询 Steam 账号资料和当前在线状态，返回用户名、SteamID、好友码、头像、在线状态、资料可见性、创建时间、最后离线时间和当前游戏。', {
+    type: 'object',
+    properties: {
+      steamId: { type: 'string', description: 'SteamID、好友码、vanity ID 或个人资料链接' },
+      qq: { type: 'string', description: '也可按 QQ 当前绑定的 Steam 账号查询' }
+    }
+  }, async (args, ctx) => steamProfileText(await SteamQuery.profile(args, ctx))),
+  define('esocn_steam_games', '查询 Steam 游戏库详细数据，返回游戏总数、累计总时长、最近两周总时长，以及每款游戏的 AppID、总时长、两周时长、图标、封面和社区统计状态。支持名称、AppID 筛选和排序。', {
+    type: 'object',
+    properties: {
+      steamId: { type: 'string', description: 'SteamID、好友码、vanity ID 或个人资料链接' },
+      qq: { type: 'string', description: '也可按 QQ 当前绑定的 Steam 账号查询' },
+      query: { type: 'string', description: '可选，按游戏名称关键词筛选' },
+      appid: { type: 'string', description: '可选，按游戏 AppID 精确筛选' },
+      sort: { type: 'string', enum: ['recent', 'total', 'name'], description: '默认 recent；total 按总时长，name 按名称' },
+      page: { type: 'number', description: '默认第1页' },
+      pageSize: { type: 'number', description: '默认30，最多200' }
+    }
+  }, async (args, ctx) => steamGamesText(await SteamQuery.games(args, ctx))),
+  define('esocn_steam_achievements', '查询某款 Steam 游戏的详细成就数据，返回完成率、已解锁/未解锁数量，以及成就名称、API 名称、描述、图标、解锁时间、全球解锁率。', {
+    type: 'object',
+    required: ['appid'],
+    properties: {
+      appid: { type: 'string', description: 'Steam 游戏 AppID' },
+      steamId: { type: 'string', description: 'SteamID、好友码、vanity ID 或个人资料链接' },
+      qq: { type: 'string', description: '也可按 QQ 当前绑定的 Steam 账号查询' },
+      status: { type: 'string', enum: ['all', 'unlocked', 'locked'], description: '默认 all' },
+      page: { type: 'number', description: '默认第1页' },
+      pageSize: { type: 'number', description: '默认30，最多200' }
+    }
+  }, async (args, ctx) => steamAchievementsText(await SteamQuery.achievements(args, ctx))),
+  define('esocn_steam_inventory', '查询 Steam 社区库存，返回库存总数、物品名称、数量、类型、稀有度、图标、AssetID、ClassID、是否可交易和是否可出售。', {
+    type: 'object',
+    properties: {
+      steamId: { type: 'string', description: 'SteamID、好友码、vanity ID 或个人资料链接' },
+      qq: { type: 'string', description: '也可按 QQ 当前绑定的 Steam 账号查询' },
+      page: { type: 'number', description: '默认第1页' },
+      pageSize: { type: 'number', description: '默认30，最多200' }
+    }
+  }, async (args, ctx) => steamInventoryText(await SteamQuery.inventory(args, ctx))),
+  define('esocn_steam_wishlist', '查询 Steam 愿望单，返回游戏总数、折扣数量，以及每款游戏的 AppID、封面、优先级、加入时间、价格、原价、折扣和发行信息。', {
+    type: 'object',
+    properties: {
+      steamId: { type: 'string', description: 'SteamID、好友码、vanity ID 或个人资料链接' },
+      qq: { type: 'string', description: '也可按 QQ 当前绑定的 Steam 账号查询' },
+      page: { type: 'number', description: '默认第1页' },
+      pageSize: { type: 'number', description: '默认30，最多200' }
+    }
+  }, async (args, ctx) => steamWishlistText(await SteamQuery.wishlist(args, ctx))),
   define('esocn_steam_play_history', '查询当前群友过去一年内每一次 Steam 游玩会话的北京时间开始时间、结束时间和时长，并标明游戏名与 AppID。记录保留一年、包含所有 Steam 游戏；支持按群、成员、游戏、AppID、时间范围和分页筛选。', {
     type: 'object',
     properties: {
